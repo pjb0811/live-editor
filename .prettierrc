@@ -9,7 +9,6 @@
     "^react(.*)",
     "^next(.*)",
     "<THIRD_PARTY_MODULES>",
-    "^@repo/(.*)$",
     "^@/app(.*)$",
     "^~/app(.*)$",
     "^~/processes(.*)$",
@@ -18,6 +17,7 @@
     "^~/features(.*)$",
     "^~/entities(.*)$",
     "^~/shared(.*)$",
+    "^~/(.*)$",
     "^./*.*.(c|le|sc)ss",
     "^[./]"
   ],
