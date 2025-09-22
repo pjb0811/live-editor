@@ -1,6 +1,8 @@
 import React from 'react';
 
 import * as Babel from '@babel/standalone';
+import * as tanstackQuery from '@tanstack/react-query';
+import * as useHooks from '@uidotdev/usehooks';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as ts from 'typescript';
@@ -10,6 +12,14 @@ interface Module {
     default?: React.ComponentType<Record<string, unknown>>;
   };
 }
+
+export const baseModules = {
+  '@tanstack/react-query': tanstackQuery,
+  '@uidotdev/usehooks': useHooks,
+  '~/utils': {
+    cn,
+  },
+};
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -63,7 +73,7 @@ export const detectTypeScript = (code: string): boolean => {
 
 export const compileModule = (
   code: string,
-  imports: Record<string, unknown>,
+  modules: Record<string, unknown>,
 ): Module => {
   const isTypeScript = detectTypeScript(code);
   const jsCode = isTypeScript ? compileTypeScript(code) : code;
@@ -83,8 +93,8 @@ export const compileModule = (
       return React;
     }
 
-    if (imports?.[name]) {
-      return imports[name];
+    if (modules?.[name]) {
+      return modules[name];
     }
 
     throw new Error(`Module not found: ${name}`);
@@ -115,26 +125,20 @@ export const extractSections = (code: string): Dnd.Section[] => {
 };
 
 export const replaceSections = (code: string, sections: string[]): string => {
-  // 모든 section 태그를 제거
   const cleanCode = code.replace(/<section[\s\S]*?<\/section>/g, '');
-
-  // app-container div 찾기
   const containerRegex =
-    /(<div[^>]*id=["']app-container["'][^>]*>)([\s\S]*?)(<\/div>)/;
+    /(<main[^>]*id=["']app-container["'][^>]*>)([\s\S]*?)(<\/main>)/m;
   const match = cleanCode.match(containerRegex);
 
   if (match) {
     const [, openTag, , closeTag] = match;
-    // 섹션들을 적절한 들여쓰기와 함께 배치
-    const sectionsCode = sections.map(section => `      ${section}`).join('\n');
+    const sectionsCode = sections.join('\n');
 
     return cleanCode.replace(
       containerRegex,
-      `${openTag}\n${sectionsCode}\n    ${closeTag}`,
+      `${openTag}\n${sectionsCode}\n${closeTag}`,
     );
   }
 
-  // app-container가 없으면 기존 방식 사용
-  const sectionsCode = sections.join('\n');
-  return `${cleanCode}\n${sectionsCode}`;
+  return code;
 };
