@@ -5,12 +5,13 @@ import ReactDOM from 'react-dom/client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import axios from 'axios';
+import { useElementSize } from 'use-hooks';
 
 import { useError, usePreview } from '~/components/Context/states';
 import LiveError from '~/components/Error';
-import { cn, compileModule } from '~/utils';
+import { baseModules, cn, compileModule } from '~/utils';
 
-import { type IframeProps, type Props, imports } from '../';
+import { type IframeProps, type Props } from '../';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,11 +38,14 @@ const Client = ({
   className,
   showError,
   props = {},
+  modules = {},
   iframe,
   scripts = [],
 }: Props) => {
   const previewRef = useRef<ReactDOM.Root>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const { breakpoint, elementRef } = useElementSize<HTMLDivElement>();
 
   const { code } = usePreview();
   const { error, setError } = useError();
@@ -96,7 +100,7 @@ const Client = ({
       }
 
       try {
-        const module = compileModule(code, imports);
+        const module = compileModule(code, { ...baseModules, ...modules });
 
         if (module.exports.default) {
           const Component = module.exports.default;
@@ -105,6 +109,7 @@ const Client = ({
             <LiveError.Boundary onError={error => setError(error.message)}>
               <QueryClientProvider client={queryClient}>
                 <Component
+                  breakpoint={breakpoint}
                   {...props}
                   {...(iframe
                     ? { container: iframeRef.current?.contentDocument?.body }
@@ -126,7 +131,7 @@ const Client = ({
         );
       }
     },
-    [loaded, iframe, previewId, props, setError],
+    [loaded, iframe, previewId, props, breakpoint, modules, setError],
   );
 
   useEffect(() => {
@@ -140,7 +145,7 @@ const Client = ({
       return;
     }
 
-    const onLoad = () => {
+    const copyStyles = () => {
       const doc = $iframe.contentDocument;
 
       if (!doc) {
@@ -165,6 +170,31 @@ const Client = ({
           existingLinks.add(href);
         }
       });
+
+      const existingStyles = new Set(
+        Array.from(doc.head.querySelectorAll('style')).map(
+          style => style.textContent,
+        ),
+      );
+
+      Array.from(window.document.querySelectorAll('style')).forEach(style => {
+        if (!existingStyles.has(style.textContent)) {
+          const iframeStyle = doc.createElement('style');
+          iframeStyle.textContent = style.textContent;
+          doc.head.appendChild(iframeStyle);
+          existingStyles.add(style.textContent);
+        }
+      });
+    };
+
+    const onLoad = () => {
+      const doc = $iframe.contentDocument;
+
+      if (!doc) {
+        return;
+      }
+
+      copyStyles();
 
       if (!scripts.length) {
         setLoaded(true);
@@ -208,11 +238,18 @@ const Client = ({
       });
 
       doc.body.style.overflowX = 'hidden';
-
-      // console.log(doc.head.childNodes.length, 'head nodes in iframe');
     };
 
     $iframe.addEventListener('load', onLoad);
+
+    const observer = new MutationObserver(() => {
+      copyStyles();
+    });
+
+    observer.observe(window.document.head, {
+      childList: true,
+      subtree: true,
+    });
 
     if ($iframe.contentDocument?.readyState === 'complete') {
       onLoad();
@@ -220,6 +257,7 @@ const Client = ({
 
     return () => {
       $iframe.removeEventListener('load', onLoad);
+      observer.disconnect();
     };
   }, [iframe, scripts]);
 
@@ -229,6 +267,7 @@ const Client = ({
 
   return (
     <div
+      ref={elementRef}
       className={cn(
         'h-full w-full',
         classNames,
