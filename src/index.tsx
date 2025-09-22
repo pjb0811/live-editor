@@ -1,4 +1,4 @@
-import './globals.css';
+import './index.css';
 
 import Context from './components/Context';
 import LiveDnd from './components/Dnd';

@@ -1,35 +1,111 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
 
-function App() {
-  const [count, setCount] = useState(0)
+import { SaveOutlined } from '@ant-design/icons';
+import { Button, Flex, Radio, Space, Splitter, Switch } from 'antd';
+import * as Antd from 'antd';
+
+import './App.css';
+
+import Live from './';
+import { DEFAULT_TEMPLATE } from './enums';
+
+const options = [
+  { label: 'Drag & Drop', value: 'dnd' },
+  { label: 'Editor', value: 'editor' },
+];
+
+const App = () => {
+  const [value, setValue] = useState(DEFAULT_TEMPLATE);
+  const [app, setApp] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const [type, setType] = useState<'dnd' | 'editor'>('editor');
+
+  const editable = type === 'editor';
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <Flex gap="middle" vertical className="h-full">
+        <Flex justify="end">
+          <Space className="p-2">
+            <Switch
+              checkedChildren="app"
+              unCheckedChildren="NonApp"
+              checked={app}
+              onChange={setApp}
+            />
+            <Switch
+              checkedChildren="Mobile"
+              unCheckedChildren="PC"
+              checked={mobile}
+              onChange={setMobile}
+            />
+            <Radio.Group
+              size="small"
+              value={type}
+              options={options}
+              optionType="button"
+              buttonStyle="solid"
+              onChange={e => setType(e.target.value)}
+            />
+            <Button icon={<SaveOutlined />} onClick={() => {}} />
+          </Space>
+        </Flex>
+        <Flex flex="1">
+          <Live>
+            {editable ? (
+              <Splitter>
+                <Splitter.Panel
+                  defaultSize="50%"
+                  min="20%"
+                  max="80%"
+                  collapsible
+                >
+                  <div className="h-full overflow-hidden p-2">
+                    <Live.Preview
+                      showError
+                      iframe
+                      scripts={[
+                        '/js/tailwindcss.js',
+                        //
+                      ]}
+                      props={{
+                        headers: {
+                          isApp: app,
+                          isMobile: mobile,
+                        },
+                      }}
+                      modules={{
+                        antd: Antd,
+                      }}
+                    />
+                  </div>
+                </Splitter.Panel>
+                <Splitter.Panel collapsible>
+                  <Live.Editor
+                    height="100%"
+                    value={value}
+                    onChange={setValue}
+                  />
+                </Splitter.Panel>
+              </Splitter>
+            ) : (
+              <Live.Dnd
+                value={value}
+                props={{
+                  headers: {
+                    isApp: app,
+                    isMobile: mobile,
+                  },
+                }}
+                scripts={['/js/tailwindcss.js']}
+                onChange={setValue}
+              />
+            )}
+          </Live>
+        </Flex>
+      </Flex>
     </>
-  )
-}
+  );
+};
 
-export default App
+export default App;
