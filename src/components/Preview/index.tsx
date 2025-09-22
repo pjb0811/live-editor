@@ -1,17 +1,9 @@
 import React from 'react';
 
-import * as tanstackQuery from '@tanstack/react-query';
-import * as useHooks from '@uidotdev/usehooks';
-
-import { compileModule } from '~/utils';
+import { baseModules, compileModule } from '~/utils';
 
 import LiveError from '../Error';
 import Client from './Client';
-
-export const imports = {
-  '@tanstack/react-query': tanstackQuery,
-  '@uidotdev/usehooks': useHooks,
-};
 
 export interface IframeProps {
   title?: string;
@@ -24,12 +16,13 @@ export interface Props extends React.HTMLAttributes<HTMLDivElement> {
   props?: Record<string, unknown>;
   scripts?: string[];
   iframe?: boolean | IframeProps;
+  modules?: Record<string, unknown>;
 }
 
-const Preview = ({ code, props = {}, ...restProps }: Props) => {
+const Preview = ({ code, props = {}, modules = {}, ...restProps }: Props) => {
   if (code) {
     try {
-      const module = compileModule(code, imports);
+      const module = compileModule(code, { ...baseModules, ...modules });
 
       if (!module.exports.default) {
         return (
@@ -57,7 +50,7 @@ const Preview = ({ code, props = {}, ...restProps }: Props) => {
     }
   }
 
-  return <Client props={props} {...restProps} />;
+  return <Client props={props} modules={modules} {...restProps} />;
 };
 
 export default Preview;
