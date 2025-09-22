@@ -19,11 +19,11 @@ import {
 } from '@dnd-kit/sortable';
 import { v4 as uuidv4 } from 'uuid';
 
-import { DEFAULT_TEMPLATE } from '~/enums';
+import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/enums';
 import { extractSections, replaceSections } from '~/utils';
 
 import { usePreview } from '../Context/states';
-import Draggable, { DRAGGABLE_ITEMS } from './Draggable';
+import Draggable from './Draggable';
 import Droppable from './Droppable';
 import Renderer from './Renderer';
 import Sortable from './Sortable';
@@ -31,6 +31,7 @@ import Sortable from './Sortable';
 export interface Props {
   value?: string;
   props: Record<string, unknown>;
+  modules?: Record<string, unknown>;
   scripts?: string[];
   onChange?: (value: string) => void;
 }
@@ -38,6 +39,7 @@ export interface Props {
 const Dnd = ({
   value = DEFAULT_TEMPLATE,
   props,
+  modules = {},
   scripts = [],
   onChange: _onChange,
 }: Props) => {
@@ -232,7 +234,11 @@ const Dnd = ({
                       onDelete={onDelete}
                       onCopy={onCopy}
                     >
-                      <Renderer code={section.code} {...props} />
+                      <Renderer
+                        code={section.code}
+                        modules={modules}
+                        {...props}
+                      />
                     </Sortable>
                   ))}
                 </SortableContext>

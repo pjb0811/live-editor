@@ -1,8 +1,10 @@
-import { imports } from '~/components/Preview';
-import { compileModule } from '~/utils';
+import { useElementSize } from 'use-hooks';
+
+import { baseModules, compileModule } from '~/utils';
 
 interface Props {
   code: string;
+  modules?: Record<string, unknown>;
   headers?: Record<string, boolean>;
 }
 
@@ -12,7 +14,7 @@ const generateCode = (code: string) => {
 
     import { useState } from 'react';
 
-    const App = () => {
+    const App = ({ breakpoint, headers, container }) => {
       return (
         <>
           ${code}
@@ -24,13 +26,20 @@ const generateCode = (code: string) => {
   `;
 };
 
-const Renderer = ({ code }: Props) => {
-  const module = compileModule(generateCode(code), imports);
+const Renderer = ({ code, headers, modules }: Props) => {
+  const module = compileModule(generateCode(code), {
+    ...baseModules,
+    ...modules,
+  });
+
   const Component = module.exports.default || (() => null);
+
+  const { breakpoint, elementRef } = useElementSize<HTMLDivElement>();
 
   return (
     <>
-      <Component />
+      <div ref={elementRef} className="w-full" />
+      <Component breakpoint={breakpoint} headers={headers} />
     </>
   );
 };

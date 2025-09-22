@@ -1,36 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 
+import type { DRAGGABLE_ITEMS } from '~/enums';
 import { cn } from '~/utils';
-
-export const DRAGGABLE_ITEMS = [
-  {
-    id: 'main',
-    name: '메인',
-    code: `
-      <section>
-        메인
-      </section>
-    `,
-  },
-  {
-    id: 'content',
-    name: '콘텐츠',
-    code: `
-      <section>
-        콘텐츠
-      </section>
-    `,
-  },
-  {
-    id: 'feature',
-    name: '기능',
-    code: `
-      <section>
-        기능
-      </section>
-    `,
-  },
-];
 
 const Draggable = ({ item }: { item: (typeof DRAGGABLE_ITEMS)[0] }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
