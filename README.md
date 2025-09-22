@@ -14,7 +14,6 @@ live-editor/
 │  │  ├─ Error/                 # 에러 바운더리/런타임 UI
 │  │  └─ Preview/               # 미리보기(샌드박스, Client 포함)
 │  ├─ enums/
-│  ├─ hooks/                    # 공통 훅 (e.g. useElementSize)
 │  ├─ types/
 │  ├─ utils/
 │  ├─ index.tsx                 # 앱 엔트리
