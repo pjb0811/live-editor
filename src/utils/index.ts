@@ -105,6 +105,9 @@ export const compileModule = (
   return module;
 };
 
+const containerRegex =
+  /(<main[^>]*id=["']app-container["'][^>]*>)([\s\S]*?)(<\/main>)/m;
+
 export const extractSections = (code: string): Dnd.Section[] => {
   const matches = [...code.matchAll(/<section[\s\S]*?<\/section>/g)];
   return matches.map((m, i) => {
@@ -119,15 +122,13 @@ export const extractSections = (code: string): Dnd.Section[] => {
     return {
       code: sectionCode,
       id: `${i}`,
-      name: name,
+      name,
     };
   });
 };
 
 export const replaceSections = (code: string, sections: string[]): string => {
   const cleanCode = code.replace(/<section[\s\S]*?<\/section>/g, '');
-  const containerRegex =
-    /(<main[^>]*id=["']app-container["'][^>]*>)([\s\S]*?)(<\/main>)/m;
   const match = cleanCode.match(containerRegex);
 
   if (match) {
@@ -141,4 +142,16 @@ export const replaceSections = (code: string, sections: string[]): string => {
   }
 
   return code;
+};
+
+export const generateSection = (code: string, fullCode: string) => {
+  const match = fullCode.match(containerRegex);
+
+  if (!match) {
+    return fullCode;
+  }
+
+  const [, openTag, , closeTag] = match;
+
+  return fullCode.replace(containerRegex, `${openTag}\n${code}\n${closeTag}`);
 };

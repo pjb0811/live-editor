@@ -98,6 +98,9 @@ const App = () => {
                   },
                 }}
                 scripts={['/js/tailwindcss.js']}
+                modules={{
+                  antd: Antd,
+                }}
                 onChange={setValue}
               />
             )}
