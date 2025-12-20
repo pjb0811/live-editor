@@ -235,6 +235,7 @@ const Dnd = ({
                       onCopy={onCopy}
                     >
                       <Renderer
+                        fullCode={value}
                         code={section.code}
                         modules={modules}
                         {...props}

@@ -1,33 +1,16 @@
 import { useElementSize } from 'use-hooks';
 
-import { baseModules, compileModule } from '~/utils';
+import { baseModules, compileModule, generateSection } from '~/utils';
 
 interface Props {
+  fullCode: string;
   code: string;
   modules?: Record<string, unknown>;
   headers?: Record<string, boolean>;
 }
 
-const generateCode = (code: string) => {
-  return `
-    'use client';
-
-    import { useState } from 'react';
-
-    const App = ({ breakpoint, headers, container }) => {
-      return (
-        <>
-          ${code}
-        </>
-      );
-    };
-
-    export default App;
-  `;
-};
-
-const Renderer = ({ code, headers, modules }: Props) => {
-  const module = compileModule(generateCode(code), {
+const Renderer = ({ fullCode, code, headers, modules }: Props) => {
+  const module = compileModule(generateSection(code, fullCode), {
     ...baseModules,
     ...modules,
   });

@@ -3,6 +3,7 @@ import React from 'react';
 import { baseModules, compileModule } from '~/utils';
 
 import LiveError from '../Error';
+import Breakpointer from './Breakpointer';
 import Client from './Client';
 
 export interface IframeProps {
@@ -37,7 +38,9 @@ const Preview = ({ code, props = {}, modules = {}, ...restProps }: Props) => {
 
       return (
         <LiveError.Boundary>
-          <Component {...props} />
+          <Breakpointer>
+            {breakpoint => <Component {...props} breakpoint={breakpoint} />}
+          </Breakpointer>
         </LiveError.Boundary>
       );
     } catch (e) {
