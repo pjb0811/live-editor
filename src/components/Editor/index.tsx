@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebounce } from 'react-use';
 
 import { javascript } from '@codemirror/lang-javascript';
 import { vscodeLight } from '@uiw/codemirror-theme-vscode';
 import CodeMirror from '@uiw/react-codemirror';
-import type { Extension } from '@uiw/react-codemirror';
+import type { Extension, ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { EditorView } from 'codemirror';
 import * as prettier from 'prettier';
 import prettierPluginBabel from 'prettier/plugins/babel';
@@ -45,50 +45,107 @@ const Editor = ({
   onChange: _onChange,
   ...props
 }: Props) => {
-  const [value, setValue] = useState('');
+  const [localValue, setLocalValue] = useState('');
+  const [lastExternalValue, setLastExternalValue] = useState('');
   const { setCode } = usePreview();
   const { setError } = useError();
 
-  const onChange = async (value: string, format?: boolean) => {
-    try {
-      const isTypeScript = detectTypeScript(value);
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
 
-      const formattedCode = await prettier.format(value, {
+  const prettierConfig = useMemo(
+    () => ({
+      ...prettierInitialOptions,
+      ...prettierOptions,
+    }),
+    [prettierOptions],
+  );
+
+  const formatCode = useCallback(
+    async (code: string) => {
+      const isTypeScript = detectTypeScript(code);
+
+      return prettier.format(code, {
         parser: isTypeScript ? 'typescript' : 'babel',
         plugins: [
           prettierPluginBabel,
           prettierPluginEstree,
           prettierPluginTypeScript,
         ],
-        ...prettierInitialOptions,
-        ...prettierOptions,
+        ...prettierConfig,
       });
+    },
+    [prettierConfig],
+  );
 
-      _onChange?.(format ? formattedCode : value);
-      setCode(format ? formattedCode : value);
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  };
+  const onChange = useCallback(
+    async (value: string, format?: boolean) => {
+      try {
+        const currentView = editorRef.current?.view;
+        const currentLength = currentView?.state.doc.length;
+
+        if (format && currentView) {
+          if (currentLength !== currentView.state.doc.length) {
+            console.warn('Editor state changed during formatting, skipping');
+            return;
+          }
+
+          const formattedCode = await formatCode(value);
+
+          if (currentLength === currentView.state.doc.length) {
+            const transaction = currentView.state.update({
+              changes: {
+                from: 0,
+                to: currentLength,
+                insert: formattedCode,
+              },
+            });
+            currentView.dispatch(transaction);
+
+            _onChange?.(formattedCode);
+            setCode(formattedCode);
+          }
+        } else {
+          _onChange?.(value);
+          setCode(value);
+        }
+
+        setError(null);
+      } catch (e) {
+        _onChange?.(value);
+        setCode(value);
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [_onChange, setCode, setError, formatCode],
+  );
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
       e.preventDefault();
-      onChange(value, true);
+      onChange(localValue, true);
     }
   };
 
   useEffect(() => {
-    setValue(_value || DEFAULT_TEMPLATE);
-  }, [_value]);
+    if (_value !== lastExternalValue) {
+      const initialValue = _value || DEFAULT_TEMPLATE;
+      setLocalValue(initialValue);
+      setLastExternalValue(_value || '');
+
+      if (initialValue && initialValue !== lastExternalValue) {
+        onChange(initialValue);
+      }
+    }
+  }, [_value, lastExternalValue, onChange]);
 
   useDebounce(
     () => {
-      onChange(value);
+      if (localValue !== lastExternalValue) {
+        onChange(localValue);
+      }
     },
     debounce,
-    [value],
+    [localValue],
   );
 
   return (
@@ -101,14 +158,15 @@ const Editor = ({
       onKeyDown={onKeyDown}
     >
       <CodeMirror
+        ref={editorRef}
         theme={theme || vscodeLight}
         height={height || '100%'}
         extensions={[
           javascript({ jsx: true, typescript: true }),
           EditorView.lineWrapping,
         ]}
-        value={value}
-        onChange={setValue}
+        value={localValue}
+        onChange={setLocalValue}
         {...props}
       />
     </div>

@@ -5,7 +5,7 @@ import Error from '..';
 interface Props {
   children: React.ReactNode;
   fallback?: React.ReactNode;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  onError?: (e: Error, info: React.ErrorInfo) => void;
 }
 
 interface State {
