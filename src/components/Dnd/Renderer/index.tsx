@@ -10,14 +10,12 @@ interface Props {
 }
 
 const Renderer = ({ fullCode, code, headers, modules }: Props) => {
+  const { breakpoint, elementRef } = useElementSize<HTMLDivElement>();
   const module = compileModule(generateSection(code, fullCode), {
     ...baseModules,
     ...modules,
   });
-
   const Component = module.exports.default || (() => null);
-
-  const { breakpoint, elementRef } = useElementSize<HTMLDivElement>();
 
   return (
     <>

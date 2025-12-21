@@ -1,4 +1,4 @@
-namespace Dnd {
+export namespace Dnd {
   interface Section {
     id: string;
     name: string;

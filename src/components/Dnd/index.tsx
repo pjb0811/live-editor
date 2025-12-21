@@ -2,15 +2,13 @@ import { useEffect, useState } from 'react';
 
 import {
   DndContext,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
   PointerSensor,
   rectIntersection,
   useSensor,
   useSensors,
-} from '@dnd-kit/core';
-import type {
-  DragEndEvent,
-  DragOverEvent,
-  DragStartEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -19,9 +17,11 @@ import {
 } from '@dnd-kit/sortable';
 import { v4 as uuidv4 } from 'uuid';
 
-import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/enums';
-import { extractSections, replaceSections } from '~/utils';
+import { DRAGGABLE_ITEMS } from '~/enums';
 
+import { DEFAULT_TEMPLATE } from '../../enums';
+import { type Dnd as DndType } from '../../types';
+import { extractSections, replaceSections } from '../../utils';
 import { usePreview } from '../Context/states';
 import Draggable from './Draggable';
 import Droppable from './Droppable';
@@ -43,7 +43,7 @@ const Dnd = ({
   scripts = [],
   onChange: _onChange,
 }: Props) => {
-  const [sections, setSections] = useState<Dnd.Section[]>([]);
+  const [sections, setSections] = useState<DndType.Section[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { setCode } = usePreview();

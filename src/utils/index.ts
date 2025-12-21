@@ -7,6 +7,8 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as ts from 'typescript';
 
+import type { Dnd } from '../types';
+
 interface Module {
   exports: {
     default?: React.ComponentType<Record<string, unknown>>;
@@ -73,7 +75,7 @@ export const detectTypeScript = (code: string): boolean => {
 
 export const compileModule = (
   code: string,
-  modules: Record<string, unknown>,
+  imports: Record<string, unknown>,
 ): Module => {
   const isTypeScript = detectTypeScript(code);
   const jsCode = isTypeScript ? compileTypeScript(code) : code;
@@ -93,8 +95,8 @@ export const compileModule = (
       return React;
     }
 
-    if (modules?.[name]) {
-      return modules[name];
+    if (imports?.[name]) {
+      return imports[name];
     }
 
     throw new Error(`Module not found: ${name}`);
@@ -113,7 +115,6 @@ export const extractSections = (code: string): Dnd.Section[] => {
   return matches.map((m, i) => {
     const sectionCode = m[0];
 
-    // data-name 속성 추출
     const dataNameMatch = sectionCode.match(/data-name=["']([^"']+)["']/);
     const name = dataNameMatch?.[1]
       ? dataNameMatch[1]

@@ -9,7 +9,8 @@ import { useElementSize } from 'use-hooks';
 
 import { useError, usePreview } from '~/components/Context/states';
 import LiveError from '~/components/Error';
-import { baseModules, cn, compileModule } from '~/utils';
+import { cn } from '~/utils';
+import { baseModules, compileModule } from '~/utils';
 
 import { type IframeProps, type Props } from '../';
 
@@ -44,7 +45,6 @@ const Client = ({
 }: Props) => {
   const previewRef = useRef<ReactDOM.Root>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-
   const { breakpoint, elementRef } = useElementSize<HTMLDivElement>();
 
   const { code } = usePreview();
@@ -109,8 +109,8 @@ const Client = ({
             <LiveError.Boundary onError={error => setError(error.message)}>
               <QueryClientProvider client={queryClient}>
                 <Component
-                  breakpoint={breakpoint}
                   {...props}
+                  breakpoint={breakpoint}
                   {...(iframe
                     ? { container: iframeRef.current?.contentDocument?.body }
                     : {})}
@@ -133,6 +133,19 @@ const Client = ({
     },
     [loaded, iframe, previewId, props, breakpoint, modules, setError],
   );
+
+  useEffect(() => {
+    return () => {
+      if (previewRef.current) {
+        const currentRoot = previewRef.current;
+        previewRef.current = null;
+
+        requestIdleCallback(() => {
+          currentRoot.unmount();
+        });
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!iframe) {
@@ -238,6 +251,8 @@ const Client = ({
       });
 
       doc.body.style.overflowX = 'hidden';
+
+      // console.log(doc.head.childNodes.length, 'head nodes in iframe');
     };
 
     $iframe.addEventListener('load', onLoad);
@@ -266,37 +281,39 @@ const Client = ({
   }, [_code, code, previewRender]);
 
   return (
-    <div
-      ref={elementRef}
-      className={cn(
-        'h-full w-full',
-        classNames,
-        //
-      )}
-    >
-      {iframe ? (
-        <iframe
-          id={previewId}
-          ref={iframeRef}
-          style={{
-            width: '100%',
-            height: '100%',
-            border: 'none',
-            ...style,
-          }}
-          title={title ?? 'Live Preview'}
-          sandbox={sandbox ?? 'allow-scripts allow-same-origin'}
-        />
-      ) : (
-        <>
-          {scripts.map((src, index) => (
-            <script key={index} src={src} async />
-          ))}
-          <div id={previewId} />
-        </>
-      )}
+    <>
+      <div
+        ref={elementRef}
+        className={cn(
+          'h-full w-full',
+          classNames,
+          //
+        )}
+      >
+        {iframe ? (
+          <iframe
+            id={previewId}
+            ref={iframeRef}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              ...style,
+            }}
+            title={title ?? 'Live Preview'}
+            sandbox={sandbox ?? 'allow-scripts allow-same-origin'}
+          />
+        ) : (
+          <>
+            {scripts.map((src, index) => (
+              <script key={index} src={src} async />
+            ))}
+            <div id={previewId} />
+          </>
+        )}
+      </div>
       <LiveError.Runtime open={isError} />
-    </div>
+    </>
   );
 };
 

@@ -1,7 +1,6 @@
 import React from 'react';
 
-import { baseModules, compileModule } from '~/utils';
-
+import { baseModules, compileModule } from '../../utils';
 import LiveError from '../Error';
 import Breakpointer from './Breakpointer';
 import Client from './Client';
@@ -53,7 +52,7 @@ const Preview = ({ code, props = {}, modules = {}, ...restProps }: Props) => {
     }
   }
 
-  return <Client props={props} modules={modules} {...restProps} />;
+  return <Client props={props} {...restProps} />;
 };
 
 export default Preview;
