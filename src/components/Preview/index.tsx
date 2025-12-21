@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { baseModules, compileModule } from '../../utils';
+import { baseModules, compile } from '../../utils';
 import LiveError from '../Error';
 import Breakpointer from './Breakpointer';
 import Client from './Client';
@@ -10,6 +10,7 @@ export interface IframeProps {
   sandbox?: string;
   style?: React.CSSProperties;
 }
+
 export interface Props extends React.HTMLAttributes<HTMLDivElement> {
   code?: string;
   showError?: boolean;
@@ -22,7 +23,7 @@ export interface Props extends React.HTMLAttributes<HTMLDivElement> {
 const Preview = ({ code, props = {}, modules = {}, ...restProps }: Props) => {
   if (code) {
     try {
-      const module = compileModule(code, { ...baseModules, ...modules });
+      const module = compile(code, { ...baseModules, ...modules });
 
       if (!module.exports.default) {
         return (
@@ -52,7 +53,7 @@ const Preview = ({ code, props = {}, modules = {}, ...restProps }: Props) => {
     }
   }
 
-  return <Client props={props} {...restProps} />;
+  return <Client props={props} modules={modules} {...restProps} />;
 };
 
 export default Preview;

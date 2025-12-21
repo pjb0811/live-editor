@@ -12,11 +12,11 @@ interface Props {
 }
 
 const Breakpointer = ({ className, children }: Props) => {
-  const { breakpoint, elementRef } = useElementSize<HTMLDivElement>();
+  const { breakpoint, ref } = useElementSize<HTMLDivElement>();
 
   return (
     <div
-      ref={elementRef}
+      ref={ref}
       className={cn(
         'h-full w-full',
         className,

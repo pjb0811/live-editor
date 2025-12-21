@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -10,7 +10,7 @@ import { useElementSize } from 'use-hooks';
 import { useError, usePreview } from '~/components/Context/states';
 import LiveError from '~/components/Error';
 import { cn } from '~/utils';
-import { baseModules, compileModule } from '~/utils';
+import { baseModules, compile } from '~/utils';
 
 import { type IframeProps, type Props } from '../';
 
@@ -43,9 +43,20 @@ const Client = ({
   iframe,
   scripts = [],
 }: Props) => {
-  const previewRef = useRef<ReactDOM.Root>(null);
+  const iframeRootRef = useRef<ReactDOM.Root | null>(null);
+  const normalRootRef = useRef<ReactDOM.Root | null>(null);
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const { breakpoint, elementRef } = useElementSize<HTMLDivElement>();
+
+  const styleManagerRef = useRef<{
+    copiedLinks: Set<string>;
+    copiedStyles: Set<string>;
+  }>({
+    copiedLinks: new Set(),
+    copiedStyles: new Set(),
+  });
+
+  const { breakpoint, ref } = useElementSize<HTMLDivElement>();
 
   const { code } = usePreview();
   const { error, setError } = useError();
@@ -63,89 +74,204 @@ const Client = ({
 
   const { style, title, sandbox } = (iframe ?? {}) as IframeProps;
 
-  const previewRender = useCallback(
-    (code: string) => {
-      const $preview = document.getElementById(previewId);
+  const mergedModules = { ...baseModules, ...modules };
 
-      if (!$preview || !code) {
+  let module = null;
+
+  if (_code || code) {
+    try {
+      module = compile(_code || code, mergedModules);
+    } catch (e) {
+      module = { error: e instanceof Error ? e.message : 'transform error' };
+    }
+  }
+
+  const componentProps = useMemo(
+    () => ({
+      ...props,
+      breakpoint,
+      ...(iframe
+        ? { container: iframeRef.current?.contentDocument?.body }
+        : {}),
+    }),
+    [props, breakpoint, iframe],
+  );
+
+  const getCurrentRoot = useCallback(() => {
+    return iframe ? iframeRootRef : normalRootRef;
+  }, [iframe]);
+
+  const copyStyles = useCallback(() => {
+    const $iframe = iframeRef.current?.contentDocument;
+    if (!$iframe) {
+      return;
+    }
+
+    const manager = styleManagerRef.current;
+
+    const links = document.querySelectorAll<HTMLLinkElement>(
+      'link[rel="stylesheet"]',
+    );
+    const newLinks = Array.from(links)
+      .map(link => link.href)
+      .filter(href => !manager.copiedLinks.has(href));
+
+    if (newLinks.length) {
+      const fragment = $iframe.createDocumentFragment();
+      newLinks.forEach(href => {
+        const link = $iframe.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        fragment.appendChild(link);
+        manager.copiedLinks.add(href);
+      });
+      $iframe.head.appendChild(fragment);
+    }
+
+    const styles = document.querySelectorAll<HTMLStyleElement>('style');
+    const newStyles = Array.from(styles)
+      .map(style => style.textContent || '')
+      .filter(content => {
+        if (!content) {
+          return false;
+        }
+
+        const hash = content.length + content.slice(0, 50);
+        if (manager.copiedStyles.has(hash)) {
+          return false;
+        }
+
+        manager.copiedStyles.add(hash);
+        return true;
+      });
+
+    if (newStyles.length) {
+      const fragment = $iframe.createDocumentFragment();
+      newStyles.forEach(content => {
+        const style = $iframe.createElement('style');
+        style.textContent = content;
+        fragment.appendChild(style);
+      });
+      $iframe.head.appendChild(fragment);
+    }
+  }, []);
+
+  const cleanupAll = useCallback(() => {
+    styleManagerRef.current = {
+      copiedLinks: new Set(),
+      copiedStyles: new Set(),
+    };
+
+    [iframeRootRef, normalRootRef].forEach((rootRef, index) => {
+      if (rootRef.current) {
+        const currentRoot = rootRef.current;
+        rootRef.current = null;
+
+        setTimeout(() => {
+          try {
+            currentRoot.unmount();
+          } catch (error) {
+            console.warn(
+              `Root ${index === 0 ? 'iframe' : 'normal'} unmount failed:`,
+              error,
+            );
+          }
+        }, 0);
+      }
+    });
+  }, []);
+
+  const cleanupUnusedRoot = useCallback(() => {
+    const unusedRootRef = iframe ? normalRootRef : iframeRootRef;
+
+    if (unusedRootRef.current) {
+      setTimeout(() => {
+        try {
+          unusedRootRef.current?.unmount();
+        } catch (error) {
+          console.warn('Unused root cleanup failed:', error);
+        } finally {
+          unusedRootRef.current = null;
+        }
+      }, 0);
+    }
+  }, [iframe]);
+
+  const previewRender = useCallback(() => {
+    const $preview = document.getElementById(previewId);
+    const currentRootRef = getCurrentRoot();
+
+    if (!$preview || !module) {
+      return;
+    }
+
+    cleanupUnusedRoot();
+
+    let mountTarget: Element;
+
+    if (iframe) {
+      if (!iframeRef.current || !loaded) {
         return;
       }
 
-      if (iframe) {
-        if (!iframeRef.current || !loaded) {
-          return;
-        }
-        const $iframe = iframeRef.current;
-        const doc = $iframe.contentDocument;
+      const $iframe = iframeRef.current;
+      const doc = $iframe.contentDocument;
 
-        if (!doc) {
-          return;
-        }
-
-        let mountNode = doc.getElementById('iframe-root');
-
-        if (!mountNode) {
-          mountNode = doc.createElement('div');
-          mountNode.id = 'iframe-root';
-          doc.body.appendChild(mountNode);
-        }
-
-        if (!previewRef.current) {
-          previewRef.current = ReactDOM.createRoot(mountNode);
-        }
+      if (!doc) {
+        return;
       }
 
-      if (!previewRef.current) {
-        previewRef.current = ReactDOM.createRoot($preview);
+      let mountNode = doc.getElementById('iframe-root');
+
+      if (!mountNode) {
+        mountNode = doc.createElement('div');
+        mountNode.id = 'iframe-root';
+        doc.body.appendChild(mountNode);
       }
 
-      try {
-        const module = compileModule(code, { ...baseModules, ...modules });
+      mountTarget = mountNode;
+    } else {
+      mountTarget = $preview;
+    }
 
-        if (module.exports.default) {
-          const Component = module.exports.default;
+    if (!currentRootRef.current) {
+      currentRootRef.current = ReactDOM.createRoot(mountTarget);
+    }
 
-          previewRef.current.render(
-            <LiveError.Boundary onError={error => setError(error.message)}>
-              <QueryClientProvider client={queryClient}>
-                <Component
-                  {...props}
-                  breakpoint={breakpoint}
-                  {...(iframe
-                    ? { container: iframeRef.current?.contentDocument?.body }
-                    : {})}
-                />
-              </QueryClientProvider>
-            </LiveError.Boundary>,
-          );
-          setError(null);
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'transform error');
+    if (module && 'error' in module) {
+      setError(module.error);
+      currentRootRef.current.render(
+        <LiveError error={module.error} title="컴파일 오류" />,
+      );
+      return;
+    }
 
-        previewRef.current.render(
-          <LiveError
-            error={e instanceof Error ? e.message : String(e)}
-            title="컴파일 오류"
-          />,
-        );
-      }
-    },
-    [loaded, iframe, previewId, props, breakpoint, modules, setError],
-  );
+    if (module?.exports?.default) {
+      const Component = module.exports.default;
+
+      currentRootRef.current.render(
+        <LiveError.Boundary onError={e => setError(e.message)}>
+          <QueryClientProvider client={queryClient}>
+            <Component {...componentProps} />
+          </QueryClientProvider>
+        </LiveError.Boundary>,
+      );
+      setError(null);
+    }
+  }, [
+    module,
+    loaded,
+    iframe,
+    previewId,
+    componentProps,
+    setError,
+    cleanupUnusedRoot,
+    getCurrentRoot,
+  ]);
 
   useEffect(() => {
-    return () => {
-      if (previewRef.current) {
-        const currentRoot = previewRef.current;
-        previewRef.current = null;
-
-        requestIdleCallback(() => {
-          currentRoot.unmount();
-        });
-      }
-    };
-  }, []);
+    return cleanupAll;
+  }, [cleanupAll]);
 
   useEffect(() => {
     if (!iframe) {
@@ -158,48 +284,6 @@ const Client = ({
       return;
     }
 
-    const copyStyles = () => {
-      const doc = $iframe.contentDocument;
-
-      if (!doc) {
-        return;
-      }
-
-      const existingLinks = new Set(
-        Array.from(doc.head.querySelectorAll('link[rel="stylesheet"]')).map(
-          l => (l as HTMLLinkElement).href,
-        ),
-      );
-
-      Array.from(
-        window.document.querySelectorAll('link[rel="stylesheet"]'),
-      ).forEach(link => {
-        const href = (link as HTMLLinkElement).href;
-        if (!existingLinks.has(href)) {
-          const iframeLink = doc.createElement('link');
-          iframeLink.rel = 'stylesheet';
-          iframeLink.href = href;
-          doc.head.appendChild(iframeLink);
-          existingLinks.add(href);
-        }
-      });
-
-      const existingStyles = new Set(
-        Array.from(doc.head.querySelectorAll('style')).map(
-          style => style.textContent,
-        ),
-      );
-
-      Array.from(window.document.querySelectorAll('style')).forEach(style => {
-        if (!existingStyles.has(style.textContent)) {
-          const iframeStyle = doc.createElement('style');
-          iframeStyle.textContent = style.textContent;
-          doc.head.appendChild(iframeStyle);
-          existingStyles.add(style.textContent);
-        }
-      });
-    };
-
     const onLoad = () => {
       const doc = $iframe.contentDocument;
 
@@ -207,63 +291,37 @@ const Client = ({
         return;
       }
 
-      copyStyles();
-
-      if (!scripts.length) {
-        setLoaded(true);
-        return;
-      }
-
-      let loadedCount = 0;
-      let hasError = false;
-
-      const normalizeSrc = (src: string) => {
-        try {
-          return new URL(src, location.origin).href;
-        } catch {
-          return src;
-        }
-      };
-
-      const existingScripts = new Set(
-        Array.from(doc.head.querySelectorAll('script')).map(s =>
-          normalizeSrc(s.src),
-        ),
-      );
-
-      scripts.forEach(src => {
-        if (!existingScripts.has(normalizeSrc(src))) {
-          const script = doc.createElement('script');
-          script.src = src;
-          script.onload = () => {
-            loadedCount += 1;
-            if (loadedCount === scripts.length && !hasError) {
-              setLoaded(true);
-            }
-          };
-          script.onerror = () => {
-            hasError = true;
-            setLoaded(false);
-          };
-          doc.head.appendChild(script);
-          existingScripts.add(src);
-        }
-      });
-
       doc.body.style.overflowX = 'hidden';
 
-      // console.log(doc.head.childNodes.length, 'head nodes in iframe');
+      copyStyles();
+
+      if (scripts.length) {
+        const fragment = doc.createDocumentFragment();
+        scripts.forEach(src => {
+          const script = doc.createElement('script');
+          script.src = src;
+          script.async = true;
+          fragment.appendChild(script);
+        });
+        doc.head.appendChild(fragment);
+      }
+
+      setLoaded(true);
     };
 
     $iframe.addEventListener('load', onLoad);
 
+    let timeoutId: NodeJS.Timeout;
     const observer = new MutationObserver(() => {
-      copyStyles();
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(copyStyles, 50);
     });
 
-    observer.observe(window.document.head, {
+    observer.observe(document.head, {
       childList: true,
       subtree: true,
+      attributes: true,
+      attributeFilter: ['href'],
     });
 
     if ($iframe.contentDocument?.readyState === 'complete') {
@@ -273,17 +331,18 @@ const Client = ({
     return () => {
       $iframe.removeEventListener('load', onLoad);
       observer.disconnect();
+      clearTimeout(timeoutId);
     };
-  }, [iframe, scripts]);
+  }, [iframe, scripts, copyStyles]);
 
   useEffect(() => {
-    previewRender(_code || code);
-  }, [_code, code, previewRender]);
+    previewRender();
+  }, [previewRender]);
 
   return (
     <>
       <div
-        ref={elementRef}
+        ref={ref}
         className={cn(
           'h-full w-full',
           classNames,
