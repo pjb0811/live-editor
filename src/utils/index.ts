@@ -7,13 +7,7 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as ts from 'typescript';
 
-import type { Dnd } from '../types';
-
-interface Module {
-  exports: {
-    default?: React.ComponentType<Record<string, unknown>>;
-  };
-}
+import type { Dnd, Module } from '../types';
 
 export const baseModules = {
   '@tanstack/react-query': tanstackQuery,
@@ -26,56 +20,122 @@ export const baseModules = {
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+const compilationCache = new Map<string, Module>();
+
+const simpleHash = (str: string): string => {
+  let hash = 0;
+
+  if (str.length === 0) {
+    return '0';
+  }
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+
+  return Math.abs(hash).toString(36);
+};
+
+const createCacheKey = (
+  code: string,
+  modules: Record<string, unknown>,
+): string => {
+  const moduleKeys = Object.keys(modules).sort().join(',');
+  const combined = code + '|' + moduleKeys;
+
+  return simpleHash(combined);
+};
+
+export const compile = (
+  code: string,
+  modules: Record<string, unknown>,
+): Module => {
+  const cacheKey = createCacheKey(code, modules);
+
+  if (compilationCache.has(cacheKey)) {
+    return compilationCache.get(cacheKey)!;
+  }
+
+  const result = compileModule(code, modules);
+
+  if (compilationCache.size >= 50) {
+    const firstKey = compilationCache.keys().next().value;
+
+    if (firstKey) {
+      compilationCache.delete(firstKey);
+    }
+  }
+
+  compilationCache.set(cacheKey, result);
+  return result;
+};
+
+export const clearCompilationCache = () => {
+  compilationCache.clear();
+  console.log('🧹 Compilation cache cleared');
+};
+
+const TS_COMPILER_OPTIONS: ts.CompilerOptions = {
+  target: ts.ScriptTarget.ES2020,
+  module: ts.ModuleKind.CommonJS,
+  jsx: ts.JsxEmit.React,
+  strict: false,
+  esModuleInterop: true,
+  skipLibCheck: true,
+  declaration: false,
+};
 
 const compileTypeScript = (code: string): string => {
-  const compilerOptions: ts.CompilerOptions = {
-    target: ts.ScriptTarget.ES2020,
-    module: ts.ModuleKind.CommonJS,
-    jsx: ts.JsxEmit.React,
-    strict: false,
-    esModuleInterop: true,
-    skipLibCheck: true,
-    declaration: false,
-  };
+  try {
+    const result = ts.transpileModule(code, {
+      compilerOptions: TS_COMPILER_OPTIONS,
+    });
 
-  const result = ts.transpileModule(code, {
-    compilerOptions,
-  });
-
-  return result.outputText;
+    return result.outputText;
+  } catch (e) {
+    console.log('TypeScript 컴파일 오류:', e);
+    return code;
+  }
 };
 
 export const transformCode = (code: string): string => {
-  const result = Babel.transform(code, {
-    presets: ['env', 'react'],
-    sourceType: 'module',
-    plugins: [
-      [Babel.availablePlugins['transform-modules-commonjs']],
-      //
-    ],
-  }).code;
-  return result || '';
+  try {
+    const result = Babel.transform(code, {
+      presets: ['env', 'react'],
+      sourceType: 'module',
+      plugins: [
+        [Babel.availablePlugins['transform-modules-commonjs']],
+        //
+      ],
+    }).code;
+    return result || '';
+  } catch (e) {
+    console.log('Babel 변환 오류:', e);
+    return code;
+  }
 };
+
+const TS_PATTERNS = [
+  /interface\s+\w+/,
+  /type\s+\w+\s*=/,
+  /:\s*\w+(\[\])?(\s*\||\s*&|\s*=|\s*;|\s*,|\s*\))/,
+  /as\s+\w+/,
+  /<[A-Z]\w*>/,
+  /enum\s+\w+/,
+  /public\s+|private\s+|protected\s+/,
+  /readonly\s+/,
+  /\?\s*:/,
+] as const;
 
 export const detectTypeScript = (code: string): boolean => {
-  const tsPatterns = [
-    /interface\s+\w+/,
-    /type\s+\w+\s*=/,
-    /:\s*\w+(\[\])?(\s*\||\s*&|\s*=|\s*;|\s*,|\s*\))/,
-    /as\s+\w+/,
-    /<[A-Z]\w*>/,
-    /enum\s+\w+/,
-    /public\s+|private\s+|protected\s+/,
-    /readonly\s+/,
-    /\?\s*:/,
-  ];
-
-  return tsPatterns.some(pattern => pattern.test(code));
+  return TS_PATTERNS.some(pattern => pattern.test(code));
 };
 
-export const compileModule = (
+const compileModule = (
   code: string,
-  imports: Record<string, unknown>,
+  modules: Record<string, unknown>,
 ): Module => {
   const isTypeScript = detectTypeScript(code);
   const jsCode = isTypeScript ? compileTypeScript(code) : code;
@@ -95,8 +155,8 @@ export const compileModule = (
       return React;
     }
 
-    if (imports?.[name]) {
-      return imports[name];
+    if (modules?.[name]) {
+      return modules[name];
     }
 
     throw new Error(`Module not found: ${name}`);
@@ -107,38 +167,42 @@ export const compileModule = (
   return module;
 };
 
-const containerRegex =
+const CONTAINER_REGEX =
   /(<main[^>]*id=["']app-container["'][^>]*>)([\s\S]*?)(<\/main>)/m;
+const COMMENT_REGEX = /\{\s*\/\*[\s\S]*?\*\/\s*\}/g;
+const SECTION_REGEX = /<section[\s\S]*?<\/section>/g;
+const DATA_NAME_REGEX = /data-name=["']([^"']+)["']/;
 
 export const extractSections = (code: string): Dnd.Section[] => {
-  const matches = [...code.matchAll(/<section[\s\S]*?<\/section>/g)];
+  const cleanCode = code.replace(COMMENT_REGEX, '');
+  const matches = [...cleanCode.matchAll(SECTION_REGEX)];
+
   return matches.map((m, i) => {
     const sectionCode = m[0];
 
-    const dataNameMatch = sectionCode.match(/data-name=["']([^"']+)["']/);
-    const name = dataNameMatch?.[1]
-      ? dataNameMatch[1]
-      : `${i + 1}번째 컴포넌트`;
+    const dataNameMatch = sectionCode.match(DATA_NAME_REGEX);
 
     return {
       code: sectionCode,
       id: `${i}`,
-      name,
+      name: dataNameMatch?.[1] || `${i + 1}번째 컴포넌트`,
     };
   });
 };
 
 export const replaceSections = (code: string, sections: string[]): string => {
-  const cleanCode = code.replace(/<section[\s\S]*?<\/section>/g, '');
-  const match = cleanCode.match(containerRegex);
+  const comments = [...code.matchAll(COMMENT_REGEX)].map(match => match[0]);
+
+  const cleanCode = code.replace(SECTION_REGEX, '');
+  const match = cleanCode.match(CONTAINER_REGEX);
 
   if (match) {
     const [, openTag, , closeTag] = match;
-    const sectionsCode = sections.join('\n');
+    const allContent = [...sections, ...comments].join('\n');
 
     return cleanCode.replace(
-      containerRegex,
-      `${openTag}\n${sectionsCode}\n${closeTag}`,
+      CONTAINER_REGEX,
+      `${openTag}\n${allContent}\n${closeTag}`,
     );
   }
 
@@ -146,7 +210,7 @@ export const replaceSections = (code: string, sections: string[]): string => {
 };
 
 export const generateSection = (code: string, fullCode: string) => {
-  const match = fullCode.match(containerRegex);
+  const match = fullCode.match(CONTAINER_REGEX);
 
   if (!match) {
     return fullCode;
@@ -154,5 +218,5 @@ export const generateSection = (code: string, fullCode: string) => {
 
   const [, openTag, , closeTag] = match;
 
-  return fullCode.replace(containerRegex, `${openTag}\n${code}\n${closeTag}`);
+  return fullCode.replace(CONTAINER_REGEX, `${openTag}\n${code}\n${closeTag}`);
 };
