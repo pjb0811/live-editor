@@ -5,6 +5,16 @@ import { Button, Space } from 'antd';
 
 import { cn } from '~/utils';
 
+interface Props {
+  id: string;
+  name?: string;
+  children: React.ReactNode;
+  selected?: boolean;
+  onClick?: () => void;
+  onDelete?: (id: string) => void;
+  onCopy?: (id: string) => void;
+}
+
 const Sortable = ({
   id,
   children,
@@ -12,14 +22,7 @@ const Sortable = ({
   onClick,
   onDelete: _onDelete,
   onCopy: _onCopy,
-}: {
-  id: string;
-  children: React.ReactNode;
-  selected?: boolean;
-  onClick?: () => void;
-  onDelete?: (id: string) => void;
-  onCopy?: (id: string) => void;
-}) => {
+}: Props) => {
   const {
     attributes,
     listeners,
