@@ -4,12 +4,15 @@ import {
   DndContext,
   type DragEndEvent,
   type DragOverEvent,
+  DragOverlay,
   type DragStartEvent,
+  type Modifier,
   PointerSensor,
-  rectIntersection,
+  closestCorners,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   SortableContext,
   arrayMove,
@@ -18,17 +21,21 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { DRAGGABLE_ITEMS } from '~/enums';
+import { replaceIds } from '~/utils/ast';
 
 import { DEFAULT_TEMPLATE } from '../../enums';
 import { type Dnd as DndType } from '../../types';
-import { extractSections, replaceSections } from '../../utils';
+import { cn, extractSections, replaceSections } from '../../utils';
 import { usePreview } from '../Context/states';
 import Draggable from './Draggable';
 import Droppable from './Droppable';
+import Overlay from './Overlay';
+import Panel from './Panel';
 import Renderer from './Renderer';
 import Sortable from './Sortable';
 
-export interface Props {
+export interface Props
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
   value?: string;
   props: Record<string, unknown>;
   modules?: Record<string, unknown>;
@@ -36,22 +43,39 @@ export interface Props {
   onChange?: (value: string) => void;
 }
 
+const conditionalModifiers: Modifier = args => {
+  const { active } = args;
+
+  if (active?.data.current?.type === 'new-item') {
+    return args.transform;
+  }
+
+  return restrictToVerticalAxis(args);
+};
+
 const Dnd = ({
   value = DEFAULT_TEMPLATE,
   props,
   modules = {},
   scripts = [],
   onChange: _onChange,
+  className,
+  style,
+  ...restProps
 }: Props) => {
   const [sections, setSections] = useState<DndType.Section[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { setCode } = usePreview();
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 10,
+      },
+    }),
   );
 
-  const onDragStart = (_e: DragStartEvent) => {};
+  const onDragStart = (_: DragStartEvent) => {};
 
   const onDragOver = (_e: DragOverEvent) => {};
 
@@ -62,7 +86,6 @@ const Dnd = ({
       return;
     }
 
-    // 새로운 아이템을 드롭 영역에 추가
     if (active.data.current?.type === 'new-item') {
       const newItem = active.data.current.item;
       const newSection = {
@@ -72,14 +95,11 @@ const Dnd = ({
       };
 
       let nextSections: typeof sections;
-      const newSelectedId = newSection.id;
+      // const newSelectedId = newSection.id;
 
-      // 드롭 위치에 따라 삽입 위치 결정
       if (over.id === 'sortable-area') {
-        // 빈 공간에 드롭한 경우 - 맨 끝에 추가
         nextSections = [...sections, newSection];
       } else {
-        // 기존 섹션 위에 드롭한 경우 - 해당 섹션 위에 삽입
         const overIndex = sections.findIndex(s => s.id === over.id);
         if (overIndex >= 0) {
           nextSections = [
@@ -88,13 +108,12 @@ const Dnd = ({
             ...sections.slice(overIndex),
           ];
         } else {
-          // over.id가 섹션이 아닌 경우 맨 끝에 추가
           nextSections = [...sections, newSection];
         }
       }
 
       setSections(nextSections);
-      setSelectedId(newSelectedId);
+      // setSelectedId(newSelectedId);
 
       const nextCode = replaceSections(
         value,
@@ -106,7 +125,6 @@ const Dnd = ({
       return;
     }
 
-    // 기존 섹션들 간의 재정렬
     if (active.id !== over.id && sections.some(s => s.id === active.id)) {
       const prevIndex = sections.findIndex(s => s.id === active.id);
       const nextIndex = sections.findIndex(s => s.id === over.id);
@@ -148,7 +166,7 @@ const Dnd = ({
       const nextId = uuidv4();
       const nextSection = {
         id: nextId,
-        code: sectionToCopy.code,
+        code: replaceIds(sectionToCopy.code),
         name: sectionToCopy.name,
       };
 
@@ -171,6 +189,25 @@ const Dnd = ({
     }
   };
 
+  const onSelect = (id: string) => {
+    setSelectedId(prev => (prev === id ? null : id));
+  };
+
+  const onChange = (next: Partial<DndType.Section>) => {
+    const nextSections = sections.map(s =>
+      s.id === next.id ? { ...s, ...next } : s,
+    );
+    setSections(nextSections);
+
+    const nextCode = replaceSections(
+      value,
+      nextSections.map(s => s.code),
+    );
+
+    _onChange?.(nextCode);
+    setCode(nextCode);
+  };
+
   useEffect(() => {
     setSections(prev => {
       if (prev.length) {
@@ -184,12 +221,28 @@ const Dnd = ({
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={rectIntersection}
+        collisionDetection={closestCorners}
+        modifiers={[
+          // restrictToFirstScrollableAncestor,
+          conditionalModifiers,
+          //
+        ]}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
-        <div className="flex w-full">
+        <div
+          className={cn(
+            'flex w-full',
+            className,
+            //
+          )}
+          style={{
+            height: '100vh',
+            ...style,
+          }}
+          {...restProps}
+        >
           <div className="w-1/5">
             <div className="h-full bg-gray-50 p-4">
               <h3 className="mb-4 text-lg font-semibold">
@@ -202,12 +255,26 @@ const Dnd = ({
               </div>
             </div>
           </div>
-          <div className="w-3/5">
-            <Droppable>
+          <div
+            className={cn(
+              'h-full w-3/5',
+              'overflow-y-auto',
+              //
+            )}
+          >
+            <Droppable
+              className={cn(
+                !sections.length && 'h-full',
+                //
+              )}
+            >
               {!sections.length ? (
                 <div
-                  className="flex h-full items-center justify-center
-                    text-gray-500"
+                  className={cn(
+                    'flex items-center justify-center',
+                    'h-full',
+                    'text-gray-500',
+                  )}
                 >
                   <div className="text-center">
                     <p className="mb-2 text-lg">섹션이 없습니다</p>
@@ -225,12 +292,9 @@ const Dnd = ({
                     <Sortable
                       key={section.id}
                       id={section.id}
+                      name={section.name}
                       selected={selectedId === section.id}
-                      onClick={() => {
-                        setSelectedId(
-                          selectedId === section.id ? null : section.id,
-                        );
-                      }}
+                      onClick={() => onSelect(section.id)}
                       onDelete={onDelete}
                       onCopy={onCopy}
                     >
@@ -246,8 +310,23 @@ const Dnd = ({
               )}
             </Droppable>
           </div>
-          <div className="w-1/5"></div>
+          <div className="w-1/5">
+            <Panel
+              item={sections.find(s => s.id === selectedId)}
+              onChange={onChange}
+            />
+          </div>
         </div>
+        <DragOverlay>
+          <Overlay
+            sections={sections}
+            renderProps={{
+              fullCode: value,
+              modules,
+              ...props,
+            }}
+          />
+        </DragOverlay>
       </DndContext>
       {scripts.map((src, index) => (
         <script key={index} src={src} async />
