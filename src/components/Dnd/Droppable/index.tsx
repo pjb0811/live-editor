@@ -2,7 +2,10 @@ import { useDroppable } from '@dnd-kit/core';
 
 import { cn } from '~/utils';
 
-const Droppable = ({ children }: { children: React.ReactNode }) => {
+const Droppable = ({
+  children,
+  className,
+}: React.HTMLAttributes<HTMLDivElement>) => {
   const { setNodeRef, isOver, active } = useDroppable({
     id: 'sortable-area',
   });
@@ -14,8 +17,10 @@ const Droppable = ({ children }: { children: React.ReactNode }) => {
     <div
       ref={setNodeRef}
       className={cn(
-        'h-full min-h-[200px] border-2 border-dashed p-1',
+        'min-h-full',
+        'border-2 border-dashed p-1',
         shouldHighlight ? 'border-blue-300 bg-blue-50' : 'border-gray-200',
+        className,
       )}
     >
       {children}
