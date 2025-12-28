@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useDebounce } from 'react-use';
 
 import { javascript } from '@codemirror/lang-javascript';
@@ -13,8 +13,7 @@ import prettierPluginTypeScript from 'prettier/plugins/typescript';
 
 import { useError, usePreview } from '~/components/Context/states';
 import { DEFAULT_TEMPLATE } from '~/enums';
-import { cn } from '~/utils';
-import { detectTypeScript } from '~/utils';
+import { cn, detectTypeScript } from '~/utils';
 
 const prettierInitialOptions: Record<string, unknown> = {
   tabWidth: 2,
@@ -36,7 +35,7 @@ export interface Props {
 }
 
 const Editor = ({
-  value: _value = '',
+  value: _value = DEFAULT_TEMPLATE,
   theme,
   height,
   debounce = 1000,
@@ -45,8 +44,6 @@ const Editor = ({
   onChange: _onChange,
   ...props
 }: Props) => {
-  const [localValue, setLocalValue] = useState('');
-  const [lastExternalValue, setLastExternalValue] = useState('');
   const { setCode } = usePreview();
   const { setError } = useError();
 
@@ -63,7 +60,6 @@ const Editor = ({
   const formatCode = useCallback(
     async (code: string) => {
       const isTypeScript = detectTypeScript(code);
-
       return prettier.format(code, {
         parser: isTypeScript ? 'typescript' : 'babel',
         plugins: [
@@ -78,85 +74,61 @@ const Editor = ({
   );
 
   const onChange = useCallback(
-    async (value: string, format?: boolean) => {
+    (value: string) => {
+      _onChange?.(value);
+    },
+    [_onChange],
+  );
+
+  const onSave = useCallback(
+    async (value: string) => {
       try {
         const currentView = editorRef.current?.view;
-        const currentLength = currentView?.state.doc.length;
+        if (!currentView) {
+          return;
+        }
 
-        if (format && currentView) {
-          if (currentLength !== currentView.state.doc.length) {
-            console.warn('Editor state changed during formatting, skipping');
-            return;
-          }
+        const currentLength = currentView.state.doc.length;
+        const formattedCode = await formatCode(value);
 
-          const formattedCode = await formatCode(value);
+        if (currentLength === currentView.state.doc.length) {
+          const transaction = currentView.state.update({
+            changes: { from: 0, to: currentLength, insert: formattedCode },
+          });
+          currentView.dispatch(transaction);
 
-          if (currentLength === currentView.state.doc.length) {
-            const transaction = currentView.state.update({
-              changes: {
-                from: 0,
-                to: currentLength,
-                insert: formattedCode,
-              },
-            });
-            currentView.dispatch(transaction);
-
-            _onChange?.(formattedCode);
-            setCode(formattedCode);
-          }
-        } else {
-          _onChange?.(value);
-          setCode(value);
+          _onChange?.(formattedCode);
+          setCode(formattedCode);
         }
 
         setError(null);
       } catch (e) {
-        _onChange?.(value);
-        setCode(value);
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [_onChange, setCode, setError, formatCode],
+    [formatCode, _onChange, setCode, setError],
   );
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-      e.preventDefault();
-      onChange(localValue, true);
-    }
-  };
-
-  useEffect(() => {
-    if (_value !== lastExternalValue) {
-      const initialValue = _value || DEFAULT_TEMPLATE;
-      setLocalValue(initialValue);
-      setLastExternalValue(_value || '');
-
-      if (initialValue && initialValue !== lastExternalValue) {
-        onChange(initialValue);
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        onSave(_value);
       }
-    }
-  }, [_value, lastExternalValue, onChange]);
+    },
+    [onSave, _value],
+  );
 
   useDebounce(
     () => {
-      if (localValue !== lastExternalValue) {
-        onChange(localValue);
-      }
+      setCode(_value);
     },
     debounce,
-    [localValue],
+    [_value],
   );
 
   return (
-    <div
-      className={cn(
-        'h-full',
-        className,
-        //
-      )}
-      onKeyDown={onKeyDown}
-    >
+    <div className={cn('h-full', className)} onKeyDown={onKeyDown}>
       <CodeMirror
         ref={editorRef}
         theme={theme || vscodeLight}
@@ -165,8 +137,8 @@ const Editor = ({
           javascript({ jsx: true, typescript: true }),
           EditorView.lineWrapping,
         ]}
-        value={localValue}
-        onChange={setLocalValue}
+        value={_value}
+        onChange={onChange}
         {...props}
       />
     </div>
