@@ -7,8 +7,6 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as ts from 'typescript';
 
-import type { Dnd, Module } from '../types';
-
 export const baseModules = {
   '@tanstack/react-query': tanstackQuery,
   '@uidotdev/usehooks': useHooks,
@@ -173,7 +171,7 @@ const COMMENT_REGEX = /\{\s*\/\*[\s\S]*?\*\/\s*\}/g;
 const SECTION_REGEX = /<section[\s\S]*?<\/section>/g;
 const DATA_NAME_REGEX = /data-name=["']([^"']+)["']/;
 
-export const extractSections = (code: string): Dnd.Section[] => {
+export const extractSections = (code: string): Section[] => {
   const cleanCode = code.replace(COMMENT_REGEX, '');
   const matches = [...cleanCode.matchAll(SECTION_REGEX)];
 
