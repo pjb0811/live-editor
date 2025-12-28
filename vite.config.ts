@@ -12,4 +12,7 @@ export default defineConfig({
       '~': fileURLToPath(new URL('./src', import.meta.url)), // Alias for the 'src' directory
     },
   },
+  define: {
+    'process.env': {},
+  },
 });

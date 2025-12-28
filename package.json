@@ -18,6 +18,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@jax/use-hooks": "github:pjb0811/use-hooks",
     "@tailwindcss/vite": "^4.1.13",
     "@tanstack/react-query": "^5.87.1",
     "@uiw/codemirror-theme-vscode": "^4.25.1",
@@ -28,11 +29,10 @@
     "react-dom": "^19.1.1",
     "react-use": "^17.6.0",
     "tailwindcss": "^4.1.13",
-    "use-hooks": "github:pjb0811/use-hooks",
     "uuid": "^12.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.33.0",
+    "@eslint/js": "^9.39.2",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/babel__standalone": "^7.1.9",
     "@types/node": "^24.3.1",
@@ -40,10 +40,11 @@
     "@types/react-dom": "^19.1.7",
     "@uidotdev/usehooks": "^2.4.1",
     "@vitejs/plugin-react": "^5.0.0",
+    "baseline-browser-mapping": "^2.9.11",
     "clsx": "^2.1.1",
-    "eslint": "^9.33.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.20",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.26",
     "globals": "^16.3.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.6",
@@ -53,8 +54,8 @@
     "prettier-plugin-tailwindcss": "^0.6.14",
     "tailwind-merge": "^3.3.1",
     "typescript": "~5.8.3",
-    "typescript-eslint": "^8.39.1",
-    "vite": "^7.1.2"
+    "typescript-eslint": "^8.50.1",
+    "vite": "^7.3.0"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,css,scss,md}": "prettier --write",
