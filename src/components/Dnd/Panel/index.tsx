@@ -1,14 +1,13 @@
 import { useMemo } from 'react';
 
-import { type Dnd as DndType } from '~/types';
 import { cn } from '~/utils';
 import { extract, fillIds, update } from '~/utils/ast';
 
 import Node from './Node';
 
 interface Props {
-  item?: DndType.Section;
-  onChange?: (next: Partial<DndType.Section>) => void;
+  item?: Section;
+  onChange?: (next: Partial<Section>) => void;
 }
 
 const Panel = ({ item, onChange }: Props) => {

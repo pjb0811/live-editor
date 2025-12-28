@@ -1,13 +1,11 @@
 import { useDndContext } from '@dnd-kit/core';
 
-import { type Dnd as DndType } from '~/types';
-
 import Draggable from '../Draggable';
 import Renderer from '../Renderer';
 import Sortable from '../Sortable';
 
 interface Props {
-  sections: DndType.Section[];
+  sections: Section[];
   renderProps: {
     fullCode: string;
     modules: Record<string, unknown>;

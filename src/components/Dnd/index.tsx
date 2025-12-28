@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   DndContext,
@@ -24,7 +24,6 @@ import { DRAGGABLE_ITEMS } from '~/enums';
 import { replaceIds } from '~/utils/ast';
 
 import { DEFAULT_TEMPLATE } from '../../enums';
-import { type Dnd as DndType } from '../../types';
 import { cn, extractSections, replaceSections } from '../../utils';
 import { usePreview } from '../Context/states';
 import Draggable from './Draggable';
@@ -57,16 +56,17 @@ const Dnd = ({
   value = DEFAULT_TEMPLATE,
   props,
   modules = {},
-  scripts = [],
   onChange: _onChange,
   className,
-  style,
   ...restProps
 }: Props) => {
-  const [sections, setSections] = useState<DndType.Section[]>([]);
+  // const [sections, setSections] = useState<Section[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [container, setContainer] = useState<HTMLElement | null>(null);
 
   const { setCode } = usePreview();
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -74,6 +74,8 @@ const Dnd = ({
       },
     }),
   );
+
+  const sections = useMemo(() => extractSections(value), [value]);
 
   const onDragStart = (_: DragStartEvent) => {};
 
@@ -112,7 +114,7 @@ const Dnd = ({
         }
       }
 
-      setSections(nextSections);
+      // setSections(nextSections);
       // setSelectedId(newSelectedId);
 
       const nextCode = replaceSections(
@@ -131,7 +133,7 @@ const Dnd = ({
 
       if (prevIndex >= 0 && nextIndex >= 0) {
         const nextSections = arrayMove(sections, prevIndex, nextIndex);
-        setSections(nextSections);
+        // setSections(nextSections);
 
         const nextCode = replaceSections(
           value,
@@ -146,7 +148,7 @@ const Dnd = ({
 
   const onDelete = (id: string) => {
     const nextSections = sections.filter(s => s.id !== id);
-    setSections(nextSections);
+    // setSections(nextSections);
     setSelectedId(null);
 
     const nextCode = replaceSections(
@@ -176,7 +178,7 @@ const Dnd = ({
         ...sections.slice(sectionIndex + 1),
       ];
 
-      setSections(nextSections);
+      // setSections(nextSections);
       setSelectedId(nextId);
 
       const nextCode = replaceSections(
@@ -193,11 +195,11 @@ const Dnd = ({
     setSelectedId(prev => (prev === id ? null : id));
   };
 
-  const onChange = (next: Partial<DndType.Section>) => {
+  const onChange = (next: Partial<Section>) => {
     const nextSections = sections.map(s =>
       s.id === next.id ? { ...s, ...next } : s,
     );
-    setSections(nextSections);
+    // setSections(nextSections);
 
     const nextCode = replaceSections(
       value,
@@ -209,13 +211,8 @@ const Dnd = ({
   };
 
   useEffect(() => {
-    setSections(prev => {
-      if (prev.length) {
-        return prev;
-      }
-      return extractSections(value);
-    });
-  }, [value]);
+    setContainer(previewRef.current);
+  }, []);
 
   return (
     <>
@@ -237,13 +234,9 @@ const Dnd = ({
             className,
             //
           )}
-          style={{
-            height: '100vh',
-            ...style,
-          }}
           {...restProps}
         >
-          <div className="w-1/5">
+          <div className="w-1/5 overflow-y-auto">
             <div className="h-full bg-gray-50 p-4">
               <h3 className="mb-4 text-lg font-semibold">
                 컴포넌트 라이브러리
@@ -257,10 +250,17 @@ const Dnd = ({
           </div>
           <div
             className={cn(
+              'relative',
               'h-full w-3/5',
               'overflow-y-auto',
               //
             )}
+            ref={previewRef}
+            style={{
+              isolation: 'isolate',
+              contain: 'layout style',
+              transform: 'translateZ(0)',
+            }}
           >
             <Droppable
               className={cn(
@@ -302,6 +302,7 @@ const Dnd = ({
                         fullCode={value}
                         code={section.code}
                         modules={modules}
+                        container={container}
                         {...props}
                       />
                     </Sortable>
@@ -328,9 +329,6 @@ const Dnd = ({
           />
         </DragOverlay>
       </DndContext>
-      {scripts.map((src, index) => (
-        <script key={index} src={src} async />
-      ))}
     </>
   );
 };

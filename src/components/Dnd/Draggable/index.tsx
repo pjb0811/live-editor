@@ -12,7 +12,6 @@ const Draggable = ({ item }: { item: (typeof DRAGGABLE_ITEMS)[0] }) => {
 
   const style = transform
     ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
         opacity: isDragging ? 0.5 : 1,
       }
     : undefined;
@@ -24,9 +23,10 @@ const Draggable = ({ item }: { item: (typeof DRAGGABLE_ITEMS)[0] }) => {
       {...listeners}
       {...attributes}
       className={cn(
-        `mb-2 cursor-grab rounded-lg border border-gray-200 p-4
-        hover:border-blue-300`,
-        'bg-white shadow-sm transition-all hover:shadow-md',
+        'mb-2 cursor-grab rounded-lg border border-gray-200 p-4',
+        'bg-white shadow-sm transition-all',
+        'outline-none',
+        'hover:border-blue-300 hover:shadow-md',
         isDragging && 'opacity-50',
       )}
     >
