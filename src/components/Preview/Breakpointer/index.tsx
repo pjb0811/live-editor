@@ -1,6 +1,6 @@
 'use client';
 
-import { useElementSize } from 'use-hooks';
+import { useElementSize } from '@jax/use-hooks';
 
 import { cn } from '~/utils';
 

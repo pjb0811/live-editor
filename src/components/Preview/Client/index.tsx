@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 
+import { useElementSize } from '@jax/use-hooks';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import axios from 'axios';
-import { useElementSize } from 'use-hooks';
 
 import { useError, usePreview } from '~/components/Context/states';
 import LiveError from '~/components/Error';
@@ -44,8 +44,6 @@ const Client = ({
   scripts = [],
 }: Props) => {
   const iframeRootRef = useRef<ReactDOM.Root | null>(null);
-  const normalRootRef = useRef<ReactDOM.Root | null>(null);
-
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const styleManagerRef = useRef<{
@@ -90,16 +88,62 @@ const Client = ({
     () => ({
       ...props,
       breakpoint,
-      ...(iframe
-        ? { container: iframeRef.current?.contentDocument?.body }
-        : {}),
+      ...(iframe && loaded && iframeRef.current?.contentDocument?.body
+        ? { container: iframeRef.current.contentDocument.body }
+        : !iframe && ref.current
+          ? { container: ref.current } // 일반 모드에서 container 전달
+          : {}),
     }),
-    [props, breakpoint, iframe],
+    [props, breakpoint, iframe, loaded, ref],
   );
 
-  const getCurrentRoot = useCallback(() => {
-    return iframe ? iframeRootRef : normalRootRef;
-  }, [iframe]);
+  const Component = useMemo(
+    () => module?.exports?.default || (() => null),
+    [module?.exports?.default],
+  );
+
+  const iframeRender = useCallback(() => {
+    if (!iframe || !loaded || !iframeRef.current) {
+      return;
+    }
+
+    const doc = iframeRef.current.contentDocument;
+
+    if (!doc) {
+      return;
+    }
+
+    let mountNode = doc.getElementById('iframe-root');
+
+    if (!mountNode) {
+      mountNode = doc.createElement('div');
+      mountNode.id = 'iframe-root';
+      doc.body.appendChild(mountNode);
+    }
+
+    if (!iframeRootRef.current) {
+      iframeRootRef.current = ReactDOM.createRoot(mountNode);
+    }
+
+    if (module && 'error' in module) {
+      setError(module.error);
+      iframeRootRef.current.render(
+        <LiveError message={module.error} title="컴파일 오류" />,
+      );
+      return;
+    }
+
+    if (Component) {
+      iframeRootRef.current.render(
+        <LiveError.Boundary onError={e => setError(e.message)}>
+          <QueryClientProvider client={queryClient}>
+            <Component {...componentProps} />
+          </QueryClientProvider>
+        </LiveError.Boundary>,
+      );
+      setError(null);
+    }
+  }, [module, loaded, iframe, componentProps, setError, Component]);
 
   const copyStyles = useCallback(() => {
     const $iframe = iframeRef.current?.contentDocument;
@@ -156,122 +200,21 @@ const Client = ({
     }
   }, []);
 
-  const cleanupAll = useCallback(() => {
-    styleManagerRef.current = {
-      copiedLinks: new Set(),
-      copiedStyles: new Set(),
-    };
-
-    [iframeRootRef, normalRootRef].forEach((rootRef, index) => {
-      if (rootRef.current) {
-        const currentRoot = rootRef.current;
-        rootRef.current = null;
-
+  useEffect(() => {
+    return () => {
+      if (iframeRootRef.current) {
         setTimeout(() => {
           try {
-            currentRoot.unmount();
+            iframeRootRef.current?.unmount();
           } catch (error) {
-            console.warn(
-              `Root ${index === 0 ? 'iframe' : 'normal'} unmount failed:`,
-              error,
-            );
+            console.warn('iframe root unmount failed:', error);
+          } finally {
+            iframeRootRef.current = null;
           }
         }, 0);
       }
-    });
+    };
   }, []);
-
-  const cleanupUnusedRoot = useCallback(() => {
-    const unusedRootRef = iframe ? normalRootRef : iframeRootRef;
-
-    if (unusedRootRef.current) {
-      setTimeout(() => {
-        try {
-          unusedRootRef.current?.unmount();
-        } catch (error) {
-          console.warn('Unused root cleanup failed:', error);
-        } finally {
-          unusedRootRef.current = null;
-        }
-      }, 0);
-    }
-  }, [iframe]);
-
-  const previewRender = useCallback(() => {
-    const $preview = document.getElementById(previewId);
-    const currentRootRef = getCurrentRoot();
-
-    if (!$preview || !module) {
-      return;
-    }
-
-    cleanupUnusedRoot();
-
-    let mountTarget: Element;
-
-    if (iframe) {
-      if (!iframeRef.current || !loaded) {
-        return;
-      }
-
-      const $iframe = iframeRef.current;
-      const doc = $iframe.contentDocument;
-
-      if (!doc) {
-        return;
-      }
-
-      let mountNode = doc.getElementById('iframe-root');
-
-      if (!mountNode) {
-        mountNode = doc.createElement('div');
-        mountNode.id = 'iframe-root';
-        doc.body.appendChild(mountNode);
-      }
-
-      mountTarget = mountNode;
-    } else {
-      mountTarget = $preview;
-    }
-
-    if (!currentRootRef.current) {
-      currentRootRef.current = ReactDOM.createRoot(mountTarget);
-    }
-
-    if (module && 'error' in module) {
-      setError(module.error);
-      currentRootRef.current.render(
-        <LiveError error={module.error} title="컴파일 오류" />,
-      );
-      return;
-    }
-
-    if (module?.exports?.default) {
-      const Component = module.exports.default;
-
-      currentRootRef.current.render(
-        <LiveError.Boundary onError={e => setError(e.message)}>
-          <QueryClientProvider client={queryClient}>
-            <Component {...componentProps} />
-          </QueryClientProvider>
-        </LiveError.Boundary>,
-      );
-      setError(null);
-    }
-  }, [
-    module,
-    loaded,
-    iframe,
-    previewId,
-    componentProps,
-    setError,
-    cleanupUnusedRoot,
-    getCurrentRoot,
-  ]);
-
-  useEffect(() => {
-    return cleanupAll;
-  }, [cleanupAll]);
 
   useEffect(() => {
     if (!iframe) {
@@ -311,10 +254,10 @@ const Client = ({
 
     $iframe.addEventListener('load', onLoad);
 
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: number;
     const observer = new MutationObserver(() => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(copyStyles, 50);
+      timeoutId = window.setTimeout(copyStyles, 50);
     });
 
     observer.observe(document.head, {
@@ -336,20 +279,26 @@ const Client = ({
   }, [iframe, scripts, copyStyles]);
 
   useEffect(() => {
-    previewRender();
-  }, [previewRender]);
+    if (iframe) {
+      iframeRender();
+    }
+  }, [iframe, iframeRender]);
+
+  if (!iframe && module && 'error' in module) {
+    return (
+      <>
+        <div ref={ref} className={cn('relative h-full w-full', classNames)}>
+          <LiveError message={module.error} title="컴파일 오류" />
+        </div>
+        <LiveError.Runtime open={isError} />
+      </>
+    );
+  }
 
   return (
     <>
-      <div
-        ref={ref}
-        className={cn(
-          'h-full w-full',
-          classNames,
-          //
-        )}
-      >
-        {iframe ? (
+      {iframe ? (
+        <div ref={ref} className={cn('h-full w-full', classNames)}>
           <iframe
             id={previewId}
             ref={iframeRef}
@@ -362,15 +311,31 @@ const Client = ({
             title={title ?? 'Live Preview'}
             sandbox={sandbox ?? 'allow-scripts allow-same-origin'}
           />
-        ) : (
-          <>
-            {scripts.map((src, index) => (
-              <script key={index} src={src} async />
-            ))}
-            <div id={previewId} />
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div
+          ref={ref}
+          className={cn(
+            'relative',
+            'h-full w-full',
+            'overflow-x-hidden overflow-y-auto',
+            classNames,
+          )}
+          style={{
+            isolation: 'isolate',
+            transform: 'translateZ(0)',
+            containerType: 'inline-size',
+          }}
+        >
+          {Component && (
+            <LiveError.Boundary onError={e => setError(e.message)}>
+              <QueryClientProvider client={queryClient}>
+                <Component {...componentProps} />
+              </QueryClientProvider>
+            </LiveError.Boundary>
+          )}
+        </div>
+      )}
       <LiveError.Runtime open={isError} />
     </>
   );

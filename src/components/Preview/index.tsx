@@ -22,35 +22,29 @@ export interface Props extends React.HTMLAttributes<HTMLDivElement> {
 
 const Preview = ({ code, props = {}, modules = {}, ...restProps }: Props) => {
   if (code) {
-    try {
-      const module = compile(code, { ...baseModules, ...modules });
+    const module = compile(code, { ...baseModules, ...modules });
+    const Component = module.exports.default;
 
-      if (!module.exports.default) {
-        return (
-          <LiveError
-            error="페이지를 찾을 수 없습니다."
-            className="mx-5 mt-[100px]"
-          />
-        );
-      }
-
-      const Component = module.exports.default;
-
-      return (
-        <LiveError.Boundary>
-          <Breakpointer>
-            {breakpoint => <Component {...props} breakpoint={breakpoint} />}
-          </Breakpointer>
-        </LiveError.Boundary>
-      );
-    } catch (e) {
+    if (!Component) {
       return (
         <LiveError
-          error={e instanceof Error ? e.message : String(e)}
-          title="컴파일 오류"
+          message="페이지를 찾을 수 없습니다."
+          className="mx-5 mt-[100px]"
         />
       );
     }
+
+    return (
+      <LiveError.Boundary
+        fallback={message => (
+          <LiveError title="컴파일 오류" message={message} />
+        )}
+      >
+        <Breakpointer>
+          {breakpoint => <Component {...props} breakpoint={breakpoint} />}
+        </Breakpointer>
+      </LiveError.Boundary>
+    );
   }
 
   return <Client props={props} modules={modules} {...restProps} />;
