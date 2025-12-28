@@ -4,7 +4,7 @@ import Error from '..';
 
 interface Props {
   children: React.ReactNode;
-  fallback?: React.ReactNode;
+  fallback?: (message?: string) => React.ReactNode;
   onError?: (e: Error, info: React.ErrorInfo) => void;
 }
 
@@ -30,14 +30,14 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      return (
-        this.props.fallback || (
-          <Error
-            error={this.state.error?.message}
-            onReset={() => this.setState({ hasError: false, error: undefined })}
-            title="렌더링 오류"
-          />
-        )
+      return this.props.fallback ? (
+        <>{this.props.fallback(this.state.error?.message)}</>
+      ) : (
+        <Error
+          message={this.state.error?.message}
+          onReset={() => this.setState({ hasError: false, error: undefined })}
+          title="렌더링 오류"
+        />
       );
     }
 

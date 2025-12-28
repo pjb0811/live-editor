@@ -10,7 +10,7 @@ export interface Props extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const Runtime = ({ open = true, reset }: Props) => {
-  const { error, setError } = useError();
+  const { error: message, setError } = useError();
 
   useEffect(() => {
     const onError = (e: ErrorEvent) => {
@@ -30,7 +30,7 @@ const Runtime = ({ open = true, reset }: Props) => {
     return null;
   }
 
-  return <Error error={error} onReset={reset} title="실행 오류" />;
+  return <Error message={message} onReset={reset} title="실행 오류" />;
 };
 
 export default Runtime;

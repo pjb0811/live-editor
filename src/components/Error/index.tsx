@@ -4,18 +4,18 @@ import ErrorBoundary from './Boundary';
 import ErrorRuntime from './Runtime';
 
 export interface Props extends React.HTMLAttributes<HTMLDivElement> {
-  error?: string | null;
+  message?: string | null;
   title?: string;
   onReset?: () => void;
 }
 
 const Error = ({
-  error,
+  message,
   title = '오류가 발생했습니다',
   className,
   onReset,
 }: Props) => {
-  if (!error) {
+  if (!message) {
     return null;
   }
 
@@ -27,7 +27,7 @@ const Error = ({
       )}
     >
       <h3 className="text-sm font-bold">{title}</h3>
-      <pre className="mt-2 text-xs whitespace-pre-wrap">{error}</pre>
+      <pre className="mt-2 text-xs whitespace-pre-wrap">{message}</pre>
       {onReset && (
         <button
           className="mt-2 rounded bg-red-100 px-3 py-1 text-xs hover:bg-red-200"
