@@ -1,10 +1,11 @@
-interface Module {
+export interface Module {
   exports: {
     default?: React.ComponentType<Record<string, unknown>>;
+    error?: string;
   };
 }
 
-interface Section {
+export interface Section {
   id: string;
   name: string;
   code: string;
