@@ -1,1 +1,75 @@
 @import 'tailwindcss';
+
+@layer utilities {
+  /* 편집 모드 기본 설정 */
+  [data-editor-mode] {
+    --editor-fixed-to-static: relative;
+  }
+
+  /* Fixed 요소를 흐름에 포함 */
+  [data-editor-mode] *[style*='position: fixed'],
+  [data-editor-mode] .fixed {
+    position: var(--editor-fixed-to-static) !important;
+    inset: auto !important;
+    margin: 8px 0 !important;
+    border: 2px solid #8b5cf6 !important;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1) !important;
+  }
+
+  /* 기본 숨김 요소 */
+  [data-editor-mode] .hidden {
+    opacity: 0.6 !important;
+    border: 2px dashed #f59e0b !important;
+    background: rgba(245, 158, 11, 0.05) !important;
+    position: relative !important;
+    /* display는 건드리지 않음 - hidden 클래스만 시각적으로 표시 */
+  }
+
+  /* 인라인 스타일로 숨긴 요소 */
+  [data-editor-mode] *[style*='display: none'] {
+    display: block !important;
+    opacity: 0.6 !important;
+    border: 2px dashed #f59e0b !important;
+    background: rgba(245, 158, 11, 0.05) !important;
+  }
+
+  /* 반응형 숨김 - flex 유지 */
+  [data-editor-mode] .flex.sm\:hidden,
+  [data-editor-mode] .flex.md\:hidden,
+  [data-editor-mode] .flex.lg\:hidden,
+  [data-editor-mode] .flex.xl\:hidden {
+    display: flex !important;
+    opacity: 0.5 !important;
+    border: 2px dashed #3b82f6 !important;
+  }
+
+  /* 반응형 숨김 - grid 유지 */
+  [data-editor-mode] .grid.sm\:hidden,
+  [data-editor-mode] .grid.md\:hidden,
+  [data-editor-mode] .grid.lg\:hidden,
+  [data-editor-mode] .grid.xl\:hidden {
+    display: grid !important;
+    opacity: 0.5 !important;
+    border: 2px dashed #3b82f6 !important;
+  }
+
+  /* 반응형 숨김 - inline-flex 유지 */
+  [data-editor-mode] .inline-flex.sm\:hidden,
+  [data-editor-mode] .inline-flex.md\:hidden,
+  [data-editor-mode] .inline-flex.lg\:hidden,
+  [data-editor-mode] .inline-flex.xl\:hidden {
+    display: inline-flex !important;
+    opacity: 0.5 !important;
+    border: 2px dashed #3b82f6 !important;
+  }
+
+  /* 반응형 숨김 - 기본 (flex/grid 아닌 경우) */
+  [data-editor-mode] .sm\:hidden:not(.flex):not(.grid):not(.inline-flex),
+  [data-editor-mode] .md\:hidden:not(.flex):not(.grid):not(.inline-flex),
+  [data-editor-mode] .lg\:hidden:not(.flex):not(.grid):not(.inline-flex),
+  [data-editor-mode] .xl\:hidden:not(.flex):not(.grid):not(.inline-flex) {
+    display: block !important;
+    opacity: 0.5 !important;
+    border: 2px dashed #3b82f6 !important;
+  }
+}

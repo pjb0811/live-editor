@@ -2,14 +2,14 @@ import React from 'react';
 
 import * as Babel from '@babel/standalone';
 import * as tanstackQuery from '@tanstack/react-query';
-import * as useHooks from '@uidotdev/usehooks';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as ts from 'typescript';
 
+import type { Module, Section } from '~/types';
+
 export const baseModules = {
   '@tanstack/react-query': tanstackQuery,
-  '@uidotdev/usehooks': useHooks,
   '~/utils': {
     cn,
   },

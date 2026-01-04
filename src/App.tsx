@@ -2,7 +2,6 @@ import { useState } from 'react';
 
 import { SaveOutlined } from '@ant-design/icons';
 import { Button, Flex, Radio, Space, Splitter, Switch } from 'antd';
-import * as Antd from 'antd';
 
 import './App.css';
 
@@ -50,7 +49,11 @@ const App = () => {
             <Button icon={<SaveOutlined />} onClick={() => {}} />
           </Space>
         </Flex>
-        <Flex flex="1">
+        <Flex
+          style={{
+            height: 'calc(100vh - 72px)',
+          }}
+        >
           <Live>
             {editable ? (
               <Splitter>
@@ -64,28 +67,17 @@ const App = () => {
                     <Live.Preview
                       showError
                       iframe
-                      scripts={[
-                        '/js/tailwindcss.js',
-                        //
-                      ]}
                       props={{
                         headers: {
                           isApp: app,
                           isMobile: mobile,
                         },
                       }}
-                      modules={{
-                        antd: Antd,
-                      }}
                     />
                   </div>
                 </Splitter.Panel>
                 <Splitter.Panel collapsible>
-                  <Live.Editor
-                    height="100%"
-                    value={value}
-                    onChange={setValue}
-                  />
+                  <Live.Editor value={value} onChange={setValue} />
                 </Splitter.Panel>
               </Splitter>
             ) : (
@@ -96,10 +88,6 @@ const App = () => {
                     isApp: app,
                     isMobile: mobile,
                   },
-                }}
-                scripts={['/js/tailwindcss.js']}
-                modules={{
-                  antd: Antd,
                 }}
                 onChange={setValue}
               />
