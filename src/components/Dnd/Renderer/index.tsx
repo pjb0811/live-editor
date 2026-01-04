@@ -40,7 +40,7 @@ const Renderer = ({ fullCode, code, headers, modules, container }: Props) => {
   }
 
   return (
-    <div ref={ref} className="w-full overflow-x-hidden">
+    <div ref={ref} className="w-full overflow-x-hidden" data-editor-mode>
       <Component
         breakpoint={breakpoint}
         headers={headers}

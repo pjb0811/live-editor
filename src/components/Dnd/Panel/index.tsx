@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import type { Section } from '~/types';
 import { cn } from '~/utils';
 import { extract, fillIds, update } from '~/utils/ast';
 
@@ -62,7 +63,7 @@ const Panel = ({ item, onChange }: Props) => {
 
       {dataAttrNodes.map((node, index) => (
         <Node
-          key={index}
+          key={`${item.id}-${index}`}
           data={node}
           onChange={({ id, label, value }) => {
             onChange?.({

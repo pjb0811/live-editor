@@ -21,6 +21,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { DRAGGABLE_ITEMS } from '~/enums';
+import type { Section } from '~/types';
 import { replaceIds } from '~/utils/ast';
 
 import { DEFAULT_TEMPLATE } from '../../enums';

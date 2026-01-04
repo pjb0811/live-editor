@@ -1,5 +1,7 @@
 import { useDndContext } from '@dnd-kit/core';
 
+import type { Section } from '~/types';
+
 import Draggable from '../Draggable';
 import Renderer from '../Renderer';
 import Sortable from '../Sortable';
