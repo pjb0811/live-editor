@@ -2,7 +2,6 @@ import React from 'react';
 
 import { baseModules, compile } from '../../utils';
 import LiveError from '../Error';
-import Breakpointer from './Breakpointer';
 import Client from './Client';
 
 export interface IframeProps {
@@ -15,8 +14,9 @@ export interface Props extends React.HTMLAttributes<HTMLDivElement> {
   code?: string;
   showError?: boolean;
   props?: Record<string, unknown>;
-  scripts?: string[];
+  container?: HTMLElement | null;
   iframe?: boolean | IframeProps;
+  scripts?: string[];
   modules?: Record<string, unknown>;
 }
 
@@ -40,9 +40,7 @@ const Preview = ({ code, props = {}, modules = {}, ...restProps }: Props) => {
           <LiveError title="컴파일 오류" message={message} />
         )}
       >
-        <Breakpointer>
-          {breakpoint => <Component {...props} breakpoint={breakpoint} />}
-        </Breakpointer>
+        <Component {...props} />
       </LiveError.Boundary>
     );
   }
