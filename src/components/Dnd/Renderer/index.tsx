@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
 
-import { useElementSize } from '@jax/use-hooks';
-
 import { baseModules, compile, generateSection } from '~/utils';
 
 interface Props {
@@ -13,8 +11,6 @@ interface Props {
 }
 
 const Renderer = ({ fullCode, code, headers, modules, container }: Props) => {
-  const { breakpoint, ref } = useElementSize<HTMLDivElement>();
-
   const memoizedModules = useMemo(
     () => ({
       ...baseModules,
@@ -40,12 +36,8 @@ const Renderer = ({ fullCode, code, headers, modules, container }: Props) => {
   }
 
   return (
-    <div ref={ref} className="w-full overflow-x-hidden" data-editor-mode>
-      <Component
-        breakpoint={breakpoint}
-        headers={headers}
-        container={container}
-      />
+    <div className="w-full overflow-x-hidden" data-editor-mode>
+      <Component headers={headers} container={container} />
     </div>
   );
 };
