@@ -1,5 +1,16 @@
 import { type Section } from '../types';
 
+export const DATA_ATTR = {
+  ID: 'data-id',
+  BINDING: 'data-binding',
+  ITEM: 'data-item',
+} as const;
+
+export const BINDING_PROP = {
+  CHILDREN: 'children',
+  INNER_TEXT: 'innerText',
+} as const;
+
 export const DEFAULT_TEMPLATE = `
 import * as ui from 'ui-kit';
 import { cn } from 'ui-kit/utils';

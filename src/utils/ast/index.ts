@@ -4,6 +4,8 @@ import traverse from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
+import { BINDING_PROP, DATA_ATTR } from '../../enums';
+
 interface Attribute {
   name: string;
   value: string | null;
@@ -197,11 +199,11 @@ export const getCurrentValue = (
   property: string,
 ): string => {
   switch (property) {
-    case 'innerText': {
+    case BINDING_PROP.INNER_TEXT: {
       return node.textContent || '';
     }
 
-    case 'children': {
+    case BINDING_PROP.CHILDREN: {
       return JSON.stringify(node?.children || []);
     }
 
@@ -233,6 +235,47 @@ export const getCurrentValue = (
 };
 
 const extractCache = new Map<string, DataAttrNode[]>();
+
+const extractAttributes = (
+  attributes: (t.JSXAttribute | t.JSXSpreadAttribute)[],
+): { allAttrs: Attribute[]; dataAttrs: Attribute[] } => {
+  const allAttrs: Attribute[] = [];
+  const dataAttrs: Attribute[] = [];
+
+  for (const attr of attributes) {
+    if (!t.isJSXAttribute(attr) || !t.isJSXIdentifier(attr.name)) {
+      continue;
+    }
+
+    const name = attr.name.name;
+    let value: string | null = null;
+    let isStringLiteral = false;
+
+    if (attr.value) {
+      if (t.isStringLiteral(attr.value)) {
+        value = attr.value.value;
+        isStringLiteral = true;
+      } else if (t.isJSXExpressionContainer(attr.value)) {
+        try {
+          value = generateCode(attr.value.expression);
+          isStringLiteral = false;
+        } catch {
+          value = null;
+        }
+      }
+    }
+
+    const entry = { name, value, isStringLiteral };
+
+    allAttrs.push(entry);
+
+    if (name.startsWith('data-')) {
+      dataAttrs.push(entry);
+    }
+  }
+
+  return { allAttrs, dataAttrs };
+};
 
 export function extract(raw: string): DataAttrNode[] {
   if (extractCache.has(raw)) {
@@ -270,52 +313,20 @@ export function extract(raw: string): DataAttrNode[] {
         return;
       }
 
-      const allAttrs: Attribute[] = [];
-      const dataAttrs: Attribute[] = [];
-
-      for (const attr of opening.attributes) {
-        if (!t.isJSXAttribute(attr) || !t.isJSXIdentifier(attr.name)) {
-          continue;
-        }
-
-        const name = attr.name.name;
-        let value: string | null = null;
-        let isStringLiteral = false;
-
-        if (attr.value) {
-          if (t.isStringLiteral(attr.value)) {
-            value = attr.value.value;
-            isStringLiteral = true;
-          } else if (t.isJSXExpressionContainer(attr.value)) {
-            const expression = attr.value.expression;
-            try {
-              value = generateCode(expression);
-              isStringLiteral = false;
-            } catch {
-              value = null;
-            }
-          }
-        }
-
-        const entry = { name, value, isStringLiteral };
-
-        allAttrs.push(entry);
-
-        if (name.startsWith('data-')) {
-          dataAttrs.push(entry);
-        }
-      }
+      const { allAttrs, dataAttrs } = extractAttributes(opening.attributes);
 
       if (dataAttrs.length) {
         let childrenNodes: DataAttrNode[] | undefined;
 
         const bindingAttr = dataAttrs.find(
-          attr => attr.name === 'data-binding',
+          attr => attr.name === DATA_ATTR.BINDING,
         );
 
         if (bindingAttr?.value) {
           const bindings = parseBinding(bindingAttr.value);
-          const childrenBinding = bindings.find(b => b.property === 'children');
+          const childrenBinding = bindings.find(
+            b => b.property === BINDING_PROP.CHILDREN,
+          );
 
           if (childrenBinding) {
             const jsxChildren = path.node.children.filter(
@@ -333,8 +344,8 @@ export function extract(raw: string): DataAttrNode[] {
                 const wrapperNode: DataAttrNode = {
                   tagName: 'div',
                   id: nanoid(6),
-                  attributes: [{ name: 'data-item', value: 'true' }],
-                  dataAttributes: [{ name: 'data-item', value: 'true' }],
+                  attributes: [{ name: DATA_ATTR.ITEM, value: 'true' }],
+                  dataAttributes: [{ name: DATA_ATTR.ITEM, value: 'true' }],
                   textContent: collectText(child.children),
                   children: childResults,
                 };
@@ -424,47 +435,17 @@ function extractFromNode(
     }
   }
 
-  const allAttrs: Attribute[] = [];
-  const dataAttrs: Attribute[] = [];
-
-  for (const attr of opening.attributes) {
-    if (!t.isJSXAttribute(attr) || !t.isJSXIdentifier(attr.name)) {
-      continue;
-    }
-
-    const name = attr.name.name;
-    let value: string | null = null;
-    let isStringLiteral = false;
-
-    if (attr.value) {
-      if (t.isStringLiteral(attr.value)) {
-        value = attr.value.value;
-        isStringLiteral = true;
-      } else if (t.isJSXExpressionContainer(attr.value)) {
-        try {
-          value = generateCode(attr.value.expression);
-          isStringLiteral = false;
-        } catch {
-          value = null;
-        }
-      }
-    }
-
-    const entry = { name, value, isStringLiteral };
-    allAttrs.push(entry);
-
-    if (name.startsWith('data-')) {
-      dataAttrs.push(entry);
-    }
-  }
+  const { allAttrs, dataAttrs } = extractAttributes(opening.attributes);
 
   let childrenNodes: DataAttrNode[] | undefined;
 
-  const bindingAttr = dataAttrs.find(attr => attr.name === 'data-binding');
+  const bindingAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING);
 
   if (bindingAttr?.value) {
     const bindings = parseBinding(bindingAttr.value);
-    const childrenBinding = bindings.find(b => b.property === 'children');
+    const childrenBinding = bindings.find(
+      b => b.property === BINDING_PROP.CHILDREN,
+    );
 
     if (childrenBinding) {
       const jsxChildren = node.children.filter(
@@ -483,8 +464,8 @@ function extractFromNode(
           const wrapperNode: DataAttrNode = {
             tagName: 'div',
             id: nanoid(6),
-            attributes: [{ name: 'data-item', value: 'true' }],
-            dataAttributes: [{ name: 'data-item', value: 'true' }],
+            attributes: [{ name: DATA_ATTR.ITEM, value: 'true' }],
+            dataAttributes: [{ name: DATA_ATTR.ITEM, value: 'true' }],
             textContent: collectText(child.children),
             children: childResults,
           };
@@ -606,7 +587,7 @@ export const update = (
           return (
             t.isJSXAttribute(attr) &&
             t.isJSXIdentifier(attr.name) &&
-            attr.name.name === 'data-id' &&
+            attr.name.name === DATA_ATTR.ID &&
             attr.value &&
             t.isStringLiteral(attr.value) &&
             attr.value.value === dataId
@@ -622,7 +603,7 @@ export const update = (
           (attr): attr is t.JSXAttribute =>
             t.isJSXAttribute(attr) &&
             t.isJSXIdentifier(attr.name) &&
-            attr.name.name === 'data-binding',
+            attr.name.name === DATA_ATTR.BINDING,
         );
 
         if (!bindingAttr?.value) {
@@ -652,7 +633,7 @@ export const update = (
         }
 
         switch (propertyBinding.property) {
-          case 'innerText': {
+          case BINDING_PROP.INNER_TEXT: {
             const jsxChildren = path.node.children;
 
             for (let i = jsxChildren.length - 1; i >= 0; i--) {
@@ -666,7 +647,7 @@ export const update = (
             break;
           }
 
-          case 'children': {
+          case BINDING_PROP.CHILDREN: {
             try {
               const childrenData = JSON.parse(value) as DataAttrNode[];
 
@@ -735,8 +716,8 @@ export const replaceIds = (
   code: string,
   generateId: () => string = () => nanoid(6),
 ): string => {
-  return code.replace(/data-id="[^"]*"/g, () => {
-    return `data-id="${generateId()}"`;
+  return code.replace(new RegExp(`${DATA_ATTR.ID}="[^"]*"`, 'g'), () => {
+    return `${DATA_ATTR.ID}="${generateId()}"`;
   });
 };
 
@@ -744,8 +725,8 @@ export const fillIds = (
   code: string,
   generateId: () => string = () => nanoid(6),
 ): string => {
-  return code.replace(/data-id=""/g, () => {
-    return `data-id="${generateId()}"`;
+  return code.replace(new RegExp(`${DATA_ATTR.ID}=""`, 'g'), () => {
+    return `${DATA_ATTR.ID}="${generateId()}"`;
   });
 };
 
