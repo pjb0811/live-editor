@@ -47,6 +47,7 @@ const Editor = ({
   const { setCode } = usePreview();
   const { setError } = useError();
 
+  const value = _value.trim() === '' ? DEFAULT_TEMPLATE : _value;
   const editorRef = useRef<ReactCodeMirrorRef>(null);
 
   const prettierConfig = useMemo(
@@ -113,31 +114,31 @@ const Editor = ({
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
-        onSave(_value);
+        onSave(value);
       }
     },
-    [onSave, _value],
+    [onSave, value],
   );
 
   useDebounce(
     () => {
-      setCode(_value);
+      setCode(value);
     },
     debounce,
-    [_value],
+    [value],
   );
 
   return (
-    <div className={cn('h-full', className)} onKeyDown={onKeyDown}>
+    <div className={cn(className)} onKeyDown={onKeyDown}>
       <CodeMirror
         ref={editorRef}
         theme={theme || vscodeLight}
         height={height || '100%'}
+        value={value}
         extensions={[
           javascript({ jsx: true, typescript: true }),
           EditorView.lineWrapping,
         ]}
-        value={_value}
         onChange={onChange}
         {...props}
       />

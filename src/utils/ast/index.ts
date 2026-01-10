@@ -4,11 +4,16 @@ import traverse from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
+interface Attribute {
+  name: string;
+  value: string | null;
+  isStringLiteral?: boolean;
+}
 export interface DataAttrNode {
   id?: string;
   tagName: string;
-  attributes: { name: string; value: string | null }[];
-  dataAttributes: { name: string; value: string | null }[];
+  attributes: Attribute[];
+  dataAttributes: Attribute[];
   textContent: string;
   loc?: {
     start: { line: number; column: number };
@@ -50,45 +55,29 @@ const collectText = (
     .join(' ');
 };
 
-const attrValue = (
-  value: string,
-): t.StringLiteral | t.JSXExpressionContainer => {
-  if (!value) {
-    return t.stringLiteral('');
+const attrValue = ({
+  value,
+  isStringLiteral,
+}: Attribute): t.JSXAttribute['value'] => {
+  if (value === null) {
+    return null;
+  }
+
+  if (isStringLiteral) {
+    return t.stringLiteral(value);
   }
 
   const trimmed = value.trim();
 
-  if (/^\d+[a-zA-Z]/.test(trimmed)) {
-    return t.stringLiteral(value);
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    return t.jsxExpressionContainer(t.numericLiteral(parseFloat(trimmed)));
   }
 
-  if (
-    (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
-    (trimmed.startsWith('{') && trimmed.endsWith('}'))
-  ) {
-    try {
-      JSON.parse(trimmed);
-      return t.stringLiteral(value);
-    } catch {
-      // JSON 파싱 실패 시 계속 진행
-    }
-  }
-
-  const definitelyString = [
-    /^[a-zA-Z0-9\s\-_.,!@#$%^&*()+=<>?/|\\:;"'~`]*$/,
-    /^https?:\/\//,
-    /^[./]/,
-  ];
-
-  if (definitelyString.some(pattern => pattern.test(value))) {
-    if (
-      !/^(true|false|null|undefined|\d+(\.\d+)?|[a-zA-Z_$][a-zA-Z0-9_$]*\s*\()/.test(
-        trimmed,
-      )
-    ) {
-      return t.stringLiteral(value);
-    }
+  if (/^(true|false|null|undefined)$/.test(trimmed)) {
+    const expr = parseExpression(trimmed, {
+      plugins: ['jsx', 'typescript'],
+    });
+    return t.jsxExpressionContainer(expr);
   }
 
   try {
@@ -96,9 +85,8 @@ const attrValue = (
       plugins: ['jsx', 'typescript'],
     });
     return t.jsxExpressionContainer(expr);
-  } catch (error) {
-    console.error('파싱 에러:', error, 'value:', value);
-    return t.stringLiteral(value);
+  } catch {
+    return t.stringLiteral(trimmed);
   }
 };
 
@@ -156,7 +144,7 @@ export const nodeToJSX = (
         return t.jsxAttribute(attrName, null);
       }
 
-      return t.jsxAttribute(attrName, attrValue(attr.value));
+      return t.jsxAttribute(attrName, attrValue(attr));
     });
 
     const openingElement = t.jsxOpeningElement(
@@ -219,7 +207,27 @@ export const getCurrentValue = (
 
     default: {
       const customAttr = node.attributes.find(attr => attr.name === property);
-      return customAttr?.value || '';
+      const value = customAttr?.value || '';
+
+      if (
+        value &&
+        (value.trim().startsWith('{') || value.trim().startsWith('['))
+      ) {
+        try {
+          const expr = parseExpression(value, {
+            plugins: ['jsx', 'typescript'],
+          });
+
+          const code = generateCode(expr);
+          const evaluated = new Function(`return ${code}`)();
+
+          return JSON.stringify(evaluated);
+        } catch {
+          // 파싱 실패시 원본 반환
+        }
+      }
+
+      return value;
     }
   }
 };
@@ -262,8 +270,8 @@ export function extract(raw: string): DataAttrNode[] {
         return;
       }
 
-      const allAttrs: { name: string; value: string | null }[] = [];
-      const dataAttrs: { name: string; value: string | null }[] = [];
+      const allAttrs: Attribute[] = [];
+      const dataAttrs: Attribute[] = [];
 
       for (const attr of opening.attributes) {
         if (!t.isJSXAttribute(attr) || !t.isJSXIdentifier(attr.name)) {
@@ -272,21 +280,25 @@ export function extract(raw: string): DataAttrNode[] {
 
         const name = attr.name.name;
         let value: string | null = null;
+        let isStringLiteral = false;
 
         if (attr.value) {
           if (t.isStringLiteral(attr.value)) {
             value = attr.value.value;
+            isStringLiteral = true;
           } else if (t.isJSXExpressionContainer(attr.value)) {
             const expression = attr.value.expression;
             try {
               value = generateCode(expression);
+              isStringLiteral = false;
             } catch {
               value = null;
             }
           }
         }
 
-        const entry = { name, value };
+        const entry = { name, value, isStringLiteral };
+
         allAttrs.push(entry);
 
         if (name.startsWith('data-')) {
@@ -316,7 +328,7 @@ export function extract(raw: string): DataAttrNode[] {
               processedNodes.add(child);
 
               if (t.isJSXElement(child)) {
-                const childResults = extractFromNode(child);
+                const childResults = extractFromNode(child, processedNodes);
 
                 const wrapperNode: DataAttrNode = {
                   tagName: 'div',
@@ -334,7 +346,10 @@ export function extract(raw: string): DataAttrNode[] {
                 child.children.forEach(fragmentChild => {
                   if (t.isJSXElement(fragmentChild)) {
                     processedNodes.add(fragmentChild);
-                    const childResults = extractFromNode(fragmentChild);
+                    const childResults = extractFromNode(
+                      fragmentChild,
+                      processedNodes,
+                    );
                     fragmentChildren.push(...childResults);
                   }
                 });
@@ -390,7 +405,10 @@ export function extract(raw: string): DataAttrNode[] {
   return results;
 }
 
-function extractFromNode(node: t.JSXElement): DataAttrNode[] {
+function extractFromNode(
+  node: t.JSXElement,
+  processedNodes?: WeakSet<t.JSXElement | t.JSXFragment>,
+): DataAttrNode[] {
   const results: DataAttrNode[] = [];
   const opening = node.openingElement;
 
@@ -406,8 +424,8 @@ function extractFromNode(node: t.JSXElement): DataAttrNode[] {
     }
   }
 
-  const allAttrs: { name: string; value: string | null }[] = [];
-  const dataAttrs: { name: string; value: string | null }[] = [];
+  const allAttrs: Attribute[] = [];
+  const dataAttrs: Attribute[] = [];
 
   for (const attr of opening.attributes) {
     if (!t.isJSXAttribute(attr) || !t.isJSXIdentifier(attr.name)) {
@@ -416,45 +434,74 @@ function extractFromNode(node: t.JSXElement): DataAttrNode[] {
 
     const name = attr.name.name;
     let value: string | null = null;
+    let isStringLiteral = false;
 
     if (attr.value) {
       if (t.isStringLiteral(attr.value)) {
         value = attr.value.value;
+        isStringLiteral = true;
       } else if (t.isJSXExpressionContainer(attr.value)) {
         try {
           value = generateCode(attr.value.expression);
+          isStringLiteral = false;
         } catch {
           value = null;
         }
       }
     }
 
-    allAttrs.push({ name, value });
+    const entry = { name, value, isStringLiteral };
+    allAttrs.push(entry);
+
     if (name.startsWith('data-')) {
-      dataAttrs.push({ name, value });
+      dataAttrs.push(entry);
     }
   }
 
-  if (dataAttrs.length) {
-    let childrenNodes: DataAttrNode[] | undefined;
+  let childrenNodes: DataAttrNode[] | undefined;
 
-    const jsxChildren = node.children.filter(
-      child => t.isJSXElement(child) || t.isJSXFragment(child),
-    );
+  const bindingAttr = dataAttrs.find(attr => attr.name === 'data-binding');
 
-    if (jsxChildren.length) {
+  if (bindingAttr?.value) {
+    const bindings = parseBinding(bindingAttr.value);
+    const childrenBinding = bindings.find(b => b.property === 'children');
+
+    if (childrenBinding) {
+      const jsxChildren = node.children.filter(
+        child => t.isJSXElement(child) || t.isJSXFragment(child),
+      );
+
       childrenNodes = [];
 
       jsxChildren.forEach(child => {
         if (t.isJSXElement(child)) {
-          const childResults = extractFromNode(child);
-          childrenNodes!.push(...childResults);
+          // processedNodes에 추가하여 루트 레벨에서 중복 처리 방지
+          processedNodes?.add(child);
+
+          const childResults = extractFromNode(child, processedNodes);
+
+          const wrapperNode: DataAttrNode = {
+            tagName: 'div',
+            id: nanoid(6),
+            attributes: [{ name: 'data-item', value: 'true' }],
+            dataAttributes: [{ name: 'data-item', value: 'true' }],
+            textContent: collectText(child.children),
+            children: childResults,
+          };
+
+          childrenNodes!.push(wrapperNode);
         } else if (t.isJSXFragment(child)) {
+          processedNodes?.add(child);
+
           const fragmentChildren: DataAttrNode[] = [];
 
           child.children.forEach(fragmentChild => {
             if (t.isJSXElement(fragmentChild)) {
-              const childResults = extractFromNode(fragmentChild);
+              processedNodes?.add(fragmentChild);
+              const childResults = extractFromNode(
+                fragmentChild,
+                processedNodes,
+              );
               fragmentChildren.push(...childResults);
             }
           });
@@ -475,15 +522,59 @@ function extractFromNode(node: t.JSXElement): DataAttrNode[] {
         }
       });
     }
-
-    results.push({
-      tagName,
-      attributes: allAttrs,
-      dataAttributes: dataAttrs,
-      textContent: collectText(node.children),
-      children: childrenNodes,
-    });
   }
+
+  // children 바인딩이 없는 경우 기존 로직
+  if (!childrenNodes) {
+    const jsxChildren = node.children.filter(
+      child => t.isJSXElement(child) || t.isJSXFragment(child),
+    );
+
+    if (jsxChildren.length) {
+      childrenNodes = [];
+
+      jsxChildren.forEach(child => {
+        if (t.isJSXElement(child)) {
+          const childResults = extractFromNode(child, processedNodes);
+          childrenNodes!.push(...childResults);
+        } else if (t.isJSXFragment(child)) {
+          const fragmentChildren: DataAttrNode[] = [];
+
+          child.children.forEach(fragmentChild => {
+            if (t.isJSXElement(fragmentChild)) {
+              const childResults = extractFromNode(
+                fragmentChild,
+                processedNodes,
+              );
+              fragmentChildren.push(...childResults);
+            }
+          });
+
+          if (fragmentChildren.length) {
+            const fragmentNode: DataAttrNode = {
+              tagName: '',
+              id: nanoid(6),
+              attributes: [],
+              dataAttributes: [],
+              textContent: collectText(child.children),
+              children: fragmentChildren,
+              isFragment: true,
+            };
+
+            childrenNodes!.push(fragmentNode);
+          }
+        }
+      });
+    }
+  }
+
+  results.push({
+    tagName,
+    attributes: allAttrs,
+    dataAttributes: dataAttrs,
+    textContent: collectText(node.children),
+    children: childrenNodes,
+  });
 
   return results;
 }
@@ -604,7 +695,11 @@ export const update = (
             );
 
             if (customAttr && t.isJSXAttribute(customAttr)) {
-              customAttr.value = attrValue(value);
+              customAttr.value = attrValue({
+                name: propertyBinding.property,
+                value,
+                isStringLiteral: true,
+              });
               changed = true;
             }
 
