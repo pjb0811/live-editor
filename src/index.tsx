@@ -1,4 +1,5 @@
 import './index.css';
+import '@jbpark/ui-kit/style.css';
 
 import Context from './components/Context';
 import LiveDnd from './components/Dnd';

@@ -1,7 +1,8 @@
 import React from 'react';
 
 import * as Babel from '@babel/standalone';
-import * as tanstackQuery from '@tanstack/react-query';
+import * as ui from '@jbpark/ui-kit';
+import * as utils from '@jbpark/ui-kit/utils';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as ts from 'typescript';
@@ -9,10 +10,8 @@ import * as ts from 'typescript';
 import type { Module, Section } from '~/types';
 
 export const baseModules = {
-  '@tanstack/react-query': tanstackQuery,
-  '~/utils': {
-    cn,
-  },
+  'ui-kit': ui,
+  'ui-kit/utils': utils,
 };
 
 export function cn(...inputs: ClassValue[]) {
