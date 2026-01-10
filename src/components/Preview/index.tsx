@@ -18,9 +18,20 @@ export interface Props extends React.HTMLAttributes<HTMLDivElement> {
   iframe?: boolean | IframeProps;
   scripts?: string[];
   modules?: Record<string, unknown>;
+  provider?: (children: React.ReactNode) => React.ReactNode;
 }
 
-const Preview = ({ code, props = {}, modules = {}, ...restProps }: Props) => {
+const Preview = ({
+  code,
+  props = {},
+  modules = {},
+  provider,
+  ...restProps
+}: Props) => {
+  const renderProvider = (component: React.ReactNode) => {
+    return provider ? provider(component) : component;
+  };
+
   if (code) {
     const module = compile(code, { ...baseModules, ...modules });
     const Component = module.exports.default;
@@ -40,12 +51,19 @@ const Preview = ({ code, props = {}, modules = {}, ...restProps }: Props) => {
           <LiveError title="컴파일 오류" message={message} />
         )}
       >
-        <Component {...props} />
+        {renderProvider(<Component {...props} />)}
       </LiveError.Boundary>
     );
   }
 
-  return <Client props={props} modules={modules} {...restProps} />;
+  return (
+    <Client
+      props={props}
+      modules={modules}
+      provider={provider}
+      {...restProps}
+    />
+  );
 };
 
 export default Preview;

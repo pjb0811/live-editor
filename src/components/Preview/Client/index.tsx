@@ -2,9 +2,6 @@
 
 import { useMemo } from 'react';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import axios from 'axios';
-
 import { useError, usePreview } from '~/components/Context/states';
 import LiveError from '~/components/Error';
 import { cn } from '~/utils';
@@ -12,21 +9,6 @@ import { baseModules, compile } from '~/utils';
 
 import { type IframeProps, type Props } from '../';
 import IFrame from '../IFrame';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      queryFn: async ({ queryKey }: { queryKey: readonly unknown[] }) => {
-        const [path, params = {}] = queryKey as [
-          string,
-          Record<string, string>,
-        ];
-        const { data } = await axios.get(path, { params });
-        return data;
-      },
-    },
-  },
-});
 
 const Client = ({
   id,
@@ -37,6 +19,7 @@ const Client = ({
   modules = {},
   iframe,
   scripts = [],
+  provider,
 }: Props) => {
   const { code } = usePreview();
   const { error, setError } = useError();
@@ -64,6 +47,10 @@ const Client = ({
     }),
     [props],
   );
+
+  const renderProvider = (component: React.ReactNode) => {
+    return provider ? provider(component) : component;
+  };
 
   if (module && 'error' in module) {
     return (
@@ -95,9 +82,9 @@ const Client = ({
           >
             {container => (
               <LiveError.Boundary onError={(e: Error) => setError(e.message)}>
-                <QueryClientProvider client={queryClient}>
-                  <Component {...componentProps} container={container} />
-                </QueryClientProvider>
+                {renderProvider(
+                  <Component {...componentProps} container={container} />,
+                )}
               </LiveError.Boundary>
             )}
           </IFrame>
@@ -115,9 +102,7 @@ const Client = ({
           }}
         >
           <LiveError.Boundary onError={e => setError(e.message)}>
-            <QueryClientProvider client={queryClient}>
-              <Component {...componentProps} />
-            </QueryClientProvider>
+            {renderProvider(<Component {...componentProps} />)}
           </LiveError.Boundary>
         </div>
       )}
