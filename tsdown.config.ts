@@ -9,5 +9,6 @@ export default defineConfig({
   dts: true,
   clean: true,
   external: ['react', 'react-dom', 'tailwindcss'],
+  platform: 'browser',
   tsconfig: 'tsconfig.app.json',
 });
