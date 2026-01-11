@@ -55,11 +55,43 @@ export const DRAGGABLE_ITEMS: Section[] = [
     name: 'Button Example',
     code: `
       <section data-name="Button Example">
-        <ui.Space direction="vertical" size="middle">
-          <ui.Button variant="default">Default Button</ui.Button>
-          <ui.Button variant="outline">Outline Button</ui.Button>
-          <ui.Button variant="destructive">Destructive Button</ui.Button>
-          <ui.Button variant="ghost">Ghost Button</ui.Button>
+        <ui.Space
+          direction="vertical"
+          size="middle"
+          data-id=""
+          data-binding={[
+            {
+              label: '버튼 구성',
+              property: 'children',
+            },
+          ]}
+        >
+          <ui.Button
+            variant="default"
+            data-id=""
+            data-binding={[
+              { label: '문구', property: 'innerText' },
+              { label: '스타일', property: 'variant' },
+            ]}
+          >
+            Default Button
+          </ui.Button>
+          <ui.Button
+            variant="outline"
+            data-id=""
+            data-binding={[
+              { label: '문구', property: 'innerText' },
+              { label: '스타일', property: 'variant' },
+            ]}
+          >
+            Outline Button
+          </ui.Button>
+          <ui.Button variant="destructive">
+            Destructive Button
+          </ui.Button>
+          <ui.Button variant="ghost">
+            Ghost Button
+          </ui.Button>
           <ui.Button loading>Loading Button</ui.Button>
         </ui.Space>
       </section>
@@ -71,15 +103,44 @@ export const DRAGGABLE_ITEMS: Section[] = [
     code: `
       <section data-name="Card Example">
         <ui.Space direction="vertical" size="large">
-          <div className={cn(
-            "rounded-lg border bg-card p-6 shadow-sm",
-            "space-y-4"
-          )}>
-            <h3 className="text-lg font-semibold">Card Title</h3>
-            <p className="text-sm text-muted-foreground">
-              This is a card component example with some content.
+          <div
+            className={cn(
+              'rounded-lg border bg-card p-6 shadow-sm',
+              'space-y-4',
+            )}
+            data-id=""
+            data-binding={[
+              { label: '카드 구성', property: 'children' },
+            ]}
+          >
+            <h3
+              className="text-lg font-semibold"
+              data-id=""
+              data-binding={[
+                { label: '제목', property: 'innerText' },
+              ]}
+            >
+              Card Title
+            </h3>
+            <p
+              className="text-sm text-muted-foreground"
+              data-id=""
+              data-binding={[
+                { label: '설명', property: 'innerText' },
+              ]}
+            >
+              This is a card component example with some
+              content.
             </p>
-            <ui.Button variant="default">Action</ui.Button>
+            <ui.Button
+              variant="default"
+              data-id=""
+              data-binding={[
+                { label: '버튼', property: 'innerText' },
+              ]}
+            >
+              Action
+            </ui.Button>
           </div>
         </ui.Space>
       </section>
@@ -89,29 +150,52 @@ export const DRAGGABLE_ITEMS: Section[] = [
     id: 'modal-example',
     name: 'Modal Example',
     code: `
-    <section data-name="Modal Example">
-      {(() => {
-        const [open, setOpen] = React.useState(false);
+      <section data-name="Modal Example">
+        {(() => {
+          const [open, setOpen] = React.useState(false);
 
-        return (
-          <div>
-            <ui.Button onClick={() => setOpen(true)}>
-              Open Modal
-            </ui.Button>
-            <ui.Modal
-              open={open}
-              title="Modal Title"
-              okText="Confirm"
-              cancelText="Cancel"
-              onOk={() => setOpen(false)}
-              onCancel={() => setOpen(false)}
-            >
-              <p>This is the modal content.</p>
-            </ui.Modal>
-          </div>
-        );
-      })()}
-    </section>`,
+          return (
+            <div>
+              <ui.Button onClick={() => setOpen(true)}>
+                Open Modal
+              </ui.Button>
+              <ui.Modal
+                open={open}
+                title="Modal Title"
+                okText="Confirm"
+                cancelText="Cancel"
+                onOk={() => setOpen(false)}
+                onCancel={() => setOpen(false)}
+                data-id=""
+                data-binding={[
+                  { label: '제목', property: 'title' },
+                  {
+                    label: '확인 문구',
+                    property: 'okText',
+                  },
+                  {
+                    label: '취소 문구',
+                    property: 'cancelText',
+                  },
+                  { label: '내용', property: 'children' },
+                ]}
+              >
+                <p
+                  data-id=""
+                  data-binding={[
+                    {
+                      label: '내용 텍스트',
+                      property: 'innerText',
+                    },
+                  ]}
+                >
+                  This is the modal content.
+                </p>
+              </ui.Modal>
+            </div>
+          );
+        })()}
+      </section>`,
   },
   {
     id: 'drawer-example',
@@ -131,8 +215,23 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 title="Drawer Title"
                 direction="right"
                 onClose={() => setOpen(false)}
+                data-id=""
+                data-binding={[
+                  { label: '제목', property: 'title' },
+                  { label: '내용', property: 'children' },
+                ]}
               >
-                <p>This is the drawer content.</p>
+                <p
+                  data-id=""
+                  data-binding={[
+                    {
+                      label: '내용 텍스트',
+                      property: 'innerText',
+                    },
+                  ]}
+                >
+                  This is the drawer content.
+                </p>
               </ui.Drawer>
             </div>
           );
@@ -144,26 +243,42 @@ export const DRAGGABLE_ITEMS: Section[] = [
     name: 'List Example',
     code: `
       <section data-name="List Example">
-        {(() => {
-          const data = [
-            { id: 1, title: 'Item 1', description: 'Description for item 1' },
-            { id: 2, title: 'Item 2', description: 'Description for item 2' },
-            { id: 3, title: 'Item 3', description: 'Description for item 3' },
-          ];
-
-          return (
-            <ui.List
-              title="List Title"
-              data={data}
-              renderItem={(item) => (
-                <ui.List.Item key={item.id} className="border-b p-4">
-                  <h4 className="font-medium">{item.title}</h4>
-                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                </ui.List.Item>
-              )}
-            />
-          );
-        })()}
+        <ui.List
+          title="List Title"
+          data={[
+            {
+              id: 1,
+              title: 'Item 1',
+              description: 'Description for item 1',
+            },
+            {
+              id: 2,
+              title: 'Item 2',
+              description: 'Description for item 2',
+            },
+            {
+              id: 3,
+              title: 'Item 3',
+              description: 'Description for item 3',
+            },
+          ]}
+          renderItem={item => (
+            <ui.List.Item
+              key={item.id}
+              className="border-b p-4"
+            >
+              <h4 className="font-medium">{item.title}</h4>
+              <p className="text-sm text-muted-foreground">
+                {item.description}
+              </p>
+            </ui.List.Item>
+          )}
+          data-id=""
+          data-binding={[
+            { label: '제목', property: 'title' },
+            { label: '목록', property: 'data' },
+          ]}
+        />
       </section>`,
   },
   {
@@ -171,8 +286,8 @@ export const DRAGGABLE_ITEMS: Section[] = [
     name: 'Collapse Example',
     code: `
       <section data-name="Collapse Example">
-        {(() => {
-          const items = [
+        <ui.Collapse
+          items={[
             {
               key: '1',
               label: 'Section 1',
@@ -188,10 +303,16 @@ export const DRAGGABLE_ITEMS: Section[] = [
               label: 'Section 3',
               children: <p>Content for section 3</p>,
             },
-          ];
-
-          return <ui.Collapse items={items} defaultActiveKey={['1']} />;
-        })()}
+          ]}
+          defaultActiveKey={['1']}
+          data-id=""
+          data-binding={[
+            {
+              label: '항목 설정',
+              property: 'items',
+            },
+          ]}
+        />
       </section>`,
   },
   {
@@ -199,50 +320,18 @@ export const DRAGGABLE_ITEMS: Section[] = [
     name: 'Progress Example',
     code: `
       <section data-name="Progress Example">
-        {(() => {
-          const [value, setValue] = React.useState(0);
-
-          React.useEffect(() => {
-            const timer = setInterval(() => {
-              setValue((prev) => (prev >= 100 ? 0 : prev + 10));
-            }, 1000);
-            return () => clearInterval(timer);
-          }, []);
-
-          return (
-            <ui.Space direction="vertical" size="large">
-              <ui.Progress value={value} />
-              <ui.Progress value={value} direction="vertical" className="h-48" />
-            </ui.Space>
-          );
-        })()}
-      </section>`,
-  },
-  {
-    id: 'checkbox-example',
-    name: 'Checkbox Example',
-    code: `
-      <section data-name="Checkbox Example">
-        {(() => {
-          const [checked, setChecked] = React.useState(false);
-
-          return (
-            <ui.Space direction="vertical" size="middle">
-              <ui.Checkbox
-                checked={checked}
-                onChange={setChecked}
-              >
-                Single Checkbox
-              </ui.Checkbox>
-
-              <ui.Checkbox.Group
-                options={['Option 1', 'Option 2', 'Option 3']}
-                direction="vertical"
-                onChange={(values) => console.log(values)}
-              />
-            </ui.Space>
-          );
-        })()}
+        <ui.Space direction="vertical" size="large">
+          <ui.Progress
+            value={10}
+            data-id="h6gzcG"
+            data-binding={[
+              {
+                label: '진행률',
+                property: 'value',
+              },
+            ]}
+          />
+        </ui.Space>
       </section>`,
   },
   {
@@ -251,12 +340,20 @@ export const DRAGGABLE_ITEMS: Section[] = [
     code: `
       <section data-name="Switch Example">
         {(() => {
-          const [checked, setChecked] = React.useState(false);
+          const [checked, setChecked] =
+            React.useState(false);
 
           return (
-            <ui.Space direction="horizontal" size="middle" align="center">
+            <ui.Space
+              direction="horizontal"
+              size="middle"
+              align="center"
+            >
               <span>Switch:</span>
-              <ui.Switch checked={checked} onChange={setChecked} />
+              <ui.Switch
+                checked={checked}
+                onChange={setChecked}
+              />
               <span>{checked ? 'On' : 'Off'}</span>
             </ui.Space>
           );
@@ -270,43 +367,55 @@ export const DRAGGABLE_ITEMS: Section[] = [
     code: `
       <section data-name="Skeleton Example">
         {(() => {
-          const [loading, setLoading] = React.useState(true);
-
+          const [loading, setLoading] =
+            React.useState(true);
           React.useEffect(() => {
-            const timer = setTimeout(() => setLoading(false), 3000);
+            const timer = setTimeout(
+              () => setLoading(false),
+              3000,
+            );
             return () => clearTimeout(timer);
           }, []);
-
           return (
-            <ui.Skeleton loading={loading} avatar active count={3}>
+            <ui.Skeleton
+              loading={loading}
+              avatar
+              active
+              count={3}
+              data-id="0czUka"
+              data-binding={[
+                {
+                  label: '개수',
+                  property: 'count',
+                },
+              ]}
+            >
               <ui.Space direction="vertical" size="middle">
-                <h3 className="text-lg font-semibold">Loaded Content</h3>
-                <p>This content appears after loading.</p>
+                <h3
+                  className="text-lg font-semibold"
+                  data-id="VBRvN8"
+                  data-binding={[
+                    {
+                      label: '항목 제목',
+                      property: 'innerText',
+                    },
+                  ]}
+                >
+                  Loaded Content11
+                </h3>
+                <p
+                  data-id="lw9Ttp"
+                  data-binding={[
+                    {
+                      label: '항목 설명',
+                      property: 'innerText',
+                    },
+                  ]}
+                >
+                  This content appears after loading.22
+                </p>
               </ui.Space>
             </ui.Skeleton>
-          );
-        })()}
-      </section>`,
-  },
-  {
-    id: 'dropdown-example',
-    name: 'Dropdown Example',
-    code: `
-      <section data-name="Dropdown Example">
-        {(() => {
-          const menu = {
-            items: [
-              { key: '1', label: 'Menu Item 1' },
-              { key: '2', label: 'Menu Item 2' },
-              { key: '3', label: 'Menu Item 3' },
-            ],
-            onClick: (key) => console.log('Clicked:', key),
-          };
-
-          return (
-            <ui.Dropdown menu={menu} trigger="click">
-              <ui.Button>Dropdown Menu</ui.Button>
-            </ui.Dropdown>
           );
         })()}
       </section>`,
