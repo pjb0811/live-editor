@@ -1,11 +1,10 @@
 import { useMemo } from 'react';
 
-import generate from '@babel/generator';
 import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 
 import { cn } from '~/utils';
-import { clone } from '~/utils/ast';
+import { clone, generateCode } from '~/utils/ast';
 
 interface ItemProperty {
   type:
@@ -78,10 +77,10 @@ const Items = ({ value, onChange }: Props) => {
                   propertyValue = null;
                 } else if (t.isArrayExpression(prop.value)) {
                   propertyType = 'array';
-                  propertyValue = generate(prop.value).code;
+                  propertyValue = generateCode(prop.value);
                 } else if (t.isObjectExpression(prop.value)) {
                   propertyType = 'object';
-                  propertyValue = generate(prop.value).code;
+                  propertyValue = generateCode(prop.value);
                 }
 
                 itemData.editableProperties[key] = {
@@ -110,7 +109,7 @@ const Items = ({ value, onChange }: Props) => {
     const nextAst = t.arrayExpression(
       nextItems.map(item => item.originalElement),
     );
-    const nextValue = generate(nextAst).code;
+    const nextValue = generateCode(nextAst);
 
     onChange?.(nextValue);
   };
@@ -153,7 +152,7 @@ const Items = ({ value, onChange }: Props) => {
     const nextAst = t.arrayExpression(
       extractedItems.map(item => item.originalElement),
     );
-    const nextValue = generate(nextAst).code;
+    const nextValue = generateCode(nextAst);
 
     onChange?.(nextValue);
   };
@@ -167,7 +166,7 @@ const Items = ({ value, onChange }: Props) => {
     const nextAst = t.arrayExpression(
       nextItems.map(item => item.originalElement),
     );
-    const nextValue = generate(nextAst).code;
+    const nextValue = generateCode(nextAst);
 
     onChange?.(nextValue);
   };
@@ -236,7 +235,7 @@ const Items = ({ value, onChange }: Props) => {
     const nextAst = t.arrayExpression(
       nextItems.map(item => item.originalElement),
     );
-    const nextValue = generate(nextAst).code;
+    const nextValue = generateCode(nextAst);
 
     onChange?.(nextValue);
   };
@@ -303,7 +302,10 @@ const Items = ({ value, onChange }: Props) => {
           </div>
           <div className="space-y-2">
             {Object.entries(item.editableProperties).map(([key, prop]) => (
-              <div key={key} className="flex items-center space-x-2">
+              <div
+                key={`${index}-${key}`}
+                className="flex items-center space-x-2"
+              >
                 <label className="w-20 flex-shrink-0 text-xs font-medium">
                   {key}:
                 </label>
@@ -321,8 +323,8 @@ const Items = ({ value, onChange }: Props) => {
                     type="number"
                     className="w-20 rounded border px-2 py-1 text-xs
                       focus:border-blue-500 focus:outline-none"
-                    defaultValue={prop.value as number}
-                    onBlur={e => updateProperty(index, key, e.target.value)}
+                    value={prop.value as number}
+                    onChange={e => updateProperty(index, key, e.target.value)}
                   />
                 )}
                 {prop.type === 'string' && (
@@ -330,8 +332,8 @@ const Items = ({ value, onChange }: Props) => {
                     type="text"
                     className="flex-1 rounded border px-2 py-1 text-xs
                       focus:border-blue-500 focus:outline-none"
-                    defaultValue={prop.value as string}
-                    onBlur={e => updateProperty(index, key, e.target.value)}
+                    value={prop.value as string}
+                    onChange={e => updateProperty(index, key, e.target.value)}
                   />
                 )}
                 <span className="text-xs text-gray-500">({prop.type})</span>

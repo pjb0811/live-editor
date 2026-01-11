@@ -43,7 +43,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
     }
   }, [value]);
 
-  if (binding.property === 'items') {
+  if (binding.property === 'items' || binding.property === 'data') {
     return (
       <Items
         value={value}
