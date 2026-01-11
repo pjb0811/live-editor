@@ -9,6 +9,8 @@ import * as ts from 'typescript';
 
 import type { Module, Section } from '~/types';
 
+import { REGEX, TS_PATTERNS } from '../enums';
+
 export const baseModules = {
   'ui-kit': ui,
   'ui-kit/utils': utils,
@@ -114,18 +116,6 @@ export const transformCode = (code: string): string => {
   }
 };
 
-const TS_PATTERNS = [
-  /interface\s+\w+/,
-  /type\s+\w+\s*=/,
-  /:\s*\w+(\[\])?(\s*\||\s*&|\s*=|\s*;|\s*,|\s*\))/,
-  /as\s+\w+/,
-  /<[A-Z]\w*>/,
-  /enum\s+\w+/,
-  /public\s+|private\s+|protected\s+/,
-  /readonly\s+/,
-  /\?\s*:/,
-] as const;
-
 export const detectTypeScript = (code: string): boolean => {
   return TS_PATTERNS.some(pattern => pattern.test(code));
 };
@@ -164,20 +154,14 @@ const compileModule = (
   return module;
 };
 
-const CONTAINER_REGEX =
-  /(<main[^>]*id=["']app-container["'][^>]*>)([\s\S]*?)(<\/main>)/m;
-const COMMENT_REGEX = /\{\s*\/\*[\s\S]*?\*\/\s*\}/g;
-const SECTION_REGEX = /<section[\s\S]*?<\/section>/g;
-const DATA_NAME_REGEX = /data-name=["']([^"']+)["']/;
-
 export const extractSections = (code: string): Section[] => {
-  const cleanCode = code.replace(COMMENT_REGEX, '');
-  const matches = [...cleanCode.matchAll(SECTION_REGEX)];
+  const cleanCode = code.replace(REGEX.COMMENT, '');
+  const matches = [...cleanCode.matchAll(REGEX.SECTION)];
 
   return matches.map((m, i) => {
     const sectionCode = m[0];
 
-    const dataNameMatch = sectionCode.match(DATA_NAME_REGEX);
+    const dataNameMatch = sectionCode.match(REGEX.DATA_NAME);
 
     return {
       code: sectionCode,
@@ -188,17 +172,17 @@ export const extractSections = (code: string): Section[] => {
 };
 
 export const replaceSections = (code: string, sections: string[]): string => {
-  const comments = [...code.matchAll(COMMENT_REGEX)].map(match => match[0]);
+  const comments = [...code.matchAll(REGEX.COMMENT)].map(match => match[0]);
 
-  const cleanCode = code.replace(SECTION_REGEX, '');
-  const match = cleanCode.match(CONTAINER_REGEX);
+  const cleanCode = code.replace(REGEX.SECTION, '');
+  const match = cleanCode.match(REGEX.CONTAINER);
 
   if (match) {
     const [, openTag, , closeTag] = match;
     const allContent = [...sections, ...comments].join('\n');
 
     return cleanCode.replace(
-      CONTAINER_REGEX,
+      REGEX.CONTAINER,
       `${openTag}\n${allContent}\n${closeTag}`,
     );
   }
@@ -207,7 +191,7 @@ export const replaceSections = (code: string, sections: string[]): string => {
 };
 
 export const generateSection = (code: string, fullCode: string) => {
-  const match = fullCode.match(CONTAINER_REGEX);
+  const match = fullCode.match(REGEX.CONTAINER);
 
   if (!match) {
     return fullCode;
@@ -215,5 +199,5 @@ export const generateSection = (code: string, fullCode: string) => {
 
   const [, openTag, , closeTag] = match;
 
-  return fullCode.replace(CONTAINER_REGEX, `${openTag}\n${code}\n${closeTag}`);
+  return fullCode.replace(REGEX.CONTAINER, `${openTag}\n${code}\n${closeTag}`);
 };

@@ -6,6 +6,27 @@ export const DATA_ATTR = {
   ITEM: 'data-item',
 } as const;
 
+export const REGEX = {
+  NUMBER: /^\d+(\.\d+)?$/,
+  BOOLEAN_OR_NULL: /^(true|false|null|undefined)$/,
+  CONTAINER: /(<main[^>]*id=["']app-container["'][^>]*>)([\s\S]*?)(<\/main>)/m,
+  COMMENT: /\{\s*\/\*[\s\S]*?\*\/\s*\}/g,
+  SECTION: /<section[\s\S]*?<\/section>/g,
+  DATA_NAME: /data-name=["']([^"']+)["']/,
+} as const;
+
+export const TS_PATTERNS = [
+  /interface\s+\w+/,
+  /type\s+\w+\s*=/,
+  /:\s*\w+(\[\])?(\s*\||\s*&|\s*=|\s*;|\s*,|\s*\))/,
+  /as\s+\w+/,
+  /<[A-Z]\w*>/,
+  /enum\s+\w+/,
+  /public\s+|private\s+|protected\s+/,
+  /readonly\s+/,
+  /\?\s*:/,
+] as const;
+
 export const BINDING_PROP = {
   CHILDREN: 'children',
   INNER_TEXT: 'innerText',

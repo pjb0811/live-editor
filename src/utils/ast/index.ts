@@ -4,7 +4,7 @@ import traverse, { NodePath } from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
-import { BINDING_PROP, DATA_ATTR } from '../../enums';
+import { BINDING_PROP, DATA_ATTR, REGEX } from '../../enums';
 
 interface Attribute {
   name: string;
@@ -71,11 +71,11 @@ const attrValue = ({
 
   const trimmed = value.trim();
 
-  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+  if (REGEX.NUMBER.test(trimmed)) {
     return t.jsxExpressionContainer(t.numericLiteral(parseFloat(trimmed)));
   }
 
-  if (/^(true|false|null|undefined)$/.test(trimmed)) {
+  if (REGEX.BOOLEAN_OR_NULL.test(trimmed)) {
     const expr = parseExpression(trimmed, {
       plugins: ['jsx', 'typescript'],
     });
