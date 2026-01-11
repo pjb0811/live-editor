@@ -4,21 +4,22 @@
   "version": "1.0.1",
   "type": "module",
   "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
+      "import": "./dist/index.js",
       "require": "./dist/index.cjs"
-    }
+    },
+    "./style.css": "./dist/live-editor.css"
   },
   "files": [
     "dist"
   ],
   "scripts": {
     "dev": "vite",
-    "build": "tsdown",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "prepare": "husky",
@@ -70,10 +71,10 @@
     "prettier-plugin-merge": "^0.8.0",
     "prettier-plugin-tailwindcss": "^0.6.14",
     "tailwind-merge": "^3.3.1",
-    "tsdown": "^0.19.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.50.1",
-    "vite": "^7.3.0"
+    "vite": "^7.3.0",
+    "vite-plugin-dts": "^4.5.4"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,css,scss,md}": "prettier --write",
