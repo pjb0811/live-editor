@@ -92,7 +92,7 @@ const attrValue = ({
   }
 };
 
-const generateCode = (node: t.Node): string => {
+export const generateCode = (node: t.Node): string => {
   return generate(node, { jsescOption: { minimal: true } }).code;
 };
 
@@ -173,25 +173,46 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
   }
 
   try {
-    const parsed = JSON.parse(
-      bindingValue.replace(/(\w+):/g, '"$1":').replace(/'/g, '"'),
-    );
+    const ast = parseExpression(bindingValue, {
+      plugins: ['jsx', 'typescript'],
+    });
 
-    if (Array.isArray(parsed)) {
-      return parsed
-        .filter(
-          item =>
-            item && typeof item === 'object' && item.label && item.property,
-        )
-        .map(item => ({
-          label: item.label,
-          property: item.property,
-        }));
+    if (t.isArrayExpression(ast)) {
+      return ast.elements
+        .map(element => {
+          if (t.isObjectExpression(element)) {
+            const labelProp = element.properties.find(
+              p =>
+                t.isObjectProperty(p) &&
+                t.isIdentifier(p.key) &&
+                p.key.name === 'label' &&
+                t.isStringLiteral(p.value),
+            ) as t.ObjectProperty | undefined;
+
+            const propertyProp = element.properties.find(
+              p =>
+                t.isObjectProperty(p) &&
+                t.isIdentifier(p.key) &&
+                p.key.name === 'property' &&
+                t.isStringLiteral(p.value),
+            ) as t.ObjectProperty | undefined;
+
+            if (labelProp && propertyProp) {
+              return {
+                label: (labelProp.value as t.StringLiteral).value,
+                property: (propertyProp.value as t.StringLiteral).value,
+              };
+            }
+          }
+          return null;
+        })
+        .filter((item): item is BindingItem => item !== null);
     }
-    return [];
-  } catch {
-    return [];
+  } catch (error) {
+    console.error('parseBinding error:', error);
   }
+
+  return [];
 };
 
 export const getCurrentValue = (
@@ -210,24 +231,6 @@ export const getCurrentValue = (
     default: {
       const customAttr = node.attributes.find(attr => attr.name === property);
       const value = customAttr?.value || '';
-
-      if (
-        value &&
-        (value.trim().startsWith('{') || value.trim().startsWith('['))
-      ) {
-        try {
-          const expr = parseExpression(value, {
-            plugins: ['jsx', 'typescript'],
-          });
-
-          const code = generateCode(expr);
-          const evaluated = new Function(`return ${code}`)();
-
-          return JSON.stringify(evaluated);
-        } catch {
-          // 파싱 실패시 원본 반환
-        }
-      }
 
       return value;
     }
@@ -622,11 +625,19 @@ const updateAttribute = (
   );
 
   if (customAttr && t.isJSXAttribute(customAttr)) {
+    const trimmed = value.trim();
+    const isExpression =
+      trimmed.startsWith('[') ||
+      trimmed.startsWith('{') ||
+      REGEX.NUMBER.test(trimmed) ||
+      REGEX.BOOLEAN_OR_NULL.test(trimmed);
+
     customAttr.value = attrValue({
       name: propertyName,
       value,
-      isStringLiteral: true,
+      isStringLiteral: !isExpression,
     });
+
     return true;
   }
 
