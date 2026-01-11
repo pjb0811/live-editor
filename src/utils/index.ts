@@ -94,7 +94,7 @@ const compileTypeScript = (code: string): string => {
 
     return result.outputText;
   } catch (e) {
-    console.log('TypeScript 컴파일 오류:', e);
+    console.error('TypeScript 컴파일 오류:', e);
     return code;
   }
 };
@@ -111,7 +111,7 @@ export const transformCode = (code: string): string => {
     }).code;
     return result || '';
   } catch (e) {
-    console.log('Babel 변환 오류:', e);
+    console.error('Babel 변환 오류:', e);
     return code;
   }
 };
