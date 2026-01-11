@@ -9,7 +9,7 @@ import * as ts from 'typescript';
 
 import type { Module, Section } from '~/types';
 
-import { REGEX, TS_PATTERNS } from '../enums';
+import { CONFIG, REGEX, TS_PATTERNS } from '../enums';
 
 export const baseModules = {
   'ui-kit': ui,
@@ -59,7 +59,7 @@ export const compile = (
 
   const result = compileModule(code, modules);
 
-  if (compilationCache.size >= 50) {
+  if (compilationCache.size >= CONFIG.CACHE_LIMIT) {
     const firstKey = compilationCache.keys().next().value;
 
     if (firstKey) {

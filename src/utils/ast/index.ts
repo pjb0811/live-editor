@@ -4,7 +4,7 @@ import traverse, { NodePath } from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
-import { BINDING_PROP, DATA_ATTR, REGEX } from '../../enums';
+import { BINDING_PROP, CONFIG, DATA_ATTR, REGEX } from '../../enums';
 
 interface Attribute {
   name: string;
@@ -277,11 +277,7 @@ const extractAttributes = (
   return { allAttrs, dataAttrs };
 };
 
-export function extract(raw: string): DataAttrNode[] {
-  if (extractCache.has(raw)) {
-    return extractCache.get(raw)!;
-  }
-
+const parseToNodes = (raw: string): DataAttrNode[] => {
   const wrapped = wrap(raw);
   const ast = parse(wrapped, {
     sourceType: 'module',
@@ -404,7 +400,17 @@ export function extract(raw: string): DataAttrNode[] {
     },
   });
 
-  if (extractCache.size >= 50) {
+  return results;
+};
+
+export function extract(raw: string): DataAttrNode[] {
+  if (extractCache.has(raw)) {
+    return extractCache.get(raw)!;
+  }
+
+  const results = parseToNodes(raw);
+
+  if (extractCache.size >= CONFIG.CACHE_LIMIT) {
     const firstKey = extractCache.keys().next().value;
     if (firstKey) {
       extractCache.delete(firstKey);

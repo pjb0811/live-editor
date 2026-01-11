@@ -1,5 +1,9 @@
 import { type Section } from '../types';
 
+export const CONFIG = {
+  CACHE_LIMIT: 50,
+} as const;
+
 export const DATA_ATTR = {
   ID: 'data-id',
   BINDING: 'data-binding',
