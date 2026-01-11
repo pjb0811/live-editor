@@ -1,6 +1,6 @@
 import generate from '@babel/generator';
 import { parse, parseExpression } from '@babel/parser';
-import traverse from '@babel/traverse';
+import traverse, { NodePath } from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
@@ -564,6 +564,69 @@ export function clearExtractCache() {
   extractCache.clear();
 }
 
+const updateInnerText = (
+  path: NodePath<t.JSXElement>,
+  value: string,
+): boolean => {
+  const jsxChildren = path.node.children;
+
+  for (let i = jsxChildren.length - 1; i >= 0; i--) {
+    if (t.isJSXText(jsxChildren[i])) {
+      jsxChildren.splice(i, 1);
+    }
+  }
+
+  jsxChildren.push(t.jsxText(value));
+  return true;
+};
+
+const updateChildren = (
+  path: NodePath<t.JSXElement>,
+  value: string,
+): boolean => {
+  try {
+    const childrenData = JSON.parse(value) as DataAttrNode[];
+
+    path.node.children.length = 0;
+
+    childrenData.forEach(childData => {
+      const jsxElement = nodeToJSX(childData);
+      if (jsxElement) {
+        path.node.children.push(jsxElement);
+      }
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Children 업데이트 에러:', error);
+    return false;
+  }
+};
+
+const updateAttribute = (
+  opening: t.JSXOpeningElement,
+  propertyName: string,
+  value: string,
+): boolean => {
+  const customAttr = opening.attributes.find(
+    attr =>
+      t.isJSXAttribute(attr) &&
+      t.isJSXIdentifier(attr.name) &&
+      attr.name.name === propertyName,
+  );
+
+  if (customAttr && t.isJSXAttribute(customAttr)) {
+    customAttr.value = attrValue({
+      name: propertyName,
+      value,
+      isStringLiteral: true,
+    });
+    return true;
+  }
+
+  return false;
+};
+
 export const update = (
   code: string,
   dataId: string,
@@ -634,56 +697,17 @@ export const update = (
 
         switch (propertyBinding.property) {
           case BINDING_PROP.INNER_TEXT: {
-            const jsxChildren = path.node.children;
-
-            for (let i = jsxChildren.length - 1; i >= 0; i--) {
-              if (t.isJSXText(jsxChildren[i])) {
-                jsxChildren.splice(i, 1);
-              }
-            }
-
-            jsxChildren.push(t.jsxText(value));
-            changed = true;
+            changed = updateInnerText(path, value);
             break;
           }
 
           case BINDING_PROP.CHILDREN: {
-            try {
-              const childrenData = JSON.parse(value) as DataAttrNode[];
-
-              path.node.children.length = 0;
-
-              childrenData.forEach(childData => {
-                const jsxElement = nodeToJSX(childData);
-                if (jsxElement) {
-                  path.node.children.push(jsxElement);
-                }
-              });
-
-              changed = true;
-            } catch (error) {
-              console.error('Children 업데이트 에러:', error);
-            }
+            changed = updateChildren(path, value);
             break;
           }
 
           default: {
-            const customAttr = opening.attributes.find(
-              attr =>
-                t.isJSXAttribute(attr) &&
-                t.isJSXIdentifier(attr.name) &&
-                attr.name.name === propertyBinding.property,
-            );
-
-            if (customAttr && t.isJSXAttribute(customAttr)) {
-              customAttr.value = attrValue({
-                name: propertyBinding.property,
-                value,
-                isStringLiteral: true,
-              });
-              changed = true;
-            }
-
+            changed = updateAttribute(opening, propertyBinding.property, value);
             break;
           }
         }
