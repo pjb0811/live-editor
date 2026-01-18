@@ -4,8 +4,7 @@ import { useMemo } from 'react';
 
 import { useError, usePreview } from '~/components/Context/states';
 import LiveError from '~/components/Error';
-import { cn } from '~/utils';
-import { baseModules, compile } from '~/utils';
+import { baseModules, cn, compile } from '~/utils';
 
 import { type IframeProps, type Props } from '../';
 import IFrame from '../IFrame';
@@ -33,11 +32,15 @@ const Client = ({
   const mergedModules = { ...baseModules, ...modules };
 
   let module = null;
+
   if (_code || code) {
     try {
       module = compile(_code || code, mergedModules);
     } catch (e) {
-      module = { error: e instanceof Error ? e.message : 'transform error' };
+      module = {
+        exports: {},
+        error: e instanceof Error ? e.message : '모듈 변환 에러',
+      };
     }
   }
 
@@ -52,7 +55,7 @@ const Client = ({
     return provider ? provider(component) : component;
   };
 
-  if (module && 'error' in module) {
+  if (module && module.error) {
     return (
       <>
         <div className={cn('relative h-full w-full', classNames)}>
@@ -83,7 +86,9 @@ const Client = ({
             {container => (
               <LiveError.Boundary onError={(e: Error) => setError(e.message)}>
                 {renderProvider(
-                  <Component {...componentProps} container={container} />,
+                  <LiveError.Guard onError={e => setError(e.message)}>
+                    <Component {...componentProps} container={container} />
+                  </LiveError.Guard>,
                 )}
               </LiveError.Boundary>
             )}
@@ -102,7 +107,11 @@ const Client = ({
           }}
         >
           <LiveError.Boundary onError={e => setError(e.message)}>
-            {renderProvider(<Component {...componentProps} />)}
+            {renderProvider(
+              <LiveError.Guard onError={e => setError(e.message)}>
+                <Component {...componentProps} />
+              </LiveError.Guard>,
+            )}
           </LiveError.Boundary>
         </div>
       )}
