@@ -24,7 +24,7 @@ class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Live Editor Error:', error, errorInfo);
+    console.error('🚨 [Boundary] 렌더링 에러:', error, errorInfo);
     this.props.onError?.(error, errorInfo);
   }
 

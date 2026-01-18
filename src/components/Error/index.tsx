@@ -1,6 +1,7 @@
 import { cn } from '~/utils';
 
 import ErrorBoundary from './Boundary';
+import ErrorGuard from './Guard';
 import ErrorRuntime from './Runtime';
 
 export interface Props extends React.HTMLAttributes<HTMLDivElement> {
@@ -42,7 +43,8 @@ const Error = ({
 
 Error.Boundary = ErrorBoundary;
 Error.Runtime = ErrorRuntime;
+Error.Guard = ErrorGuard;
 
-export { ErrorBoundary, ErrorRuntime };
+export { ErrorBoundary, ErrorRuntime, ErrorGuard };
 
 export default Error;
