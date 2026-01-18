@@ -40,7 +40,7 @@ export interface Props extends Omit<
   'onChange'
 > {
   value?: string;
-  props: Record<string, unknown>;
+  props?: Record<string, unknown>;
   modules?: Record<string, unknown>;
   items?: Section[];
   onChange?: (value: string) => void;
