@@ -26,6 +26,8 @@ const IFrame = ({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
   const [iframeDoc, setIframeDoc] = useState<Document | null>(null);
+  const scriptsLoadedRef = useRef<boolean>(false);
+  const scriptsRef = useRef<string[]>(scripts);
 
   const styleManagerRef = useRef<{
     copiedLinks: Set<string>;
@@ -119,15 +121,16 @@ const IFrame = ({
 
       copyStyles();
 
-      if (scripts.length) {
+      if (scriptsRef.current.length && !scriptsLoadedRef.current) {
         const fragment = doc.createDocumentFragment();
-        scripts.forEach(src => {
+        scriptsRef.current.forEach(src => {
           const script = doc.createElement('script');
           script.src = src;
           script.async = true;
           fragment.appendChild(script);
         });
         doc.head.appendChild(fragment);
+        scriptsLoadedRef.current = true;
       }
 
       onLoaded?.();
@@ -157,7 +160,11 @@ const IFrame = ({
       observer.disconnect();
       clearTimeout(timeoutId);
     };
-  }, [scripts, copyStyles, onLoaded]);
+  }, [copyStyles, onLoaded]);
+
+  useEffect(() => {
+    scriptsRef.current = scripts;
+  }, [scripts]);
 
   const content =
     mountNode && iframeDoc
