@@ -17,12 +17,14 @@ live-editor/
 │  │  ├─ Editor/            # Code editor integration
 │  │  ├─ Error/             # Runtime error boundary and reporting
 │  │  └─ Preview/           # Isolated preview client and iframe
+│  ├─ pages/                # Route pages
+│  │  └─ PreviewPage.tsx    # Full-screen preview page (/preview)
 │  ├─ enums/                # Constants and configuration enums
 │  ├─ types/                # Shared type definitions
 │  ├─ utils/
 │  │  └─ ast/               # AST helpers and code utilities
 │  ├─ App.tsx               # App shell and layout
-│  └─ main.tsx              # Entry point
+│  └─ main.tsx              # Entry point with routing
 ├─ README.md
 └─ package.json
 ```
@@ -33,10 +35,12 @@ live-editor/
 - **Interactive property panel**: Edit numbers, strings, booleans, arrays, and objects from the side panel.
 - **Isolated preview runtime**: Runs user code in a sandboxed iframe to keep the main app safe.
 - **Robust drag-and-drop**: Powered by `@dnd-kit` for smooth sorting and positioning.
+- **Save & Preview**: Save your code to localStorage and view it in a dedicated full-screen preview page (`/preview`).
 
 ## 🧰 Tech Stack
 
 - **Core**: React 19, TypeScript 5.8, Vite 7
+- **Routing**: `react-router-dom` for SPA navigation
 - **DnD**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/modifiers`
 - **Editor**: `@uiw/react-codemirror` with VSCode theme
 - **UI/Styling**: Ant Design, Tailwind CSS 4
