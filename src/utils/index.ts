@@ -74,7 +74,7 @@ export const compile = (
 
 export const clearCompilationCache = () => {
   compilationCache.clear();
-  console.log('🧹 컴파일 캐시 삭제 완료');
+  console.log('🧹 Compilation cache cleared');
 };
 
 const TS_COMPILER_OPTIONS: ts.CompilerOptions = {
@@ -95,7 +95,7 @@ const compileTypeScript = (code: string): string => {
 
     return result.outputText;
   } catch (e) {
-    console.error('❌ TypeScript 컴파일 오류:', e);
+    console.error('❌ TypeScript compilation error:', e);
     return code;
   }
 };
@@ -112,7 +112,7 @@ export const transformCode = (code: string): string => {
     }).code;
     return result || '';
   } catch (e) {
-    console.error('❌ Babel 변환 오류:', e);
+    console.error('❌ Babel transformation error:', e);
     return code;
   }
 };
@@ -146,7 +146,7 @@ const compileModule = (
       transformCode(jsCode),
     ) as RenderFunction;
   } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : '문법 에러';
+    const errorMessage = e instanceof Error ? e.message : 'Syntax error';
     return { exports: {}, error: errorMessage };
   }
 

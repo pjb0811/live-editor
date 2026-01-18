@@ -44,9 +44,7 @@ const Droppable = ({
           )}
         >
           <Typography.Text className="text-sm text-gray-500">
-            {shouldHighlightBottom
-              ? '여기에 놓기'
-              : '맨 아래에 추가하려면 여기로'}
+            {shouldHighlightBottom ? 'Drop here' : 'Drag here to add at bottom'}
           </Typography.Text>
         </div>
       )}

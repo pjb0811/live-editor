@@ -108,7 +108,7 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
               <Button
                 title={
                   items.length <= 1
-                    ? '최소 1개 아이템은 필요합니다'
+                    ? 'At least 1 item is required'
                     : 'Delete item'
                 }
                 danger

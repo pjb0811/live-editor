@@ -24,7 +24,7 @@ class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('🚨 [Boundary] 렌더링 에러:', error, errorInfo);
+    console.error('🚨 [Boundary] Rendering error:', error, errorInfo);
     this.props.onError?.(error, errorInfo);
   }
 
@@ -36,7 +36,7 @@ class ErrorBoundary extends React.Component<Props, State> {
         <Error
           message={this.state.error?.message}
           onReset={() => this.setState({ hasError: false, error: undefined })}
-          title="렌더링 오류"
+          title="Rendering Error"
         />
       );
     }

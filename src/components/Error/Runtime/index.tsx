@@ -30,7 +30,7 @@ const Runtime = ({ open = true, reset }: Props) => {
     return null;
   }
 
-  return <Error message={message} onReset={reset} title="실행 오류" />;
+  return <Error message={message} onReset={reset} title="Runtime Error" />;
 };
 
 export default Runtime;
