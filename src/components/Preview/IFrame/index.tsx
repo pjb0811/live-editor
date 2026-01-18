@@ -16,7 +16,7 @@ interface Props {
 const IFrame = ({
   id = 'live-preview',
   title = 'Live Preview',
-  sandbox = 'allow-scripts allow-same-origin',
+  sandbox,
   style = {},
   scripts = [],
   children,
