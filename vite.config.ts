@@ -30,7 +30,7 @@ export default defineConfig({
         index: resolve(__dirname, 'src/index.tsx'),
       },
       name: 'live-editor',
-      formats: ['es', 'cjs'],
+      formats: ['es'],
     },
     rollupOptions: {
       external: ['react', 'react-dom'],

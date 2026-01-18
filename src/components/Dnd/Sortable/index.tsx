@@ -1,7 +1,7 @@
-import { CopyOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, Space } from 'antd';
+import { Button, Space } from '@jbpark/ui-kit';
+import { Copy, Trash } from 'lucide-react';
 
 import { cn } from '~/utils';
 
@@ -75,8 +75,8 @@ const Sortable = ({
             //
           )}
         >
-          <Button icon={<CopyOutlined />} onClick={onCopy} />
-          <Button danger icon={<DeleteOutlined />} onClick={onDelete} />
+          <Button icon={<Copy />} onClick={onCopy} />
+          <Button danger icon={<Trash />} onClick={onDelete} />
         </Space>
       )}
     </div>
