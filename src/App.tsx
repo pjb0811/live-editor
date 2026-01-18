@@ -67,6 +67,7 @@ const App = () => {
                     <Live.Preview
                       showError
                       iframe
+                      scripts={['/js/tailwindcss.js']}
                       props={{
                         headers: {
                           isApp: app,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { baseModules, compile } from '../../utils';
 import LiveError from '../Error';
@@ -28,19 +28,43 @@ const Preview = ({
   provider,
   ...restProps
 }: Props) => {
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
+
   const renderProvider = (component: React.ReactNode) => {
     return provider ? provider(component) : component;
   };
 
+  if (runtimeError) {
+    return (
+      <LiveError
+        title="실행 오류"
+        message={runtimeError}
+        className="mx-5 mt-25"
+        onReset={() => setRuntimeError(null)}
+      />
+    );
+  }
+
   if (code) {
     const module = compile(code, { ...baseModules, ...modules });
+
+    if (module.error) {
+      return (
+        <LiveError
+          title="컴파일 에러"
+          message={module.error}
+          className="mx-5 mt-25"
+        />
+      );
+    }
+
     const Component = module.exports.default;
 
     if (!Component) {
       return (
         <LiveError
           message="페이지를 찾을 수 없습니다."
-          className="mx-5 mt-[100px]"
+          className="mx-5 mt-25"
         />
       );
     }
@@ -48,10 +72,14 @@ const Preview = ({
     return (
       <LiveError.Boundary
         fallback={message => (
-          <LiveError title="컴파일 오류" message={message} />
+          <LiveError title="렌더링 에러" message={message} />
         )}
       >
-        {renderProvider(<Component {...props} />)}
+        {renderProvider(
+          <LiveError.Guard onError={e => setRuntimeError(e.message)}>
+            <Component {...props} />
+          </LiveError.Guard>,
+        )}
       </LiveError.Boundary>
     );
   }

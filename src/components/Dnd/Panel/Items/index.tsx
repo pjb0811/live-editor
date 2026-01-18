@@ -1,21 +1,19 @@
 import { useMemo } from 'react';
 
-import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
+import { Button, Input } from '@jbpark/ui-kit';
+import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 
-import { cn } from '~/utils';
-import { clone, generateCode } from '~/utils/ast';
+import {
+  type ExtractedNodeValue,
+  arrayExpressionToCode,
+  clone,
+  createNodeFromValue,
+  extractObjectProperties,
+  parseArrayExpression,
+} from '~/utils/ast';
 
-interface ItemProperty {
-  type:
-    | 'boolean'
-    | 'number'
-    | 'string'
-    | 'null'
-    | 'array'
-    | 'object'
-    | 'unknown';
-  value: string | number | readonly string[] | undefined | boolean | null;
+interface ItemProperty extends ExtractedNodeValue {
   astNode: t.Node;
 }
 
@@ -32,73 +30,27 @@ interface Props {
 
 const Items = ({ value, onChange }: Props) => {
   const extractedItems = useMemo(() => {
-    try {
-      const ast = parseExpression(value, {
-        plugins: ['jsx', 'typescript'],
-      });
+    const ast = parseArrayExpression(value);
 
-      if (!t.isArrayExpression(ast)) {
-        return [];
-      }
-
-      return ast.elements
-        .map((element, itemIndex) => {
-          if (!t.isObjectExpression(element)) {
-            return null;
-          }
-
-          const itemData: ItemData = {
-            index: itemIndex,
-            editableProperties: {},
-            originalElement: element,
-          };
-
-          element.properties.forEach(prop => {
-            if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) {
-              const key = prop.key.name;
-
-              // children는 제외하고 편집 가능한 속성들만 처리
-              if (key !== 'children') {
-                let propertyType: ItemProperty['type'] = 'unknown';
-                let propertyValue: ItemProperty['value'] = null;
-
-                // 데이터 타입 동적 감지
-                if (t.isBooleanLiteral(prop.value)) {
-                  propertyType = 'boolean';
-                  propertyValue = prop.value.value;
-                } else if (t.isNumericLiteral(prop.value)) {
-                  propertyType = 'number';
-                  propertyValue = prop.value.value;
-                } else if (t.isStringLiteral(prop.value)) {
-                  propertyType = 'string';
-                  propertyValue = prop.value.value;
-                } else if (t.isNullLiteral(prop.value)) {
-                  propertyType = 'null';
-                  propertyValue = null;
-                } else if (t.isArrayExpression(prop.value)) {
-                  propertyType = 'array';
-                  propertyValue = generateCode(prop.value);
-                } else if (t.isObjectExpression(prop.value)) {
-                  propertyType = 'object';
-                  propertyValue = generateCode(prop.value);
-                }
-
-                itemData.editableProperties[key] = {
-                  type: propertyType,
-                  value: propertyValue,
-                  astNode: prop.value,
-                };
-              }
-            }
-          });
-
-          return itemData;
-        })
-        .filter(Boolean) as ItemData[];
-    } catch (error) {
-      console.error('Items 파싱 에러:', error);
+    if (!ast) {
       return [];
     }
+
+    return ast.elements
+      .map((element, itemIndex) => {
+        if (!t.isObjectExpression(element)) {
+          return null;
+        }
+
+        const itemData: ItemData = {
+          index: itemIndex,
+          editableProperties: extractObjectProperties(element),
+          originalElement: element,
+        };
+
+        return itemData;
+      })
+      .filter(Boolean) as ItemData[];
   }, [value]);
 
   const moveItem = (fromIndex: number, toIndex: number) => {
@@ -106,10 +58,9 @@ const Items = ({ value, onChange }: Props) => {
     const [movedItem] = nextItems.splice(fromIndex, 1);
     nextItems.splice(toIndex, 0, movedItem!);
 
-    const nextAst = t.arrayExpression(
+    const nextValue = arrayExpressionToCode(
       nextItems.map(item => item.originalElement),
     );
-    const nextValue = generateCode(nextAst);
 
     onChange?.(nextValue);
   };
@@ -122,19 +73,10 @@ const Items = ({ value, onChange }: Props) => {
     const item = extractedItems[itemIndex]!;
     const property = item.editableProperties[propertyKey]!;
 
-    let nextAstValue: t.Expression;
-    switch (property.type) {
-      case 'boolean':
-        nextAstValue = t.booleanLiteral(value === true);
-        break;
-      case 'number':
-        nextAstValue = t.numericLiteral(Number(value));
-        break;
-      case 'string':
-        nextAstValue = t.stringLiteral(String(value));
-        break;
-      default:
-        return; // 지원하지 않는 타입
+    const nextAstValue = createNodeFromValue(property.type, value);
+
+    if (!nextAstValue) {
+      return;
     }
 
     const objectExpression = item.originalElement;
@@ -149,10 +91,9 @@ const Items = ({ value, onChange }: Props) => {
       targetProperty.value = nextAstValue;
     }
 
-    const nextAst = t.arrayExpression(
+    const nextValue = arrayExpressionToCode(
       extractedItems.map(item => item.originalElement),
     );
-    const nextValue = generateCode(nextAst);
 
     onChange?.(nextValue);
   };
@@ -163,10 +104,9 @@ const Items = ({ value, onChange }: Props) => {
     }
 
     const nextItems = extractedItems.filter((_, i) => i !== index);
-    const nextAst = t.arrayExpression(
+    const nextValue = arrayExpressionToCode(
       nextItems.map(item => item.originalElement),
     );
-    const nextValue = generateCode(nextAst);
 
     onChange?.(nextValue);
   };
@@ -184,58 +124,32 @@ const Items = ({ value, onChange }: Props) => {
         const editableProp = firstItem.editableProperties[key];
 
         if (editableProp) {
-          switch (editableProp.type) {
-            case 'boolean':
-              prop.value = t.booleanLiteral(Boolean(editableProp.value));
-              break;
-            case 'number':
-              prop.value = t.numericLiteral(Number(editableProp.value));
-              break;
-            case 'string':
-              prop.value = t.stringLiteral(String(editableProp.value));
-              break;
+          const nextValue = createNodeFromValue(
+            editableProp.type,
+            editableProp.value,
+          );
+
+          if (nextValue) {
+            prop.value = nextValue;
           }
         }
       }
     });
 
-    const editableProperties = Object.entries(
-      firstItem.editableProperties,
-    ).reduce(
-      (acc, [key, prop]) => {
-        const propertyNode = (
-          clonedElement as t.ObjectExpression
-        ).properties.find(
-          objProp =>
-            t.isObjectProperty(objProp) &&
-            t.isIdentifier(objProp.key) &&
-            objProp.key.name === key,
-        ) as t.ObjectProperty;
-
-        acc[key] = {
-          type: prop.type,
-          value: prop.value,
-          astNode: propertyNode?.value || t.nullLiteral(),
-        };
-
-        return acc;
-      },
-      {} as Record<string, ItemProperty>,
-    );
+    const editableProperties = extractObjectProperties(clonedElement);
 
     const nextItems = [...extractedItems];
     const newItemData: ItemData = {
       index: nextItems.length,
       editableProperties,
-      originalElement: clonedElement as t.ObjectExpression,
+      originalElement: clonedElement,
     };
 
     nextItems.push(newItemData);
 
-    const nextAst = t.arrayExpression(
+    const nextValue = arrayExpressionToCode(
       nextItems.map(item => item.originalElement),
     );
-    const nextValue = generateCode(nextAst);
 
     onChange?.(nextValue);
   };
@@ -246,13 +160,9 @@ const Items = ({ value, onChange }: Props) => {
         <div className="text-sm font-semibold">
           Items ({extractedItems.length})
         </div>
-        <button
-          className="rounded bg-blue-500 px-2 py-1 text-xs text-white
-            hover:bg-blue-600"
-          onClick={addItem}
-        >
-          + Add Item
-        </button>
+        <Button size="small" icon={<Plus />} color="green" onClick={addItem}>
+          Add Item
+        </Button>
       </div>
 
       {extractedItems.map((item, index) => (
@@ -260,44 +170,30 @@ const Items = ({ value, onChange }: Props) => {
           <div className="flex items-center justify-between">
             <div className="text-xs font-medium">Item {index + 1}</div>
             <div className="flex space-x-1">
-              <button
-                title="Move up"
-                className={cn(
-                  'rounded bg-gray-200 px-2 py-1 text-xs hover:bg-gray-300',
-                  'disabled:opacity-50',
-                )}
+              <Button
+                size="small"
+                icon={<ArrowUp />}
                 disabled={index === 0}
                 onClick={() => moveItem(index, index - 1)}
-              >
-                ↑
-              </button>
-              <button
-                title="Move down"
-                className={cn(
-                  'rounded bg-gray-200 px-2 py-1 text-xs hover:bg-gray-300',
-                  'disabled:opacity-50',
-                )}
+              />
+              <Button
+                size="small"
+                icon={<ArrowDown />}
                 disabled={index === extractedItems.length - 1}
                 onClick={() => moveItem(index, index + 1)}
-              >
-                ↓
-              </button>
-              <button
+              />
+              <Button
                 title={
                   extractedItems.length <= 1
                     ? '최소 1개 아이템은 필요합니다'
                     : 'Delete item'
                 }
-                className={cn(
-                  `rounded bg-red-500 px-2 py-1 text-xs text-white
-                  hover:bg-red-600`,
-                  'disabled:opacity-50',
-                )}
+                danger
+                size="small"
+                icon={<X />}
                 disabled={extractedItems.length <= 1}
                 onClick={() => deleteItem(index)}
-              >
-                ×
-              </button>
+              />
             </div>
           </div>
           <div className="space-y-2">
@@ -306,10 +202,9 @@ const Items = ({ value, onChange }: Props) => {
                 key={`${index}-${key}`}
                 className="flex items-center space-x-2"
               >
-                <label className="w-20 flex-shrink-0 text-xs font-medium">
+                <label className="w-20 shrink-0 text-xs font-medium">
                   {key}:
                 </label>
-
                 {prop.type === 'boolean' && (
                   <input
                     type="checkbox"
@@ -317,22 +212,10 @@ const Items = ({ value, onChange }: Props) => {
                     onChange={e => updateProperty(index, key, e.target.checked)}
                   />
                 )}
-
-                {prop.type === 'number' && (
-                  <input
-                    type="number"
-                    className="w-20 rounded border px-2 py-1 text-xs
-                      focus:border-blue-500 focus:outline-none"
-                    value={prop.value as number}
-                    onChange={e => updateProperty(index, key, e.target.value)}
-                  />
-                )}
-                {prop.type === 'string' && (
-                  <input
-                    type="text"
-                    className="flex-1 rounded border px-2 py-1 text-xs
-                      focus:border-blue-500 focus:outline-none"
-                    value={prop.value as string}
+                {(prop.type === 'string' || prop.type === 'number') && (
+                  <Input
+                    type={prop.type === 'number' ? 'number' : 'text'}
+                    value={String(prop.value)}
                     onChange={e => updateProperty(index, key, e.target.value)}
                   />
                 )}
@@ -340,7 +223,6 @@ const Items = ({ value, onChange }: Props) => {
               </div>
             ))}
           </div>
-
           <div className="border-t pt-2 text-xs text-gray-500">
             ✓ children: JSX content (read-only)
           </div>

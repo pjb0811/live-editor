@@ -8,7 +8,7 @@ import {
   type DragStartEvent,
   type Modifier,
   PointerSensor,
-  closestCorners,
+  closestCenter,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -18,6 +18,7 @@ import {
   arrayMove,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { Space, Typography } from '@jbpark/ui-kit';
 import { v4 as uuidv4 } from 'uuid';
 
 import { DRAGGABLE_ITEMS } from '~/enums';
@@ -34,12 +35,14 @@ import Panel from './Panel';
 import Renderer from './Renderer';
 import Sortable from './Sortable';
 
-export interface Props
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+export interface Props extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  'onChange'
+> {
   value?: string;
   props: Record<string, unknown>;
   modules?: Record<string, unknown>;
-  scripts?: string[];
+  items?: Section[];
   onChange?: (value: string) => void;
 }
 
@@ -59,12 +62,13 @@ const Dnd = ({
   modules = {},
   onChange: _onChange,
   className,
+  items = [],
   ...restProps
 }: Props) => {
-  // const [sections, setSections] = useState<Section[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
+
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const { setCode } = usePreview();
 
@@ -98,9 +102,8 @@ const Dnd = ({
       };
 
       let nextSections: typeof sections;
-      // const newSelectedId = newSection.id;
 
-      if (over.id === 'sortable-area') {
+      if (over.id === 'sortable-area' || over.id === 'sortable-area-bottom') {
         nextSections = [...sections, newSection];
       } else {
         const overIndex = sections.findIndex(s => s.id === over.id);
@@ -114,9 +117,6 @@ const Dnd = ({
           nextSections = [...sections, newSection];
         }
       }
-
-      // setSections(nextSections);
-      // setSelectedId(newSelectedId);
 
       const nextCode = replaceSections(
         value,
@@ -134,7 +134,6 @@ const Dnd = ({
 
       if (prevIndex >= 0 && nextIndex >= 0) {
         const nextSections = arrayMove(sections, prevIndex, nextIndex);
-        // setSections(nextSections);
 
         const nextCode = replaceSections(
           value,
@@ -149,7 +148,7 @@ const Dnd = ({
 
   const onDelete = (id: string) => {
     const nextSections = sections.filter(s => s.id !== id);
-    // setSections(nextSections);
+
     setSelectedId(null);
 
     const nextCode = replaceSections(
@@ -179,7 +178,6 @@ const Dnd = ({
         ...sections.slice(sectionIndex + 1),
       ];
 
-      // setSections(nextSections);
       setSelectedId(nextId);
 
       const nextCode = replaceSections(
@@ -200,7 +198,6 @@ const Dnd = ({
     const nextSections = sections.map(s =>
       s.id === next.id ? { ...s, ...next } : s,
     );
-    // setSections(nextSections);
 
     const nextCode = replaceSections(
       value,
@@ -219,9 +216,8 @@ const Dnd = ({
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={closestCenter}
         modifiers={[
-          // restrictToFirstScrollableAncestor,
           conditionalModifiers,
           //
         ]}
@@ -239,14 +235,14 @@ const Dnd = ({
         >
           <div className="w-1/5 overflow-y-auto">
             <div className="h-full bg-gray-50 p-4">
-              <h3 className="mb-4 text-lg font-semibold">
+              <Typography.Title className="mb-4 text-lg font-semibold">
                 컴포넌트 라이브러리
-              </h3>
-              <div className="space-y-2">
-                {DRAGGABLE_ITEMS.map(item => (
+              </Typography.Title>
+              <Space orientation="vertical" align="start">
+                {(items?.length ? items : DRAGGABLE_ITEMS).map(item => (
                   <Draggable key={item.id} item={item} />
                 ))}
-              </div>
+              </Space>
             </div>
           </div>
           <div
@@ -277,12 +273,12 @@ const Dnd = ({
                     'text-gray-500',
                   )}
                 >
-                  <div className="text-center">
-                    <p className="mb-2 text-lg">섹션이 없습니다</p>
-                    <p className="text-sm">
+                  <Space orientation="vertical" align="center">
+                    <Typography.Paragraph>섹션이 없습니다</Typography.Paragraph>
+                    <Typography.Text>
                       왼쪽에서 컴포넌트를 드래그해서 추가하세요
-                    </p>
-                  </div>
+                    </Typography.Text>
+                  </Space>
                 </div>
               ) : (
                 <SortableContext

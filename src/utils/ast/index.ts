@@ -11,6 +11,7 @@ interface Attribute {
   value: string | null;
   isStringLiteral?: boolean;
 }
+
 export interface DataAttrNode {
   id?: string;
   tagName: string;
@@ -28,6 +29,22 @@ export interface DataAttrNode {
 export interface BindingItem {
   label: string;
   property: string;
+}
+
+export type NodeValueType =
+  | 'boolean'
+  | 'number'
+  | 'string'
+  | 'null'
+  | 'array'
+  | 'object'
+  | 'unknown';
+
+export type EditableNodeValueType = 'boolean' | 'number' | 'string' | 'null';
+
+export interface ExtractedNodeValue {
+  type: NodeValueType;
+  value: string | number | boolean | null;
 }
 
 const wrap = (code: string) => {
@@ -92,6 +109,50 @@ const attrValue = ({
   }
 };
 
+export const parseValue = (value: unknown): unknown => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return value;
+  }
+
+  if (REGEX.NUMBER.test(trimmed)) {
+    return parseFloat(trimmed);
+  }
+
+  if (REGEX.BOOLEAN_OR_NULL.test(trimmed)) {
+    if (trimmed === 'true') {
+      return true;
+    }
+    if (trimmed === 'false') {
+      return false;
+    }
+    if (trimmed === 'null') {
+      return null;
+    }
+    if (trimmed === 'undefined') {
+      return undefined;
+    }
+  }
+
+  if (
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'))
+  ) {
+    try {
+      return new Function(`return (${trimmed})`)();
+    } catch {
+      return value;
+    }
+  }
+
+  return value;
+};
+
 export const generateCode = (node: t.Node): string => {
   return generate(node, { jsescOption: { minimal: true } }).code;
 };
@@ -115,9 +176,7 @@ const buildChildElements = (
   return childElements;
 };
 
-export const nodeToJSX = (
-  node: DataAttrNode,
-): t.JSXElement | t.JSXFragment | null => {
+const nodeToJSX = (node: DataAttrNode): t.JSXElement | t.JSXFragment | null => {
   try {
     if (node.isFragment) {
       const childElements = buildChildElements(node);
@@ -159,14 +218,11 @@ export const nodeToJSX = (
 
     return t.jsxElement(openingElement, closingElement, children, false);
   } catch (error) {
-    console.error('DataAttrNode to JSX 변환 에러:', error);
+    console.error('❌ DataAttrNode to JSX 변환 에러:', error);
     return null;
   }
 };
 
-/**
- * data-binding 값을 파싱하여 배열로 반환
- */
 export const parseBinding = (bindingValue: string | null): BindingItem[] => {
   if (!bindingValue) {
     return [];
@@ -209,7 +265,7 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
         .filter((item): item is BindingItem => item !== null);
     }
   } catch (error) {
-    console.error('parseBinding error:', error);
+    console.error('❌ 바인딩 파싱 에러:', error);
   }
 
   return [];
@@ -607,7 +663,7 @@ const updateChildren = (
 
     return true;
   } catch (error) {
-    console.error('Children 업데이트 에러:', error);
+    console.error('❌ Children 업데이트 에러:', error);
     return false;
   }
 };
@@ -737,7 +793,7 @@ export const update = (
 
     return unwrap(generateCode(ast));
   } catch (error) {
-    console.error('코드 업데이트 에러:', error);
+    console.error('❌ 코드 업데이트 에러:', error);
     return code;
   }
 };
@@ -782,4 +838,102 @@ export const clone = (
   return parseExpression(code, {
     plugins: ['jsx', 'typescript'],
   });
+};
+
+export const extractNodeValue = (node: t.Node): ExtractedNodeValue => {
+  if (t.isBooleanLiteral(node)) {
+    return { type: 'boolean', value: node.value };
+  }
+  if (t.isNumericLiteral(node)) {
+    return { type: 'number', value: node.value };
+  }
+  if (t.isStringLiteral(node)) {
+    return { type: 'string', value: node.value };
+  }
+  if (t.isNullLiteral(node)) {
+    return { type: 'null', value: null };
+  }
+  if (t.isArrayExpression(node)) {
+    return { type: 'array', value: generateCode(node) };
+  }
+  if (t.isObjectExpression(node)) {
+    return { type: 'object', value: generateCode(node) };
+  }
+
+  return { type: 'unknown', value: null };
+};
+
+export const createNodeFromValue = (
+  type: NodeValueType,
+  value: unknown,
+): t.Expression | null => {
+  switch (type) {
+    case 'boolean': {
+      return t.booleanLiteral(value === true);
+    }
+    case 'number': {
+      return t.numericLiteral(Number(value));
+    }
+    case 'string': {
+      return t.stringLiteral(String(value));
+    }
+    case 'null': {
+      return t.nullLiteral();
+    }
+    case 'array':
+    case 'object':
+    case 'unknown': {
+      return null;
+    }
+    default: {
+      return null;
+    }
+  }
+};
+
+export const parseArrayExpression = (value: string) => {
+  try {
+    const ast = parseExpression(value, {
+      plugins: ['jsx', 'typescript'],
+    });
+
+    if (!t.isArrayExpression(ast)) {
+      return null;
+    }
+
+    return ast;
+  } catch (error) {
+    console.error('❌ 배열 파싱 에러:', error);
+    return null;
+  }
+};
+
+export const extractObjectProperties = (
+  element: t.ObjectExpression,
+): Record<string, ExtractedNodeValue & { astNode: t.Node }> => {
+  const properties: Record<string, ExtractedNodeValue & { astNode: t.Node }> =
+    {};
+
+  element.properties.forEach(prop => {
+    if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) {
+      const key = prop.key.name;
+
+      if (key !== 'children') {
+        const extracted = extractNodeValue(prop.value);
+        properties[key] = {
+          ...extracted,
+          astNode: prop.value,
+        };
+      }
+    }
+  });
+
+  return properties;
+};
+
+export const arrayExpressionToCode = (
+  elements: t.ObjectExpression[],
+): string => {
+  const nextAst = t.arrayExpression(elements);
+  return generateCode(nextAst);
 };
