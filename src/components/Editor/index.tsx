@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react';
-import { useDebounce } from 'react-use';
 
 import { javascript } from '@codemirror/lang-javascript';
+import { useDebounce } from '@jbpark/use-hooks';
 import { vscodeLight } from '@uiw/codemirror-theme-vscode';
 import CodeMirror from '@uiw/react-codemirror';
 import type { Extension, ReactCodeMirrorRef } from '@uiw/react-codemirror';
@@ -124,7 +124,7 @@ const Editor = ({
     () => {
       setCode(value);
     },
-    debounce,
+    { delay: debounce },
     [value],
   );
 
