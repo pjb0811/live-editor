@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 
+import { Button } from '@jbpark/ui-kit';
+import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
-import { cn } from '~/utils';
 import { type DataAttrNode } from '~/utils/ast';
 
 import Node from '../Node';
@@ -77,13 +78,9 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
         <div className="text-sm font-semibold text-green-700">
           Children Items ({items.length})
         </div>
-        <button
-          onClick={addItem}
-          className="rounded bg-green-500 px-2 py-1 text-xs text-white
-            hover:bg-green-600"
-        >
-          + Add Child
-        </button>
+        <Button size="small" color="green" icon={<Plus />} onClick={addItem}>
+          Add Child
+        </Button>
       </div>
       {items.map((item, itemIndex) => (
         <div
@@ -96,44 +93,30 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
             </div>
 
             <div className="flex space-x-1">
-              <button
-                title="Move up"
-                className={cn(
-                  'rounded bg-gray-200 px-2 py-1 text-xs hover:bg-gray-300',
-                  'disabled:opacity-50',
-                )}
+              <Button
+                size="small"
+                icon={<ArrowUp />}
                 disabled={itemIndex === 0}
                 onClick={() => moveItem(itemIndex, itemIndex - 1)}
-              >
-                ↑
-              </button>
-              <button
-                title="Move down"
-                className={cn(
-                  'rounded bg-gray-200 px-2 py-1 text-xs hover:bg-gray-300',
-                  'disabled:opacity-50',
-                )}
+              />
+              <Button
+                size="small"
+                icon={<ArrowDown />}
                 disabled={itemIndex === items.length - 1}
                 onClick={() => moveItem(itemIndex, itemIndex + 1)}
-              >
-                ↓
-              </button>
-              <button
+              />
+              <Button
                 title={
                   items.length <= 1
                     ? '최소 1개 아이템은 필요합니다'
                     : 'Delete item'
                 }
-                className={cn(
-                  `rounded bg-red-500 px-2 py-1 text-xs text-white
-                  hover:bg-red-600`,
-                  'disabled:opacity-50',
-                )}
+                danger
+                size="small"
+                icon={<X />}
                 disabled={items.length <= 1}
                 onClick={() => deleteItem(itemIndex)}
-              >
-                ×
-              </button>
+              />
             </div>
           </div>
           {!!item.children && (

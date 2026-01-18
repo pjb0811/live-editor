@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 
-import { cn } from '~/utils';
-import { type BindingItem } from '~/utils/ast';
+import { Checkbox, Input } from '@jbpark/ui-kit';
+
+import { type BindingItem, parseValue } from '~/utils/ast';
 
 import Children from '../Children';
 import Items from '../Items';
@@ -36,11 +37,7 @@ const normalizeToHex = (value: string): string => {
 
 const Field = ({ binding, id, value, onChange }: Props) => {
   const parsedValue = useMemo(() => {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return value;
-    }
+    return parseValue(value);
   }, [value]);
 
   if (binding.property === 'items' || binding.property === 'data') {
@@ -93,9 +90,11 @@ const Field = ({ binding, id, value, onChange }: Props) => {
                 typeof val === 'object' ? JSON.stringify(val) : String(val)
               }
               onChange={({ value: next }) => {
+                const convertedValue = parseValue(next);
+
                 const updated = {
                   ...parsedValue,
-                  [key]: next,
+                  [key]: convertedValue,
                 };
 
                 onChange?.({
@@ -113,14 +112,13 @@ const Field = ({ binding, id, value, onChange }: Props) => {
 
   if (typeof parsedValue === 'boolean') {
     return (
-      <input
-        type="checkbox"
+      <Checkbox
         checked={parsedValue}
-        onChange={e => {
+        onChange={checked => {
           onChange?.({
             id,
             label: binding.label,
-            value: e.target.checked.toString(),
+            value: checked.toString(),
           });
         }}
       />
@@ -152,13 +150,28 @@ const Field = ({ binding, id, value, onChange }: Props) => {
     );
   }
 
+  if (typeof parsedValue === 'number') {
+    return (
+      <Input
+        type="number"
+        defaultValue={stringValue}
+        placeholder="숫자 값을 입력하세요"
+        onBlur={e => {
+          const next = e.target.value.trim();
+          if (next && next !== value) {
+            onChange?.({
+              id,
+              label: binding.label,
+              value: next,
+            });
+          }
+        }}
+      />
+    );
+  }
+
   return (
-    <input
-      type={typeof parsedValue === 'number' ? 'number' : 'text'}
-      className={cn(
-        'w-full rounded border px-2 py-1 text-sm',
-        'focus:border-blue-500 focus:outline-none',
-      )}
+    <Input.TextArea
       defaultValue={value}
       placeholder="값을 입력하세요"
       onBlur={e => {

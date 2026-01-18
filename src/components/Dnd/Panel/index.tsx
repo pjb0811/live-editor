@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 
+import { Typography } from '@jbpark/ui-kit';
+
 import type { Section } from '~/types';
 import { cn } from '~/utils';
 import { extract, fillIds, update } from '~/utils/ast';
@@ -28,21 +30,21 @@ const Panel = ({ item, onChange }: Props) => {
         updatedCode: updatedCode !== item.code ? updatedCode : item.code,
       };
     } catch (e) {
-      console.warn('parse error', e);
+      console.warn('⚠️ 파싱 에러', e);
       return { dataAttrNodes: [], updatedCode: '' };
     }
   }, [item?.code]);
 
   if (!item) {
     return (
-      <div
+      <Typography.Text
         className={cn(
           'p-4 text-sm text-gray-500',
           //
         )}
       >
         섹션을 선택하세요.
-      </div>
+      </Typography.Text>
     );
   }
 
@@ -54,13 +56,14 @@ const Panel = ({ item, onChange }: Props) => {
         //
       )}
     >
-      <h3 className="text-lg font-semibold">{item.name}</h3>
+      <Typography.Title className="text-lg font-semibold">
+        {item.name}
+      </Typography.Title>
       {!dataAttrNodes.length && (
-        <div className="text-xs text-gray-400">
+        <Typography.Text className="text-xs text-gray-400">
           편집 가능한 요소가 없습니다.
-        </div>
+        </Typography.Text>
       )}
-
       {dataAttrNodes.map((node, index) => (
         <Node
           key={`${item.id}-${index}`}
