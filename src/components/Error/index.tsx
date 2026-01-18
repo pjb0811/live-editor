@@ -12,7 +12,7 @@ export interface Props extends React.HTMLAttributes<HTMLDivElement> {
 
 const Error = ({
   message,
-  title = '오류가 발생했습니다',
+  title = 'An error occurred',
   className,
   onReset,
 }: Props) => {
@@ -34,7 +34,7 @@ const Error = ({
           className="mt-2 rounded bg-red-100 px-3 py-1 text-xs hover:bg-red-200"
           onClick={onReset}
         >
-          다시 시도
+          Try Again
         </button>
       )}
     </div>

@@ -1,5 +1,7 @@
 import { type Section } from '../types';
 
+export const STORAGE_KEY = 'live-editor-code';
+
 export const CONFIG = {
   CACHE_LIMIT: 50,
 } as const;
@@ -51,373 +53,251 @@ export default App;
 
 export const DRAGGABLE_ITEMS: Section[] = [
   {
-    id: 'button-example',
-    name: 'Button Example',
+    id: 'hero-card-section',
+    name: 'Hero Card',
     code: `
-      <section data-name="Button Example">
-        <ui.Space
-          direction="vertical"
-          size="middle"
-          data-id=""
-          data-binding={[
-            {
-              label: '버튼 구성',
-              property: 'children',
-            },
-          ]}
+      <section data-name="Hero Card">
+        <div
+          className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+          data-id="card-root"
         >
-          <ui.Button
-            variant="default"
-            data-id=""
+          <p
+            className="text-xs uppercase tracking-wide text-gray-500"
+            data-id="card-badge"
             data-binding={[
-              { label: '문구', property: 'innerText' },
-              { label: '스타일', property: 'variant' },
+              { label: 'Badge', property: 'innerText' },
             ]}
           >
-            Default Button
-          </ui.Button>
-          <ui.Button
-            variant="outline"
-            data-id=""
+            Featured
+          </p>
+          <h3
+            className="mt-2 text-lg font-semibold text-gray-900"
+            data-id="card-title"
             data-binding={[
-              { label: '문구', property: 'innerText' },
-              { label: '스타일', property: 'variant' },
+              { label: 'Title', property: 'innerText' },
             ]}
           >
-            Outline Button
-          </ui.Button>
-          <ui.Button variant="destructive">
-            Destructive Button
-          </ui.Button>
-          <ui.Button variant="ghost">
-            Ghost Button
-          </ui.Button>
-          <ui.Button loading>Loading Button</ui.Button>
-        </ui.Space>
-      </section>
-    `,
-  },
-  {
-    id: 'card-example',
-    name: 'Card Example',
-    code: `
-      <section data-name="Card Example">
-        <ui.Space direction="vertical" size="large">
-          <div
-            className={cn(
-              'rounded-lg border bg-card p-6 shadow-sm',
-              'space-y-4',
-            )}
-            data-id=""
+            Launch your next idea
+          </h3>
+          <p
+            className="mt-2 text-sm text-gray-600"
+            data-id="card-description"
             data-binding={[
-              { label: '카드 구성', property: 'children' },
+              { label: 'Description', property: 'innerText' },
             ]}
           >
-            <h3
-              className="text-lg font-semibold"
-              data-id=""
-              data-binding={[
-                { label: '제목', property: 'innerText' },
-              ]}
-            >
-              Card Title
-            </h3>
-            <p
-              className="text-sm text-muted-foreground"
-              data-id=""
-              data-binding={[
-                { label: '설명', property: 'innerText' },
-              ]}
-            >
-              This is a card component example with some
-              content.
-            </p>
+            Combine drag-and-drop with code to ship faster.
+          </p>
+          <div className="mt-4 flex gap-2">
             <ui.Button
-              variant="default"
-              data-id=""
+              color="blue"
+              data-id="card-primary-button"
               data-binding={[
-                { label: '버튼', property: 'innerText' },
+                { label: 'Primary Label', property: 'innerText' },
               ]}
             >
-              Action
+              Get started
+            </ui.Button>
+            <ui.Button
+              variant="ghost"
+              data-id="card-secondary-button"
+              data-binding={[
+                { label: 'Secondary Label', property: 'innerText' },
+              ]}
+            >
+              View docs
             </ui.Button>
           </div>
-        </ui.Space>
+        </div>
       </section>
     `,
   },
   {
-    id: 'modal-example',
-    name: 'Modal Example',
+    id: 'user-profile-settings',
+    name: 'User Profile Settings',
     code: `
-      <section data-name="Modal Example">
-        {(() => {
-          const [open, setOpen] = React.useState(false);
-
-          return (
+      <section data-name="User Profile Settings">
+        <ui.Card>
+          <ui.Space
+            orientation="vertical"
+            size="large"
+            className="w-full"
+          >
             <div>
-              <ui.Button onClick={() => setOpen(true)}>
-                Open Modal
-              </ui.Button>
-              <ui.Modal
-                open={open}
-                title="Modal Title"
-                okText="Confirm"
-                cancelText="Cancel"
-                onOk={() => setOpen(false)}
-                onCancel={() => setOpen(false)}
-                data-id=""
+              <ui.Typography.Title
+                level={3}
+                data-id="settings-title"
                 data-binding={[
-                  { label: '제목', property: 'title' },
-                  {
-                    label: '확인 문구',
-                    property: 'okText',
-                  },
-                  {
-                    label: '취소 문구',
-                    property: 'cancelText',
-                  },
-                  { label: '내용', property: 'children' },
+                  { label: 'Title', property: 'innerText' },
                 ]}
               >
-                <p
-                  data-id=""
-                  data-binding={[
-                    {
-                      label: '내용 텍스트',
-                      property: 'innerText',
-                    },
-                  ]}
-                >
-                  This is the modal content.
-                </p>
-              </ui.Modal>
-            </div>
-          );
-        })()}
-      </section>`,
-  },
-  {
-    id: 'drawer-example',
-    name: 'Drawer Example',
-    code: `
-      <section data-name="Drawer Example">
-        {(() => {
-          const [open, setOpen] = React.useState(false);
-
-          return (
-            <div>
-              <ui.Button onClick={() => setOpen(true)}>
-                Open Drawer
-              </ui.Button>
-              <ui.Drawer
-                open={open}
-                title="Drawer Title"
-                direction="right"
-                onClose={() => setOpen(false)}
-                data-id=""
+                Account Settings
+              </ui.Typography.Title>
+              <ui.Typography.Text
+                type="secondary"
+                data-id="settings-subtitle"
                 data-binding={[
-                  { label: '제목', property: 'title' },
-                  { label: '내용', property: 'children' },
+                  {
+                    label: 'Subtitle',
+                    property: 'innerText',
+                  },
                 ]}
               >
-                <p
-                  data-id=""
-                  data-binding={[
-                    {
-                      label: '내용 텍스트',
-                      property: 'innerText',
-                    },
-                  ]}
-                >
-                  This is the drawer content.
-                </p>
-              </ui.Drawer>
+                Manage your profile and preferences
+              </ui.Typography.Text>
             </div>
-          );
-        })()}
-      </section>`,
-  },
-  {
-    id: 'list-example',
-    name: 'List Example',
-    code: `
-      <section data-name="List Example">
-        <ui.List
-          title="List Title"
-          data={[
-            {
-              id: 1,
-              title: 'Item 1',
-              description: 'Description for item 1',
-            },
-            {
-              id: 2,
-              title: 'Item 2',
-              description: 'Description for item 2',
-            },
-            {
-              id: 3,
-              title: 'Item 3',
-              description: 'Description for item 3',
-            },
-          ]}
-          renderItem={item => (
-            <ui.List.Item
-              key={item.id}
-              className="border-b p-4"
-            >
-              <h4 className="font-medium">{item.title}</h4>
-              <p className="text-sm text-muted-foreground">
-                {item.description}
-              </p>
-            </ui.List.Item>
-          )}
-          data-id=""
-          data-binding={[
-            { label: '제목', property: 'title' },
-            { label: '목록', property: 'data' },
-          ]}
-        />
-      </section>`,
-  },
-  {
-    id: 'collapse-example',
-    name: 'Collapse Example',
-    code: `
-      <section data-name="Collapse Example">
-        <ui.Collapse
-          items={[
-            {
-              key: '1',
-              label: 'Section 1',
-              children: <p>Content for section 1</p>,
-            },
-            {
-              key: '2',
-              label: 'Section 2',
-              children: <p>Content for section 2</p>,
-            },
-            {
-              key: '3',
-              label: 'Section 3',
-              children: <p>Content for section 3</p>,
-            },
-          ]}
-          defaultActiveKey={['1']}
-          data-id=""
-          data-binding={[
-            {
-              label: '항목 설정',
-              property: 'items',
-            },
-          ]}
-        />
-      </section>`,
-  },
-  {
-    id: 'progress-example',
-    name: 'Progress Example',
-    code: `
-      <section data-name="Progress Example">
-        <ui.Space direction="vertical" size="large">
-          <ui.Progress
-            value={10}
-            data-id="h6gzcG"
-            data-binding={[
-              {
-                label: '진행률',
-                property: 'value',
-              },
-            ]}
-          />
-        </ui.Space>
-      </section>`,
-  },
-  {
-    id: 'switch-example',
-    name: 'Switch Example',
-    code: `
-      <section data-name="Switch Example">
-        {(() => {
-          const [checked, setChecked] =
-            React.useState(false);
 
-          return (
             <ui.Space
-              direction="horizontal"
+              orientation="vertical"
               size="middle"
-              align="center"
+              className="w-full"
             >
-              <span>Switch:</span>
-              <ui.Switch
-                checked={checked}
-                onChange={setChecked}
-              />
-              <span>{checked ? 'On' : 'Off'}</span>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  <span
+                    data-id="username-label"
+                    data-binding={[
+                      {
+                        label: 'Username Label',
+                        property: 'innerText',
+                      },
+                    ]}
+                  >
+                    Username
+                  </span>
+                </label>
+                <ui.Input
+                  placeholder="Enter your username"
+                  data-id="username-input"
+                  data-binding={[
+                    {
+                      label: 'Username Placeholder',
+                      property: 'placeholder',
+                    },
+                  ]}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  <span
+                    data-id="email-label"
+                    data-binding={[
+                      {
+                        label: 'Email Label',
+                        property: 'innerText',
+                      },
+                    ]}
+                  >
+                    Email Address
+                  </span>
+                </label>
+                <ui.Input
+                  type="email"
+                  placeholder="your.email@example.com"
+                  data-id="email-input"
+                  data-binding={[
+                    {
+                      label: 'Email Placeholder',
+                      property: 'placeholder',
+                    },
+                  ]}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4  gap-x-4">
+                <div className="flex-1">
+                  <p
+                    className="text-sm font-medium text-gray-900"
+                    data-id="notifications-title"
+                    data-binding={[
+                      {
+                        label: 'Notifications Title',
+                        property: 'innerText',
+                      },
+                    ]}
+                  >
+                    Email Notifications
+                  </p>
+                  <p
+                    className="text-xs text-gray-500"
+                    data-id="notifications-desc"
+                    data-binding={[
+                      {
+                        label: 'Notifications Description',
+                        property: 'innerText',
+                      },
+                    ]}
+                  >
+                    Receive updates about your account
+                  </p>
+                </div>
+                <ui.Checkbox
+                  defaultChecked
+                  data-id="notifications-checkbox"
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4 gap-x-4">
+                <div className="flex-1">
+                  <p
+                    className="text-sm font-medium text-gray-900"
+                    data-id="marketing-title"
+                    data-binding={[
+                      {
+                        label: 'Marketing Title',
+                        property: 'innerText',
+                      },
+                    ]}
+                  >
+                    Marketing Emails
+                  </p>
+                  <p
+                    className="text-xs text-gray-500"
+                    data-id="marketing-desc"
+                    data-binding={[
+                      {
+                        label: 'Marketing Description',
+                        property: 'innerText',
+                      },
+                    ]}
+                  >
+                    Get tips and product updates
+                  </p>
+                </div>
+                <ui.Checkbox data-id="marketing-checkbox" />
+              </div>
             </ui.Space>
-          );
-        })()}
+
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <ui.Button
+                variant="ghost"
+                data-id="cancel-button"
+                data-binding={[
+                  {
+                    label: 'Cancel Button',
+                    property: 'innerText',
+                  },
+                ]}
+              >
+                Cancel
+              </ui.Button>
+              <ui.Button
+                color="blue"
+                data-id="save-button"
+                data-binding={[
+                  {
+                    label: 'Save Button',
+                    property: 'innerText',
+                  },
+                ]}
+              >
+                Save Changes
+              </ui.Button>
+            </div>
+          </ui.Space>
+        </ui.Card>
       </section>
     `,
-  },
-  {
-    id: 'skeleton-example',
-    name: 'Skeleton Example',
-    code: `
-      <section data-name="Skeleton Example">
-        {(() => {
-          const [loading, setLoading] =
-            React.useState(true);
-          React.useEffect(() => {
-            const timer = setTimeout(
-              () => setLoading(false),
-              3000,
-            );
-            return () => clearTimeout(timer);
-          }, []);
-          return (
-            <ui.Skeleton
-              loading={loading}
-              avatar
-              active
-              count={3}
-              data-id="0czUka"
-              data-binding={[
-                {
-                  label: '개수',
-                  property: 'count',
-                },
-              ]}
-            >
-              <ui.Space direction="vertical" size="middle">
-                <h3
-                  className="text-lg font-semibold"
-                  data-id="VBRvN8"
-                  data-binding={[
-                    {
-                      label: '항목 제목',
-                      property: 'innerText',
-                    },
-                  ]}
-                >
-                  Loaded Content11
-                </h3>
-                <p
-                  data-id="lw9Ttp"
-                  data-binding={[
-                    {
-                      label: '항목 설명',
-                      property: 'innerText',
-                    },
-                  ]}
-                >
-                  This content appears after loading.22
-                </p>
-              </ui.Space>
-            </ui.Skeleton>
-          );
-        })()}
-      </section>`,
   },
 ];

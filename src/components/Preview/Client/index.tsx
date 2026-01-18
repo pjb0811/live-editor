@@ -39,7 +39,7 @@ const Client = ({
     } catch (e) {
       module = {
         exports: {},
-        error: e instanceof Error ? e.message : '모듈 변환 에러',
+        error: e instanceof Error ? e.message : 'Module transformation error',
       };
     }
   }
@@ -59,7 +59,7 @@ const Client = ({
     return (
       <>
         <div className={cn('relative h-full w-full', classNames)}>
-          <LiveError message={module.error} title="컴파일 오류" />
+          <LiveError message={module.error} title="Compile Error" />
         </div>
         <LiveError.Runtime open={isError} />
       </>

@@ -1,12 +1,13 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { SaveOutlined } from '@ant-design/icons';
-import { Button, Flex, Radio, Space, Splitter, Switch } from 'antd';
+import { EyeOutlined, SaveOutlined } from '@ant-design/icons';
+import { Button, Flex, Radio, Space, Splitter, message } from 'antd';
 
 import './App.css';
 
 import Live from './';
-import { DEFAULT_TEMPLATE } from './enums';
+import { DEFAULT_TEMPLATE, STORAGE_KEY } from './enums';
 
 const options = [
   { label: 'Drag & Drop', value: 'dnd' },
@@ -14,10 +15,12 @@ const options = [
 ];
 
 const App = () => {
-  const [value, setValue] = useState(DEFAULT_TEMPLATE);
-  const [app, setApp] = useState(false);
-  const [mobile, setMobile] = useState(false);
+  const [value, setValue] = useState(
+    () => localStorage.getItem(STORAGE_KEY) || DEFAULT_TEMPLATE,
+  );
   const [type, setType] = useState<'dnd' | 'editor'>('editor');
+
+  const navigate = useNavigate();
 
   const editable = type === 'editor';
 
@@ -26,18 +29,6 @@ const App = () => {
       <Flex gap="middle" vertical className="h-full">
         <Flex justify="end">
           <Space className="p-2">
-            <Switch
-              checkedChildren="app"
-              unCheckedChildren="NonApp"
-              checked={app}
-              onChange={setApp}
-            />
-            <Switch
-              checkedChildren="Mobile"
-              unCheckedChildren="PC"
-              checked={mobile}
-              onChange={setMobile}
-            />
             <Radio.Group
               size="small"
               value={type}
@@ -46,7 +37,20 @@ const App = () => {
               buttonStyle="solid"
               onChange={e => setType(e.target.value)}
             />
-            <Button icon={<SaveOutlined />} onClick={() => {}} />
+            <Button
+              icon={<SaveOutlined />}
+              type="primary"
+              onClick={() => {
+                localStorage.setItem(STORAGE_KEY, value);
+                message.success('Code saved successfully');
+              }}
+            />
+            <Button
+              icon={<EyeOutlined />}
+              onClick={() => {
+                navigate('/preview');
+              }}
+            />
           </Space>
         </Flex>
         <Flex
@@ -68,12 +72,6 @@ const App = () => {
                       showError
                       iframe
                       scripts={['/js/tailwindcss.js']}
-                      props={{
-                        headers: {
-                          isApp: app,
-                          isMobile: mobile,
-                        },
-                      }}
                     />
                   </div>
                 </Splitter.Panel>
@@ -82,16 +80,7 @@ const App = () => {
                 </Splitter.Panel>
               </Splitter>
             ) : (
-              <Live.Dnd
-                value={value}
-                props={{
-                  headers: {
-                    isApp: app,
-                    isMobile: mobile,
-                  },
-                }}
-                onChange={setValue}
-              />
+              <Live.Dnd value={value} onChange={setValue} />
             )}
           </Live>
         </Flex>

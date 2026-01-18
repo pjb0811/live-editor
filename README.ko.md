@@ -17,12 +17,14 @@ live-editor/
 │  │  ├─ Editor/            # 코드 에디터 통합
 │  │  ├─ Error/             # 런타임 에러 바운더리 및 표시
 │  │  └─ Preview/           # 샌드박스 프리뷰 클라이언트/iframe
+│  ├─ pages/                # 라우트 페이지
+│  │  └─ PreviewPage.tsx    # 전체화면 프리뷰 페이지 (/preview)
 │  ├─ enums/                # 상수 및 설정 enum
 │  ├─ types/                # 공용 타입 정의
 │  ├─ utils/
 │  │  └─ ast/               # AST 유틸리티 및 코드 변환 헬퍼
 │  ├─ App.tsx               # 앱 레이아웃/쉘
-│  └─ main.tsx              # 엔트리 포인트
+│  └─ main.tsx              # 라우팅이 포함된 엔트리 포인트
 ├─ README.md
 └─ package.json
 ```
@@ -33,10 +35,12 @@ live-editor/
 - **인터랙티브 속성 패널**: 숫자, 문자열, 불리언, 배열, 객체를 패널에서 바로 편집합니다.
 - **격리된 프리뷰 런타임**: 샌드박스된 iframe에서 사용자 코드를 실행하여 메인 앱을 보호합니다.
 - **강력한 드래그 앤 드롭**: `@dnd-kit` 기반으로 부드러운 정렬과 배치를 지원합니다.
+- **저장 & 미리보기**: 작성한 코드를 localStorage에 저장하고 전용 전체화면 미리보기 페이지(`/preview`)에서 확인할 수 있습니다.
 
 ## 🧰 기술 스택
 
 - **Core**: React 19, TypeScript 5.8, Vite 7
+- **Routing**: `react-router-dom` (SPA 네비게이션)
 - **DnD**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/modifiers`
 - **Editor**: `@uiw/react-codemirror` (VSCode 테마)
 - **UI/스타일**: Ant Design, Tailwind CSS 4

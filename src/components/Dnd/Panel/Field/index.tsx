@@ -155,7 +155,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
       <Input
         type="number"
         defaultValue={stringValue}
-        placeholder="숫자 값을 입력하세요"
+        placeholder="Enter a numeric value"
         onBlur={e => {
           const next = e.target.value.trim();
           if (next && next !== value) {
@@ -173,7 +173,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
   return (
     <Input.TextArea
       defaultValue={value}
-      placeholder="값을 입력하세요"
+      placeholder="Enter a value"
       onBlur={e => {
         const next = e.target.value.trim();
         if (next && next !== value) {

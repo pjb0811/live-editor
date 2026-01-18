@@ -28,9 +28,9 @@ const Guard = ({ children, onError }: Props) => {
       errorHandled.current = true;
 
       const errorMessage =
-        event.error?.message || event.message || '알 수 없는 에러';
+        event.error?.message || event.message || 'Unknown error';
 
-      console.error('⚡ [Guard] 이벤트 핸들러 에러:', errorMessage);
+      console.error('⚡ [Guard] Event handler error:', errorMessage);
 
       event.preventDefault();
       event.stopPropagation();
@@ -80,7 +80,7 @@ const Guard = ({ children, onError }: Props) => {
   if (error) {
     return (
       <ErrorComponent
-        title="실행 오류"
+        title="Runtime Error"
         message={error}
         className="m-4"
         onReset={() => {

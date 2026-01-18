@@ -37,7 +37,7 @@ const Preview = ({
   if (runtimeError) {
     return (
       <LiveError
-        title="실행 오류"
+        title="Runtime Error"
         message={runtimeError}
         className="mx-5 mt-25"
         onReset={() => setRuntimeError(null)}
@@ -51,7 +51,7 @@ const Preview = ({
     if (module.error) {
       return (
         <LiveError
-          title="컴파일 에러"
+          title="Compile Error"
           message={module.error}
           className="mx-5 mt-25"
         />
@@ -62,17 +62,14 @@ const Preview = ({
 
     if (!Component) {
       return (
-        <LiveError
-          message="페이지를 찾을 수 없습니다."
-          className="mx-5 mt-25"
-        />
+        <LiveError message="Component not found." className="mx-5 mt-25" />
       );
     }
 
     return (
       <LiveError.Boundary
         fallback={message => (
-          <LiveError title="렌더링 에러" message={message} />
+          <LiveError title="Rendering Error" message={message} />
         )}
       >
         {renderProvider(

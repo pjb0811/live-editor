@@ -30,7 +30,7 @@ const Panel = ({ item, onChange }: Props) => {
         updatedCode: updatedCode !== item.code ? updatedCode : item.code,
       };
     } catch (e) {
-      console.warn('⚠️ 파싱 에러', e);
+      console.warn('⚠️ Parsing error', e);
       return { dataAttrNodes: [], updatedCode: '' };
     }
   }, [item?.code]);
@@ -43,7 +43,7 @@ const Panel = ({ item, onChange }: Props) => {
           //
         )}
       >
-        섹션을 선택하세요.
+        Please select a section.
       </Typography.Text>
     );
   }
@@ -61,7 +61,7 @@ const Panel = ({ item, onChange }: Props) => {
       </Typography.Title>
       {!dataAttrNodes.length && (
         <Typography.Text className="text-xs text-gray-400">
-          편집 가능한 요소가 없습니다.
+          No editable elements.
         </Typography.Text>
       )}
       {dataAttrNodes.map((node, index) => (

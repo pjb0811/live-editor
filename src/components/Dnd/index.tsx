@@ -40,7 +40,7 @@ export interface Props extends Omit<
   'onChange'
 > {
   value?: string;
-  props: Record<string, unknown>;
+  props?: Record<string, unknown>;
   modules?: Record<string, unknown>;
   items?: Section[];
   onChange?: (value: string) => void;
@@ -235,9 +235,6 @@ const Dnd = ({
         >
           <div className="w-1/5 overflow-y-auto">
             <div className="h-full bg-gray-50 p-4">
-              <Typography.Title className="mb-4 text-lg font-semibold">
-                컴포넌트 라이브러리
-              </Typography.Title>
               <Space orientation="vertical" align="start">
                 {(items?.length ? items : DRAGGABLE_ITEMS).map(item => (
                   <Draggable key={item.id} item={item} />
@@ -274,9 +271,11 @@ const Dnd = ({
                   )}
                 >
                   <Space orientation="vertical" align="center">
-                    <Typography.Paragraph>섹션이 없습니다</Typography.Paragraph>
+                    <Typography.Paragraph>
+                      No sections available
+                    </Typography.Paragraph>
                     <Typography.Text>
-                      왼쪽에서 컴포넌트를 드래그해서 추가하세요
+                      Drag a component from the left to add it
                     </Typography.Text>
                   </Space>
                 </div>
