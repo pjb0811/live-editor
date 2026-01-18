@@ -1,8 +1,8 @@
 export interface Module {
   exports: {
     default?: React.ComponentType<Record<string, unknown>>;
-    error?: string;
   };
+  error?: string;
 }
 
 export interface Section {

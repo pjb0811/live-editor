@@ -11,14 +11,15 @@ import type { Module, Section } from '~/types';
 
 import { CONFIG, REGEX, TS_PATTERNS } from '../enums';
 
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
 export const baseModules = {
   'ui-kit': ui,
   'ui-kit/utils': utils,
 };
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 const compilationCache = new Map<string, Module>();
 
 const simpleHash = (str: string): string => {
@@ -73,7 +74,7 @@ export const compile = (
 
 export const clearCompilationCache = () => {
   compilationCache.clear();
-  console.log('🧹 Compilation cache cleared');
+  console.log('🧹 컴파일 캐시 삭제 완료');
 };
 
 const TS_COMPILER_OPTIONS: ts.CompilerOptions = {
@@ -94,7 +95,7 @@ const compileTypeScript = (code: string): string => {
 
     return result.outputText;
   } catch (e) {
-    console.error('TypeScript 컴파일 오류:', e);
+    console.error('❌ TypeScript 컴파일 오류:', e);
     return code;
   }
 };
@@ -111,7 +112,7 @@ export const transformCode = (code: string): string => {
     }).code;
     return result || '';
   } catch (e) {
-    console.error('Babel 변환 오류:', e);
+    console.error('❌ Babel 변환 오류:', e);
     return code;
   }
 };
@@ -127,13 +128,27 @@ const compileModule = (
   const isTypeScript = detectTypeScript(code);
   const jsCode = isTypeScript ? compileTypeScript(code) : code;
 
-  const render = new Function(
-    'exports',
-    'require',
-    'module',
-    'React',
-    transformCode(jsCode),
-  );
+  type RenderFunction = (
+    exports: Module['exports'],
+    require: (name: string) => unknown,
+    module: Module,
+    React: typeof import('react'),
+  ) => void;
+
+  let render: RenderFunction;
+
+  try {
+    render = new Function(
+      'exports',
+      'require',
+      'module',
+      'React',
+      transformCode(jsCode),
+    ) as RenderFunction;
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : '문법 에러';
+    return { exports: {}, error: errorMessage };
+  }
 
   const module: Module = { exports: {} };
 
@@ -146,10 +161,15 @@ const compileModule = (
       return modules[name];
     }
 
-    throw new Error(`Module not found: ${name}`);
+    throw new Error(`모듈을 찾을 수 없음: ${name}`);
   };
 
-  render(module.exports, customRequire, module, React);
+  try {
+    render(module.exports, customRequire, module, React);
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : '런타임 에러';
+    return { exports: {}, error: errorMessage };
+  }
 
   return module;
 };
