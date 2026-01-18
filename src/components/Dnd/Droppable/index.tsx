@@ -1,4 +1,5 @@
 import { useDroppable } from '@dnd-kit/core';
+import { Typography } from '@jbpark/ui-kit';
 
 import { cn } from '~/utils';
 
@@ -10,20 +11,13 @@ const Droppable = ({
     id: 'sortable-area',
   });
 
-  const {
-    setNodeRef: setBottomRef,
-    isOver: isBottomOver,
-    active: bottomActive,
-  } = useDroppable({
+  const { setNodeRef: setBottomRef, isOver: isBottomOver } = useDroppable({
     id: 'sortable-area-bottom',
   });
 
   const isNewItemDragging = active?.data.current?.type === 'new-item';
   const shouldHighlight = isOver && isNewItemDragging;
-
-  const isBottomNewItemDragging =
-    bottomActive?.data.current?.type === 'new-item';
-  const shouldHighlightBottom = isBottomOver && isBottomNewItemDragging;
+  const shouldHighlightBottom = isBottomOver && isNewItemDragging;
 
   return (
     <div
@@ -36,23 +30,26 @@ const Droppable = ({
       )}
     >
       {children}
-      <div
-        ref={setBottomRef}
-        className={cn(
-          'min-h-32',
-          'rounded-lg border-2 border-dashed',
-          'transition-all duration-200',
-          'pt-4',
-          'flex items-center justify-center',
-          shouldHighlightBottom
-            ? 'border-blue-400 bg-blue-100'
-            : 'border-transparent',
-        )}
-      >
-        {isBottomNewItemDragging && (
-          <p className="text-sm text-gray-500">여기로 드래그하여 하단에 추가</p>
-        )}
-      </div>
+      {isNewItemDragging && (
+        <div
+          ref={setBottomRef}
+          className={cn(
+            'mt-2 min-h-24',
+            'rounded-lg border-2 border-dashed',
+            'transition-all duration-200',
+            'flex items-center justify-center',
+            shouldHighlightBottom
+              ? 'border-blue-400 bg-blue-100'
+              : 'border-gray-300 bg-gray-50',
+          )}
+        >
+          <Typography.Text className="text-sm text-gray-500">
+            {shouldHighlightBottom
+              ? '여기에 놓기'
+              : '맨 아래에 추가하려면 여기로'}
+          </Typography.Text>
+        </div>
+      )}
     </div>
   );
 };

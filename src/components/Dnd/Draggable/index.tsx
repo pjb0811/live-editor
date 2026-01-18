@@ -1,4 +1,5 @@
 import { useDraggable } from '@dnd-kit/core';
+import { Card } from '@jbpark/ui-kit';
 
 import type { DRAGGABLE_ITEMS } from '~/enums';
 import { cn } from '~/utils';
@@ -17,21 +18,20 @@ const Draggable = ({ item }: { item: (typeof DRAGGABLE_ITEMS)[0] }) => {
     : undefined;
 
   return (
-    <div
+    <Card
       ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
       className={cn(
-        'mb-2 cursor-grab rounded-lg border border-gray-200 p-4',
-        'bg-white shadow-sm transition-all',
+        'cursor-grab',
         'outline-none',
         'hover:border-blue-300 hover:shadow-md',
         isDragging && 'opacity-50',
       )}
     >
-      <div className="font-medium text-gray-800">{item.name}</div>
-    </div>
+      {item.name}
+    </Card>
   );
 };
 
