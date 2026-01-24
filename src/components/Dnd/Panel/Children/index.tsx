@@ -4,7 +4,7 @@ import { Button } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
-import { type DataAttrNode } from '~/utils/ast';
+import { type DataAttrNode, findEditableChildren } from '~/utils/ast';
 
 import Node from '../Node';
 
@@ -16,6 +16,17 @@ interface Props {
 
 const Children = ({ value, onChange, onNodeChange }: Props) => {
   const items = useMemo(() => (Array.isArray(value) ? value : []), [value]);
+
+  const editableChildrenMap = useMemo(() => {
+    const map = new Map<number, DataAttrNode[]>();
+    items.forEach((item, index) => {
+      const editableNodes = findEditableChildren(item);
+      if (editableNodes.length > 0) {
+        map.set(index, editableNodes);
+      }
+    });
+    return map;
+  }, [items]);
 
   const moveItem = (fromIndex: number, toIndex: number) => {
     const nextItems = [...items];
@@ -119,7 +130,33 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
               />
             </div>
           </div>
-          {!!item.children && (
+
+          {editableChildrenMap.has(itemIndex) && (
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-green-700">
+                Editable Bindings:
+              </div>
+              {editableChildrenMap.get(itemIndex)!.map((editableNode, idx) => {
+                const nodeId = editableNode.dataAttributes.find(
+                  a => a.name === 'data-id',
+                )?.value;
+
+                return (
+                  <div
+                    key={`editable-${itemIndex}-${nodeId || idx}`}
+                    className="rounded border border-green-100 bg-white p-2"
+                  >
+                    <div className="mb-1 text-xs text-green-600">
+                      {editableNode.tagName}
+                    </div>
+                    <Node data={editableNode} onChange={onNodeChange} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {!!item.children && !editableChildrenMap.has(itemIndex) && (
             <div className="space-y-1">
               <div className="text-xs font-medium text-green-700">
                 Child Nodes:

@@ -51,6 +51,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             value: next,
           });
         }}
+        onChildChange={onChange}
       />
     );
   }
