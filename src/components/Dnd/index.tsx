@@ -57,7 +57,7 @@ const conditionalModifiers: Modifier = args => {
 };
 
 const Dnd = ({
-  value = DEFAULT_TEMPLATE,
+  value: _value,
   props,
   modules = {},
   onChange: _onChange,
@@ -80,6 +80,7 @@ const Dnd = ({
     }),
   );
 
+  const value = _value || DEFAULT_TEMPLATE;
   const sections = useMemo(() => extractSections(value), [value]);
 
   const onDragStart = (_: DragStartEvent) => {};
@@ -144,6 +145,24 @@ const Dnd = ({
         setCode(nextCode);
       }
     }
+  };
+
+  const addItem = (item: (typeof DRAGGABLE_ITEMS)[0]) => {
+    const newSection = {
+      id: uuidv4(),
+      name: item.name,
+      code: item.code,
+    };
+
+    const nextSections = [...sections, newSection];
+
+    const nextCode = replaceSections(
+      value,
+      nextSections.map(s => s.code),
+    );
+
+    _onChange?.(nextCode);
+    setCode(nextCode);
   };
 
   const onDelete = (id: string) => {
@@ -237,7 +256,7 @@ const Dnd = ({
             <div className="h-full bg-gray-50 p-4">
               <Space orientation="vertical" align="start">
                 {(items?.length ? items : DRAGGABLE_ITEMS).map(item => (
-                  <Draggable key={item.id} item={item} />
+                  <Draggable key={item.id} item={item} onAdd={addItem} />
                 ))}
               </Space>
             </div>

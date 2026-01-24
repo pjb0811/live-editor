@@ -3,15 +3,22 @@ import { useMemo } from 'react';
 import * as t from '@babel/types';
 import { Button, Input } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
+import { nanoid } from 'nanoid';
 
 import {
+  type DataAttrNode,
   type ExtractedNodeValue,
   arrayExpressionToCode,
   clone,
   createNodeFromValue,
+  extract,
   extractObjectProperties,
+  findEditableChildren,
+  generateCode,
   parseArrayExpression,
 } from '~/utils/ast';
+
+import Node from '../Node';
 
 interface ItemProperty extends ExtractedNodeValue {
   astNode: t.Node;
@@ -21,14 +28,20 @@ interface ItemData {
   index: number;
   editableProperties: Record<string, ItemProperty>;
   originalElement: t.ObjectExpression;
+  childrenBindings: DataAttrNode[];
 }
 
 interface Props {
   value: string;
   onChange?: (value: string) => void;
+  onChildChange?: (params: {
+    id: string;
+    label: string;
+    value: string;
+  }) => void;
 }
 
-const Items = ({ value, onChange }: Props) => {
+const Items = ({ value, onChange, onChildChange }: Props) => {
   const extractedItems = useMemo(() => {
     const ast = parseArrayExpression(value);
 
@@ -42,10 +55,48 @@ const Items = ({ value, onChange }: Props) => {
           return null;
         }
 
+        const childrenBindings: DataAttrNode[] = [];
+        const childrenProp = element.properties.find(
+          prop =>
+            t.isObjectProperty(prop) &&
+            t.isIdentifier(prop.key) &&
+            prop.key.name === 'children',
+        ) as t.ObjectProperty | undefined;
+
+        if (childrenProp && t.isJSXElement(childrenProp.value)) {
+          try {
+            const jsxCode = generateCode(childrenProp.value);
+            const nodes = extract(jsxCode);
+
+            const childrenContainer = nodes.find(node =>
+              node.bindings?.some(b => b.property === 'children'),
+            );
+
+            if (childrenContainer) {
+              childrenBindings.push(childrenContainer);
+            } else {
+              nodes.forEach(node => {
+                if (
+                  node.bindings &&
+                  node.bindings.length > 0 &&
+                  node.dataAttributes.some(a => a.name === 'data-id')
+                ) {
+                  childrenBindings.push(node);
+                }
+                const editableChildren = findEditableChildren(node);
+                childrenBindings.push(...editableChildren);
+              });
+            }
+          } catch (error) {
+            console.error('Failed to parse children JSX:', error);
+          }
+        }
+
         const itemData: ItemData = {
           index: itemIndex,
           editableProperties: extractObjectProperties(element),
           originalElement: element,
+          childrenBindings,
         };
 
         return itemData;
@@ -123,6 +174,13 @@ const Items = ({ value, onChange }: Props) => {
         const key = prop.key.name;
         const editableProp = firstItem.editableProperties[key];
 
+        if (key === 'key' && t.isStringLiteral(prop.value)) {
+          const originalKey = prop.value.value;
+          const uniqueKey = `${originalKey}-${nanoid(6)}`;
+          prop.value = t.stringLiteral(uniqueKey);
+          return;
+        }
+
         if (editableProp) {
           const nextValue = createNodeFromValue(
             editableProp.type,
@@ -143,6 +201,7 @@ const Items = ({ value, onChange }: Props) => {
       index: nextItems.length,
       editableProperties,
       originalElement: clonedElement,
+      childrenBindings: [],
     };
 
     nextItems.push(newItemData);
@@ -198,33 +257,63 @@ const Items = ({ value, onChange }: Props) => {
           </div>
           <div className="space-y-2">
             {Object.entries(item.editableProperties).map(([key, prop]) => (
-              <div
-                key={`${index}-${key}`}
-                className="flex items-center space-x-2"
-              >
-                <label className="w-20 shrink-0 text-xs font-medium">
-                  {key}:
-                </label>
-                {prop.type === 'boolean' && (
-                  <input
-                    type="checkbox"
-                    checked={Boolean(prop.value)}
-                    onChange={e => updateProperty(index, key, e.target.checked)}
-                  />
-                )}
-                {(prop.type === 'string' || prop.type === 'number') && (
-                  <Input
-                    type={prop.type === 'number' ? 'number' : 'text'}
-                    value={String(prop.value)}
-                    onChange={e => updateProperty(index, key, e.target.value)}
-                  />
-                )}
-                <span className="text-xs text-gray-500">({prop.type})</span>
+              <div key={`${index}-${key}`}>
+                <div className="flex items-center space-x-2">
+                  <label className="w-20 shrink-0 text-xs font-medium">
+                    {key}:
+                  </label>
+                  {prop.type === 'boolean' && (
+                    <input
+                      type="checkbox"
+                      checked={Boolean(prop.value)}
+                      onChange={e =>
+                        updateProperty(index, key, e.target.checked)
+                      }
+                    />
+                  )}
+                  {(prop.type === 'string' || prop.type === 'number') && (
+                    <Input
+                      type={prop.type === 'number' ? 'number' : 'text'}
+                      value={String(prop.value)}
+                      onChange={e => updateProperty(index, key, e.target.value)}
+                    />
+                  )}
+                </div>
+                <span className="text-right text-xs text-gray-500">
+                  ({prop.type})
+                </span>
               </div>
             ))}
           </div>
-          <div className="border-t pt-2 text-xs text-gray-500">
-            ✓ children: JSX content (read-only)
+          <div className="border-t pt-2">
+            {item.childrenBindings.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-blue-700">
+                  Children Bindings ({item.childrenBindings.length}):
+                </div>
+                {item.childrenBindings.map((bindingNode, idx) => {
+                  const nodeId = bindingNode.dataAttributes.find(
+                    a => a.name === 'data-id',
+                  )?.value;
+
+                  return (
+                    <div
+                      key={`binding-${index}-${nodeId || idx}`}
+                      className="rounded border border-blue-100 bg-blue-50 p-2"
+                    >
+                      <div className="mb-1 text-xs text-blue-600">
+                        &lt;{bindingNode.tagName || 'element'}&gt;
+                      </div>
+                      <Node data={bindingNode} onChange={onChildChange} />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500">
+                ✓ children: JSX content (no bindings)
+              </div>
+            )}
           </div>
         </div>
       ))}

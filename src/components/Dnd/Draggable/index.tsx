@@ -4,7 +4,15 @@ import { Card } from '@jbpark/ui-kit';
 import type { DRAGGABLE_ITEMS } from '~/enums';
 import { cn } from '~/utils';
 
-const Draggable = ({ item }: { item: (typeof DRAGGABLE_ITEMS)[0] }) => {
+type Item = (typeof DRAGGABLE_ITEMS)[0];
+
+const Draggable = ({
+  item,
+  onAdd,
+}: {
+  item: Item;
+  onAdd?: (item: Item) => void;
+}) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: item.id,
@@ -29,6 +37,7 @@ const Draggable = ({ item }: { item: (typeof DRAGGABLE_ITEMS)[0] }) => {
         'hover:border-blue-300 hover:shadow-md',
         isDragging && 'opacity-50',
       )}
+      onDoubleClick={() => onAdd?.(item)}
     >
       {item.name}
     </Card>

@@ -1,62 +1,9 @@
-import { type Section } from '../types';
-
-export const STORAGE_KEY = 'live-editor-code';
-
-export const CONFIG = {
-  CACHE_LIMIT: 50,
-} as const;
-
-export const DATA_ATTR = {
-  ID: 'data-id',
-  BINDING: 'data-binding',
-  ITEM: 'data-item',
-} as const;
-
-export const REGEX = {
-  NUMBER: /^\d+(\.\d+)?$/,
-  BOOLEAN_OR_NULL: /^(true|false|null|undefined)$/,
-  CONTAINER: /(<main[^>]*id=["']app-container["'][^>]*>)([\s\S]*?)(<\/main>)/m,
-  COMMENT: /\{\s*\/\*[\s\S]*?\*\/\s*\}/g,
-  SECTION: /<section[\s\S]*?<\/section>/g,
-  DATA_NAME: /data-name=["']([^"']+)["']/,
-} as const;
-
-export const TS_PATTERNS = [
-  /interface\s+\w+/,
-  /type\s+\w+\s*=/,
-  /:\s*\w+(\[\])?(\s*\||\s*&|\s*=|\s*;|\s*,|\s*\))/,
-  /as\s+\w+/,
-  /<[A-Z]\w*>/,
-  /enum\s+\w+/,
-  /public\s+|private\s+|protected\s+/,
-  /readonly\s+/,
-  /\?\s*:/,
-] as const;
-
-export const BINDING_PROP = {
-  CHILDREN: 'children',
-  INNER_TEXT: 'innerText',
-  ITEMS: 'items',
-} as const;
-
-export const DEFAULT_TEMPLATE = `
-import * as ui from 'ui-kit';
-import { cn } from 'ui-kit/utils';
+import * as ui from '@jbpark/ui-kit';
+import { cn } from '@jbpark/ui-kit/utils';
 
 const App = () => {
   return (
-    <main id="app-container"></main>
-  )
-}
-
-export default App;
-`;
-
-export const DRAGGABLE_ITEMS: Section[] = [
-  {
-    id: 'hero',
-    name: 'Hero',
-    code: `
+    <main id="app-container">
       <section
         data-name="Hero"
         className={cn(
@@ -111,12 +58,6 @@ export const DRAGGABLE_ITEMS: Section[] = [
           </ui.Button>
         </ui.Space>
       </section>
-    `,
-  },
-  {
-    id: 'features',
-    name: 'Features',
-    code: `
       <section
         data-name="Features"
         className={cn(
@@ -303,12 +244,6 @@ export const DRAGGABLE_ITEMS: Section[] = [
           </ui.Card>
         </ui.Space>
       </section>
-    `,
-  },
-  {
-    id: 'about',
-    name: 'About',
-    code: `
       <section
         data-name="About"
         className={cn(
@@ -335,10 +270,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
             //
           )}
         >
-          Live Editor is a powerful visual development tool that enables you to create
-          stunning web interfaces through an intuitive drag-and-drop experience.
-          Built with modern web technologies, it streamlines your workflow and
-          accelerates development cycles.
+          Live Editor is a powerful visual development tool that enables you to
+          create stunning web interfaces through an intuitive drag-and-drop
+          experience. Built with modern web technologies, it streamlines your
+          workflow and accelerates development cycles.
         </ui.Typography.Paragraph>
         <ui.Typography.Paragraph
           data-id=""
@@ -348,17 +283,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
             //
           )}
         >
-          Whether you&apos;re a seasoned developer or just starting out, Live Editor
-          provides the flexibility and control you need to bring your creative
-          vision to life. Focus on what matters most - building great products.
+          Whether you&apos;re a seasoned developer or just starting out, Live
+          Editor provides the flexibility and control you need to bring your
+          creative vision to life. Focus on what matters most - building great
+          products.
         </ui.Typography.Paragraph>
       </section>
-    `,
-  },
-  {
-    id: 'cta',
-    name: 'CTA',
-    code: `
       <section
         data-name="CTA"
         className={cn(
@@ -429,12 +359,6 @@ export const DRAGGABLE_ITEMS: Section[] = [
           </ui.Space>
         </div>
       </section>
-    `,
-  },
-  {
-    id: 'getting-started',
-    name: 'Getting Started',
-    code: `
       <section
         data-name="Getting Started"
         className={cn(
@@ -475,7 +399,9 @@ export const DRAGGABLE_ITEMS: Section[] = [
             >
               <ui.Typography.Title
                 data-id=""
-                data-binding={[{ label: 'Card 1 Title', property: 'innerText' }]}
+                data-binding={[
+                  { label: 'Card 1 Title', property: 'innerText' },
+                ]}
                 level={3}
                 className={cn(
                   'mb-2 text-2xl font-bold text-gray-800',
@@ -506,7 +432,9 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </ul>
               <ui.Button
                 data-id=""
-                data-binding={[{ label: 'Card 1 Button', property: 'innerText' }]}
+                data-binding={[
+                  { label: 'Card 1 Button', property: 'innerText' },
+                ]}
                 variant="outlined"
                 size="large"
                 block
@@ -538,7 +466,9 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </div>
               <ui.Typography.Title
                 data-id=""
-                data-binding={[{ label: 'Card 2 Title', property: 'innerText' }]}
+                data-binding={[
+                  { label: 'Card 2 Title', property: 'innerText' },
+                ]}
                 level={3}
                 className={cn(
                   'mb-2 text-2xl font-bold text-gray-800',
@@ -569,7 +499,9 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </ul>
               <ui.Button
                 data-id=""
-                data-binding={[{ label: 'Card 2 Button', property: 'innerText' }]}
+                data-binding={[
+                  { label: 'Card 2 Button', property: 'innerText' },
+                ]}
                 size="large"
                 block
                 className={cn(
@@ -591,7 +523,9 @@ export const DRAGGABLE_ITEMS: Section[] = [
             >
               <ui.Typography.Title
                 data-id=""
-                data-binding={[{ label: 'Card 3 Title', property: 'innerText' }]}
+                data-binding={[
+                  { label: 'Card 3 Title', property: 'innerText' },
+                ]}
                 level={3}
                 className={cn(
                   'mb-2 text-2xl font-bold text-gray-800',
@@ -622,7 +556,9 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </ul>
               <ui.Button
                 data-id=""
-                data-binding={[{ label: 'Card 3 Button', property: 'innerText' }]}
+                data-binding={[
+                  { label: 'Card 3 Button', property: 'innerText' },
+                ]}
                 variant="outlined"
                 size="large"
                 block
@@ -638,12 +574,6 @@ export const DRAGGABLE_ITEMS: Section[] = [
           </div>
         </div>
       </section>
-    `,
-  },
-  {
-    id: 'key-features',
-    name: 'Key Features',
-    code: `
       <section
         data-name="Key Features"
         className={cn(
@@ -686,9 +616,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
               <ui.Space orientation="vertical" size="middle">
                 <div
                   data-id=""
-                  data-binding={[
-                    { label: 'Icon', property: 'innerText' },
-                  ]}
+                  data-binding={[{ label: 'Icon', property: 'innerText' }]}
                   className={cn(
                     'text-4xl',
                     //
@@ -698,9 +626,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 </div>
                 <ui.Typography.Title
                   data-id=""
-                  data-binding={[
-                    { label: 'Title', property: 'innerText' },
-                  ]}
+                  data-binding={[{ label: 'Title', property: 'innerText' }]}
                   level={3}
                   className={cn(
                     'text-2xl font-bold text-gray-800',
@@ -719,9 +645,9 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     //
                   )}
                 >
-                  See your changes in real-time as you build. Live Editor provides instant
-                  visual feedback, making it easier to understand how code affects your
-                  interface.
+                  See your changes in real-time as you build. Live Editor
+                  provides instant visual feedback, making it easier to
+                  understand how code affects your interface.
                 </ui.Typography.Paragraph>
               </ui.Space>
             </ui.Card>
@@ -734,9 +660,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
               <ui.Space orientation="vertical" size="middle">
                 <div
                   data-id=""
-                  data-binding={[
-                    { label: 'Icon', property: 'innerText' },
-                  ]}
+                  data-binding={[{ label: 'Icon', property: 'innerText' }]}
                   className={cn(
                     'text-4xl',
                     //
@@ -746,9 +670,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 </div>
                 <ui.Typography.Title
                   data-id=""
-                  data-binding={[
-                    { label: 'Title', property: 'innerText' },
-                  ]}
+                  data-binding={[{ label: 'Title', property: 'innerText' }]}
                   level={3}
                   className={cn(
                     'text-2xl font-bold text-gray-800',
@@ -767,20 +689,15 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     //
                   )}
                 >
-                  Build with reusable components that you can drag, drop, and customize.
-                  Learn modern development patterns while creating your interface.
+                  Build with reusable components that you can drag, drop, and
+                  customize. Learn modern development patterns while creating
+                  your interface.
                 </ui.Typography.Paragraph>
               </ui.Space>
             </ui.Card>
           </ui.Space>
         </div>
       </section>
-    `,
-  },
-  {
-    id: 'stats',
-    name: 'Stats',
-    code: `
       <section
         data-name="Stats"
         className={cn(
@@ -801,7 +718,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 <div
                   data-id=""
                   data-binding={[
-                    { label: 'Stats Cards', property: 'children' },
+                    {
+                      label: 'Stats Cards',
+                      property: 'children',
+                    },
                   ]}
                   className={cn('flex gap-20')}
                 >
@@ -813,7 +733,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   >
                     <p
                       data-id=""
-                      data-binding={[{ label: 'Title', property: 'innerText' }]}
+                      data-binding={[
+                        {
+                          label: 'Title',
+                          property: 'innerText',
+                        },
+                      ]}
                       className={cn(
                         'mb-2 text-5xl font-bold',
                         //
@@ -824,7 +749,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     <p
                       data-id=""
                       data-binding={[
-                        { label: 'Description', property: 'innerText' },
+                        {
+                          label: 'Description',
+                          property: 'innerText',
+                        },
                       ]}
                       className={cn(
                         'text-indigo-200',
@@ -842,7 +770,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   >
                     <p
                       data-id=""
-                      data-binding={[{ label: 'Title', property: 'innerText' }]}
+                      data-binding={[
+                        {
+                          label: 'Title',
+                          property: 'innerText',
+                        },
+                      ]}
                       className={cn(
                         'mb-2 text-5xl font-bold',
                         //
@@ -853,7 +786,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     <p
                       data-id=""
                       data-binding={[
-                        { label: 'Description', property: 'innerText' },
+                        {
+                          label: 'Description',
+                          property: 'innerText',
+                        },
                       ]}
                       className={cn(
                         'text-indigo-200',
@@ -871,7 +807,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   >
                     <p
                       data-id=""
-                      data-binding={[{ label: 'Title', property: 'innerText' }]}
+                      data-binding={[
+                        {
+                          label: 'Title',
+                          property: 'innerText',
+                        },
+                      ]}
                       className={cn(
                         'mb-2 text-5xl font-bold',
                         //
@@ -882,7 +823,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     <p
                       data-id=""
                       data-binding={[
-                        { label: 'Description', property: 'innerText' },
+                        {
+                          label: 'Description',
+                          property: 'innerText',
+                        },
                       ]}
                       className={cn(
                         'text-indigo-200',
@@ -900,7 +844,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   >
                     <p
                       data-id=""
-                      data-binding={[{ label: 'Title', property: 'innerText' }]}
+                      data-binding={[
+                        {
+                          label: 'Title',
+                          property: 'innerText',
+                        },
+                      ]}
                       className={cn(
                         'mb-2 text-5xl font-bold',
                         //
@@ -911,7 +860,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     <p
                       data-id=""
                       data-binding={[
-                        { label: 'Description', property: 'innerText' },
+                        {
+                          label: 'Description',
+                          property: 'innerText',
+                        },
                       ]}
                       className={cn(
                         'text-indigo-200',
@@ -927,12 +879,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
           ]}
         />
       </section>
-    `,
-  },
-  {
-    id: 'faq',
-    name: 'FAQ',
-    code: `
+
       <section
         data-name="FAQ"
         className={cn(
@@ -967,12 +914,14 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
-                    data-binding={[{ label: 'Answer 1', property: 'innerText' }]}
+                    data-binding={[
+                      { label: 'Answer 1', property: 'innerText' },
+                    ]}
                     className={cn('text-gray-600')}
                   >
-                    Live Editor is an open-source tool for building web interfaces visually.
-                    It helps you learn web development by providing instant feedback as you
-                    build components.
+                    Live Editor is an open-source tool for building web
+                    interfaces visually. It helps you learn web development by
+                    providing instant feedback as you build components.
                   </ui.Typography.Paragraph>
                 ),
               },
@@ -982,12 +931,14 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
-                    data-binding={[{ label: 'Answer 2', property: 'innerText' }]}
+                    data-binding={[
+                      { label: 'Answer 2', property: 'innerText' },
+                    ]}
                     className={cn('text-gray-600')}
                   >
-                    No! Live Editor is designed for all skill levels. Beginners can learn
-                    through visual editing, while experienced developers can work directly
-                    with code.
+                    No! Live Editor is designed for all skill levels. Beginners
+                    can learn through visual editing, while experienced
+                    developers can work directly with code.
                   </ui.Typography.Paragraph>
                 ),
               },
@@ -997,11 +948,14 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
-                    data-binding={[{ label: 'Answer 3', property: 'innerText' }]}
+                    data-binding={[
+                      { label: 'Answer 3', property: 'innerText' },
+                    ]}
                     className={cn('text-gray-600')}
                   >
-                    Yes, completely free! Live Editor is an open-source project with no hidden
-                    costs or premium tiers. All features are available to everyone.
+                    Yes, completely free! Live Editor is an open-source project
+                    with no hidden costs or premium tiers. All features are
+                    available to everyone.
                   </ui.Typography.Paragraph>
                 ),
               },
@@ -1011,12 +965,14 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
-                    data-binding={[{ label: 'Answer 4', property: 'innerText' }]}
+                    data-binding={[
+                      { label: 'Answer 4', property: 'innerText' },
+                    ]}
                     className={cn('text-gray-600')}
                   >
-                    You can contribute by reporting bugs, suggesting features, sharing your
-                    projects, or contributing code. Check our GitHub repository for more
-                    details.
+                    You can contribute by reporting bugs, suggesting features,
+                    sharing your projects, or contributing code. Check our
+                    GitHub repository for more details.
                   </ui.Typography.Paragraph>
                 ),
               },
@@ -1024,6 +980,8 @@ export const DRAGGABLE_ITEMS: Section[] = [
           />
         </div>
       </section>
-    `,
-  },
-];
+    </main>
+  );
+};
+
+export default App;

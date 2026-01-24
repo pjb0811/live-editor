@@ -16,7 +16,7 @@ const Node = ({ data, onChange }: Props) => {
   }
 
   const dataId = idAttr.value;
-  const bindings = parseBinding(bindingAttr.value);
+  const bindings = data.bindings || parseBinding(bindingAttr.value);
 
   if (!bindings.length) {
     return null;
