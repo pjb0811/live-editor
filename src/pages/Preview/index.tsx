@@ -12,7 +12,7 @@ const PreviewPage = () => {
 
   return (
     <Live>
-      <Live.Preview code={code} scripts={['/js/tailwindcss.js']} />
+      <Live.Renderer code={code} />
     </Live>
   );
 };
