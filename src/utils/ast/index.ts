@@ -24,6 +24,7 @@ export interface DataAttrNode {
   };
   children?: DataAttrNode[];
   isFragment?: boolean;
+  bindings?: BindingItem[];
 }
 
 export interface BindingItem {
@@ -109,6 +110,99 @@ const attrValue = ({
   }
 };
 
+const getTagName = (opening: t.JSXOpeningElement): string => {
+  if (t.isJSXIdentifier(opening.name)) {
+    return opening.name.name;
+  }
+
+  if (t.isJSXMemberExpression(opening.name)) {
+    return resolveMemberName(opening.name);
+  }
+
+  return '';
+};
+
+const resolveMemberName = (expr: t.JSXMemberExpression): string => {
+  const parts: string[] = [];
+
+  const traverse = (
+    node: t.JSXMemberExpression['object'] | t.JSXMemberExpression['property'],
+  ): void => {
+    if (t.isJSXIdentifier(node)) {
+      parts.push(node.name);
+    } else if (t.isJSXMemberExpression(node)) {
+      traverse(node.object);
+
+      if (t.isJSXIdentifier(node.property)) {
+        parts.push(node.property.name);
+      }
+    }
+  };
+
+  traverse(expr.object);
+
+  if (t.isJSXIdentifier(expr.property)) {
+    parts.push(expr.property.name);
+  }
+
+  return parts.join('.');
+};
+
+const parseJSXName = (
+  tagName: string,
+): t.JSXIdentifier | t.JSXMemberExpression => {
+  const parts = tagName.split('.');
+
+  if (parts.length === 1) {
+    return t.jsxIdentifier(parts[0]!);
+  }
+
+  let expr: t.JSXIdentifier | t.JSXMemberExpression = t.jsxIdentifier(
+    parts[0]!,
+  );
+
+  for (let i = 1; i < parts.length; i++) {
+    expr = t.jsxMemberExpression(expr, t.jsxIdentifier(parts[i]!));
+  }
+
+  return expr;
+};
+
+const hasEditableBindings = (node: DataAttrNode): boolean => {
+  const bindingAttr = node.dataAttributes.find(
+    attr => attr.name === DATA_ATTR.BINDING,
+  );
+
+  if (!bindingAttr?.value) {
+    return false;
+  }
+
+  const bindings = node.bindings || parseBinding(bindingAttr.value);
+
+  return bindings.length > 0;
+};
+
+export const findEditableChildren = (node: DataAttrNode): DataAttrNode[] => {
+  const editableChildren: DataAttrNode[] = [];
+
+  const traverse = (children: DataAttrNode[] | undefined) => {
+    if (!children) {
+      return;
+    }
+
+    for (const child of children) {
+      if (hasEditableBindings(child)) {
+        editableChildren.push(child);
+      }
+      traverse(child.children);
+    }
+  };
+
+  traverse(node.children);
+
+  return editableChildren;
+};
+
 export const parseValue = (value: unknown): unknown => {
   if (typeof value !== 'string') {
     return value;
@@ -157,72 +251,6 @@ export const generateCode = (node: t.Node): string => {
   return generate(node, { jsescOption: { minimal: true } }).code;
 };
 
-const buildChildElements = (
-  node: DataAttrNode,
-): (t.JSXText | t.JSXElement | t.JSXFragment)[] => {
-  const childElements: (t.JSXText | t.JSXElement | t.JSXFragment)[] = [];
-
-  if (node.textContent) {
-    childElements.push(t.jsxText(node.textContent));
-  }
-
-  node.children?.forEach(child => {
-    const childJSX = nodeToJSX(child);
-    if (childJSX) {
-      childElements.push(childJSX);
-    }
-  });
-
-  return childElements;
-};
-
-const nodeToJSX = (node: DataAttrNode): t.JSXElement | t.JSXFragment | null => {
-  try {
-    if (node.isFragment) {
-      const childElements = buildChildElements(node);
-
-      return t.jsxFragment(
-        t.jsxOpeningFragment(),
-        t.jsxClosingFragment(),
-        childElements,
-      );
-    }
-
-    if (
-      node.tagName === 'div' &&
-      node.dataAttributes.some(attr => attr.name === 'data-item')
-    ) {
-      if (node.children) {
-        return nodeToJSX(node.children[0]!);
-      }
-      return null;
-    }
-
-    const attributes = node.attributes.map(attr => {
-      const attrName = t.jsxIdentifier(attr.name);
-
-      if (!attr.value) {
-        return t.jsxAttribute(attrName, null);
-      }
-
-      return t.jsxAttribute(attrName, attrValue(attr));
-    });
-
-    const openingElement = t.jsxOpeningElement(
-      t.jsxIdentifier(node.tagName),
-      attributes,
-    );
-
-    const closingElement = t.jsxClosingElement(t.jsxIdentifier(node.tagName));
-    const children = buildChildElements(node);
-
-    return t.jsxElement(openingElement, closingElement, children, false);
-  } catch (error) {
-    console.error('❌ DataAttrNode to JSX 변환 에러:', error);
-    return null;
-  }
-};
-
 export const parseBinding = (bindingValue: string | null): BindingItem[] => {
   if (!bindingValue) {
     return [];
@@ -265,7 +293,7 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
         .filter((item): item is BindingItem => item !== null);
     }
   } catch (error) {
-    console.error('❌ 바인딩 파싱 에러:', error);
+    console.error('❌ Binding parsing error:', error);
   }
 
   return [];
@@ -336,6 +364,207 @@ const extractAttributes = (
   return { allAttrs, dataAttrs };
 };
 
+const buildChildElements = (
+  node: DataAttrNode,
+): (t.JSXText | t.JSXElement | t.JSXFragment)[] => {
+  const childElements: (t.JSXText | t.JSXElement | t.JSXFragment)[] = [];
+
+  if (node.textContent) {
+    childElements.push(t.jsxText(node.textContent));
+  }
+
+  node.children?.forEach(child => {
+    const childJSX = nodeToJSX(child);
+    if (childJSX) {
+      childElements.push(childJSX);
+    }
+  });
+
+  return childElements;
+};
+
+const nodeToJSX = (node: DataAttrNode): t.JSXElement | t.JSXFragment | null => {
+  try {
+    if (node.isFragment) {
+      const childElements = buildChildElements(node);
+
+      return t.jsxFragment(
+        t.jsxOpeningFragment(),
+        t.jsxClosingFragment(),
+        childElements,
+      );
+    }
+
+    if (
+      node.tagName === 'div' &&
+      node.dataAttributes.some(attr => attr.name === 'data-item')
+    ) {
+      if (node.children) {
+        return nodeToJSX(node.children[0]!);
+      }
+      return null;
+    }
+
+    const attributes = node.attributes.map(attr => {
+      const attrName = t.jsxIdentifier(attr.name);
+
+      if (!attr.value) {
+        return t.jsxAttribute(attrName, null);
+      }
+
+      return t.jsxAttribute(attrName, attrValue(attr));
+    });
+
+    const elementName = parseJSXName(node.tagName);
+
+    const openingElement = t.jsxOpeningElement(elementName, attributes);
+
+    const closingElement = t.jsxClosingElement(elementName);
+    const children = buildChildElements(node);
+
+    return t.jsxElement(openingElement, closingElement, children, false);
+  } catch (error) {
+    console.error('❌ DataAttrNode to JSX conversion error:', error);
+    return null;
+  }
+};
+
+const createWrapperNode = (
+  textContent: string,
+  children: DataAttrNode[],
+): DataAttrNode => ({
+  tagName: 'div',
+  id: nanoid(6),
+  attributes: [{ name: DATA_ATTR.ITEM, value: 'true' }],
+  dataAttributes: [{ name: DATA_ATTR.ITEM, value: 'true' }],
+  textContent,
+  children,
+});
+
+const createFragmentNode = (
+  textContent: string,
+  children: DataAttrNode[],
+): DataAttrNode => ({
+  tagName: '',
+  id: nanoid(6),
+  attributes: [],
+  dataAttributes: [],
+  textContent,
+  children,
+  isFragment: true,
+});
+
+const processChildrenBinding = (
+  jsxElement: t.JSXElement,
+  processedNodes?: WeakSet<t.JSXElement | t.JSXFragment>,
+  wrap: boolean = true,
+): DataAttrNode[] | undefined => {
+  const jsxChildren = jsxElement.children.filter(
+    child => t.isJSXElement(child) || t.isJSXFragment(child),
+  );
+
+  if (!jsxChildren.length) {
+    return undefined;
+  }
+
+  const childrenNodes: DataAttrNode[] = [];
+
+  jsxChildren.forEach(child => {
+    if (t.isJSXElement(child)) {
+      const childResults = extractFromNode(child, processedNodes);
+
+      if (wrap) {
+        const wrapperNode = createWrapperNode(
+          collectText(child.children),
+          childResults,
+        );
+        childrenNodes.push(wrapperNode);
+      } else {
+        childrenNodes.push(...childResults);
+      }
+    } else if (t.isJSXFragment(child)) {
+      processedNodes?.add(child);
+
+      const fragmentChildren: DataAttrNode[] = [];
+
+      child.children.forEach(fragmentChild => {
+        if (t.isJSXElement(fragmentChild)) {
+          const childResults = extractFromNode(fragmentChild, processedNodes);
+          fragmentChildren.push(...childResults);
+        }
+      });
+
+      if (fragmentChildren.length) {
+        const fragmentNode = createFragmentNode(
+          collectText(child.children),
+          fragmentChildren,
+        );
+        childrenNodes.push(fragmentNode);
+      }
+    }
+  });
+
+  return childrenNodes.length ? childrenNodes : undefined;
+};
+
+const skipItemsChildren = (
+  jsxElement: t.JSXElement,
+  processedNodes: WeakSet<t.JSXElement | t.JSXFragment>,
+): void => {
+  const opening = jsxElement.openingElement;
+
+  const itemsAttr = opening.attributes.find(
+    attr =>
+      t.isJSXAttribute(attr) &&
+      t.isJSXIdentifier(attr.name) &&
+      attr.name.name === 'items',
+  );
+
+  if (!itemsAttr || !t.isJSXAttribute(itemsAttr)) {
+    return;
+  }
+
+  if (
+    itemsAttr.value &&
+    t.isJSXExpressionContainer(itemsAttr.value) &&
+    t.isArrayExpression(itemsAttr.value.expression)
+  ) {
+    const arrayExpr = itemsAttr.value.expression;
+
+    arrayExpr.elements.forEach(element => {
+      if (t.isObjectExpression(element)) {
+        element.properties.forEach(prop => {
+          if (
+            t.isObjectProperty(prop) &&
+            t.isIdentifier(prop.key) &&
+            prop.key.name === 'children'
+          ) {
+            markProcessedJSX(prop.value, processedNodes);
+          }
+        });
+      }
+    });
+  }
+};
+
+const markProcessedJSX = (
+  node: t.Node,
+  processedNodes: WeakSet<t.JSXElement | t.JSXFragment>,
+): void => {
+  if (t.isJSXElement(node) || t.isJSXFragment(node)) {
+    processedNodes.add(node as t.JSXElement | t.JSXFragment);
+    node.children.forEach(child => markProcessedJSX(child, processedNodes));
+    return;
+  }
+
+  const expression =
+    t.isJSXExpressionContainer(node) || t.isParenthesizedExpression(node);
+
+  if (expression) {
+    markProcessedJSX(node.expression, processedNodes);
+  }
+};
+
 const parseToNodes = (raw: string): DataAttrNode[] => {
   const wrapped = wrap(raw);
   const ast = parse(wrapped, {
@@ -354,17 +583,9 @@ const parseToNodes = (raw: string): DataAttrNode[] => {
       }
 
       const opening = path.node.openingElement;
-      let tagName = '';
+      const tagName = getTagName(opening);
 
-      if (t.isJSXIdentifier(opening.name)) {
-        tagName = opening.name.name;
-      } else if (t.isJSXMemberExpression(opening.name)) {
-        const obj = opening.name.object;
-        const prop = opening.name.property;
-        if (t.isJSXIdentifier(obj) && t.isJSXIdentifier(prop)) {
-          tagName = `${obj.name}.${prop.name}`;
-        }
-      } else {
+      if (!tagName) {
         return;
       }
 
@@ -377,63 +598,23 @@ const parseToNodes = (raw: string): DataAttrNode[] => {
           attr => attr.name === DATA_ATTR.BINDING,
         );
 
-        if (bindingAttr?.value) {
-          const bindings = parseBinding(bindingAttr.value);
-          const childrenBinding = bindings.find(
-            b => b.property === BINDING_PROP.CHILDREN,
-          );
+        const bindings = bindingAttr?.value
+          ? parseBinding(bindingAttr.value)
+          : [];
+        const childrenBinding = bindings.find(
+          b => b.property === BINDING_PROP.CHILDREN,
+        );
 
-          if (childrenBinding) {
-            const jsxChildren = path.node.children.filter(
-              child => t.isJSXElement(child) || t.isJSXFragment(child),
-            );
+        if (childrenBinding) {
+          childrenNodes = processChildrenBinding(path.node, processedNodes);
+        }
 
-            childrenNodes = [];
+        const itemsBinding = bindings.find(
+          b => b.property === BINDING_PROP.ITEMS,
+        );
 
-            jsxChildren.forEach(child => {
-              processedNodes.add(child);
-
-              if (t.isJSXElement(child)) {
-                const childResults = extractFromNode(child, processedNodes);
-
-                const wrapperNode: DataAttrNode = {
-                  tagName: 'div',
-                  id: nanoid(6),
-                  attributes: [{ name: DATA_ATTR.ITEM, value: 'true' }],
-                  dataAttributes: [{ name: DATA_ATTR.ITEM, value: 'true' }],
-                  textContent: collectText(child.children),
-                  children: childResults,
-                };
-
-                childrenNodes!.push(wrapperNode);
-              } else if (t.isJSXFragment(child)) {
-                const fragmentChildren: DataAttrNode[] = [];
-
-                child.children.forEach(fragmentChild => {
-                  if (t.isJSXElement(fragmentChild)) {
-                    processedNodes.add(fragmentChild);
-                    const childResults = extractFromNode(
-                      fragmentChild,
-                      processedNodes,
-                    );
-                    fragmentChildren.push(...childResults);
-                  }
-                });
-
-                const fragmentNode: DataAttrNode = {
-                  tagName: '',
-                  id: nanoid(6),
-                  attributes: [],
-                  dataAttributes: [],
-                  textContent: collectText(child.children),
-                  children: fragmentChildren,
-                  isFragment: true,
-                };
-
-                childrenNodes!.push(fragmentNode);
-              }
-            });
-          }
+        if (itemsBinding) {
+          skipItemsChildren(path.node, processedNodes);
         }
 
         results.push({
@@ -442,6 +623,7 @@ const parseToNodes = (raw: string): DataAttrNode[] => {
           dataAttributes: dataAttrs,
           textContent: collectText(path.node.children),
           children: childrenNodes,
+          bindings,
           loc: path.node.loc
             ? {
                 start: {
@@ -488,130 +670,27 @@ function extractFromNode(
   const results: DataAttrNode[] = [];
   const opening = node.openingElement;
 
-  let tagName = '';
+  processedNodes?.add(node);
 
-  if (t.isJSXIdentifier(opening.name)) {
-    tagName = opening.name.name;
-  } else if (t.isJSXMemberExpression(opening.name)) {
-    const obj = opening.name.object;
-    const prop = opening.name.property;
-    if (t.isJSXIdentifier(obj) && t.isJSXIdentifier(prop)) {
-      tagName = `${obj.name}.${prop.name}`;
-    }
-  }
+  const tagName = getTagName(opening);
 
   const { allAttrs, dataAttrs } = extractAttributes(opening.attributes);
 
   let childrenNodes: DataAttrNode[] | undefined;
 
   const bindingAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING);
+  const bindings = bindingAttr?.value ? parseBinding(bindingAttr.value) : [];
 
-  if (bindingAttr?.value) {
-    const bindings = parseBinding(bindingAttr.value);
-    const childrenBinding = bindings.find(
-      b => b.property === BINDING_PROP.CHILDREN,
-    );
+  const childrenBinding = bindings.find(
+    b => b.property === BINDING_PROP.CHILDREN,
+  );
 
-    if (childrenBinding) {
-      const jsxChildren = node.children.filter(
-        child => t.isJSXElement(child) || t.isJSXFragment(child),
-      );
-
-      childrenNodes = [];
-
-      jsxChildren.forEach(child => {
-        if (t.isJSXElement(child)) {
-          // processedNodes에 추가하여 루트 레벨에서 중복 처리 방지
-          processedNodes?.add(child);
-
-          const childResults = extractFromNode(child, processedNodes);
-
-          const wrapperNode: DataAttrNode = {
-            tagName: 'div',
-            id: nanoid(6),
-            attributes: [{ name: DATA_ATTR.ITEM, value: 'true' }],
-            dataAttributes: [{ name: DATA_ATTR.ITEM, value: 'true' }],
-            textContent: collectText(child.children),
-            children: childResults,
-          };
-
-          childrenNodes!.push(wrapperNode);
-        } else if (t.isJSXFragment(child)) {
-          processedNodes?.add(child);
-
-          const fragmentChildren: DataAttrNode[] = [];
-
-          child.children.forEach(fragmentChild => {
-            if (t.isJSXElement(fragmentChild)) {
-              processedNodes?.add(fragmentChild);
-              const childResults = extractFromNode(
-                fragmentChild,
-                processedNodes,
-              );
-              fragmentChildren.push(...childResults);
-            }
-          });
-
-          if (fragmentChildren.length) {
-            const fragmentNode: DataAttrNode = {
-              tagName: '',
-              id: nanoid(6),
-              attributes: [],
-              dataAttributes: [],
-              textContent: collectText(child.children),
-              children: fragmentChildren,
-              isFragment: true,
-            };
-
-            childrenNodes!.push(fragmentNode);
-          }
-        }
-      });
-    }
+  if (childrenBinding) {
+    childrenNodes = processChildrenBinding(node, processedNodes);
   }
 
-  // children 바인딩이 없는 경우 기존 로직
   if (!childrenNodes) {
-    const jsxChildren = node.children.filter(
-      child => t.isJSXElement(child) || t.isJSXFragment(child),
-    );
-
-    if (jsxChildren.length) {
-      childrenNodes = [];
-
-      jsxChildren.forEach(child => {
-        if (t.isJSXElement(child)) {
-          const childResults = extractFromNode(child, processedNodes);
-          childrenNodes!.push(...childResults);
-        } else if (t.isJSXFragment(child)) {
-          const fragmentChildren: DataAttrNode[] = [];
-
-          child.children.forEach(fragmentChild => {
-            if (t.isJSXElement(fragmentChild)) {
-              const childResults = extractFromNode(
-                fragmentChild,
-                processedNodes,
-              );
-              fragmentChildren.push(...childResults);
-            }
-          });
-
-          if (fragmentChildren.length) {
-            const fragmentNode: DataAttrNode = {
-              tagName: '',
-              id: nanoid(6),
-              attributes: [],
-              dataAttributes: [],
-              textContent: collectText(child.children),
-              children: fragmentChildren,
-              isFragment: true,
-            };
-
-            childrenNodes!.push(fragmentNode);
-          }
-        }
-      });
-    }
+    childrenNodes = processChildrenBinding(node, processedNodes, false);
   }
 
   results.push({
@@ -620,6 +699,7 @@ function extractFromNode(
     dataAttributes: dataAttrs,
     textContent: collectText(node.children),
     children: childrenNodes,
+    bindings,
   });
 
   return results;
@@ -663,7 +743,7 @@ const updateChildren = (
 
     return true;
   } catch (error) {
-    console.error('❌ Children 업데이트 에러:', error);
+    console.error('❌ Children update error:', error);
     return false;
   }
 };
@@ -734,7 +814,6 @@ export const update = (
           return;
         }
 
-        // data-binding 속성 확인 및 업데이트 로직
         const bindingAttr = opening.attributes.find(
           (attr): attr is t.JSXAttribute =>
             t.isJSXAttribute(attr) &&
@@ -793,7 +872,7 @@ export const update = (
 
     return unwrap(generateCode(ast));
   } catch (error) {
-    console.error('❌ 코드 업데이트 에러:', error);
+    console.error('❌ Code update error:', error);
     return code;
   }
 };
@@ -903,7 +982,7 @@ export const parseArrayExpression = (value: string) => {
 
     return ast;
   } catch (error) {
-    console.error('❌ 배열 파싱 에러:', error);
+    console.error('❌ Array parsing error:', error);
     return null;
   }
 };
