@@ -66,7 +66,7 @@ const App = () => {
         )}
       >
         <ui.Space
-          data-id="B4EJxe"
+          data-id=""
           data-binding={[
             {
               label: 'Feature Cards',
@@ -88,7 +88,7 @@ const App = () => {
           >
             <ui.Space orientation="vertical" size="middle" align="center">
               <div
-                data-id="RSDQfg"
+                data-id=""
                 data-binding={[
                   {
                     label: 'Icon',
@@ -103,7 +103,7 @@ const App = () => {
                 🚀
               </div>
               <h3
-                data-id="Q23gxA"
+                data-id=""
                 data-binding={[
                   {
                     label: 'Title',
@@ -118,7 +118,7 @@ const App = () => {
                 Feature 1
               </h3>
               <p
-                data-id="jMVy3Z"
+                data-id=""
                 data-binding={[
                   {
                     label: 'Description',
@@ -142,7 +142,7 @@ const App = () => {
           >
             <ui.Space orientation="vertical" size="middle" align="center">
               <div
-                data-id="9uOauS"
+                data-id=""
                 data-binding={[
                   {
                     label: 'Icon',
@@ -157,7 +157,7 @@ const App = () => {
                 ⚡
               </div>
               <h3
-                data-id="RU3j4v"
+                data-id=""
                 data-binding={[
                   {
                     label: 'Title',
@@ -172,7 +172,7 @@ const App = () => {
                 Feature 2
               </h3>
               <p
-                data-id="rcqPQM"
+                data-id=""
                 data-binding={[
                   {
                     label: 'Description',
@@ -196,7 +196,7 @@ const App = () => {
           >
             <ui.Space orientation="vertical" size="middle" align="center">
               <div
-                data-id="xS5vQ3"
+                data-id=""
                 data-binding={[
                   {
                     label: 'Icon',
@@ -211,7 +211,7 @@ const App = () => {
                 ✨
               </div>
               <h3
-                data-id="Z6Z2K8"
+                data-id=""
                 data-binding={[
                   {
                     label: 'Title',
@@ -226,7 +226,7 @@ const App = () => {
                 Feature 3
               </h3>
               <p
-                data-id="lG7apX"
+                data-id=""
                 data-binding={[
                   {
                     label: 'Description',
@@ -302,50 +302,61 @@ const App = () => {
             //
           )}
         >
-          <h2
+          <ui.Typography.Title
+            data-id=""
+            data-binding={[{ label: 'Title', property: 'innerText' }]}
+            level={2}
             className={cn(
               'mb-4 text-3xl text-gray-800',
               //
             )}
           >
             Ready to get started?
-          </h2>
-          <p
+          </ui.Typography.Title>
+          <ui.Typography.Paragraph
+            data-id=""
+            data-binding={[{ label: 'Description', property: 'innerText' }]}
             className={cn(
               'mb-6 text-lg text-gray-600',
               //
             )}
           >
             Start exploring what Live Editor can do for your projects
-          </p>
-          <div
+          </ui.Typography.Paragraph>
+          <ui.Space
+            data-id=""
+            data-binding={[{ label: 'Buttons', property: 'children' }]}
             className={cn(
               'flex flex-wrap justify-center gap-4',
               //
             )}
           >
-            <button
+            <ui.Button
+              data-id=""
+              data-binding={[{ label: 'Button 1 Text', property: 'innerText' }]}
+              size="large"
               className={cn(
-                'cursor-pointer rounded border-none',
-                'bg-indigo-500 px-8 py-3 text-base text-white',
-                'transition-colors hover:bg-indigo-600',
+                'bg-indigo-500 px-8 text-base text-white',
+                'hover:bg-indigo-600',
                 //
               )}
             >
               View Documentation
-            </button>
-            <button
+            </ui.Button>
+            <ui.Button
+              data-id=""
+              data-binding={[{ label: 'Button 2 Text', property: 'innerText' }]}
+              variant="outlined"
+              size="large"
               className={cn(
-                'cursor-pointer rounded',
-                `border-2 border-indigo-500 bg-white px-8 py-3 text-base
-                text-indigo-500`,
-                'transition-colors hover:bg-indigo-50',
+                'border-2 border-indigo-500 px-8 text-base text-indigo-500',
+                'hover:bg-indigo-50',
                 //
               )}
             >
               View Examples
-            </button>
-          </div>
+            </ui.Button>
+          </ui.Space>
         </div>
       </section>
       <section
@@ -361,42 +372,54 @@ const App = () => {
             //
           )}
         >
-          <h2
+          <ui.Typography.Title
+            data-id=""
+            data-binding={[{ label: 'Title', property: 'innerText' }]}
+            level={2}
             className={cn(
               'mb-12 text-center text-4xl font-bold text-gray-800',
               //
             )}
           >
             How to Get Started
-          </h2>
+          </ui.Typography.Title>
           <div
             className={cn(
               'grid gap-8 md:grid-cols-3',
               //
             )}
           >
-            <div
+            <ui.Card
+              data-id=""
+              data-binding={[{ label: 'Card 1 Content', property: 'children' }]}
               className={cn(
                 'rounded-lg border-2 border-gray-200 bg-white p-8',
                 //
               )}
             >
-              <h3
+              <ui.Typography.Title
+                data-id=""
+                data-binding={[
+                  { label: 'Card 1 Title', property: 'innerText' },
+                ]}
+                level={3}
                 className={cn(
                   'mb-2 text-2xl font-bold text-gray-800',
                   //
                 )}
               >
                 Explore
-              </h3>
-              <p
+              </ui.Typography.Title>
+              <ui.Typography.Paragraph
+                data-id=""
+                data-binding={[{ label: 'Card 1 Icon', property: 'innerText' }]}
                 className={cn(
                   'mb-6 text-4xl font-bold text-indigo-600',
                   //
                 )}
               >
                 📚
-              </p>
+              </ui.Typography.Paragraph>
               <ul
                 className={cn(
                   'mb-8 space-y-3 text-gray-600',
@@ -407,18 +430,26 @@ const App = () => {
                 <li>✓ Browse examples</li>
                 <li>✓ Try the demo</li>
               </ul>
-              <button
+              <ui.Button
+                data-id=""
+                data-binding={[
+                  { label: 'Card 1 Button', property: 'innerText' },
+                ]}
+                variant="outlined"
+                size="large"
+                block
                 className={cn(
-                  'w-full cursor-pointer rounded border-2 border-indigo-500',
-                  'bg-white px-6 py-3 text-indigo-500',
-                  'transition-colors hover:bg-indigo-50',
+                  'border-2 border-indigo-500 text-indigo-500',
+                  'hover:bg-indigo-50',
                   //
                 )}
               >
                 View Docs
-              </button>
-            </div>
-            <div
+              </ui.Button>
+            </ui.Card>
+            <ui.Card
+              data-id=""
+              data-binding={[{ label: 'Card 2 Content', property: 'children' }]}
               className={cn(
                 'relative rounded-lg border-2 border-indigo-500 bg-white p-8',
                 //
@@ -433,22 +464,29 @@ const App = () => {
               >
                 Recommended
               </div>
-              <h3
+              <ui.Typography.Title
+                data-id=""
+                data-binding={[
+                  { label: 'Card 2 Title', property: 'innerText' },
+                ]}
+                level={3}
                 className={cn(
                   'mb-2 text-2xl font-bold text-gray-800',
                   //
                 )}
               >
                 Practice
-              </h3>
-              <p
+              </ui.Typography.Title>
+              <ui.Typography.Paragraph
+                data-id=""
+                data-binding={[{ label: 'Card 2 Icon', property: 'innerText' }]}
                 className={cn(
                   'mb-6 text-4xl font-bold text-indigo-600',
                   //
                 )}
               >
                 💻
-              </p>
+              </ui.Typography.Paragraph>
               <ul
                 className={cn(
                   'mb-8 space-y-3 text-gray-600',
@@ -459,39 +497,53 @@ const App = () => {
                 <li>✓ Experiment freely</li>
                 <li>✓ Build your own</li>
               </ul>
-              <button
+              <ui.Button
+                data-id=""
+                data-binding={[
+                  { label: 'Card 2 Button', property: 'innerText' },
+                ]}
+                size="large"
+                block
                 className={cn(
-                  'w-full cursor-pointer rounded border-none',
-                  'bg-indigo-500 px-6 py-3 text-white',
-                  'transition-colors hover:bg-indigo-600',
+                  'bg-indigo-500 text-white',
+                  'hover:bg-indigo-600',
                   //
                 )}
               >
                 Start Building
-              </button>
-            </div>
-            <div
+              </ui.Button>
+            </ui.Card>
+            <ui.Card
+              data-id=""
+              data-binding={[{ label: 'Card 3 Content', property: 'children' }]}
               className={cn(
                 'rounded-lg border-2 border-gray-200 bg-white p-8',
                 //
               )}
             >
-              <h3
+              <ui.Typography.Title
+                data-id=""
+                data-binding={[
+                  { label: 'Card 3 Title', property: 'innerText' },
+                ]}
+                level={3}
                 className={cn(
                   'mb-2 text-2xl font-bold text-gray-800',
                   //
                 )}
               >
                 Contribute
-              </h3>
-              <p
+              </ui.Typography.Title>
+              <ui.Typography.Paragraph
+                data-id=""
+                data-binding={[{ label: 'Card 3 Icon', property: 'innerText' }]}
                 className={cn(
                   'mb-6 text-4xl font-bold text-indigo-600',
                   //
                 )}
               >
                 🤝
-              </p>
+              </ui.Typography.Paragraph>
               <ul
                 className={cn(
                   'mb-8 space-y-3 text-gray-600',
@@ -502,17 +554,23 @@ const App = () => {
                 <li>✓ Suggest features</li>
                 <li>✓ Submit pull requests</li>
               </ul>
-              <button
+              <ui.Button
+                data-id=""
+                data-binding={[
+                  { label: 'Card 3 Button', property: 'innerText' },
+                ]}
+                variant="outlined"
+                size="large"
+                block
                 className={cn(
-                  'w-full cursor-pointer rounded border-2 border-indigo-500',
-                  'bg-white px-6 py-3 text-indigo-500',
-                  'transition-colors hover:bg-indigo-50',
+                  'border-2 border-indigo-500 text-indigo-500',
+                  'hover:bg-indigo-50',
                   //
                 )}
               >
                 View on GitHub
-              </button>
-            </div>
+              </ui.Button>
+            </ui.Card>
           </div>
         </div>
       </section>
@@ -529,87 +587,115 @@ const App = () => {
             //
           )}
         >
-          <h2
+          <ui.Typography.Title
+            data-id=""
+            data-binding={[{ label: 'Title', property: 'innerText' }]}
+            level={2}
             className={cn(
               'mb-12 text-center text-4xl font-bold text-gray-800',
               //
             )}
           >
             Key Features
-          </h2>
-          <div
+          </ui.Typography.Title>
+          <ui.Space
+            data-id=""
+            data-binding={[{ label: 'Feature Cards', property: 'children' }]}
             className={cn(
               'grid gap-8 md:grid-cols-2',
               //
             )}
+            orientation="vertical"
           >
-            <div
+            <ui.Card
               className={cn(
-                'rounded-lg bg-white p-8 shadow-md',
+                'bg-white p-8 shadow-md',
                 //
               )}
             >
-              <div
-                className={cn(
-                  'mb-4 text-4xl',
-                  //
-                )}
-              >
-                🎨
-              </div>
-              <h3
-                className={cn(
-                  'mb-4 text-2xl font-bold text-gray-800',
-                  //
-                )}
-              >
-                Visual Editing
-              </h3>
-              <p
-                className={cn(
-                  'text-gray-600',
-                  //
-                )}
-              >
-                See your changes in real-time as you build. Live Editor provides
-                instant visual feedback, making it easier to understand how code
-                affects your interface.
-              </p>
-            </div>
-            <div
+              <ui.Space orientation="vertical" size="middle">
+                <div
+                  data-id=""
+                  data-binding={[{ label: 'Icon', property: 'innerText' }]}
+                  className={cn(
+                    'text-4xl',
+                    //
+                  )}
+                >
+                  🎨
+                </div>
+                <ui.Typography.Title
+                  data-id=""
+                  data-binding={[{ label: 'Title', property: 'innerText' }]}
+                  level={3}
+                  className={cn(
+                    'text-2xl font-bold text-gray-800',
+                    //
+                  )}
+                >
+                  Visual Editing
+                </ui.Typography.Title>
+                <ui.Typography.Paragraph
+                  data-id=""
+                  data-binding={[
+                    { label: 'Description', property: 'innerText' },
+                  ]}
+                  className={cn(
+                    'text-gray-600',
+                    //
+                  )}
+                >
+                  See your changes in real-time as you build. Live Editor
+                  provides instant visual feedback, making it easier to
+                  understand how code affects your interface.
+                </ui.Typography.Paragraph>
+              </ui.Space>
+            </ui.Card>
+            <ui.Card
               className={cn(
-                'rounded-lg bg-white p-8 shadow-md',
+                'bg-white p-8 shadow-md',
                 //
               )}
             >
-              <div
-                className={cn(
-                  'mb-4 text-4xl',
-                  //
-                )}
-              >
-                🧩
-              </div>
-              <h3
-                className={cn(
-                  'mb-4 text-2xl font-bold text-gray-800',
-                  //
-                )}
-              >
-                Component-Based
-              </h3>
-              <p
-                className={cn(
-                  'text-gray-600',
-                  //
-                )}
-              >
-                Build with reusable components that you can drag, drop, and
-                customize. Learn modern development patterns while creating your
-                interface.
-              </p>
-            </div>
-          </div>
+              <ui.Space orientation="vertical" size="middle">
+                <div
+                  data-id=""
+                  data-binding={[{ label: 'Icon', property: 'innerText' }]}
+                  className={cn(
+                    'text-4xl',
+                    //
+                  )}
+                >
+                  🧩
+                </div>
+                <ui.Typography.Title
+                  data-id=""
+                  data-binding={[{ label: 'Title', property: 'innerText' }]}
+                  level={3}
+                  className={cn(
+                    'text-2xl font-bold text-gray-800',
+                    //
+                  )}
+                >
+                  Component-Based
+                </ui.Typography.Title>
+                <ui.Typography.Paragraph
+                  data-id=""
+                  data-binding={[
+                    { label: 'Description', property: 'innerText' },
+                  ]}
+                  className={cn(
+                    'text-gray-600',
+                    //
+                  )}
+                >
+                  Build with reusable components that you can drag, drop, and
+                  customize. Learn modern development patterns while creating
+                  your interface.
+                </ui.Typography.Paragraph>
+              </ui.Space>
+            </ui.Card>
+          </ui.Space>
         </div>
       </section>
       <section
@@ -807,121 +893,91 @@ const App = () => {
             //
           )}
         >
-          <h2
+          <ui.Typography.Title
+            data-id=""
+            data-binding={[{ label: 'Title', property: 'innerText' }]}
+            level={2}
             className={cn(
               'mb-12 text-center text-4xl font-bold text-gray-800',
               //
             )}
           >
             Frequently Asked Questions
-          </h2>
-          <div
-            className={cn(
-              'space-y-6',
-              //
-            )}
-          >
-            <div
-              className={cn(
-                'rounded-lg border border-gray-200 bg-white p-6',
-                //
-              )}
-            >
-              <h3
-                className={cn(
-                  'mb-3 text-xl font-semibold text-gray-800',
-                  //
-                )}
-              >
-                What is Live Editor?
-              </h3>
-              <p
-                className={cn(
-                  'text-gray-600',
-                  //
-                )}
-              >
-                Live Editor is an open-source tool for building web interfaces
-                visually. It helps you learn web development by providing
-                instant feedback as you build components.
-              </p>
-            </div>
-            <div
-              className={cn(
-                'rounded-lg border border-gray-200 bg-white p-6',
-                //
-              )}
-            >
-              <h3
-                className={cn(
-                  'mb-3 text-xl font-semibold text-gray-800',
-                  //
-                )}
-              >
-                Do I need coding experience?
-              </h3>
-              <p
-                className={cn(
-                  'text-gray-600',
-                  //
-                )}
-              >
-                No! Live Editor is designed for all skill levels. Beginners can
-                learn through visual editing, while experienced developers can
-                work directly with code.
-              </p>
-            </div>
-            <div
-              className={cn(
-                'rounded-lg border border-gray-200 bg-white p-6',
-                //
-              )}
-            >
-              <h3
-                className={cn(
-                  'mb-3 text-xl font-semibold text-gray-800',
-                  //
-                )}
-              >
-                Is it really free?
-              </h3>
-              <p
-                className={cn(
-                  'text-gray-600',
-                  //
-                )}
-              >
-                Yes, completely free! Live Editor is an open-source project with
-                no hidden costs or premium tiers. All features are available to
-                everyone.
-              </p>
-            </div>
-            <div
-              className={cn(
-                'rounded-lg border border-gray-200 bg-white p-6',
-                //
-              )}
-            >
-              <h3
-                className={cn(
-                  'mb-3 text-xl font-semibold text-gray-800',
-                  //
-                )}
-              >
-                How can I contribute?
-              </h3>
-              <p
-                className={cn(
-                  'text-gray-600',
-                  //
-                )}
-              >
-                You can contribute by reporting bugs, suggesting features,
-                sharing your projects, or contributing code. Check our GitHub
-                repository for more details.
-              </p>
-            </div>
-          </div>
+          </ui.Typography.Title>
+          <ui.Collapse
+            data-id=""
+            data-binding={[{ label: 'FAQ Items', property: 'items' }]}
+            items={[
+              {
+                key: '1',
+                label: 'What is Live Editor?',
+                children: (
+                  <ui.Typography.Paragraph
+                    data-id=""
+                    data-binding={[
+                      { label: 'Answer 1', property: 'innerText' },
+                    ]}
+                    className={cn('text-gray-600')}
+                  >
+                    Live Editor is an open-source tool for building web
+                    interfaces visually. It helps you learn web development by
+                    providing instant feedback as you build components.
+                  </ui.Typography.Paragraph>
+                ),
+              },
+              {
+                key: '2',
+                label: 'Do I need coding experience?',
+                children: (
+                  <ui.Typography.Paragraph
+                    data-id=""
+                    data-binding={[
+                      { label: 'Answer 2', property: 'innerText' },
+                    ]}
+                    className={cn('text-gray-600')}
+                  >
+                    No! Live Editor is designed for all skill levels. Beginners
+                    can learn through visual editing, while experienced
+                    developers can work directly with code.
+                  </ui.Typography.Paragraph>
+                ),
+              },
+              {
+                key: '3',
+                label: 'Is it really free?',
+                children: (
+                  <ui.Typography.Paragraph
+                    data-id=""
+                    data-binding={[
+                      { label: 'Answer 3', property: 'innerText' },
+                    ]}
+                    className={cn('text-gray-600')}
+                  >
+                    Yes, completely free! Live Editor is an open-source project
+                    with no hidden costs or premium tiers. All features are
+                    available to everyone.
+                  </ui.Typography.Paragraph>
+                ),
+              },
+              {
+                key: '4',
+                label: 'How can I contribute?',
+                children: (
+                  <ui.Typography.Paragraph
+                    data-id=""
+                    data-binding={[
+                      { label: 'Answer 4', property: 'innerText' },
+                    ]}
+                    className={cn('text-gray-600')}
+                  >
+                    You can contribute by reporting bugs, suggesting features,
+                    sharing your projects, or contributing code. Check our
+                    GitHub repository for more details.
+                  </ui.Typography.Paragraph>
+                ),
+              },
+            ]}
+          />
         </div>
       </section>
     </main>
