@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import * as t from '@babel/types';
-import { Button, Input } from '@jbpark/ui-kit';
+import { Button } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
@@ -16,8 +16,10 @@ import {
   findEditableChildren,
   generateCode,
   parseArrayExpression,
+  parseValue,
 } from '~/utils/ast';
 
+import Field from '../Field';
 import Node from '../Node';
 
 interface ItemProperty extends ExtractedNodeValue {
@@ -25,6 +27,7 @@ interface ItemProperty extends ExtractedNodeValue {
 }
 
 interface ItemData {
+  id: string;
   index: number;
   editableProperties: Record<string, ItemProperty>;
   originalElement: t.ObjectExpression;
@@ -105,6 +108,7 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
         });
 
         const itemData: ItemData = {
+          id: nanoid(6),
           index: itemIndex,
           editableProperties: extractObjectProperties(element),
           originalElement: element,
@@ -210,6 +214,7 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
 
     const nextItems = [...extractedItems];
     const newItemData: ItemData = {
+      id: nanoid(6),
       index: nextItems.length,
       editableProperties,
       originalElement: clonedElement,
@@ -236,22 +241,22 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
         </Button>
       </div>
 
-      {extractedItems.map((item, index) => (
-        <div key={index} className="space-y-3 rounded border bg-gray-50 p-3">
+      {extractedItems.map(item => (
+        <div key={item.id} className="space-y-3 rounded border bg-gray-50 p-3">
           <div className="flex items-center justify-between">
-            <div className="text-xs font-medium">Item {index + 1}</div>
+            <div className="text-xs font-medium">Item {item.index + 1}</div>
             <div className="flex space-x-1">
               <Button
                 size="small"
                 icon={<ArrowUp />}
-                disabled={index === 0}
-                onClick={() => moveItem(index, index - 1)}
+                disabled={item.index === 0}
+                onClick={() => moveItem(item.index, item.index - 1)}
               />
               <Button
                 size="small"
                 icon={<ArrowDown />}
-                disabled={index === extractedItems.length - 1}
-                onClick={() => moveItem(index, index + 1)}
+                disabled={item.index === extractedItems.length - 1}
+                onClick={() => moveItem(item.index, item.index + 1)}
               />
               <Button
                 title={
@@ -263,33 +268,25 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
                 size="small"
                 icon={<X />}
                 disabled={extractedItems.length <= 1}
-                onClick={() => deleteItem(index)}
+                onClick={() => deleteItem(item.index)}
               />
             </div>
           </div>
           <div className="space-y-2">
             {Object.entries(item.editableProperties).map(([key, prop]) => (
-              <div key={`${index}-${key}`}>
+              <div key={`${item.id}-${key}`}>
                 <div className="flex items-center space-x-2">
                   <label className="w-20 shrink-0 text-xs font-medium">
                     {key}:
                   </label>
-                  {prop.type === 'boolean' && (
-                    <input
-                      type="checkbox"
-                      checked={Boolean(prop.value)}
-                      onChange={e =>
-                        updateProperty(index, key, e.target.checked)
-                      }
-                    />
-                  )}
-                  {(prop.type === 'string' || prop.type === 'number') && (
-                    <Input
-                      type={prop.type === 'number' ? 'number' : 'text'}
-                      value={String(prop.value)}
-                      onChange={e => updateProperty(index, key, e.target.value)}
-                    />
-                  )}
+                  <Field
+                    binding={{ label: key, property: key }}
+                    id={`item-${item.id}-${key}`}
+                    value={String(prop.value)}
+                    onChange={({ value: next }) =>
+                      updateProperty(item.index, key, parseValue(next))
+                    }
+                  />
                 </div>
                 <span className="text-right text-xs text-gray-500">
                   ({prop.type})
@@ -312,7 +309,7 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
 
                       return (
                         <div
-                          key={`binding-${index}-${propertyName}-${nodeId || idx}`}
+                          key={`binding-${item.id}-${propertyName}-${nodeId || idx}`}
                           className="rounded border border-blue-100 bg-blue-50
                             p-2"
                         >
