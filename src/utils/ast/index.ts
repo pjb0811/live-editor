@@ -537,7 +537,7 @@ const skipItemsChildren = (
           if (
             t.isObjectProperty(prop) &&
             t.isIdentifier(prop.key) &&
-            prop.key.name === 'children'
+            t.isJSXElement(prop.value)
           ) {
             markProcessedJSX(prop.value, processedNodes);
           }
@@ -997,13 +997,16 @@ export const extractObjectProperties = (
     if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) {
       const key = prop.key.name;
 
-      if (key !== 'children') {
-        const extracted = extractNodeValue(prop.value);
-        properties[key] = {
-          ...extracted,
-          astNode: prop.value,
-        };
+      if (key === 'children' || t.isJSXElement(prop.value)) {
+        return;
       }
+
+      const extracted = extractNodeValue(prop.value);
+
+      properties[key] = {
+        ...extracted,
+        astNode: prop.value,
+      };
     }
   });
 

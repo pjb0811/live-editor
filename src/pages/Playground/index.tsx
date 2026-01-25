@@ -910,7 +910,17 @@ const App = () => {
             items={[
               {
                 key: '1',
-                label: 'What is Live Editor?',
+                label: (
+                  <ui.Typography.Text
+                    data-id=""
+                    data-binding={[
+                      { label: 'Question 1', property: 'innerText' },
+                    ]}
+                    className={cn('text-lg font-semibold text-gray-800')}
+                  >
+                    What is Live Editor?
+                  </ui.Typography.Text>
+                ),
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
@@ -927,7 +937,17 @@ const App = () => {
               },
               {
                 key: '2',
-                label: 'Do I need coding experience?',
+                label: (
+                  <ui.Typography.Text
+                    data-id=""
+                    data-binding={[
+                      { label: 'Question 2', property: 'innerText' },
+                    ]}
+                    className={cn('text-lg font-semibold text-gray-800')}
+                  >
+                    Do I need coding experience?
+                  </ui.Typography.Text>
+                ),
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
@@ -944,7 +964,17 @@ const App = () => {
               },
               {
                 key: '3',
-                label: 'Is it really free?',
+                label: (
+                  <ui.Typography.Text
+                    data-id=""
+                    data-binding={[
+                      { label: 'Question 3', property: 'innerText' },
+                    ]}
+                    className={cn('text-lg font-semibold text-gray-800')}
+                  >
+                    Is it really free?
+                  </ui.Typography.Text>
+                ),
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
@@ -961,7 +991,17 @@ const App = () => {
               },
               {
                 key: '4',
-                label: 'How can I contribute?',
+                label: (
+                  <ui.Typography.Text
+                    data-id=""
+                    data-binding={[
+                      { label: 'Question 4', property: 'innerText' },
+                    ]}
+                    className={cn('text-lg font-semibold text-gray-800')}
+                  >
+                    How can I contribute?
+                  </ui.Typography.Text>
+                ),
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""

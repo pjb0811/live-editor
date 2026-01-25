@@ -28,7 +28,7 @@ interface ItemData {
   index: number;
   editableProperties: Record<string, ItemProperty>;
   originalElement: t.ObjectExpression;
-  childrenBindings: DataAttrNode[];
+  jsxBindings: Record<string, DataAttrNode[]>;
 }
 
 interface Props {
@@ -55,25 +55,30 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
           return null;
         }
 
-        const childrenBindings: DataAttrNode[] = [];
-        const childrenProp = element.properties.find(
-          prop =>
-            t.isObjectProperty(prop) &&
-            t.isIdentifier(prop.key) &&
-            prop.key.name === 'children',
-        ) as t.ObjectProperty | undefined;
+        const jsxBindings: Record<string, DataAttrNode[]> = {};
 
-        if (childrenProp && t.isJSXElement(childrenProp.value)) {
+        element.properties.forEach(prop => {
+          if (
+            !t.isObjectProperty(prop) ||
+            !t.isIdentifier(prop.key) ||
+            !t.isJSXElement(prop.value)
+          ) {
+            return;
+          }
+
+          const propertyName = prop.key.name;
+
           try {
-            const jsxCode = generateCode(childrenProp.value);
+            const jsxCode = generateCode(prop.value);
             const nodes = extract(jsxCode);
+            const bindings: DataAttrNode[] = [];
 
-            const childrenContainer = nodes.find(node =>
+            const bindingContainer = nodes.find(node =>
               node.bindings?.some(b => b.property === 'children'),
             );
 
-            if (childrenContainer) {
-              childrenBindings.push(childrenContainer);
+            if (bindingContainer) {
+              bindings.push(bindingContainer);
             } else {
               nodes.forEach(node => {
                 if (
@@ -81,22 +86,29 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
                   node.bindings.length > 0 &&
                   node.dataAttributes.some(a => a.name === 'data-id')
                 ) {
-                  childrenBindings.push(node);
+                  bindings.push(node);
                 }
                 const editableChildren = findEditableChildren(node);
-                childrenBindings.push(...editableChildren);
+                bindings.push(...editableChildren);
               });
             }
+
+            if (bindings.length > 0) {
+              jsxBindings[propertyName] = bindings;
+            }
           } catch (error) {
-            console.error('Failed to parse children JSX:', error);
+            console.error(
+              `Failed to parse JSX in property '${propertyName}':`,
+              error,
+            );
           }
-        }
+        });
 
         const itemData: ItemData = {
           index: itemIndex,
           editableProperties: extractObjectProperties(element),
           originalElement: element,
-          childrenBindings,
+          jsxBindings,
         };
 
         return itemData;
@@ -201,7 +213,7 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
       index: nextItems.length,
       editableProperties,
       originalElement: clonedElement,
-      childrenBindings: [],
+      jsxBindings: {},
     };
 
     nextItems.push(newItemData);
@@ -285,33 +297,38 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
               </div>
             ))}
           </div>
-          <div className="border-t pt-2">
-            {item.childrenBindings.length > 0 ? (
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-blue-700">
-                  Children Bindings ({item.childrenBindings.length}):
-                </div>
-                {item.childrenBindings.map((bindingNode, idx) => {
-                  const nodeId = bindingNode.dataAttributes.find(
-                    a => a.name === 'data-id',
-                  )?.value;
-
-                  return (
-                    <div
-                      key={`binding-${index}-${nodeId || idx}`}
-                      className="rounded border border-blue-100 bg-blue-50 p-2"
-                    >
-                      <div className="mb-1 text-xs text-blue-600">
-                        &lt;{bindingNode.tagName || 'element'}&gt;
-                      </div>
-                      <Node data={bindingNode} onChange={onChildChange} />
+          <div className="space-y-3 border-t pt-2">
+            {Object.entries(item.jsxBindings).length > 0 ? (
+              Object.entries(item.jsxBindings).map(
+                ([propertyName, bindings]) => (
+                  <div key={propertyName} className="space-y-2">
+                    <div className="text-xs font-medium text-blue-700">
+                      {propertyName} Bindings ({bindings.length}):
                     </div>
-                  );
-                })}
-              </div>
+                    {bindings.map((bindingNode, idx) => {
+                      const nodeId = bindingNode.dataAttributes.find(
+                        a => a.name === 'data-id',
+                      )?.value;
+
+                      return (
+                        <div
+                          key={`binding-${index}-${propertyName}-${nodeId || idx}`}
+                          className="rounded border border-blue-100 bg-blue-50
+                            p-2"
+                        >
+                          <div className="mb-1 text-xs text-blue-600">
+                            &lt;{bindingNode.tagName || 'element'}&gt;
+                          </div>
+                          <Node data={bindingNode} onChange={onChildChange} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ),
+              )
             ) : (
               <div className="text-xs text-gray-500">
-                ✓ children: JSX content (no bindings)
+                ✓ No JSX bindings found
               </div>
             )}
           </div>
