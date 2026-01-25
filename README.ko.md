@@ -8,24 +8,20 @@
 
 ```text
 live-editor/
-├─ .changeset/              # 패키지 버전 관리(Changesets) 설정
 ├─ src/
 │  ├─ components/
-│  │  ├─ Context/           # 전역 상태/데이터 컨텍스트
-│  │  ├─ Dnd/               # 드래그 앤 드롭 엔진 및 UI
-│  │  │  └─ Panel/          # 속성 편집 패널(Field, Items, Node 등)
-│  │  ├─ Editor/            # 코드 에디터 통합
-│  │  ├─ Error/             # 런타임 에러 바운더리 및 표시
-│  │  └─ Preview/           # 샌드박스 프리뷰 클라이언트/iframe
-│  ├─ pages/                # 라우트 페이지
-│  │  └─ PreviewPage.tsx    # 전체화면 프리뷰 페이지 (/preview)
-│  ├─ enums/                # 상수 및 설정 enum
-│  ├─ types/                # 공용 타입 정의
-│  ├─ utils/
-│  │  └─ ast/               # AST 유틸리티 및 코드 변환 헬퍼
-│  ├─ App.tsx               # 앱 레이아웃/쉘
-│  └─ main.tsx              # 라우팅이 포함된 엔트리 포인트
-├─ README.md
+│  │  ├─ Context/           # 전역 상태 관리
+│  │  ├─ Dnd/               # 드래그 앤 드롭 시스템 및 편집 패널
+│  │  ├─ Editor/            # 코드 에디터
+│  │  ├─ Error/             # 에러 바운더리
+│  │  └─ Preview/           # 격리된 프리뷰 런타임
+│  ├─ pages/
+│  │  ├─ Playground/        # 메인 에디터 페이지
+│  │  └─ Preview/           # 전체화면 프리뷰 페이지
+│  ├─ utils/ast/            # AST 조작 및 코드 생성
+│  ├─ enums/                # 상수 및 설정
+│  ├─ types/                # TypeScript 타입 정의
+│  └─ App.tsx               # 라우팅이 포함된 앱 레이아웃
 └─ package.json
 ```
 
@@ -33,6 +29,8 @@ live-editor/
 
 - **AST 기반 실시간 코드 반영**: 캔버스 상호작용(추가/이동/삭제, 속성 변경)을 안전하게 소스 코드에 적용합니다.
 - **인터랙티브 속성 패널**: 숫자, 문자열, 불리언, 배열, 객체를 패널에서 바로 편집합니다.
+- **고급 JSX 바인딩 시스템**: 타입 기반 감지를 통해 모든 JSX 요소 속성(children, label, icon 등)을 자동으로 인식하고 편집 가능하게 합니다.
+- **스마트 Items 에디터**: 배열 아이템을 추가/이동/삭제하고, 일반 속성과 중첩된 JSX 컴포넌트를 편집합니다. 순서 변경 시에도 안정적인 컴포넌트 ID를 유지합니다.
 - **격리된 프리뷰 런타임**: 샌드박스된 iframe에서 사용자 코드를 실행하여 메인 앱을 보호합니다.
 - **강력한 드래그 앤 드롭**: `@dnd-kit` 기반으로 부드러운 정렬과 배치를 지원합니다.
 - **저장 & 미리보기**: 작성한 코드를 localStorage에 저장하고 전용 전체화면 미리보기 페이지(`/preview`)에서 확인할 수 있습니다.
