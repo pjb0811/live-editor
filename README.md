@@ -8,24 +8,20 @@ An interactive editor for building UIs with real-time preview and drag‑and‑d
 
 ```text
 live-editor/
-├─ .changeset/              # Changesets configuration and snapshots
 ├─ src/
 │  ├─ components/
-│  │  ├─ Context/           # Global state and data context
-│  │  ├─ Dnd/               # Drag-and-drop engine and UI
-│  │  │  └─ Panel/          # Property editing panel (Field, Items, Node, etc.)
-│  │  ├─ Editor/            # Code editor integration
-│  │  ├─ Error/             # Runtime error boundary and reporting
-│  │  └─ Preview/           # Isolated preview client and iframe
-│  ├─ pages/                # Route pages
-│  │  └─ PreviewPage.tsx    # Full-screen preview page (/preview)
-│  ├─ enums/                # Constants and configuration enums
-│  ├─ types/                # Shared type definitions
-│  ├─ utils/
-│  │  └─ ast/               # AST helpers and code utilities
-│  ├─ App.tsx               # App shell and layout
-│  └─ main.tsx              # Entry point with routing
-├─ README.md
+│  │  ├─ Context/           # Global state management
+│  │  ├─ Dnd/               # Drag-and-drop system with editing panels
+│  │  ├─ Editor/            # Code editor
+│  │  ├─ Error/             # Error boundary
+│  │  └─ Preview/           # Isolated preview runtime
+│  ├─ pages/
+│  │  ├─ Playground/        # Main editor page
+│  │  └─ Preview/           # Full-screen preview page
+│  ├─ utils/ast/            # AST manipulation & code generation
+│  ├─ enums/                # Constants and configurations
+│  ├─ types/                # TypeScript type definitions
+│  └─ App.tsx               # App layout with routing
 └─ package.json
 ```
 
@@ -33,6 +29,8 @@ live-editor/
 
 - **Real-time code updates**: Canvas interactions (add/move/remove, property edits) are propagated back to source code safely.
 - **Interactive property panel**: Edit numbers, strings, booleans, arrays, and objects from the side panel.
+- **Advanced JSX binding system**: Automatically detects and enables editing for all JSX element properties (children, label, icon, etc.) through type-based detection.
+- **Smart Items editor**: Manage array items with add/move/delete operations, edit properties and nested JSX components with stable component identity across reorders.
 - **Isolated preview runtime**: Runs user code in a sandboxed iframe to keep the main app safe.
 - **Robust drag-and-drop**: Powered by `@dnd-kit` for smooth sorting and positioning.
 - **Save & Preview**: Save your code to localStorage and view it in a dedicated full-screen preview page (`/preview`).
