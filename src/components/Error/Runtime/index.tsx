@@ -4,7 +4,7 @@ import { useError } from '~/components/Context/states';
 
 import Error from '..';
 
-export interface Props extends React.HTMLAttributes<HTMLDivElement> {
+export interface Props extends React.ComponentPropsWithRef<'div'> {
   open?: boolean;
   reset?: () => void;
 }

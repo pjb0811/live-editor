@@ -17,7 +17,6 @@ const Client = ({
   props = {},
   modules = {},
   iframe,
-  scripts = [],
   provider,
 }: Props) => {
   const { code } = usePreview();
@@ -27,7 +26,7 @@ const Client = ({
   const isError = !!showError && !!error;
 
   const classNames = cn(isError && 'hidden', className);
-  const { style, title, sandbox } = (iframe ?? {}) as IframeProps;
+  const { style, title, sandbox, scripts } = (iframe ?? {}) as IframeProps;
 
   const mergedModules = { ...baseModules, ...modules };
 

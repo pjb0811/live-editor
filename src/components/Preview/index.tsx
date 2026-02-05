@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { baseModules, compile } from '../../utils';
+import { generateTailwindCSS } from '../../utils/tailwind';
 import LiveError from '../Error';
 import Client from './Client';
 
@@ -8,16 +9,17 @@ export interface IframeProps {
   title?: string;
   sandbox?: string;
   style?: React.CSSProperties;
+  scripts?: string[];
 }
 
-export interface Props extends React.HTMLAttributes<HTMLDivElement> {
+export interface Props extends React.ComponentPropsWithRef<'div'> {
   code?: string;
   showError?: boolean;
   props?: Record<string, unknown>;
   container?: HTMLElement | null;
   iframe?: boolean | IframeProps;
-  scripts?: string[];
   modules?: Record<string, unknown>;
+  dynamicTailwind?: boolean;
   provider?: (children: React.ReactNode) => React.ReactNode;
 }
 
@@ -25,14 +27,24 @@ const Preview = ({
   code,
   props = {},
   modules = {},
+  dynamicTailwind = false,
   provider,
   ...restProps
 }: Props) => {
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  const [dynamicCSS, setDynamicCSS] = useState('');
 
   const renderProvider = (component: React.ReactNode) => {
     return provider ? provider(component) : component;
   };
+
+  useEffect(() => {
+    if (!code || !dynamicTailwind) {
+      return;
+    }
+
+    generateTailwindCSS(code).then(setDynamicCSS);
+  }, [code, dynamicTailwind]);
 
   if (runtimeError) {
     return (
@@ -75,6 +87,7 @@ const Preview = ({
         {renderProvider(
           <LiveError.Guard onError={e => setRuntimeError(e.message)}>
             <Component {...props} />
+            {dynamicCSS && <style>{dynamicCSS}</style>}
           </LiveError.Guard>,
         )}
       </LiveError.Boundary>
