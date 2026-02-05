@@ -27,9 +27,15 @@ export interface DataAttrNode {
   bindings?: BindingItem[];
 }
 
+export interface BindingOption {
+  label: string;
+  value: string;
+}
+
 export interface BindingItem {
   label: string;
   property: string;
+  options?: BindingOption[];
 }
 
 export type NodeValueType =
@@ -281,11 +287,57 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
                 t.isStringLiteral(p.value),
             ) as t.ObjectProperty | undefined;
 
+            const optionsProp = element.properties.find(
+              p =>
+                t.isObjectProperty(p) &&
+                t.isIdentifier(p.key) &&
+                p.key.name === 'options' &&
+                t.isArrayExpression(p.value),
+            ) as t.ObjectProperty | undefined;
+
             if (labelProp && propertyProp) {
-              return {
+              const binding: BindingItem = {
                 label: (labelProp.value as t.StringLiteral).value,
                 property: (propertyProp.value as t.StringLiteral).value,
               };
+
+              if (optionsProp && t.isArrayExpression(optionsProp.value)) {
+                const options = optionsProp.value.elements
+                  .map(el => {
+                    if (t.isObjectExpression(el)) {
+                      const labelProp = el.properties.find(
+                        p =>
+                          t.isObjectProperty(p) &&
+                          t.isIdentifier(p.key) &&
+                          p.key.name === 'label' &&
+                          t.isStringLiteral(p.value),
+                      ) as t.ObjectProperty | undefined;
+
+                      const valueProp = el.properties.find(
+                        p =>
+                          t.isObjectProperty(p) &&
+                          t.isIdentifier(p.key) &&
+                          p.key.name === 'value' &&
+                          t.isStringLiteral(p.value),
+                      ) as t.ObjectProperty | undefined;
+
+                      if (labelProp && valueProp) {
+                        return {
+                          label: (labelProp.value as t.StringLiteral).value,
+                          value: (valueProp.value as t.StringLiteral).value,
+                        };
+                      }
+                    }
+                    return null;
+                  })
+                  .filter((item): item is BindingOption => item !== null);
+
+                if (options.length > 0) {
+                  binding.options = options;
+                }
+              }
+
+              return binding;
             }
           }
           return null;
