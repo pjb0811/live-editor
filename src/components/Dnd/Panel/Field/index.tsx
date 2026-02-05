@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Checkbox, Input } from '@jbpark/ui-kit';
+import { Checkbox, ColorPicker, Input, Select } from '@jbpark/ui-kit';
 
 import { type BindingItem, parseValue } from '~/utils/ast';
 
@@ -127,27 +127,42 @@ const Field = ({ binding, id, value, onChange }: Props) => {
   }
 
   const stringValue = String(value);
+
+  if (binding.options && Array.isArray(binding.options)) {
+    return (
+      <Select
+        value={stringValue}
+        options={binding.options}
+        onChange={next => {
+          if (next !== value) {
+            onChange?.({
+              id,
+              label: binding.label,
+              value: next,
+            });
+          }
+        }}
+      />
+    );
+  }
+
   const isColorProp = isColorProperty(binding.property);
 
   if (isColorProp) {
     return (
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          className="size-8 cursor-pointer"
-          defaultValue={normalizeToHex(stringValue)}
-          onBlur={e => {
-            const next = e.target.value;
-            if (next !== value) {
-              onChange?.({
-                id,
-                label: binding.label,
-                value: next,
-              });
-            }
-          }}
-        />
-      </div>
+      <ColorPicker
+        showText
+        value={normalizeToHex(stringValue)}
+        onChange={next => {
+          if (next !== value) {
+            onChange?.({
+              id,
+              label: binding.label,
+              value: next,
+            });
+          }
+        }}
+      />
     );
   }
 

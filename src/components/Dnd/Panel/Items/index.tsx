@@ -259,11 +259,6 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
                 onClick={() => moveItem(item.index, item.index + 1)}
               />
               <Button
-                title={
-                  extractedItems.length <= 1
-                    ? 'At least 1 item is required'
-                    : 'Delete item'
-                }
                 danger
                 size="small"
                 icon={<X />}
