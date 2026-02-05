@@ -42,6 +42,18 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./utils": {
+      "types": "./dist/utils.d.ts",
+      "import": "./dist/utils.js"
+    },
+    "./utils/ast": {
+      "types": "./dist/utils/ast.d.ts",
+      "import": "./dist/utils/ast.js"
+    },
+    "./utils/tailwind": {
+      "types": "./dist/utils/tailwind.d.ts",
+      "import": "./dist/utils/tailwind.js"
+    },
     "./style.css": "./dist/live-editor.css"
   },
   "files": [
@@ -49,7 +61,8 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "pnpm check-types && vite build",
+    "check-types": "tsc -b --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
     "prepublishOnly": "pnpm build",
@@ -64,7 +77,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@jbpark/ui-kit": "^2.0.0",
+    "@jbpark/ui-kit": "^2.2.2",
     "@tailwindcss/vite": "^4.1.13",
     "@uiw/codemirror-theme-vscode": "^4.25.1",
     "@uiw/react-codemirror": "^4.25.1",

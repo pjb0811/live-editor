@@ -28,6 +28,9 @@ export default defineConfig({
     lib: {
       entry: {
         index: resolve(__dirname, 'src/index.tsx'),
+        utils: resolve(__dirname, 'src/utils/index.ts'),
+        'utils/ast': resolve(__dirname, 'src/utils/ast/index.ts'),
+        'utils/tailwind': resolve(__dirname, 'src/utils/tailwind/index.ts'),
       },
       name: 'live-editor',
       formats: ['es'],
