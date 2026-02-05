@@ -36,7 +36,7 @@ import Renderer from './Renderer';
 import Sortable from './Sortable';
 
 export interface Props extends Omit<
-  React.HTMLAttributes<HTMLDivElement>,
+  React.ComponentPropsWithRef<'div'>,
   'onChange'
 > {
   value?: string;

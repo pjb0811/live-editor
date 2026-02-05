@@ -60,13 +60,24 @@ export const DRAGGABLE_ITEMS: Section[] = [
       <section
         data-name="Hero"
         className={cn(
-          'bg-linear-to-br from-indigo-500 to-purple-600',
-          'px-5 py-15',
           'text-center text-white',
           //
         )}
       >
-        <ui.Space orientation="vertical" size="large" align="center">
+        <ui.Space
+          data-id=""
+          data-binding={[
+            { label: 'Background Style', property: 'style' },
+          ]}
+          style={{ backgroundColor: '#6366f1' }}
+          orientation="vertical"
+          size="large"
+          align="center"
+          className={cn(
+            'px-5 py-15',
+            //
+          )}
+        >
           <h1
             data-id=""
             data-binding={[{ label: 'Title', property: 'innerText' }]}
@@ -99,8 +110,26 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 label: 'Button Text',
                 property: 'innerText',
               },
+              {
+                label: 'Button Size',
+                property: 'size',
+                options: [
+                  { label: 'small', value: 'small' },
+                  { label: 'middle', value: 'middle' },
+                  { label: 'large', value: 'large' },
+                ],
+              },
+              {
+                label: 'Button Variant',
+                property: 'variant',
+                options: [
+                  { label: 'default', value: 'default' },
+                  { label: 'outlined', value: 'outlined' },
+                ],
+              },
             ]}
             size="large"
+            variant="solid"
             className={cn(
               'bg-white text-indigo-500',
               'hover:bg-gray-50',
@@ -362,71 +391,83 @@ export const DRAGGABLE_ITEMS: Section[] = [
       <section
         data-name="CTA"
         className={cn(
-          'bg-gray-50 px-5 py-12 text-center',
+          'text-center',
           //
         )}
       >
         <div
+          data-id=""
+          data-binding={[
+            { label: 'Background Style', property: 'style' },
+          ]}
+          style={{ backgroundColor: '#f9fafb' }}
           className={cn(
-            'mx-auto max-w-xl',
+            'px-5 py-12',
             //
           )}
         >
-          <ui.Typography.Title
-            data-id=""
-            data-binding={[{ label: 'Title', property: 'innerText' }]}
-            level={2}
+          <div
             className={cn(
-              'mb-4 text-3xl text-gray-800',
+              'mx-auto max-w-xl',
               //
             )}
           >
-            Ready to get started?
-          </ui.Typography.Title>
-          <ui.Typography.Paragraph
-            data-id=""
-            data-binding={[{ label: 'Description', property: 'innerText' }]}
-            className={cn(
-              'mb-6 text-lg text-gray-600',
-              //
-            )}
-          >
-            Start exploring what Live Editor can do for your projects
-          </ui.Typography.Paragraph>
-          <ui.Space
-            data-id=""
-            data-binding={[{ label: 'Buttons', property: 'children' }]}
-            className={cn(
-              'flex flex-wrap justify-center gap-4',
-              //
-            )}
-          >
-            <ui.Button
+            <ui.Typography.Title
               data-id=""
-              data-binding={[{ label: 'Button 1 Text', property: 'innerText' }]}
-              size="large"
+              data-binding={[{ label: 'Title', property: 'innerText' }]}
+              level={2}
               className={cn(
-                'bg-indigo-500 px-8 text-base text-white',
-                'hover:bg-indigo-600',
+                'mb-4 text-3xl text-gray-800',
                 //
               )}
             >
-              View Documentation
-            </ui.Button>
-            <ui.Button
+              Ready to get started?
+            </ui.Typography.Title>
+            <ui.Typography.Paragraph
               data-id=""
-              data-binding={[{ label: 'Button 2 Text', property: 'innerText' }]}
-              variant="outlined"
-              size="large"
+              data-binding={[{ label: 'Description', property: 'innerText' }]}
               className={cn(
-                'border-2 border-indigo-500 px-8 text-base text-indigo-500',
-                'hover:bg-indigo-50',
+                'mb-6 text-lg text-gray-600',
                 //
               )}
             >
-              View Examples
-            </ui.Button>
-          </ui.Space>
+              Start exploring what Live Editor can do for your projects
+            </ui.Typography.Paragraph>
+            <ui.Space
+              data-id=""
+              data-binding={[{ label: 'Buttons', property: 'children' }]}
+              className={cn(
+                'flex flex-wrap justify-center gap-4',
+                //
+              )}
+            >
+              <ui.Button
+                data-id=""
+                data-binding={[{ label: 'Button 1 Text', property: 'innerText' }]}
+                size="large"
+                className={cn(
+                  'bg-indigo-500 px-8 text-base text-white',
+                  'hover:bg-indigo-600',
+                  //
+                )}
+              >
+                View Documentation
+              </ui.Button>
+              <ui.Button
+                data-id=""
+                data-binding={[{ label: 'Button 2 Text', property: 'innerText' }]}
+                variant="outlined"
+                size="large"
+                className={cn(
+                  'border-2 border-indigo-500 px-8 text-base text-indigo-500',
+                  'hover:bg-indigo-50',
+                  //
+                )}
+              >
+                View Examples
+              </ui.Button>
+            </ui.Space>
+          </div>
         </div>
       </section>
     `,
@@ -647,16 +688,26 @@ export const DRAGGABLE_ITEMS: Section[] = [
       <section
         data-name="Key Features"
         className={cn(
-          'bg-indigo-50 px-5 py-16',
           //
         )}
       >
         <div
+          data-id=""
+          data-binding={[
+            { label: 'Background Style', property: 'style' },
+          ]}
+          style={{ backgroundColor: '#eef2ff' }}
           className={cn(
-            'mx-auto max-w-6xl',
+            'px-5 py-16',
             //
           )}
         >
+          <div
+            className={cn(
+              'mx-auto max-w-6xl',
+              //
+            )}
+          >
           <ui.Typography.Title
             data-id=""
             data-binding={[{ label: 'Title', property: 'innerText' }]}
@@ -773,6 +824,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </ui.Space>
             </ui.Card>
           </ui.Space>
+          </div>
         </div>
       </section>
     `,
@@ -784,13 +836,21 @@ export const DRAGGABLE_ITEMS: Section[] = [
       <section
         data-name="Stats"
         className={cn(
-          'bg-indigo-600 px-5 py-16 text-white',
+          'text-white',
           //
         )}
       >
         <ui.Marquees
           data-id=""
-          data-binding={[{ label: 'Stats Items', property: 'items' }]}
+          data-binding={[
+            { label: 'Stats Items', property: 'items' },
+            { label: 'Background Style', property: 'style' },
+          ]}
+          style={{ backgroundColor: '#4f46e5' }}
+          className={cn(
+            'px-5 py-16',
+            //
+          )}
           speed={100}
           pauseOnHover={true}
           autoFill={true}

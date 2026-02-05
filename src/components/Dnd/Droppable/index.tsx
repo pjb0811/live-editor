@@ -6,7 +6,7 @@ import { cn } from '~/utils';
 const Droppable = ({
   children,
   className,
-}: React.HTMLAttributes<HTMLDivElement>) => {
+}: React.ComponentPropsWithRef<'div'>) => {
   const { setNodeRef, isOver, active } = useDroppable({
     id: 'sortable-area',
   });

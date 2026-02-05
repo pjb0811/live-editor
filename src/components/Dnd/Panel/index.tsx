@@ -37,14 +37,14 @@ const Panel = ({ item, onChange }: Props) => {
 
   if (!item) {
     return (
-      <Typography.Text
+      <Typography.Paragraph
         className={cn(
           'p-4 text-sm text-gray-500',
           //
         )}
       >
         Please select a section.
-      </Typography.Text>
+      </Typography.Paragraph>
     );
   }
 

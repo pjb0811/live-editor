@@ -4,7 +4,7 @@ import ErrorBoundary from './Boundary';
 import ErrorGuard from './Guard';
 import ErrorRuntime from './Runtime';
 
-export interface Props extends React.HTMLAttributes<HTMLDivElement> {
+export interface Props extends React.ComponentPropsWithRef<'div'> {
   message?: string | null;
   title?: string;
   onReset?: () => void;

@@ -70,8 +70,9 @@ const App = () => {
                   <div className="h-full overflow-hidden p-2">
                     <Live.Preview
                       showError
-                      iframe
-                      scripts={['/js/tailwindcss.js']}
+                      iframe={{
+                        scripts: ['/js/tailwindcss.js'],
+                      }}
                     />
                   </div>
                 </Splitter.Panel>
