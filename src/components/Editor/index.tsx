@@ -6,14 +6,16 @@ import { vscodeLight } from '@uiw/codemirror-theme-vscode';
 import CodeMirror from '@uiw/react-codemirror';
 import type { Extension, ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { EditorView } from 'codemirror';
-import * as prettier from 'prettier';
-import prettierPluginBabel from 'prettier/plugins/babel';
-import prettierPluginEstree from 'prettier/plugins/estree';
-import prettierPluginTypeScript from 'prettier/plugins/typescript';
 
 import { useError, usePreview } from '~/components/Context/states';
 import { DEFAULT_TEMPLATE } from '~/enums';
 import { cn, detectTypeScript } from '~/utils';
+
+const prettier = await import('prettier');
+const prettierPluginBabel = (await import('prettier/plugins/babel')).default;
+const prettierPluginEstree = (await import('prettier/plugins/estree')).default;
+const prettierPluginTypeScript = (await import('prettier/plugins/typescript'))
+  .default;
 
 const prettierInitialOptions: Record<string, unknown> = {
   tabWidth: 2,
