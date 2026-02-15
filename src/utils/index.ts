@@ -5,11 +5,13 @@ import * as ui from '@jbpark/ui-kit';
 import * as utils from '@jbpark/ui-kit/utils';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import * as ts from 'typescript';
+import type * as TS from 'typescript';
 
 import type { Module, Section } from '~/types';
 
 import { CONFIG, REGEX, TS_PATTERNS } from '../enums';
+
+const ts = await import('typescript');
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -77,7 +79,7 @@ export const clearCompilationCache = () => {
   console.log('🧹 Compilation cache cleared');
 };
 
-const TS_COMPILER_OPTIONS: ts.CompilerOptions = {
+const TS_COMPILER_OPTIONS: TS.CompilerOptions = {
   target: ts.ScriptTarget.ES2020,
   module: ts.ModuleKind.CommonJS,
   jsx: ts.JsxEmit.React,
