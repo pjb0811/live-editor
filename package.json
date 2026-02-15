@@ -36,7 +36,7 @@
     "node": ">=20",
     "pnpm": ">=9"
   },
-  "packageManager": "pnpm@10.28.0",
+  "packageManager": "pnpm@10.29.3",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -61,8 +61,8 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "pnpm check-types && vite build",
-    "check-types": "tsc -b --noEmit",
+    "build": "pnpm check-types && tsdown",
+    "check-types": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview",
     "prepublishOnly": "pnpm build",
@@ -77,7 +77,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@jbpark/ui-kit": "^2.2.2",
+    "@jbpark/ui-kit": "^2.3.4",
     "@tailwindcss/vite": "^4.1.13",
     "@uiw/codemirror-theme-vscode": "^4.25.1",
     "@uiw/react-codemirror": "^4.25.1",
@@ -89,7 +89,9 @@
   },
   "peerDependencies": {
     "react": ">=19.0.0",
-    "react-dom": ">=19.0.0"
+    "react-dom": ">=19.0.0",
+    "prettier": "^3.8.0",
+    "typescript": "~5.8.3"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
@@ -115,6 +117,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwind-merge": "^3.4.0",
+    "tsdown": "^0.20.3",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.50.1",
     "vite": "^7.3.0",
