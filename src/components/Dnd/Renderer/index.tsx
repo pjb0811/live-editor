@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import Frame, { type FrameProps } from '~/components/Frame';
 import { baseModules, compile, generateSection } from '~/utils';
 
 interface Props {
@@ -7,10 +8,17 @@ interface Props {
   code: string;
   modules?: Record<string, unknown>;
   headers?: Record<string, boolean>;
-  container?: HTMLElement | null;
+  frame?: FrameProps;
 }
 
-const Renderer = ({ fullCode, code, headers, modules, container }: Props) => {
+const Renderer = ({
+  fullCode,
+  code,
+  headers,
+  modules,
+  frame,
+  //
+}: Props) => {
   const memoizedModules = useMemo(
     () => ({
       ...baseModules,
@@ -36,9 +44,17 @@ const Renderer = ({ fullCode, code, headers, modules, container }: Props) => {
   }
 
   return (
-    <div className="w-full overflow-x-hidden" data-editor-mode>
-      <Component headers={headers} container={container} />
-    </div>
+    <Frame {...frame} autoHeight>
+      {container => (
+        <div className="w-full overflow-x-hidden" data-editor-mode>
+          <Component
+            headers={headers}
+            container={container}
+            //
+          />
+        </div>
+      )}
+    </Frame>
   );
 };
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   DndContext,
@@ -26,8 +26,14 @@ import type { Section } from '~/types';
 import { replaceIds } from '~/utils/ast';
 
 import { DEFAULT_TEMPLATE } from '../../enums';
-import { cn, extractSections, replaceSections } from '../../utils';
+import {
+  cn,
+  extractSections,
+  preloadScripts,
+  replaceSections,
+} from '../../utils';
 import { usePreview } from '../Context/states';
+import { type FrameProps } from '../Frame';
 import Draggable from './Draggable';
 import Droppable from './Droppable';
 import Overlay from './Overlay';
@@ -43,6 +49,7 @@ export interface Props extends Omit<
   props?: Record<string, unknown>;
   modules?: Record<string, unknown>;
   items?: Section[];
+  frame?: FrameProps;
   onChange?: (value: string) => void;
 }
 
@@ -63,12 +70,10 @@ const Dnd = ({
   onChange: _onChange,
   className,
   items = [],
+  frame,
   ...restProps
 }: Props) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [container, setContainer] = useState<HTMLElement | null>(null);
-
-  const previewRef = useRef<HTMLDivElement>(null);
 
   const { setCode } = usePreview();
 
@@ -228,8 +233,10 @@ const Dnd = ({
   };
 
   useEffect(() => {
-    setContainer(previewRef.current);
-  }, []);
+    if (frame?.scripts?.length) {
+      preloadScripts(frame.scripts);
+    }
+  }, [frame?.scripts]);
 
   return (
     <>
@@ -268,7 +275,7 @@ const Dnd = ({
               'overflow-y-auto',
               //
             )}
-            ref={previewRef}
+            data-frame-container
             style={{
               isolation: 'isolate',
               contain: 'layout style',
@@ -317,7 +324,7 @@ const Dnd = ({
                         fullCode={value}
                         code={section.code}
                         modules={modules}
-                        container={container}
+                        frame={frame}
                         {...props}
                       />
                     </Sortable>
@@ -339,6 +346,7 @@ const Dnd = ({
             renderProps={{
               fullCode: value,
               modules,
+              frame,
               ...props,
             }}
           />
