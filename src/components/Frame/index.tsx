@@ -11,16 +11,7 @@ interface Props extends FrameProps {
   children: (container: HTMLElement) => ReactNode;
 }
 
-const Frame = ({
-  mode,
-  children,
-  onCopyStyles,
-  id,
-  title,
-  sandbox,
-  scripts,
-  autoHeight,
-}: Props) => {
+const Frame = ({ mode, children, ...restProps }: Props) => {
   if (!mode) {
     return children(document.body);
   }
@@ -29,18 +20,7 @@ const Frame = ({
     return <Shadow>{container => children(container || document.body)}</Shadow>;
   }
 
-  return (
-    <IFrame
-      id={id}
-      title={title}
-      sandbox={sandbox}
-      scripts={scripts}
-      autoHeight={autoHeight}
-      onCopyStyles={onCopyStyles as (doc: Document) => void}
-    >
-      {children}
-    </IFrame>
-  );
+  return <IFrame {...restProps}>{children}</IFrame>;
 };
 
 export default Frame;
