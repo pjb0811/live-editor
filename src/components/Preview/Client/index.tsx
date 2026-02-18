@@ -4,10 +4,11 @@ import { useMemo } from 'react';
 
 import { useError, usePreview } from '~/components/Context/states';
 import LiveError from '~/components/Error';
+import type { FrameProps } from '~/components/Frame';
+import Frame from '~/components/Frame';
 import { baseModules, cn, compile } from '~/utils';
 
-import { type IframeProps, type Props } from '../';
-import IFrame from '../IFrame';
+import { type Props } from '../';
 
 const Client = ({
   id,
@@ -16,7 +17,7 @@ const Client = ({
   showError,
   props = {},
   modules = {},
-  iframe,
+  frame,
   provider,
 }: Props) => {
   const { code } = usePreview();
@@ -26,7 +27,6 @@ const Client = ({
   const isError = !!showError && !!error;
 
   const classNames = cn(isError && 'hidden', className);
-  const { style, title, sandbox, scripts } = (iframe ?? {}) as IframeProps;
 
   const mergedModules = { ...baseModules, ...modules };
 
@@ -73,15 +73,9 @@ const Client = ({
 
   return (
     <>
-      {iframe ? (
+      {frame ? (
         <div className={cn('h-full w-full', classNames)}>
-          <IFrame
-            id={previewId}
-            title={title}
-            sandbox={sandbox}
-            style={style}
-            scripts={scripts}
-          >
+          <Frame {...(frame as FrameProps)} id={previewId}>
             {container => (
               <LiveError.Boundary onError={(e: Error) => setError(e.message)}>
                 {renderProvider(
@@ -91,7 +85,7 @@ const Client = ({
                 )}
               </LiveError.Boundary>
             )}
-          </IFrame>
+          </Frame>
         </div>
       ) : (
         <div

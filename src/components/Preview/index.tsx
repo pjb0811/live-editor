@@ -3,21 +3,15 @@ import React, { useEffect, useState } from 'react';
 import { baseModules, compile } from '../../utils';
 import { generateTailwindCSS } from '../../utils/tailwind';
 import LiveError from '../Error';
+import type { FrameProps } from '../Frame';
 import Client from './Client';
-
-export interface IframeProps {
-  title?: string;
-  sandbox?: string;
-  style?: React.CSSProperties;
-  scripts?: string[];
-}
 
 export interface Props extends React.ComponentPropsWithRef<'div'> {
   code?: string;
   showError?: boolean;
   props?: Record<string, unknown>;
   container?: HTMLElement | null;
-  iframe?: boolean | IframeProps;
+  frame?: boolean | FrameProps;
   modules?: Record<string, unknown>;
   dynamicTailwind?: boolean;
   provider?: (children: React.ReactNode) => React.ReactNode;
