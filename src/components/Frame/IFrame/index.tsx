@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import { getCachedScriptBlob } from '~/utils';
 
 export interface Props {
-  id?: string;
   title?: string;
   sandbox?: string;
   style?: React.CSSProperties;
@@ -17,7 +16,6 @@ export interface Props {
 }
 
 const IFrame = ({
-  id = 'live-preview',
   title = 'Live Preview',
   sandbox,
   style = {},
@@ -136,7 +134,16 @@ const IFrame = ({
       ) as HTMLElement | null;
       const savedScrollTop = scrollParent?.scrollTop ?? 0;
 
-      const contentHeight = mountNode.getBoundingClientRect().height;
+      iframe.style.height = '0px';
+
+      let childrenHeight = 0;
+
+      Array.from(mountNode.children).forEach(child => {
+        const el = child as HTMLElement;
+        childrenHeight = Math.max(childrenHeight, el.scrollHeight);
+      });
+
+      const contentHeight = Math.max(mountNode.scrollHeight, childrenHeight);
 
       if (contentHeight > 0) {
         iframe.style.height = `${Math.ceil(contentHeight)}px`;
@@ -160,13 +167,9 @@ const IFrame = ({
       characterData: true,
     });
 
-    const images = Array.from(mountNode.querySelectorAll('img'));
-    images.forEach(img => img.addEventListener('load', updateHeight));
-
     return () => {
       resizeObserver.disconnect();
       mutationObserver.disconnect();
-      images.forEach(img => img.removeEventListener('load', updateHeight));
     };
   }, [mountNode, shouldAutoHeight]);
 
@@ -176,7 +179,6 @@ const IFrame = ({
 
   return (
     <iframe
-      id={id}
       ref={iframeRef}
       style={{
         width: '100%',
