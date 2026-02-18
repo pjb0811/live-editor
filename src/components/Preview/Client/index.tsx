@@ -11,7 +11,6 @@ import { baseModules, cn, compile } from '~/utils';
 import { type Props } from '../';
 
 const Client = ({
-  id,
   code: _code = '',
   className,
   showError,
@@ -22,8 +21,6 @@ const Client = ({
 }: Props) => {
   const { code } = usePreview();
   const { error, setError } = useError();
-
-  const previewId = id || 'live-preview';
   const isError = !!showError && !!error;
 
   const classNames = cn(isError && 'hidden', className);
@@ -75,7 +72,7 @@ const Client = ({
     <>
       {frame ? (
         <div className={cn('h-full w-full', classNames)}>
-          <Frame {...(frame as FrameProps)} id={previewId}>
+          <Frame {...(frame as FrameProps)}>
             {container => (
               <LiveError.Boundary onError={(e: Error) => setError(e.message)}>
                 {renderProvider(
