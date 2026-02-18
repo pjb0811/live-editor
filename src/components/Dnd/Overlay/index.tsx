@@ -1,5 +1,6 @@
 import { useDndContext } from '@dnd-kit/core';
 
+import type { FrameProps } from '~/components/Frame';
 import type { Section } from '~/types';
 
 import Draggable from '../Draggable';
@@ -11,6 +12,7 @@ interface Props {
   renderProps: {
     fullCode: string;
     modules: Record<string, unknown>;
+    frame?: FrameProps;
   };
 }
 

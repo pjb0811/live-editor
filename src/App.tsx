@@ -70,7 +70,8 @@ const App = () => {
                   <div className="h-full overflow-hidden p-2">
                     <Live.Preview
                       showError
-                      iframe={{
+                      frame={{
+                        mode: 'iframe',
                         scripts: ['/js/tailwindcss.js'],
                       }}
                     />
@@ -81,7 +82,14 @@ const App = () => {
                 </Splitter.Panel>
               </Splitter>
             ) : (
-              <Live.Dnd value={value} onChange={setValue} />
+              <Live.Dnd
+                frame={{
+                  mode: 'iframe',
+                  scripts: ['/js/tailwindcss.js'],
+                }}
+                value={value}
+                onChange={setValue}
+              />
             )}
           </Live>
         </Flex>

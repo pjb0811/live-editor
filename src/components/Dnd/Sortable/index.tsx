@@ -67,11 +67,17 @@ const Sortable = ({
         //
       )}
     >
+      <div
+        className={cn(
+          'absolute inset-0 z-50',
+          //
+        )}
+      />
       {children}
       {selected && (
         <Space
           className={cn(
-            'absolute top-1 right-1 z-10',
+            'absolute top-1 right-1 z-60',
             //
           )}
         >
