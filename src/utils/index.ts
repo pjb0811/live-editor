@@ -223,3 +223,37 @@ export const generateSection = (code: string, fullCode: string) => {
 
   return fullCode.replace(REGEX.CONTAINER, `${openTag}\n${code}\n${closeTag}`);
 };
+
+const scriptCache = new Map<string, string>();
+const loadingScriptCache = new Map<string, Promise<string>>();
+
+export const getCachedScriptBlob = async (src: string): Promise<string> => {
+  const cached = scriptCache.get(src);
+
+  if (cached) {
+    return cached;
+  }
+
+  const existing = loadingScriptCache.get(src);
+
+  if (existing) {
+    return existing;
+  }
+
+  const promise = fetch(src)
+    .then(res => res.text())
+    .then(text => {
+      const blob = new Blob([text], { type: 'application/javascript' });
+      const blobUrl = URL.createObjectURL(blob);
+      scriptCache.set(src, blobUrl);
+      loadingScriptCache.delete(src);
+      return blobUrl;
+    });
+
+  loadingScriptCache.set(src, promise);
+  return promise;
+};
+
+export const preloadScripts = (scripts: string[]): void => {
+  scripts.forEach(src => getCachedScriptBlob(src));
+};
