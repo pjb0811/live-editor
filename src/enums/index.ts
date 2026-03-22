@@ -36,6 +36,7 @@ export const TS_PATTERNS = [
 export const BINDING_PROP = {
   CHILDREN: 'children',
   INNER_TEXT: 'innerText',
+  INNER_HTML: 'innerHTML',
   ITEMS: 'items',
 } as const;
 

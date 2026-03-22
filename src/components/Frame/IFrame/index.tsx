@@ -264,7 +264,6 @@ const IFrame = ({
         }
       });
 
-      // 기타 fixed/absolute 요소 높이 계산
       if (win) {
         Array.from(mountNode.children).forEach(child => {
           const el = child as HTMLElement;
@@ -274,7 +273,6 @@ const IFrame = ({
             if (el.offsetHeight > 0) {
               let offsetY = 0;
 
-              // transform Y값 추출
               const transform = el.style.transform;
               if (transform) {
                 const match = transform.match(

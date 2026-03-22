@@ -9,6 +9,7 @@ interface Props {
   modules?: Record<string, unknown>;
   headers?: Record<string, boolean>;
   frame?: FrameProps;
+  provider?: (children: React.ReactNode) => React.ReactNode;
 }
 
 const Renderer = ({
@@ -17,7 +18,7 @@ const Renderer = ({
   headers,
   modules,
   frame,
-  //
+  provider,
 }: Props) => {
   const memoizedModules = useMemo(
     () => ({
@@ -37,6 +38,10 @@ const Renderer = ({
     [memoizedSection, memoizedModules],
   );
 
+  const renderProvider = (component: React.ReactNode) => {
+    return provider ? provider(component) : component;
+  };
+
   const Component = module.exports.default;
 
   if (!Component) {
@@ -47,11 +52,13 @@ const Renderer = ({
     <Frame {...frame} autoHeight>
       {container => (
         <div className="w-full overflow-x-hidden" data-editor-mode>
-          <Component
-            headers={headers}
-            container={container}
-            //
-          />
+          {renderProvider(
+            <Component
+              headers={headers}
+              container={container}
+              //
+            />,
+          )}
         </div>
       )}
     </Frame>
