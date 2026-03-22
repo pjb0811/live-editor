@@ -72,6 +72,7 @@ const App = () => {
                       showError
                       frame={{
                         mode: 'iframe',
+                        syncStyle: true,
                         scripts: ['/js/tailwindcss.js'],
                       }}
                     />
@@ -85,6 +86,7 @@ const App = () => {
               <Live.Dnd
                 frame={{
                   mode: 'iframe',
+                  syncStyle: true,
                   scripts: ['/js/tailwindcss.js'],
                 }}
                 value={value}

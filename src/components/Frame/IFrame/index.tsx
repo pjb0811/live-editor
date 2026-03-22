@@ -9,10 +9,12 @@ export interface Props {
   sandbox?: string;
   style?: React.CSSProperties;
   scripts?: string[];
+  styles?: string[];
+  stylesheets?: string[];
   autoHeight?: boolean;
+  syncStyle?: boolean;
   children: (container: HTMLElement) => ReactNode;
   onLoaded?: () => void;
-  onCopyStyles?: (doc: Document) => void;
 }
 
 const IFrame = ({
@@ -20,10 +22,12 @@ const IFrame = ({
   sandbox,
   style = {},
   scripts = [],
+  styles = [],
+  stylesheets = [],
   autoHeight = false,
+  syncStyle = false,
   children,
   onLoaded,
-  onCopyStyles,
   ...props
 }: Props) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -31,15 +35,67 @@ const IFrame = ({
   const scriptsLoadedRef = useRef<boolean>(false);
   const shouldAutoHeight = autoHeight && style.height == null;
 
-  const copyStyles = useCallback(() => {
+  const styleManagerRef = useRef<{
+    copiedLinks: Set<string>;
+    copiedStyles: Set<string>;
+  }>({
+    copiedLinks: new Set(),
+    copiedStyles: new Set(),
+  });
+
+  const applyStyle = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
 
-    if (!doc || !onCopyStyles) {
+    if (!doc || !syncStyle) {
       return;
     }
 
-    onCopyStyles(doc);
-  }, [onCopyStyles]);
+    const manager = styleManagerRef.current;
+
+    const links = document.querySelectorAll<HTMLLinkElement>(
+      'link[rel="stylesheet"]',
+    );
+    const newLinks = Array.from(links)
+      .map(link => link.href)
+      .filter(href => !manager.copiedLinks.has(href));
+
+    if (newLinks.length) {
+      const fragment = doc.createDocumentFragment();
+      newLinks.forEach(href => {
+        const link = doc.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        fragment.appendChild(link);
+        manager.copiedLinks.add(href);
+      });
+      doc.head.appendChild(fragment);
+    }
+
+    const styles = document.querySelectorAll<HTMLStyleElement>('style');
+    const newStyles = Array.from(styles)
+      .map(style => style.textContent || '')
+      .filter(content => {
+        if (!content) {
+          return false;
+        }
+        const hash = content.length + content.slice(0, 50);
+        if (manager.copiedStyles.has(hash)) {
+          return false;
+        }
+        manager.copiedStyles.add(hash);
+        return true;
+      });
+
+    if (newStyles.length) {
+      const fragment = doc.createDocumentFragment();
+      newStyles.forEach(content => {
+        const style = doc.createElement('style');
+        style.textContent = content;
+        fragment.appendChild(style);
+      });
+      doc.head.appendChild(fragment);
+    }
+  }, [syncStyle]);
 
   useEffect(() => {
     const $iframe = iframeRef.current;
@@ -68,7 +124,7 @@ const IFrame = ({
 
       setMountNode(node);
 
-      copyStyles();
+      applyStyle();
 
       if (scripts.length && !scriptsLoadedRef.current) {
         scriptsLoadedRef.current = true;
@@ -96,10 +152,10 @@ const IFrame = ({
     let timeoutId: number;
     let observer: MutationObserver | null = null;
 
-    if (onCopyStyles) {
+    if (syncStyle) {
       observer = new MutationObserver(() => {
         clearTimeout(timeoutId);
-        timeoutId = window.setTimeout(copyStyles, 50);
+        timeoutId = window.setTimeout(applyStyle, 50);
       });
 
       observer.observe(document.head, {
@@ -119,7 +175,46 @@ const IFrame = ({
       observer?.disconnect();
       clearTimeout(timeoutId);
     };
-  }, [copyStyles, onLoaded, onCopyStyles, scripts]);
+  }, [syncStyle, scripts, onLoaded, applyStyle]);
+
+  useEffect(() => {
+    const doc = iframeRef.current?.contentDocument;
+
+    if (!doc?.head) {
+      return;
+    }
+
+    styles.forEach((css, index) => {
+      const styleId = `injected-style-${index}`;
+      let styleEl = doc.getElementById(styleId) as HTMLStyleElement | null;
+
+      if (!styleEl) {
+        styleEl = doc.createElement('style');
+        styleEl.id = styleId;
+        doc.head.appendChild(styleEl);
+      }
+
+      if (styleEl.textContent !== css) {
+        styleEl.textContent = css;
+      }
+    });
+
+    stylesheets.forEach((href, index) => {
+      const linkId = `injected-stylesheet-${index}`;
+      let linkEl = doc.getElementById(linkId) as HTMLLinkElement | null;
+
+      if (!linkEl) {
+        linkEl = doc.createElement('link');
+        linkEl.id = linkId;
+        linkEl.rel = 'stylesheet';
+        doc.head.appendChild(linkEl);
+      }
+
+      if (linkEl.href !== href) {
+        linkEl.href = href;
+      }
+    });
+  }, [styles, stylesheets]);
 
   useEffect(() => {
     if (!shouldAutoHeight || !mountNode || !iframeRef.current) {
@@ -142,6 +237,58 @@ const IFrame = ({
         const el = child as HTMLElement;
         childrenHeight = Math.max(childrenHeight, el.scrollHeight);
       });
+
+      const doc = iframe.contentDocument;
+      const win = doc?.defaultView;
+
+      const popups = mountNode.querySelectorAll<HTMLElement>(
+        '[data-floating-ui-focusable]',
+      );
+
+      popups.forEach(popup => {
+        if (popup.offsetHeight > 0) {
+          let offsetY = 0;
+
+          const transform = popup.style.transform;
+          if (transform) {
+            const match = transform.match(
+              /translate\([^,]+,\s*([+-]?\d+(?:\.\d+)?)/,
+            );
+            if (match?.[1]) {
+              offsetY = parseFloat(match[1]);
+            }
+          }
+
+          const estimatedHeight = offsetY + popup.offsetHeight;
+          childrenHeight = Math.max(childrenHeight, estimatedHeight);
+        }
+      });
+
+      if (win) {
+        Array.from(mountNode.children).forEach(child => {
+          const el = child as HTMLElement;
+          const style = win.getComputedStyle(el);
+
+          if (style.position === 'fixed' || style.position === 'absolute') {
+            if (el.offsetHeight > 0) {
+              let offsetY = 0;
+
+              const transform = el.style.transform;
+              if (transform) {
+                const match = transform.match(
+                  /translate\([^,]+,\s*([+-]?\d+(?:\.\d+)?)/,
+                );
+                if (match?.[1]) {
+                  offsetY = parseFloat(match[1]);
+                }
+              }
+
+              const estimatedHeight = offsetY + el.offsetHeight;
+              childrenHeight = Math.max(childrenHeight, estimatedHeight);
+            }
+          }
+        });
+      }
 
       const contentHeight = Math.max(mountNode.scrollHeight, childrenHeight);
 

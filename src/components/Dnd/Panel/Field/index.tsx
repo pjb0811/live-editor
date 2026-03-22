@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 
 import { Checkbox, ColorPicker, Input, Select } from '@jbpark/ui-kit';
 
+import CoreEditor from '~/components/Editor/Core';
+import { BINDING_PROP } from '~/enums';
 import { type BindingItem, parseValue } from '~/utils/ast';
 
 import Children from '../Children';
@@ -52,6 +54,25 @@ const Field = ({ binding, id, value, onChange }: Props) => {
           });
         }}
         onChildChange={onChange}
+      />
+    );
+  }
+
+  if (binding.property === BINDING_PROP.INNER_HTML) {
+    return (
+      <CoreEditor
+        value={value}
+        height="150px"
+        fragment
+        onSave={next => {
+          if (next !== value) {
+            onChange?.({
+              id,
+              label: binding.label,
+              value: next,
+            });
+          }
+        }}
       />
     );
   }

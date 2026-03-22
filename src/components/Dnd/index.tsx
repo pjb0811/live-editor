@@ -50,6 +50,7 @@ export interface Props extends Omit<
   modules?: Record<string, unknown>;
   items?: Section[];
   frame?: FrameProps;
+  provider?: (children: React.ReactNode) => React.ReactNode;
   onChange?: (value: string) => void;
 }
 
@@ -71,6 +72,7 @@ const Dnd = ({
   className,
   items = [],
   frame,
+  provider,
   ...restProps
 }: Props) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -325,6 +327,7 @@ const Dnd = ({
                         code={section.code}
                         modules={modules}
                         frame={frame}
+                        provider={provider}
                         {...props}
                       />
                     </Sortable>

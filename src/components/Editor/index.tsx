@@ -1,80 +1,28 @@
-import { useCallback, useMemo, useRef } from 'react';
-
-import { javascript } from '@codemirror/lang-javascript';
-import { useDebounce } from '@jbpark/use-hooks';
-import { vscodeLight } from '@uiw/codemirror-theme-vscode';
-import CodeMirror from '@uiw/react-codemirror';
-import type { Extension, ReactCodeMirrorRef } from '@uiw/react-codemirror';
-import { EditorView } from 'codemirror';
+import { useCallback } from 'react';
+import { useDebounce } from 'react-use';
 
 import { useError, usePreview } from '~/components/Context/states';
 import { DEFAULT_TEMPLATE } from '~/enums';
-import { cn, detectTypeScript } from '~/utils';
 
-const prettier = await import('prettier');
-const prettierPluginBabel = (await import('prettier/plugins/babel')).default;
-const prettierPluginEstree = (await import('prettier/plugins/estree')).default;
-const prettierPluginTypeScript = (await import('prettier/plugins/typescript'))
-  .default;
+import Core, { type Props as CoreProps } from './Core';
 
-const prettierInitialOptions: Record<string, unknown> = {
-  tabWidth: 2,
-  singleQuote: true,
-  trailingComma: 'all',
-  htmlWhitespaceSensitivity: 'ignore',
-  arrowParens: 'avoid',
-  printWidth: 60,
-};
-
-export interface Props {
-  value?: string;
-  height?: string;
-  theme?: Extension | 'light' | 'dark' | 'none';
-  prettierOptions?: Record<string, unknown>;
+export interface Props extends Omit<CoreProps, 'onSave' | 'onError'> {
+  defaultValue?: string;
   debounce?: number;
-  className?: string;
-  onChange?: (value: string) => void;
 }
 
 const Editor = ({
-  value: _value = DEFAULT_TEMPLATE,
-  theme,
-  height,
+  defaultValue,
+  value: _value,
   debounce = 1000,
-  className,
-  prettierOptions,
   onChange: _onChange,
   ...props
 }: Props) => {
   const { setCode } = usePreview();
   const { setError } = useError();
 
-  const value = _value.trim() === '' ? DEFAULT_TEMPLATE : _value;
-  const editorRef = useRef<ReactCodeMirrorRef>(null);
-
-  const prettierConfig = useMemo(
-    () => ({
-      ...prettierInitialOptions,
-      ...prettierOptions,
-    }),
-    [prettierOptions],
-  );
-
-  const formatCode = useCallback(
-    async (code: string) => {
-      const isTypeScript = detectTypeScript(code);
-      return prettier.format(code, {
-        parser: isTypeScript ? 'typescript' : 'babel',
-        plugins: [
-          prettierPluginBabel,
-          prettierPluginEstree,
-          prettierPluginTypeScript,
-        ],
-        ...prettierConfig,
-      });
-    },
-    [prettierConfig],
-  );
+  const value =
+    _value.trim() === '' ? defaultValue || DEFAULT_TEMPLATE : _value;
 
   const onChange = useCallback(
     (value: string) => {
@@ -84,68 +32,40 @@ const Editor = ({
   );
 
   const onSave = useCallback(
-    async (value: string) => {
-      try {
-        const currentView = editorRef.current?.view;
-        if (!currentView) {
-          return;
-        }
-
-        const currentLength = currentView.state.doc.length;
-        const formattedCode = await formatCode(value);
-
-        if (currentLength === currentView.state.doc.length) {
-          const transaction = currentView.state.update({
-            changes: { from: 0, to: currentLength, insert: formattedCode },
-          });
-          currentView.dispatch(transaction);
-
-          _onChange?.(formattedCode);
-          setCode(formattedCode);
-        }
-
-        setError(null);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      }
+    (formattedCode: string) => {
+      setCode(formattedCode);
     },
-    [formatCode, _onChange, setCode, setError],
+    [setCode],
   );
 
-  const onKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        onSave(value);
-      }
+  const onError = useCallback(
+    (error: string | null) => {
+      setError(error);
     },
-    [onSave, value],
+    [setError],
   );
 
   useDebounce(
     () => {
       setCode(value);
     },
-    { delay: debounce },
+    debounce,
     [value],
   );
 
   return (
-    <div className={cn(className)} onKeyDown={onKeyDown}>
-      <CodeMirror
-        ref={editorRef}
-        theme={theme || vscodeLight}
-        height={height || '100%'}
-        value={value}
-        extensions={[
-          javascript({ jsx: true, typescript: true }),
-          EditorView.lineWrapping,
-        ]}
-        onChange={onChange}
-        {...props}
-      />
-    </div>
+    <Core
+      value={value}
+      onChange={onChange}
+      onSave={onSave}
+      onError={onError}
+      {...props}
+    />
   );
 };
+
+Editor.Core = Core;
+
+export { Core };
 
 export default Editor;

@@ -18,6 +18,7 @@ export interface DataAttrNode {
   attributes: Attribute[];
   dataAttributes: Attribute[];
   textContent: string;
+  rawChildren?: string;
   loc?: {
     start: { line: number; column: number };
     end: { line: number; column: number };
@@ -360,6 +361,10 @@ export const getCurrentValue = (
       return node.textContent || '';
     }
 
+    case BINDING_PROP.INNER_HTML: {
+      return node.rawChildren || node.textContent || '';
+    }
+
     case BINDING_PROP.CHILDREN: {
       return JSON.stringify(node?.children || []);
     }
@@ -669,11 +674,24 @@ const parseToNodes = (raw: string): DataAttrNode[] => {
           skipItemsChildren(path.node, processedNodes);
         }
 
+        const innerHtmlBinding = bindings.find(
+          b => b.property === BINDING_PROP.INNER_HTML,
+        );
+
+        let rawChildren: string | undefined;
+        if (innerHtmlBinding && path.node.children.length > 0) {
+          rawChildren = path.node.children
+            .map(child => generateCode(child))
+            .join('')
+            .trim();
+        }
+
         results.push({
           tagName,
           attributes: allAttrs,
           dataAttributes: dataAttrs,
           textContent: collectText(path.node.children),
+          rawChildren,
           children: childrenNodes,
           bindings,
           loc: path.node.loc
@@ -745,11 +763,24 @@ function extractFromNode(
     childrenNodes = processChildrenBinding(node, processedNodes, false);
   }
 
+  const innerHtmlBinding = bindings.find(
+    b => b.property === BINDING_PROP.INNER_HTML,
+  );
+
+  let rawChildren: string | undefined;
+  if (innerHtmlBinding && node.children.length > 0) {
+    rawChildren = node.children
+      .map(child => generateCode(child))
+      .join('')
+      .trim();
+  }
+
   results.push({
     tagName,
     attributes: allAttrs,
     dataAttributes: dataAttrs,
     textContent: collectText(node.children),
+    rawChildren,
     children: childrenNodes,
     bindings,
   });
@@ -775,6 +806,35 @@ const updateInnerText = (
 
   jsxChildren.push(t.jsxText(value));
   return true;
+};
+
+const updateInnerHTML = (
+  path: NodePath<t.JSXElement>,
+  value: string,
+): boolean => {
+  try {
+    const wrappedCode = `<>${value}</>`;
+    const ast = parse(wrappedCode, {
+      sourceType: 'module',
+      plugins: ['jsx', 'typescript'],
+    });
+
+    const statement = ast.program.body[0];
+    if (!t.isExpressionStatement(statement)) {
+      return false;
+    }
+
+    const expr = statement.expression;
+    if (!t.isJSXFragment(expr)) {
+      return false;
+    }
+
+    path.node.children = expr.children;
+    return true;
+  } catch (error) {
+    console.error('❌ innerHTML update error:', error);
+    return false;
+  }
 };
 
 const updateChildren = (
@@ -902,6 +962,11 @@ export const update = (
         switch (propertyBinding.property) {
           case BINDING_PROP.INNER_TEXT: {
             changed = updateInnerText(path, value);
+            break;
+          }
+
+          case BINDING_PROP.INNER_HTML: {
+            changed = updateInnerHTML(path, value);
             break;
           }
 
