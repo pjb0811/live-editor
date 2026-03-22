@@ -4,8 +4,7 @@ import { useMemo } from 'react';
 
 import { useError, usePreview } from '~/components/Context/states';
 import LiveError from '~/components/Error';
-import type { FrameProps } from '~/components/Frame';
-import Frame from '~/components/Frame';
+import Frame, { type FrameProps } from '~/components/Frame';
 import { baseModules, cn, compile } from '~/utils';
 
 import { type Props } from '../';
