@@ -42,10 +42,15 @@ const Field = ({ binding, id, value, onChange }: Props) => {
     return parseValue(value);
   }, [value]);
 
-  if (binding.property === 'items' || binding.property === 'data') {
+  if (
+    binding.property === 'items' ||
+    binding.property === 'data' ||
+    binding.type === 'array'
+  ) {
     return (
       <Items
         value={value}
+        render={binding.render}
         onChange={next => {
           onChange?.({
             id,
@@ -58,12 +63,17 @@ const Field = ({ binding, id, value, onChange }: Props) => {
     );
   }
 
-  if (binding.property === BINDING_PROP.INNER_HTML) {
+  if (binding.property === BINDING_PROP.INNER_HTML || binding.type === 'jsx') {
+    const isHTML =
+      binding.property === BINDING_PROP.INNER_HTML ||
+      binding.type === ('innerHTML' as string);
+
     return (
       <CoreEditor
         value={value}
         height="150px"
-        fragment
+        fragment={!isHTML}
+        raw={isHTML}
         onSave={next => {
           if (next !== value) {
             onChange?.({
@@ -106,7 +116,22 @@ const Field = ({ binding, id, value, onChange }: Props) => {
               {key}
             </label>
             <Field
-              binding={{ label: key, property: key }}
+              binding={{
+                label: key,
+                property:
+                  binding.render?.[key] && 'type' in binding.render[key]
+                    ? (binding.render[key].type as string)
+                    : key,
+                type:
+                  binding.render?.[key] && 'type' in binding.render[key]
+                    ? (binding.render[key] as { type: BindingItem['type'] })
+                        .type
+                    : undefined,
+                render:
+                  binding.render?.[key] && !('type' in binding.render[key])
+                    ? (binding.render[key] as BindingItem['render'])
+                    : undefined,
+              }}
               id={id}
               value={
                 typeof val === 'object' ? JSON.stringify(val) : String(val)
@@ -132,10 +157,10 @@ const Field = ({ binding, id, value, onChange }: Props) => {
     );
   }
 
-  if (typeof parsedValue === 'boolean') {
+  if (binding.type === 'boolean' || typeof parsedValue === 'boolean') {
     return (
       <Checkbox
-        checked={parsedValue}
+        checked={parsedValue === true || parsedValue === 'true'}
         onChange={checked => {
           onChange?.({
             id,
@@ -167,9 +192,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
     );
   }
 
-  const isColorProp = isColorProperty(binding.property);
-
-  if (isColorProp) {
+  if (binding.type === 'color' || isColorProperty(binding.property)) {
     return (
       <ColorPicker
         showText
