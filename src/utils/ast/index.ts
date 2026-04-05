@@ -33,10 +33,30 @@ export interface BindingOption {
   value: string;
 }
 
+export type BindingType =
+  | 'array'
+  | 'object'
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'color'
+  | 'jsx';
+
+export interface BindingRenderLeaf {
+  type: BindingType;
+  render?: BindingRenderMap;
+}
+
+export interface BindingRenderMap {
+  [key: string]: BindingRenderLeaf | BindingRenderMap;
+}
+
 export interface BindingItem {
   label: string;
   property: string;
+  type?: BindingType;
   options?: BindingOption[];
+  render?: BindingRenderMap;
 }
 
 export type NodeValueType =
@@ -54,6 +74,25 @@ export interface ExtractedNodeValue {
   type: NodeValueType;
   value: string | number | boolean | null;
 }
+
+const dedent = (str: string): string => {
+  const lines = str
+    .replace(/^\n/, '')
+    .replace(/\n\s*$/, '')
+    .split('\n');
+
+  const indent = lines.reduce((min, line) => {
+    if (!line.trim()) {
+      return min;
+    }
+    const match = line.match(/^(\s*)/);
+    return Math.min(min, match?.[1]?.length ?? 0);
+  }, Infinity);
+
+  return indent === Infinity
+    ? str.trim()
+    : lines.map(line => line.slice(indent)).join('\n');
+};
 
 const wrap = (code: string) => {
   return `<>${code}</>`;
@@ -247,6 +286,31 @@ export const parseValue = (value: unknown): unknown => {
     try {
       return new Function(`return (${trimmed})`)();
     } catch {
+      try {
+        const ast = parseExpression(trimmed, {
+          plugins: ['jsx', 'typescript'],
+        });
+
+        if (t.isObjectExpression(ast)) {
+          const result: Record<string, unknown> = {};
+
+          for (const prop of ast.properties) {
+            if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) {
+              continue;
+            }
+            if (t.isJSXElement(prop.value) || t.isJSXFragment(prop.value)) {
+              result[prop.key.name] = generateCode(prop.value);
+              continue;
+            }
+            result[prop.key.name] = extractNodeValue(prop.value).value;
+          }
+
+          return result;
+        }
+      } catch {
+        /* ignore */
+      }
+
       return value;
     }
   }
@@ -256,6 +320,64 @@ export const parseValue = (value: unknown): unknown => {
 
 export const generateCode = (node: t.Node): string => {
   return generate(node, { jsescOption: { minimal: true } }).code;
+};
+
+const parseRenderObject = (
+  node: t.ObjectExpression,
+): BindingRenderMap | null => {
+  const map: BindingRenderMap = {};
+
+  node.properties.forEach(prop => {
+    if (
+      !t.isObjectProperty(prop) ||
+      !t.isIdentifier(prop.key) ||
+      !t.isObjectExpression(prop.value)
+    ) {
+      return;
+    }
+
+    const key = prop.key.name;
+
+    const typeProp = prop.value.properties.find(
+      p =>
+        t.isObjectProperty(p) &&
+        t.isIdentifier(p.key) &&
+        p.key.name === 'type' &&
+        t.isStringLiteral(p.value),
+    ) as t.ObjectProperty | undefined;
+
+    if (typeProp) {
+      const leaf: BindingRenderLeaf = {
+        type: (typeProp.value as t.StringLiteral).value as BindingType,
+      };
+
+      const renderProp = prop.value.properties.find(
+        p =>
+          t.isObjectProperty(p) &&
+          t.isIdentifier(p.key) &&
+          p.key.name === 'render' &&
+          t.isObjectExpression(p.value),
+      ) as t.ObjectProperty | undefined;
+
+      if (renderProp) {
+        const nested = parseRenderObject(
+          renderProp.value as t.ObjectExpression,
+        );
+        if (nested) {
+          leaf.render = nested;
+        }
+      }
+
+      map[key] = leaf;
+    } else {
+      const nested = parseRenderObject(prop.value);
+      if (nested) {
+        map[key] = nested;
+      }
+    }
+  });
+
+  return Object.keys(map).length > 0 ? map : null;
 };
 
 export const parseBinding = (bindingValue: string | null): BindingItem[] => {
@@ -301,6 +423,47 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
                 label: (labelProp.value as t.StringLiteral).value,
                 property: (propertyProp.value as t.StringLiteral).value,
               };
+
+              const typeProp = element.properties.find(
+                p =>
+                  t.isObjectProperty(p) &&
+                  t.isIdentifier(p.key) &&
+                  p.key.name === 'type' &&
+                  t.isStringLiteral(p.value),
+              ) as t.ObjectProperty | undefined;
+
+              if (typeProp) {
+                const typeValue = (typeProp.value as t.StringLiteral).value;
+                if (
+                  [
+                    'array',
+                    'object',
+                    'string',
+                    'number',
+                    'boolean',
+                    'color',
+                    'jsx',
+                  ].includes(typeValue)
+                ) {
+                  binding.type = typeValue as BindingType;
+                }
+              }
+
+              const renderProp = element.properties.find(
+                p =>
+                  t.isObjectProperty(p) &&
+                  t.isIdentifier(p.key) &&
+                  p.key.name === 'render' &&
+                  t.isObjectExpression(p.value),
+              ) as t.ObjectProperty | undefined;
+
+              if (renderProp && t.isObjectExpression(renderProp.value)) {
+                const renderMap = parseRenderObject(renderProp.value);
+
+                if (renderMap) {
+                  binding.render = renderMap;
+                }
+              }
 
               if (optionsProp && t.isArrayExpression(optionsProp.value)) {
                 const options = optionsProp.value.elements
@@ -567,6 +730,7 @@ const processChildrenBinding = (
 const skipItemsChildren = (
   jsxElement: t.JSXElement,
   processedNodes: WeakSet<t.JSXElement | t.JSXFragment>,
+  propertyName: string = 'items',
 ): void => {
   const opening = jsxElement.openingElement;
 
@@ -574,7 +738,7 @@ const skipItemsChildren = (
     attr =>
       t.isJSXAttribute(attr) &&
       t.isJSXIdentifier(attr.name) &&
-      attr.name.name === 'items',
+      attr.name.name === propertyName,
   );
 
   if (!itemsAttr || !t.isJSXAttribute(itemsAttr)) {
@@ -666,12 +830,12 @@ const parseToNodes = (raw: string): DataAttrNode[] => {
           childrenNodes = processChildrenBinding(path.node, processedNodes);
         }
 
-        const itemsBinding = bindings.find(
-          b => b.property === BINDING_PROP.ITEMS,
+        const arrayBindings = bindings.filter(
+          b => b.property === BINDING_PROP.ITEMS || b.type === 'array',
         );
 
-        if (itemsBinding) {
-          skipItemsChildren(path.node, processedNodes);
+        for (const arrayBinding of arrayBindings) {
+          skipItemsChildren(path.node, processedNodes, arrayBinding.property);
         }
 
         const innerHtmlBinding = bindings.find(
@@ -811,30 +975,14 @@ const updateInnerText = (
 const updateInnerHTML = (
   path: NodePath<t.JSXElement>,
   value: string,
+  placeholders: Map<string, string>,
 ): boolean => {
-  try {
-    const wrappedCode = `<>${value}</>`;
-    const ast = parse(wrappedCode, {
-      sourceType: 'module',
-      plugins: ['jsx', 'typescript'],
-    });
+  const placeholder = `__HTML_${nanoid(6)}__`;
 
-    const statement = ast.program.body[0];
-    if (!t.isExpressionStatement(statement)) {
-      return false;
-    }
+  path.node.children = [t.jsxExpressionContainer(t.identifier(placeholder))];
+  placeholders.set(`{${placeholder}}`, value);
 
-    const expr = statement.expression;
-    if (!t.isJSXFragment(expr)) {
-      return false;
-    }
-
-    path.node.children = expr.children;
-    return true;
-  } catch (error) {
-    console.error('❌ innerHTML update error:', error);
-    return false;
-  }
+  return true;
 };
 
 const updateChildren = (
@@ -906,6 +1054,7 @@ export const update = (
     });
 
     let changed = false;
+    const jsxPlaceholders = new Map<string, string>();
 
     traverse(ast, {
       JSXElement(path) {
@@ -966,7 +1115,7 @@ export const update = (
           }
 
           case BINDING_PROP.INNER_HTML: {
-            changed = updateInnerHTML(path, value);
+            changed = updateInnerHTML(path, value, jsxPlaceholders);
             break;
           }
 
@@ -976,7 +1125,30 @@ export const update = (
           }
 
           default: {
-            changed = updateAttribute(opening, propertyBinding.property, value);
+            if (propertyBinding.type === 'jsx') {
+              const attr = opening.attributes.find(
+                a =>
+                  t.isJSXAttribute(a) &&
+                  t.isJSXIdentifier(a.name) &&
+                  a.name.name === propertyBinding.property,
+              );
+
+              if (attr && t.isJSXAttribute(attr)) {
+                const placeholder = `__JSX_${nanoid(6)}__`;
+                attr.value = t.jsxExpressionContainer(
+                  t.identifier(placeholder),
+                );
+                jsxPlaceholders.set(placeholder, value.trim());
+                changed = true;
+              }
+            } else {
+              changed = updateAttribute(
+                opening,
+                propertyBinding.property,
+                value,
+              );
+            }
+
             break;
           }
         }
@@ -987,7 +1159,13 @@ export const update = (
       return code;
     }
 
-    return unwrap(generateCode(ast));
+    let result = unwrap(generateCode(ast));
+
+    for (const [placeholder, original] of jsxPlaceholders) {
+      result = result.replace(placeholder, original);
+    }
+
+    return result;
   } catch (error) {
     console.error('❌ Code update error:', error);
     return code;
@@ -999,9 +1177,11 @@ export const bulkUpdate = (
   entries: { dataId: string; label: string; value: string }[],
 ): string => {
   let current = raw;
+
   for (const entry of entries) {
     current = update(current, entry.dataId, entry.label, entry.value);
   }
+
   return current;
 };
 
@@ -1040,20 +1220,41 @@ export const extractNodeValue = (node: t.Node): ExtractedNodeValue => {
   if (t.isBooleanLiteral(node)) {
     return { type: 'boolean', value: node.value };
   }
+
   if (t.isNumericLiteral(node)) {
     return { type: 'number', value: node.value };
   }
+
   if (t.isStringLiteral(node)) {
     return { type: 'string', value: node.value };
   }
+
+  if (t.isTemplateLiteral(node)) {
+    if (node.expressions.length === 0 && node.quasis.length === 1) {
+      return {
+        type: 'string',
+        value: dedent(
+          node.quasis[0]!.value.cooked ?? node.quasis[0]!.value.raw,
+        ),
+      };
+    }
+    return { type: 'string', value: generateCode(node) };
+  }
+
   if (t.isNullLiteral(node)) {
     return { type: 'null', value: null };
   }
+
   if (t.isArrayExpression(node)) {
     return { type: 'array', value: generateCode(node) };
   }
+
   if (t.isObjectExpression(node)) {
     return { type: 'object', value: generateCode(node) };
+  }
+
+  if (t.isJSXElement(node) || t.isJSXFragment(node)) {
+    return { type: 'string', value: generateCode(node) };
   }
 
   return { type: 'unknown', value: null };
@@ -1114,7 +1315,7 @@ export const extractObjectProperties = (
     if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) {
       const key = prop.key.name;
 
-      if (key === 'children' || t.isJSXElement(prop.value)) {
+      if (key === 'children') {
         return;
       }
 
