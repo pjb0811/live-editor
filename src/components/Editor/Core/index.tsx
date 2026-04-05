@@ -29,6 +29,7 @@ export interface Props {
   theme?: Extension | 'light' | 'dark' | 'none';
   prettierOptions?: Record<string, unknown>;
   fragment?: boolean;
+  raw?: boolean;
   className?: string;
   onChange?: (value: string) => void;
   onSave?: (value: string) => void;
@@ -42,6 +43,7 @@ const Core = ({
   className,
   prettierOptions,
   fragment,
+  raw,
   onChange,
   onSave: _onSave,
   onError,
@@ -94,7 +96,7 @@ const Core = ({
 
         const currentLength = currentView.state.doc.length;
         const cursorPos = currentView.state.selection.main.head;
-        const formattedCode = await formatCode(val);
+        const formattedCode = raw ? val : await formatCode(val);
 
         if (currentLength === currentView.state.doc.length) {
           const newCursorPos = Math.min(cursorPos, formattedCode.length);
@@ -113,7 +115,7 @@ const Core = ({
         onError?.(e instanceof Error ? e.message : String(e));
       }
     },
-    [formatCode, onChange, _onSave, onError],
+    [raw, formatCode, onChange, _onSave, onError],
   );
 
   const onKeyDown = useCallback(
