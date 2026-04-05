@@ -1,17 +1,22 @@
 import { useMemo } from 'react';
 
+import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 import { Button } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
 import {
+  type BindingRenderLeaf,
+  type BindingRenderMap,
   type DataAttrNode,
   type ExtractedNodeValue,
+  type NodeValueType,
   arrayExpressionToCode,
   clone,
   createNodeFromValue,
   extract,
+  extractNodeValue,
   extractObjectProperties,
   findEditableChildren,
   generateCode,
@@ -34,8 +39,17 @@ interface ItemData {
   jsxBindings: Record<string, DataAttrNode[]>;
 }
 
+interface PrimitiveItem {
+  id: string;
+  index: number;
+  value: string | number | boolean | null;
+  type: NodeValueType;
+  astNode: t.Expression;
+}
+
 interface Props {
   value: string;
+  render?: BindingRenderMap;
   onChange?: (value: string) => void;
   onChildChange?: (params: {
     id: string;
@@ -44,84 +58,159 @@ interface Props {
   }) => void;
 }
 
-const Items = ({ value, onChange, onChildChange }: Props) => {
-  const extractedItems = useMemo(() => {
+const Items = ({ value, render, onChange, onChildChange }: Props) => {
+  const { objectItems, primitiveItems, allElements } = useMemo(() => {
     const ast = parseArrayExpression(value);
 
     if (!ast) {
-      return [];
+      return { objectItems: [], primitiveItems: [], allElements: [] };
     }
 
-    return ast.elements
-      .map((element, itemIndex) => {
-        if (!t.isObjectExpression(element)) {
-          return null;
-        }
+    const objectItems: ItemData[] = [];
+    const primitiveItems: PrimitiveItem[] = [];
+    const allElements = ast.elements.filter(Boolean) as t.Expression[];
 
-        const jsxBindings: Record<string, DataAttrNode[]> = {};
+    ast.elements.forEach((element, itemIndex) => {
+      if (!element) {
+        return;
+      }
 
-        element.properties.forEach(prop => {
-          if (
-            !t.isObjectProperty(prop) ||
-            !t.isIdentifier(prop.key) ||
-            !t.isJSXElement(prop.value)
-          ) {
-            return;
-          }
-
-          const propertyName = prop.key.name;
-
-          try {
-            const jsxCode = generateCode(prop.value);
-            const nodes = extract(jsxCode);
-            const bindings: DataAttrNode[] = [];
-
-            const bindingContainer = nodes.find(node =>
-              node.bindings?.some(b => b.property === 'children'),
-            );
-
-            if (bindingContainer) {
-              bindings.push(bindingContainer);
-            } else {
-              nodes.forEach(node => {
-                if (
-                  node.bindings &&
-                  node.bindings.length > 0 &&
-                  node.dataAttributes.some(a => a.name === 'data-id')
-                ) {
-                  bindings.push(node);
-                }
-                const editableChildren = findEditableChildren(node);
-                bindings.push(...editableChildren);
-              });
-            }
-
-            if (bindings.length > 0) {
-              jsxBindings[propertyName] = bindings;
-            }
-          } catch (error) {
-            console.error(
-              `Failed to parse JSX in property '${propertyName}':`,
-              error,
-            );
-          }
-        });
-
-        const itemData: ItemData = {
+      if (!t.isObjectExpression(element)) {
+        const extracted = extractNodeValue(element);
+        primitiveItems.push({
           id: nanoid(6),
           index: itemIndex,
-          editableProperties: extractObjectProperties(element),
-          originalElement: element,
-          jsxBindings,
-        };
+          value: extracted.value,
+          type: extracted.type,
+          astNode: element as t.Expression,
+        });
+        return;
+      }
 
-        return itemData;
-      })
-      .filter(Boolean) as ItemData[];
+      const jsxBindings: Record<string, DataAttrNode[]> = {};
+
+      element.properties.forEach(prop => {
+        if (
+          !t.isObjectProperty(prop) ||
+          !t.isIdentifier(prop.key) ||
+          !t.isJSXElement(prop.value)
+        ) {
+          return;
+        }
+
+        const propertyName = prop.key.name;
+
+        try {
+          const jsxCode = generateCode(prop.value);
+          const nodes = extract(jsxCode);
+          const bindings: DataAttrNode[] = [];
+
+          const bindingContainer = nodes.find(node =>
+            node.bindings?.some(b => b.property === 'children'),
+          );
+
+          if (bindingContainer) {
+            bindings.push(bindingContainer);
+          } else {
+            nodes.forEach(node => {
+              if (
+                node.bindings &&
+                node.bindings.length > 0 &&
+                node.dataAttributes.some(a => a.name === 'data-id')
+              ) {
+                bindings.push(node);
+              }
+              const editableChildren = findEditableChildren(node);
+              bindings.push(...editableChildren);
+            });
+          }
+
+          if (bindings.length > 0) {
+            jsxBindings[propertyName] = bindings;
+          }
+        } catch (error) {
+          console.error(
+            `Failed to parse JSX in property '${propertyName}':`,
+            error,
+          );
+        }
+      });
+
+      objectItems.push({
+        id: nanoid(6),
+        index: itemIndex,
+        editableProperties: extractObjectProperties(element),
+        originalElement: element,
+        jsxBindings,
+      });
+    });
+
+    return { objectItems, primitiveItems, allElements };
   }, [value]);
 
+  const isPrimitive = primitiveItems.length > 0 && objectItems.length === 0;
+
+  const updatePrimitive = (index: number, next: string) => {
+    const ast = parseArrayExpression(value);
+
+    if (!ast) {
+      return;
+    }
+
+    const elements = ast.elements.filter(Boolean) as t.Expression[];
+    const item = primitiveItems.find(p => p.index === index);
+
+    if (!item) {
+      return;
+    }
+
+    const newNode = createNodeFromValue(item.type, parseValue(next));
+
+    if (!newNode) {
+      return;
+    }
+
+    elements[index] = newNode;
+
+    onChange?.(generateCode(t.arrayExpression(elements)));
+  };
+
+  const movePrimitive = (fromIndex: number, toIndex: number) => {
+    const nextElements = [...allElements];
+    const [moved] = nextElements.splice(fromIndex, 1);
+
+    nextElements.splice(toIndex, 0, moved!);
+    onChange?.(generateCode(t.arrayExpression(nextElements)));
+  };
+
+  const deletePrimitive = (index: number) => {
+    if (allElements.length <= 1) {
+      return;
+    }
+
+    const nextElements = allElements.filter((_, i) => i !== index);
+
+    onChange?.(generateCode(t.arrayExpression(nextElements)));
+  };
+
+  const addPrimitive = () => {
+    const first = primitiveItems[0];
+
+    if (!first) {
+      return;
+    }
+
+    const newNode = createNodeFromValue(first.type, first.value);
+
+    if (!newNode) {
+      return;
+    }
+
+    onChange?.(generateCode(t.arrayExpression([...allElements, newNode])));
+  };
+
   const moveItem = (fromIndex: number, toIndex: number) => {
-    const nextItems = [...extractedItems];
+    const nextItems = [...objectItems];
     const [movedItem] = nextItems.splice(fromIndex, 1);
     nextItems.splice(toIndex, 0, movedItem!);
 
@@ -137,49 +226,111 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
     propertyKey: string,
     value: unknown,
   ) => {
-    const item = extractedItems[itemIndex]!;
+    const item = objectItems[itemIndex]!;
     const property = item.editableProperties[propertyKey]!;
 
-    const nextAstValue = createNodeFromValue(property.type, value);
+    const renderLeaf =
+      render?.[propertyKey] && 'type' in render[propertyKey]
+        ? (render[propertyKey] as BindingRenderLeaf)
+        : null;
 
-    if (!nextAstValue) {
+    const isJsx = renderLeaf?.type === 'jsx';
+    const isInnerHTML = renderLeaf?.type === ('innerHTML' as string);
+    let nextAstValue: t.Expression | null = null;
+
+    if (isInnerHTML) {
+      const str = String(value);
+      nextAstValue = t.templateLiteral(
+        [t.templateElement({ raw: str, cooked: str }, true)],
+        [],
+      );
+    } else if (property.type === 'array' || property.type === 'object') {
+      try {
+        nextAstValue = parseExpression(String(value), {
+          plugins: ['jsx', 'typescript'],
+        });
+      } catch {
+        return;
+      }
+    } else if (!isJsx) {
+      nextAstValue = createNodeFromValue(property.type, value);
+    }
+
+    if (!isJsx && !nextAstValue) {
       return;
     }
 
     const objectExpression = item.originalElement;
     const targetProperty = objectExpression.properties.find(
-      prop =>
+      (prop: t.ObjectProperty | t.ObjectMethod | t.SpreadElement) =>
         t.isObjectProperty(prop) &&
         t.isIdentifier(prop.key) &&
         prop.key.name === propertyKey,
     ) as t.ObjectProperty;
 
-    if (targetProperty) {
+    const jsxPlaceholders = new Map<string, string>();
+    const originalValues = new Map<t.ObjectProperty, t.Expression>();
+
+    if (isJsx && targetProperty) {
+      const trimmed = String(value).trim();
+      if (trimmed.startsWith('<')) {
+        const placeholder = `__JSX_${nanoid(6)}__`;
+        jsxPlaceholders.set(placeholder, trimmed);
+        targetProperty.value = t.identifier(placeholder);
+      } else {
+        targetProperty.value = t.stringLiteral(trimmed);
+      }
+    } else if (targetProperty && nextAstValue) {
       targetProperty.value = nextAstValue;
     }
 
-    const nextValue = arrayExpressionToCode(
-      extractedItems.map(item => item.originalElement),
+    objectItems.forEach(obj => {
+      obj.originalElement.properties.forEach(prop => {
+        if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) {
+          return;
+        }
+
+        if (t.isJSXElement(prop.value) || t.isJSXFragment(prop.value)) {
+          const placeholder = `__JSX_${nanoid(6)}__`;
+          jsxPlaceholders.set(placeholder, generateCode(prop.value));
+          originalValues.set(prop, prop.value);
+          prop.value = t.identifier(placeholder);
+        }
+      });
+    });
+
+    let nextValue = arrayExpressionToCode(
+      objectItems.map(item => item.originalElement),
     );
+
+    for (const [prop, original] of originalValues) {
+      prop.value = original;
+    }
+
+    for (const [placeholder, code] of jsxPlaceholders) {
+      nextValue = nextValue.replace(placeholder, code);
+    }
 
     onChange?.(nextValue);
   };
 
   const deleteItem = (index: number) => {
-    if (extractedItems.length <= 1) {
+    if (objectItems.length <= 1) {
       return;
     }
 
-    const nextItems = extractedItems.filter((_, i) => i !== index);
+    const nextItems = objectItems.filter(
+      (_: ItemData, i: number) => i !== index,
+    );
     const nextValue = arrayExpressionToCode(
-      nextItems.map(item => item.originalElement),
+      nextItems.map((item: ItemData) => item.originalElement),
     );
 
     onChange?.(nextValue);
   };
 
   const addItem = () => {
-    const firstItem = extractedItems[0]!;
+    const firstItem = objectItems[0]!;
 
     const clonedElement = clone(
       firstItem.originalElement,
@@ -212,7 +363,7 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
 
     const editableProperties = extractObjectProperties(clonedElement);
 
-    const nextItems = [...extractedItems];
+    const nextItems = [...objectItems];
     const newItemData: ItemData = {
       id: nanoid(6),
       index: nextItems.length,
@@ -230,18 +381,83 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
     onChange?.(nextValue);
   };
 
+  if (isPrimitive) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold">
+            Items ({primitiveItems.length})
+          </div>
+          <Button
+            size="small"
+            icon={<Plus />}
+            variant="solid"
+            color="green"
+            onClick={addPrimitive}
+          >
+            Add Item
+          </Button>
+        </div>
+
+        {primitiveItems.map((item, i) => (
+          <div
+            key={item.id}
+            className="space-y-2 rounded border border-gray-100 bg-gray-50 p-2"
+          >
+            <div className="flex justify-end space-x-1">
+              <Button
+                size="small"
+                icon={<ArrowUp />}
+                disabled={i === 0}
+                onClick={() => movePrimitive(item.index, item.index - 1)}
+              />
+              <Button
+                size="small"
+                icon={<ArrowDown />}
+                disabled={i === primitiveItems.length - 1}
+                onClick={() => movePrimitive(item.index, item.index + 1)}
+              />
+              <Button
+                danger
+                size="small"
+                icon={<X />}
+                disabled={primitiveItems.length <= 1}
+                onClick={() => deletePrimitive(item.index)}
+              />
+            </div>
+            <Field
+              binding={{
+                label: `item-${i}`,
+                property: item.type,
+              }}
+              id={`primitive-${item.id}`}
+              value={String(item.value ?? '')}
+              onChange={({ value: next }) => updatePrimitive(item.index, next)}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold">
-          Items ({extractedItems.length})
+          Items ({objectItems.length})
         </div>
-        <Button size="small" icon={<Plus />} color="green" onClick={addItem}>
+        <Button
+          size="small"
+          icon={<Plus />}
+          variant="solid"
+          color="green"
+          onClick={addItem}
+        >
           Add Item
         </Button>
       </div>
 
-      {extractedItems.map(item => (
+      {objectItems.map(item => (
         <div key={item.id} className="space-y-3 rounded border bg-gray-50 p-3">
           <div className="flex items-center justify-between">
             <div className="text-xs font-medium">Item {item.index + 1}</div>
@@ -255,14 +471,14 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
               <Button
                 size="small"
                 icon={<ArrowDown />}
-                disabled={item.index === extractedItems.length - 1}
+                disabled={item.index === objectItems.length - 1}
                 onClick={() => moveItem(item.index, item.index + 1)}
               />
               <Button
                 danger
                 size="small"
                 icon={<X />}
-                disabled={extractedItems.length <= 1}
+                disabled={objectItems.length <= 1}
                 onClick={() => deleteItem(item.index)}
               />
             </div>
@@ -270,12 +486,28 @@ const Items = ({ value, onChange, onChildChange }: Props) => {
           <div className="space-y-2">
             {Object.entries(item.editableProperties).map(([key, prop]) => (
               <div key={`${item.id}-${key}`}>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col space-y-2">
                   <label className="w-20 shrink-0 text-xs font-medium">
-                    {key}:
+                    {key}
                   </label>
                   <Field
-                    binding={{ label: key, property: key }}
+                    binding={{
+                      label: key,
+                      property:
+                        render?.[key] && 'type' in render[key]
+                          ? (render[key].type as string)
+                          : key,
+                      type:
+                        render?.[key] && 'type' in render[key]
+                          ? (render[key] as BindingRenderLeaf).type
+                          : undefined,
+                      render:
+                        render?.[key] && 'type' in render[key]
+                          ? (render[key] as BindingRenderLeaf).render
+                          : render?.[key] && !('type' in render[key])
+                            ? (render[key] as BindingRenderMap)
+                            : undefined,
+                    }}
                     id={`item-${item.id}-${key}`}
                     value={String(prop.value)}
                     onChange={({ value: next }) =>
