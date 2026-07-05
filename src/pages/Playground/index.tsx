@@ -4,19 +4,54 @@ import { cn } from '@jbpark/ui-kit/utils';
 const App = () => {
   return (
     <main id="app-container">
+      <section data-name="test">
+        <div
+          data-id=""
+          data-binding={[
+            {
+              label: 'Rich Text',
+              property: 'innerHTML',
+              type: 'richtext',
+            },
+          ]}
+        >
+          test
+        </div>
+      </section>
       <section
         data-name="Hero"
         className={cn(
-          'bg-linear-to-br from-indigo-500 to-purple-600',
-          'px-5 py-15',
           'text-center text-white',
           //
         )}
       >
-        <ui.Space orientation="vertical" size="large" align="center">
+        <ui.Space
+          data-id=""
+          data-binding={[
+            {
+              label: 'Background Style',
+              property: 'style',
+            },
+          ]}
+          style={{
+            backgroundColor: '#6366f1',
+          }}
+          orientation="vertical"
+          size="large"
+          align="center"
+          className={cn(
+            'px-5 py-15',
+            //
+          )}
+        >
           <h1
             data-id=""
-            data-binding={[{ label: 'Title', property: 'innerText' }]}
+            data-binding={[
+              {
+                label: 'Title',
+                property: 'innerText',
+              },
+            ]}
             className={cn(
               'text-5xl font-bold',
               //
@@ -46,8 +81,41 @@ const App = () => {
                 label: 'Button Text',
                 property: 'innerText',
               },
+              {
+                label: 'Button Size',
+                property: 'size',
+                options: [
+                  {
+                    label: 'small',
+                    value: 'small',
+                  },
+                  {
+                    label: 'middle',
+                    value: 'middle',
+                  },
+                  {
+                    label: 'large',
+                    value: 'large',
+                  },
+                ],
+              },
+              {
+                label: 'Button Variant',
+                property: 'variant',
+                options: [
+                  {
+                    label: 'default',
+                    value: 'default',
+                  },
+                  {
+                    label: 'outlined',
+                    value: 'outlined',
+                  },
+                ],
+              },
             ]}
             size="large"
+            variant="solid"
             className={cn(
               'bg-white text-indigo-500',
               'hover:bg-gray-50',
@@ -264,7 +332,12 @@ const App = () => {
         </ui.Typography.Title>
         <ui.Typography.Paragraph
           data-id=""
-          data-binding={[{ label: 'Description 1', property: 'innerText' }]}
+          data-binding={[
+            {
+              label: 'Description 1',
+              property: 'innerText',
+            },
+          ]}
           className={cn(
             'mb-4 text-lg leading-relaxed text-gray-600',
             //
@@ -277,7 +350,12 @@ const App = () => {
         </ui.Typography.Paragraph>
         <ui.Typography.Paragraph
           data-id=""
-          data-binding={[{ label: 'Description 2', property: 'innerText' }]}
+          data-binding={[
+            {
+              label: 'Description 2',
+              property: 'innerText',
+            },
+          ]}
           className={cn(
             'text-lg leading-relaxed text-gray-600',
             //
@@ -315,7 +393,12 @@ const App = () => {
           </ui.Typography.Title>
           <ui.Typography.Paragraph
             data-id=""
-            data-binding={[{ label: 'Description', property: 'innerText' }]}
+            data-binding={[
+              {
+                label: 'Description',
+                property: 'innerText',
+              },
+            ]}
             className={cn(
               'mb-6 text-lg text-gray-600',
               //
@@ -333,7 +416,12 @@ const App = () => {
           >
             <ui.Button
               data-id=""
-              data-binding={[{ label: 'Button 1 Text', property: 'innerText' }]}
+              data-binding={[
+                {
+                  label: 'Button 1 Text',
+                  property: 'innerText',
+                },
+              ]}
               size="large"
               className={cn(
                 'bg-indigo-500 px-8 text-base text-white',
@@ -345,7 +433,12 @@ const App = () => {
             </ui.Button>
             <ui.Button
               data-id=""
-              data-binding={[{ label: 'Button 2 Text', property: 'innerText' }]}
+              data-binding={[
+                {
+                  label: 'Button 2 Text',
+                  property: 'innerText',
+                },
+              ]}
               variant="outlined"
               size="large"
               className={cn(
@@ -391,7 +484,12 @@ const App = () => {
           >
             <ui.Card
               data-id=""
-              data-binding={[{ label: 'Card 1 Content', property: 'children' }]}
+              data-binding={[
+                {
+                  label: 'Card 1 Content',
+                  property: 'children',
+                },
+              ]}
               className={cn(
                 'rounded-lg border-2 border-gray-200 bg-white p-8',
                 //
@@ -400,7 +498,10 @@ const App = () => {
               <ui.Typography.Title
                 data-id=""
                 data-binding={[
-                  { label: 'Card 1 Title', property: 'innerText' },
+                  {
+                    label: 'Card 1 Title',
+                    property: 'innerText',
+                  },
                 ]}
                 level={3}
                 className={cn(
@@ -412,7 +513,12 @@ const App = () => {
               </ui.Typography.Title>
               <ui.Typography.Paragraph
                 data-id=""
-                data-binding={[{ label: 'Card 1 Icon', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 1 Icon',
+                    property: 'innerText',
+                  },
+                ]}
                 className={cn(
                   'mb-6 text-4xl font-bold text-indigo-600',
                   //
@@ -433,7 +539,10 @@ const App = () => {
               <ui.Button
                 data-id=""
                 data-binding={[
-                  { label: 'Card 1 Button', property: 'innerText' },
+                  {
+                    label: 'Card 1 Button',
+                    property: 'innerText',
+                  },
                 ]}
                 variant="outlined"
                 size="large"
@@ -449,7 +558,12 @@ const App = () => {
             </ui.Card>
             <ui.Card
               data-id=""
-              data-binding={[{ label: 'Card 2 Content', property: 'children' }]}
+              data-binding={[
+                {
+                  label: 'Card 2 Content',
+                  property: 'children',
+                },
+              ]}
               className={cn(
                 'relative rounded-lg border-2 border-indigo-500 bg-white p-8',
                 //
@@ -467,7 +581,10 @@ const App = () => {
               <ui.Typography.Title
                 data-id=""
                 data-binding={[
-                  { label: 'Card 2 Title', property: 'innerText' },
+                  {
+                    label: 'Card 2 Title',
+                    property: 'innerText',
+                  },
                 ]}
                 level={3}
                 className={cn(
@@ -479,7 +596,12 @@ const App = () => {
               </ui.Typography.Title>
               <ui.Typography.Paragraph
                 data-id=""
-                data-binding={[{ label: 'Card 2 Icon', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 2 Icon',
+                    property: 'innerText',
+                  },
+                ]}
                 className={cn(
                   'mb-6 text-4xl font-bold text-indigo-600',
                   //
@@ -500,7 +622,10 @@ const App = () => {
               <ui.Button
                 data-id=""
                 data-binding={[
-                  { label: 'Card 2 Button', property: 'innerText' },
+                  {
+                    label: 'Card 2 Button',
+                    property: 'innerText',
+                  },
                 ]}
                 size="large"
                 block
@@ -515,7 +640,12 @@ const App = () => {
             </ui.Card>
             <ui.Card
               data-id=""
-              data-binding={[{ label: 'Card 3 Content', property: 'children' }]}
+              data-binding={[
+                {
+                  label: 'Card 3 Content',
+                  property: 'children',
+                },
+              ]}
               className={cn(
                 'rounded-lg border-2 border-gray-200 bg-white p-8',
                 //
@@ -524,7 +654,10 @@ const App = () => {
               <ui.Typography.Title
                 data-id=""
                 data-binding={[
-                  { label: 'Card 3 Title', property: 'innerText' },
+                  {
+                    label: 'Card 3 Title',
+                    property: 'innerText',
+                  },
                 ]}
                 level={3}
                 className={cn(
@@ -536,7 +669,12 @@ const App = () => {
               </ui.Typography.Title>
               <ui.Typography.Paragraph
                 data-id=""
-                data-binding={[{ label: 'Card 3 Icon', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 3 Icon',
+                    property: 'innerText',
+                  },
+                ]}
                 className={cn(
                   'mb-6 text-4xl font-bold text-indigo-600',
                   //
@@ -557,7 +695,10 @@ const App = () => {
               <ui.Button
                 data-id=""
                 data-binding={[
-                  { label: 'Card 3 Button', property: 'innerText' },
+                  {
+                    label: 'Card 3 Button',
+                    property: 'innerText',
+                  },
                 ]}
                 variant="outlined"
                 size="large"
@@ -587,121 +728,93 @@ const App = () => {
             //
           )}
         >
-          <ui.Typography.Title
-            data-id=""
-            data-binding={[{ label: 'Title', property: 'innerText' }]}
-            level={2}
+          <h2
             className={cn(
               'mb-12 text-center text-4xl font-bold text-gray-800',
               //
             )}
           >
             Key Features
-          </ui.Typography.Title>
-          <ui.Space
-            data-id=""
-            data-binding={[{ label: 'Feature Cards', property: 'children' }]}
+          </h2>
+          <div
             className={cn(
               'grid gap-8 md:grid-cols-2',
               //
             )}
-            orientation="vertical"
           >
-            <ui.Card
+            <div
               className={cn(
-                'bg-white p-8 shadow-md',
+                'rounded-lg bg-white p-8 shadow-md',
                 //
               )}
             >
-              <ui.Space orientation="vertical" size="middle">
-                <div
-                  data-id=""
-                  data-binding={[{ label: 'Icon', property: 'innerText' }]}
-                  className={cn(
-                    'text-4xl',
-                    //
-                  )}
-                >
-                  🎨
-                </div>
-                <ui.Typography.Title
-                  data-id=""
-                  data-binding={[{ label: 'Title', property: 'innerText' }]}
-                  level={3}
-                  className={cn(
-                    'text-2xl font-bold text-gray-800',
-                    //
-                  )}
-                >
-                  Visual Editing
-                </ui.Typography.Title>
-                <ui.Typography.Paragraph
-                  data-id=""
-                  data-binding={[
-                    { label: 'Description', property: 'innerText' },
-                  ]}
-                  className={cn(
-                    'text-gray-600',
-                    //
-                  )}
-                >
-                  See your changes in real-time as you build. Live Editor
-                  provides instant visual feedback, making it easier to
-                  understand how code affects your interface.
-                </ui.Typography.Paragraph>
-              </ui.Space>
-            </ui.Card>
-            <ui.Card
+              <div
+                className={cn(
+                  'mb-4 text-4xl',
+                  //
+                )}
+              >
+                🎨
+              </div>
+              <h3
+                className={cn(
+                  'mb-4 text-2xl font-bold text-gray-800',
+                  //
+                )}
+              >
+                Visual Editing
+              </h3>
+              <p
+                className={cn(
+                  'text-gray-600',
+                  //
+                )}
+              >
+                See your changes in real-time as you build. Live Editor provides
+                instant visual feedback, making it easier to understand how code
+                affects your interface.
+              </p>
+            </div>
+            <div
               className={cn(
-                'bg-white p-8 shadow-md',
+                'rounded-lg bg-white p-8 shadow-md',
                 //
               )}
             >
-              <ui.Space orientation="vertical" size="middle">
-                <div
-                  data-id=""
-                  data-binding={[{ label: 'Icon', property: 'innerText' }]}
-                  className={cn(
-                    'text-4xl',
-                    //
-                  )}
-                >
-                  🧩
-                </div>
-                <ui.Typography.Title
-                  data-id=""
-                  data-binding={[{ label: 'Title', property: 'innerText' }]}
-                  level={3}
-                  className={cn(
-                    'text-2xl font-bold text-gray-800',
-                    //
-                  )}
-                >
-                  Component-Based
-                </ui.Typography.Title>
-                <ui.Typography.Paragraph
-                  data-id=""
-                  data-binding={[
-                    { label: 'Description', property: 'innerText' },
-                  ]}
-                  className={cn(
-                    'text-gray-600',
-                    //
-                  )}
-                >
-                  Build with reusable components that you can drag, drop, and
-                  customize. Learn modern development patterns while creating
-                  your interface.
-                </ui.Typography.Paragraph>
-              </ui.Space>
-            </ui.Card>
-          </ui.Space>
+              <div
+                className={cn(
+                  'mb-4 text-4xl',
+                  //
+                )}
+              >
+                🧩
+              </div>
+              <h3
+                className={cn(
+                  'mb-4 text-2xl font-bold text-gray-800',
+                  //
+                )}
+              >
+                Component-Based
+              </h3>
+              <p
+                className={cn(
+                  'text-gray-600',
+                  //
+                )}
+              >
+                Build with reusable components that you can drag, drop, and
+                customize. Learn modern development patterns while creating your
+                interface.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
       <section
         data-name="Stats"
         className={cn(
-          'bg-indigo-600 px-5 py-16 text-white',
+          'bg-indigo-600 text-white',
           //
         )}
       >
@@ -711,6 +824,7 @@ const App = () => {
           speed={100}
           pauseOnHover={true}
           autoFill={true}
+          className="px-5 py-16"
           items={[
             {
               key: 'stats-row',
@@ -879,7 +993,6 @@ const App = () => {
           ]}
         />
       </section>
-
       <section
         data-name="FAQ"
         className={cn(
@@ -914,7 +1027,10 @@ const App = () => {
                   <ui.Typography.Text
                     data-id=""
                     data-binding={[
-                      { label: 'Question 1', property: 'innerText' },
+                      {
+                        label: 'Question 1',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-lg font-semibold text-gray-800')}
                   >
@@ -925,7 +1041,10 @@ const App = () => {
                   <ui.Typography.Paragraph
                     data-id=""
                     data-binding={[
-                      { label: 'Answer 1', property: 'innerText' },
+                      {
+                        label: 'Answer 1',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-gray-600')}
                   >
@@ -941,7 +1060,10 @@ const App = () => {
                   <ui.Typography.Text
                     data-id=""
                     data-binding={[
-                      { label: 'Question 2', property: 'innerText' },
+                      {
+                        label: 'Question 2',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-lg font-semibold text-gray-800')}
                   >
@@ -952,7 +1074,10 @@ const App = () => {
                   <ui.Typography.Paragraph
                     data-id=""
                     data-binding={[
-                      { label: 'Answer 2', property: 'innerText' },
+                      {
+                        label: 'Answer 2',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-gray-600')}
                   >
@@ -968,7 +1093,10 @@ const App = () => {
                   <ui.Typography.Text
                     data-id=""
                     data-binding={[
-                      { label: 'Question 3', property: 'innerText' },
+                      {
+                        label: 'Question 3',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-lg font-semibold text-gray-800')}
                   >
@@ -979,7 +1107,10 @@ const App = () => {
                   <ui.Typography.Paragraph
                     data-id=""
                     data-binding={[
-                      { label: 'Answer 3', property: 'innerText' },
+                      {
+                        label: 'Answer 3',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-gray-600')}
                   >
@@ -995,7 +1126,10 @@ const App = () => {
                   <ui.Typography.Text
                     data-id=""
                     data-binding={[
-                      { label: 'Question 4', property: 'innerText' },
+                      {
+                        label: 'Question 4',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-lg font-semibold text-gray-800')}
                   >
@@ -1006,7 +1140,10 @@ const App = () => {
                   <ui.Typography.Paragraph
                     data-id=""
                     data-binding={[
-                      { label: 'Answer 4', property: 'innerText' },
+                      {
+                        label: 'Answer 4',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-gray-600')}
                   >

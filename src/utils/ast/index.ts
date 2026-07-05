@@ -40,7 +40,8 @@ export type BindingType =
   | 'number'
   | 'boolean'
   | 'color'
-  | 'jsx';
+  | 'jsx'
+  | 'richtext';
 
 export interface BindingRenderLeaf {
   type: BindingType;
@@ -418,19 +419,29 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
                 t.isArrayExpression(p.value),
             ) as t.ObjectProperty | undefined;
 
-            if (labelProp && propertyProp) {
+            const typePropEarly = element.properties.find(
+              p =>
+                t.isObjectProperty(p) &&
+                t.isIdentifier(p.key) &&
+                p.key.name === 'type' &&
+                t.isStringLiteral(p.value),
+            ) as t.ObjectProperty | undefined;
+
+            const earlyTypeValue = typePropEarly
+              ? (typePropEarly.value as t.StringLiteral).value
+              : undefined;
+
+            const isRichtext = earlyTypeValue === 'richtext';
+
+            if (labelProp && (propertyProp || isRichtext)) {
               const binding: BindingItem = {
                 label: (labelProp.value as t.StringLiteral).value,
-                property: (propertyProp.value as t.StringLiteral).value,
+                property: propertyProp
+                  ? (propertyProp.value as t.StringLiteral).value
+                  : BINDING_PROP.INNER_HTML,
               };
 
-              const typeProp = element.properties.find(
-                p =>
-                  t.isObjectProperty(p) &&
-                  t.isIdentifier(p.key) &&
-                  p.key.name === 'type' &&
-                  t.isStringLiteral(p.value),
-              ) as t.ObjectProperty | undefined;
+              const typeProp = typePropEarly;
 
               if (typeProp) {
                 const typeValue = (typeProp.value as t.StringLiteral).value;
@@ -443,6 +454,7 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
                     'boolean',
                     'color',
                     'jsx',
+                    'richtext',
                   ].includes(typeValue)
                 ) {
                   binding.type = typeValue as BindingType;
@@ -525,6 +537,42 @@ export const getCurrentValue = (
     }
 
     case BINDING_PROP.INNER_HTML: {
+      // richtext 타입: dangerouslySetInnerHTML={{ __html }} 에서 읽기
+      const dsiAttr = node.attributes.find(
+        a => a.name === 'dangerouslySetInnerHTML',
+      );
+      if (dsiAttr?.value) {
+        try {
+          const expr = parseExpression(dsiAttr.value, {
+            plugins: ['jsx', 'typescript'],
+          });
+          if (t.isObjectExpression(expr)) {
+            const htmlProp = expr.properties.find(
+              p =>
+                t.isObjectProperty(p) &&
+                t.isIdentifier(p.key) &&
+                p.key.name === '__html',
+            ) as t.ObjectProperty | undefined;
+            if (htmlProp) {
+              if (t.isStringLiteral(htmlProp.value)) {
+                return htmlProp.value.value;
+              }
+              if (
+                t.isTemplateLiteral(htmlProp.value) &&
+                htmlProp.value.expressions.length === 0
+              ) {
+                return (
+                  htmlProp.value.quasis[0]?.value.cooked ??
+                  htmlProp.value.quasis[0]?.value.raw ??
+                  ''
+                );
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
       return node.rawChildren || node.textContent || '';
     }
 
@@ -1008,6 +1056,38 @@ const updateChildren = (
   }
 };
 
+const updateRichtext = (
+  path: NodePath<t.JSXElement>,
+  value: string,
+): boolean => {
+  path.node.children = [];
+
+  const opening = path.node.openingElement;
+  const htmlObject = t.objectExpression([
+    t.objectProperty(t.identifier('__html'), t.stringLiteral(value)),
+  ]);
+
+  const existingAttr = opening.attributes.find(
+    a =>
+      t.isJSXAttribute(a) &&
+      t.isJSXIdentifier(a.name) &&
+      a.name.name === 'dangerouslySetInnerHTML',
+  );
+
+  if (existingAttr && t.isJSXAttribute(existingAttr)) {
+    existingAttr.value = t.jsxExpressionContainer(htmlObject);
+  } else {
+    opening.attributes.push(
+      t.jsxAttribute(
+        t.jsxIdentifier('dangerouslySetInnerHTML'),
+        t.jsxExpressionContainer(htmlObject),
+      ),
+    );
+  }
+
+  return true;
+};
+
 const updateAttribute = (
   opening: t.JSXOpeningElement,
   propertyName: string,
@@ -1115,7 +1195,11 @@ export const update = (
           }
 
           case BINDING_PROP.INNER_HTML: {
-            changed = updateInnerHTML(path, value, jsxPlaceholders);
+            if (propertyBinding.type === 'richtext') {
+              changed = updateRichtext(path, value);
+            } else {
+              changed = updateInnerHTML(path, value, jsxPlaceholders);
+            }
             break;
           }
 
