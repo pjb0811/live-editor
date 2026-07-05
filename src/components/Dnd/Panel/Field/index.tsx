@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Checkbox, ColorPicker, Input, Select } from '@jbpark/ui-kit';
 
 import CoreEditor from '~/components/Editor/Core';
+import TiptapEditor from '~/components/Editor/Tiptap';
 import { BINDING_PROP } from '~/enums';
 import { type BindingItem, parseValue } from '~/utils/ast';
 
@@ -59,6 +60,23 @@ const Field = ({ binding, id, value, onChange }: Props) => {
           });
         }}
         onChildChange={onChange}
+      />
+    );
+  }
+
+  if (binding.type === 'richtext') {
+    return (
+      <TiptapEditor
+        value={value}
+        onChange={next => {
+          if (next !== value) {
+            onChange?.({
+              id,
+              label: binding.label,
+              value: next,
+            });
+          }
+        }}
       />
     );
   }

@@ -4,6 +4,20 @@ import { cn } from '@jbpark/ui-kit/utils';
 const App = () => {
   return (
     <main id="app-container">
+      <section data-name="test">
+        <div
+          data-id=""
+          data-binding={[
+            {
+              label: 'Rich Text',
+              property: 'innerHTML',
+              type: 'richtext',
+            },
+          ]}
+        >
+          test
+        </div>
+      </section>
       <section
         data-name="Hero"
         className={cn(
