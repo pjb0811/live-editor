@@ -32,7 +32,14 @@ live-editor/
 │  │  └─ Preview/           # 풀스크린 미리보기 페이지
 │  ├─ utils/
 │  │  ├─ index.ts           # compile(), cn(), baseModules 등 핵심 유틸
-│  │  ├─ ast/               # Babel AST 조작 유틸 (940+ lines)
+│  │  ├─ ast/               # Babel AST 조작 유틸 (파이프라인 단계별 분리, index.ts는 재수출 배럴)
+│  │  │  ├─ types.ts        # DataAttrNode, BindingItem 등 타입 정의
+│  │  │  ├─ helpers.ts      # wrap/unwrap/attrValue/generateCode (여러 단계 공용)
+│  │  │  ├─ binding.ts      # parseBinding(), getCurrentValue(), findEditableChildren()
+│  │  │  ├─ value.ts        # JS 값 ↔ AST 리터럴 변환 (extractNodeValue 등)
+│  │  │  ├─ extract.ts      # raw JSX 문자열 → DataAttrNode 트리 (extract())
+│  │  │  ├─ update.ts       # 값 → AST 반영 (update(), bulkUpdate())
+│  │  │  └─ tree.ts         # replaceIds()/fillIds()/clone()
 │  │  └─ tailwind/          # Tailwind 관련 유틸
 │  ├─ enums/index.ts        # 상수, 정규식, 기본 템플릿
 │  ├─ types/index.ts        # TypeScript 타입 정의
@@ -53,7 +60,7 @@ live-editor/
   → compile() — Babel 인브라우저 트랜스파일 + 캐시
   → iframe 내부에서 React 컴포넌트 렌더링
   → 사용자가 DnD/패널로 요소 편집
-  → AST 변환 (updateNodeValue 등) → 새 코드 문자열
+  → AST 변환 (update()/bulkUpdate() 등) → 새 코드 문자열
   → PreviewContext 업데이트 → 미리보기 재렌더링
 ```
 
@@ -61,15 +68,15 @@ live-editor/
 
 ## 🏗️ 주요 파일 요약
 
-| 파일                                      | 역할                                                                        |
-| ----------------------------------------- | --------------------------------------------------------------------------- |
-| `src/utils/index.ts`                      | `compile()`, `cn()`, `baseModules`, `getCachedScriptBlob()`                 |
-| `src/utils/ast/index.ts`                  | `toDataAttrs()`, `toJSX()`, `updateNodeValue()`, `replaceIds()`             |
-| `src/enums/index.ts`                      | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS` |
-| `src/types/index.ts`                      | `Module`, `Section` 타입                                                    |
-| `src/components/Context/states/index.tsx` | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`              |
-| `src/components/Preview/Client/index.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                     |
-| `src/components/Frame/IFrame/index.tsx`   | iframe 샌드박스 + 스타일 동기화 + 자동 높이                                 |
+| 파일                                      | 역할                                                                                                                                                |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/utils/index.ts`                      | `compile()`, `cn()`, `baseModules`, `getCachedScriptBlob()`                                                                                         |
+| `src/utils/ast/`                          | `extract()`, `update()`/`bulkUpdate()`, `parseBinding()`, `getCurrentValue()`, `clone()` — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
+| `src/enums/index.ts`                      | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                         |
+| `src/types/index.ts`                      | `Module`, `Section` 타입                                                                                                                            |
+| `src/components/Context/states/index.tsx` | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                      |
+| `src/components/Preview/Client/index.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                             |
+| `src/components/Frame/IFrame/index.tsx`   | iframe 샌드박스 + 스타일 동기화 + 자동 높이                                                                                                         |
 
 ---
 
