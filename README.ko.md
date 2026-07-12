@@ -98,30 +98,20 @@ pnpm exec tsc -b
 pnpm run preview
 ```
 
-## 📦 버전 관리 & 배포 (Changesets)
+## 📦 버전 관리 & 배포
 
-이 프로젝트는 **Changesets**와 GitHub Actions로 릴리스를 자동화합니다.
+이 프로젝트는 `develop` → `main` 브랜치 흐름과 AI 기반 자동 릴리스 노트를 사용합니다 — 수동 changeset 파일이 없습니다:
 
-수동 절차(선택):
-
-1. 변경셋 생성:
-   ```bash
-   pnpm changeset
-   ```
-2. 버전 반영 및 changelog 업데이트:
-   ```bash
-   pnpm version-packages
-   ```
-3. 배포(빌드 후 publish):
-   ```bash
-   pnpm release
-   ```
+- **기능 브랜치**는 `develop`으로 머지합니다.
+- `develop`에 푸시할 때마다 워크플로우가 diff를 분석해 `CHANGELOG.md`의 `## [Unreleased]` 섹션에 항목을 추가합니다 (아직 버전은 올리지 않음).
+- `develop`이 `main`으로 머지되면 그 `Unreleased` 섹션에 버전과 날짜가 확정되고 `package.json` 버전도 함께 올라간 뒤, 릴리스 PR로 열립니다.
+- 릴리스 PR을 머지하면 빌드, 태그 생성, (이 패키지가 공개로 전환되면) npm 배포가 실행됩니다.
 
 CI 워크플로우:
 
-- `publish.yml`: Changesets를 통해 릴리스 PR 생성 또는 npm 배포
+- `changelog-develop.yml`: `develop` 푸시마다 AI가 생성한 changelog 항목을 추가
+- `publish.yml`: `Unreleased`를 릴리스 PR로 승격하고, 머지 시 빌드/배포/태그 실행
 - `release.yml`: 태그 푸시 시 GitHub Release 생성 (예: `v1.2.3`)
-- `auto-release.yml`: 필요 시 버전 상승 PR 자동 생성
 - `docs-deploy.yml`: 빌드 후 `dist/`를 GitHub Pages에 배포
 
 참고: GitHub Pages 사용 시 저장소 설정에서 Pages Source를 "GitHub Actions"로 지정하세요. 저장소 서브경로로 배포한다면 `vite.config.ts`의 `base` 값을 경로에 맞게 설정해야 합니다.
