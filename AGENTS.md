@@ -10,8 +10,7 @@ Canvas의 DnD 편집 결과를 Babel AST 변환으로 소스 코드에 역으로
 ```text
 live-editor/
 ├─ .github/
-│  ├─ skills/               # AI 스킬 파일 (commit, component, ast, review, refactor, doc, pr-summary)
-│  ├─ COMMIT_CONVENTION.ko.md  # 커밋 메시지 컨벤션
+│  ├─ skills/               # AI 스킬 파일 (component, ast, review, refactor, doc, pr-summary)
 │  └─ copilot-instructions.md  # GitHub Copilot 프로젝트 지침
 ├─ src/
 │  ├─ components/

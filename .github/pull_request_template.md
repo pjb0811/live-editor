@@ -45,14 +45,9 @@
 
 <!-- Add before/after screenshots or a short demo link for UI changes. -->
 
-## Release Notes
-
-- [ ] Changeset added (`pnpm changeset`) for version-impacting changes
-- [ ] No release note needed (internal-only change)
-
 ## Checklist
 
-- [ ] Commit message follows the [convention](.github/COMMIT_CONVENTION.md)
+- [ ] Commit messages follow gitmoji + conventional-commit style
 - [ ] Updated docs when behavior/API changed
 - [ ] Added or updated tests when needed
 - [ ] No unrelated changes included
