@@ -6,6 +6,15 @@
 이 프로젝트는 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 준수합니다.
 
 ## [Unreleased]
+<!-- next-bump: major -->
+
+### 제거
+
+- .changeset/README.md 제거
+- changeset 설정 파일 제거
+- 커밋 메시지 생성 가이드(영어) 제거
+- 커밋 메시지 생성 가이드(한국어) 제거
+- 커밋 메시지 규칙 제거
 
 ## [0.1.0] - 2026-07-05
 
