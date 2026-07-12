@@ -23,12 +23,12 @@ const CHANGELOG_PATH = 'CHANGELOG.md';
 const PKG_PATH = 'package.json';
 
 const CATEGORY_ORDER = [
-  ['added', '추가'],
-  ['changed', '변경'],
-  ['deprecated', '사용 중단'],
-  ['removed', '제거'],
-  ['fixed', '수정'],
-  ['security', '보안'],
+  ['added', 'Added'],
+  ['changed', 'Changed'],
+  ['deprecated', 'Deprecated'],
+  ['removed', 'Removed'],
+  ['fixed', 'Fixed'],
+  ['security', 'Security'],
 ];
 const CATEGORY_KEYS = CATEGORY_ORDER.map(([key]) => key);
 const SEVERITY = { patch: 0, minor: 1, major: 2 };
@@ -100,15 +100,15 @@ function validateResult(result) {
   return hasAny ? result : null;
 }
 
-function ensureChangelogSkeleton(pkgName) {
+function ensureChangelogSkeleton() {
   if (!fs.existsSync(CHANGELOG_PATH)) {
     const header = [
-      `# ${pkgName}`,
+      '# Changelog',
       '',
-      '이 프로젝트의 모든 주요 변경사항을 이 파일에 기록합니다.',
+      'All notable changes to this project will be documented in this file.',
       '',
-      '형식은 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 따르며,',
-      '이 프로젝트는 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 준수합니다.',
+      'The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),',
+      'and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).',
       '',
       '## [Unreleased]',
       '',
@@ -174,8 +174,7 @@ function renderUnreleasedBody(bump, categories) {
 }
 
 function applyChangelog(result) {
-  const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf8'));
-  ensureChangelogSkeleton(pkg.name);
+  ensureChangelogSkeleton();
 
   const content = fs.readFileSync(CHANGELOG_PATH, 'utf8');
   const lines = content.split('\n');
@@ -233,13 +232,11 @@ async function main() {
     '`changes` groups the update into Keep a Changelog categories — only',
     'include the categories that actually apply; each value is an array of',
     'short bullet strings (no leading "- ", that is added automatically).',
-    'Write bullet text in Korean (한국어), regardless of what language the',
-    'diff or older changelog entries happen to be in — this only affects',
-    'the language of new text you write, not existing content.',
-    'Keep each bullet concise and terse: do NOT end with polite full-sentence',
-    'endings like "~했습니다" or "~합니다"; end with a short noun/verb-stem',
-    'form instead (e.g. "~추가", "~수정", "~개선", "~제거"), matching this',
-    "repository's commit-message convention style.",
+    'Write bullet text in English, imperative present tense (e.g. "add',
+    '<x>", "fix <y>"), lowercase start, no trailing period — matching this',
+    "repository's commit-message convention style, regardless of what",
+    'language the diff or older changelog entries happen to be in — this',
+    'only affects the language of new text you write, not existing content.',
     'Only include entries that have a real, user-facing/API-relevant, or',
     'meaningfully-affects-contributors change; omit anything that is purely',
     'internal/test/story-only noise with no one who would care to read about it.',
