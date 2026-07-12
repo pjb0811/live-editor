@@ -53,17 +53,30 @@ function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
 }
 
-function diff() {
-  let d;
+const DIFF_PATHSPEC = ['.', ':(exclude)CHANGELOG.md', ':(exclude)pnpm-lock.yaml', ':(exclude)dist'];
+
+function gitDiffRaw(extraArgs) {
   try {
-    d = git(['diff', '--find-renames=30%', beforeSha, afterSha, '--', '.', ':(exclude)CHANGELOG.md', ':(exclude)pnpm-lock.yaml', ':(exclude)dist']);
+    return git(['diff', '--find-renames=30%', ...extraArgs, beforeSha, afterSha, '--', ...DIFF_PATHSPEC]);
   } catch {
     return '';
   }
-  if (d.length > MAX_DIFF_CHARS) {
-    d = `${d.slice(0, MAX_DIFF_CHARS)}\n... (diff truncated)`;
-  }
-  return d;
+}
+
+// Returns { content, mode }. mode is 'full' (the real diff fit the
+// budget), 'stat' (the full diff didn't fit, so a compact per-file
+// diffstat summary is used instead — a hard character truncation would
+// silently drop whichever files sort last, hiding most of a large merge
+// from the model), or 'truncated' (even the stat summary didn't fit, so
+// the raw diff is hard-cut as a last resort).
+function diff() {
+  const full = gitDiffRaw([]);
+  if (full.length <= MAX_DIFF_CHARS) return { content: full, mode: 'full' };
+
+  const stat = gitDiffRaw(['--stat']);
+  if (stat && stat.length <= MAX_DIFF_CHARS) return { content: stat, mode: 'stat' };
+
+  return { content: `${full.slice(0, MAX_DIFF_CHARS)}\n... (diff truncated)`, mode: 'truncated' };
 }
 
 function extractJson(content) {
@@ -187,10 +200,13 @@ function applyChangelog(result) {
 }
 
 async function main() {
-  const d = diff();
-  if (!d.trim()) {
+  const { content: diffText, mode } = diff();
+  if (!diffText.trim()) {
     console.log('No relevant changes in this push — nothing to do.');
     return;
+  }
+  if (mode !== 'full') {
+    console.log(`Full diff exceeded ${MAX_DIFF_CHARS} chars — using ${mode === 'stat' ? 'a diffstat summary' : 'a truncated diff'} instead.`);
   }
 
   const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf8'));
@@ -198,7 +214,14 @@ async function main() {
   const systemPrompt = [
     'You are a release-notes assistant for a pnpm-managed single-package repo',
     'that follows the Keep a Changelog format (https://keepachangelog.com/en/1.1.0/).',
-    'You will be given a git diff between two commits on the develop branch.',
+    'You will normally be given a git diff between two commits on the develop',
+    'branch. When the real diff is too large to include, you will instead be',
+    'given a compact per-file diffstat summary (path plus lines added/removed,',
+    'no code) — in that case, infer categories and a bump from the file paths',
+    'and change magnitude alone, group related paths into sensible bullets',
+    '(e.g. by directory/feature/script name), and prefer a more conservative',
+    '(lower) bump when the actual nature of a change is not clear from the',
+    'path alone rather than assuming a breaking change.',
     'Respond with ONLY a JSON object, no prose, no markdown code fences,',
     "matching: { bump: 'major' | 'minor' | 'patch', changes: { added?:",
     'string[]; changed?: string[]; deprecated?: string[]; removed?: string[];',
@@ -221,7 +244,8 @@ async function main() {
     '{"bump":"patch","changes":{}}.',
   ].join(' ');
 
-  const userPrompt = `Package: ${pkg.name} (current version ${pkg.version})\n\n\`\`\`diff\n${d}\n\`\`\``;
+  const diffDescription = mode === 'stat' ? 'per-file diffstat summary (full diff was too large to include)' : 'git diff';
+  const userPrompt = `Package: ${pkg.name} (current version ${pkg.version})\n\nBelow is a ${diffDescription}:\n\n\`\`\`\n${diffText}\n\`\`\``;
 
   const response = await fetch(API_URL, {
     method: 'POST',
