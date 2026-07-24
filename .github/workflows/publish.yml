@@ -6,40 +6,98 @@ on:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 9
 
+      # v6+ is required for npm's OIDC "Trusted Publishing" used below.
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24.x
           cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      # package.json's current version is untagged only right after a
+      # release PR (created below) has just been merged — that's the
+      # signal to actually build/publish/tag. Otherwise this push is an
+      # ordinary main update and we may have new Unreleased changes to
+      # promote into a fresh release PR instead.
+      - name: Check if current version is already tagged
+        id: tag_check
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "already_tagged=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_tagged=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Promote Unreleased changelog to a version
+        id: promote
+        if: steps.tag_check.outputs.already_tagged == 'true'
+        run: node .github/scripts/promote-changelog.mjs
+
+      - name: Open release PR
+        if: steps.promote.outputs.released == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: '🔖 chore: release v${{ steps.promote.outputs.version }}'
+          title: '🔖 chore: release v${{ steps.promote.outputs.version }}'
+          body: |
+            `package.json`을 `v${{ steps.promote.outputs.version }}`로 올리고
+            `CHANGELOG.md` 항목을 확정합니다.
+
+            이 PR을 머지하면 빌드 + (공개 패키지인 경우) npm 배포 + git 태그가 실행됩니다.
+          branch: 'release/v${{ steps.promote.outputs.version }}'
+          base: main
 
       - name: Install dependencies
+        if: steps.tag_check.outputs.already_tagged == 'false'
         run: pnpm install
 
       - name: Build
+        if: steps.tag_check.outputs.already_tagged == 'false'
         run: pnpm run build
 
-      - name: Create Release Pull Request or Publish to npm
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: pnpm exec changeset publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # package.json currently has "private": true, so there is nothing to
+      # publish to npm yet — flip that flag (and add publishConfig.access)
+      # when this package is ready to go public.
+      - name: Check if package is publishable
+        id: publishable
+        if: steps.tag_check.outputs.already_tagged == 'false'
+        run: |
+          IS_PRIVATE=$(node -p "require('./package.json').private === true")
+          echo "is_private=$IS_PRIVATE" >> "$GITHUB_OUTPUT"
+
+      # Uses npm's OIDC "Trusted Publishing" — no NPM_TOKEN needed. pnpm
+      # publish doesn't support this yet, so this step shells out to npm
+      # directly; the package itself is still built via pnpm above.
+      - name: Publish to npm
+        if: steps.tag_check.outputs.already_tagged == 'false' && steps.publishable.outputs.is_private == 'false'
+        run: npm publish
+
+      - name: Tag release
+        if: steps.tag_check.outputs.already_tagged == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.tag_check.outputs.version }}"
+          git push origin "v${{ steps.tag_check.outputs.version }}"

@@ -68,9 +68,14 @@ export const DRAGGABLE_ITEMS: Section[] = [
         <ui.Space
           data-id=""
           data-binding={[
-            { label: 'Background Style', property: 'style' },
+            {
+              label: 'Background Style',
+              property: 'style',
+            },
           ]}
-          style={{ backgroundColor: '#6366f1' }}
+          style={{
+            backgroundColor: '#6366f1',
+          }}
           orientation="vertical"
           size="large"
           align="center"
@@ -81,7 +86,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
         >
           <h1
             data-id=""
-            data-binding={[{ label: 'Title', property: 'innerText' }]}
+            data-binding={[
+              {
+                label: 'Title',
+                property: 'innerText',
+              },
+            ]}
             className={cn(
               'text-5xl font-bold',
               //
@@ -115,17 +125,32 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 label: 'Button Size',
                 property: 'size',
                 options: [
-                  { label: 'small', value: 'small' },
-                  { label: 'middle', value: 'middle' },
-                  { label: 'large', value: 'large' },
+                  {
+                    label: 'small',
+                    value: 'small',
+                  },
+                  {
+                    label: 'middle',
+                    value: 'middle',
+                  },
+                  {
+                    label: 'large',
+                    value: 'large',
+                  },
                 ],
               },
               {
                 label: 'Button Variant',
                 property: 'variant',
                 options: [
-                  { label: 'default', value: 'default' },
-                  { label: 'outlined', value: 'outlined' },
+                  {
+                    label: 'default',
+                    value: 'default',
+                  },
+                  {
+                    label: 'outlined',
+                    value: 'outlined',
+                  },
                 ],
               },
             ]}
@@ -359,28 +384,39 @@ export const DRAGGABLE_ITEMS: Section[] = [
         </ui.Typography.Title>
         <ui.Typography.Paragraph
           data-id=""
-          data-binding={[{ label: 'Description 1', property: 'innerText' }]}
+          data-binding={[
+            {
+              label: 'Description 1',
+              property: 'innerText',
+            },
+          ]}
           className={cn(
             'mb-4 text-lg leading-relaxed text-gray-600',
             //
           )}
         >
-          Live Editor is a powerful visual development tool that enables you to create
-          stunning web interfaces through an intuitive drag-and-drop experience.
-          Built with modern web technologies, it streamlines your workflow and
-          accelerates development cycles.
+          Live Editor is a powerful visual development tool that enables you to
+          create stunning web interfaces through an intuitive drag-and-drop
+          experience. Built with modern web technologies, it streamlines your
+          workflow and accelerates development cycles.
         </ui.Typography.Paragraph>
         <ui.Typography.Paragraph
           data-id=""
-          data-binding={[{ label: 'Description 2', property: 'innerText' }]}
+          data-binding={[
+            {
+              label: 'Description 2',
+              property: 'innerText',
+            },
+          ]}
           className={cn(
             'text-lg leading-relaxed text-gray-600',
             //
           )}
         >
-          Whether you&apos;re a seasoned developer or just starting out, Live Editor
-          provides the flexibility and control you need to bring your creative
-          vision to life. Focus on what matters most - building great products.
+          Whether you&apos;re a seasoned developer or just starting out, Live
+          Editor provides the flexibility and control you need to bring your
+          creative vision to life. Focus on what matters most - building great
+          products.
         </ui.Typography.Paragraph>
       </section>
     `,
@@ -392,83 +428,86 @@ export const DRAGGABLE_ITEMS: Section[] = [
       <section
         data-name="CTA"
         className={cn(
-          'text-center',
+          'bg-gray-50 px-5 py-12 text-center',
           //
         )}
       >
         <div
-          data-id=""
-          data-binding={[
-            { label: 'Background Style', property: 'style' },
-          ]}
-          style={{ backgroundColor: '#f9fafb' }}
           className={cn(
-            'px-5 py-12',
+            'mx-auto max-w-xl',
             //
           )}
         >
-          <div
+          <ui.Typography.Title
+            data-id=""
+            data-binding={[{ label: 'Title', property: 'innerText' }]}
+            level={2}
             className={cn(
-              'mx-auto max-w-xl',
+              'mb-4 text-3xl text-gray-800',
               //
             )}
           >
-            <ui.Typography.Title
+            Ready to get started?
+          </ui.Typography.Title>
+          <ui.Typography.Paragraph
+            data-id=""
+            data-binding={[
+              {
+                label: 'Description',
+                property: 'innerText',
+              },
+            ]}
+            className={cn(
+              'mb-6 text-lg text-gray-600',
+              //
+            )}
+          >
+            Start exploring what Live Editor can do for your projects
+          </ui.Typography.Paragraph>
+          <ui.Space
+            data-id=""
+            data-binding={[{ label: 'Buttons', property: 'children' }]}
+            className={cn(
+              'flex flex-wrap justify-center gap-4',
+              //
+            )}
+          >
+            <ui.Button
               data-id=""
-              data-binding={[{ label: 'Title', property: 'innerText' }]}
-              level={2}
+              data-binding={[
+                {
+                  label: 'Button 1 Text',
+                  property: 'innerText',
+                },
+              ]}
+              size="large"
               className={cn(
-                'mb-4 text-3xl text-gray-800',
+                'bg-indigo-500 px-8 text-base text-white',
+                'hover:bg-indigo-600',
                 //
               )}
             >
-              Ready to get started?
-            </ui.Typography.Title>
-            <ui.Typography.Paragraph
+              View Documentation
+            </ui.Button>
+            <ui.Button
               data-id=""
-              data-binding={[{ label: 'Description', property: 'innerText' }]}
+              data-binding={[
+                {
+                  label: 'Button 2 Text',
+                  property: 'innerText',
+                },
+              ]}
+              variant="outlined"
+              size="large"
               className={cn(
-                'mb-6 text-lg text-gray-600',
+                'border-2 border-indigo-500 px-8 text-base text-indigo-500',
+                'hover:bg-indigo-50',
                 //
               )}
             >
-              Start exploring what Live Editor can do for your projects
-            </ui.Typography.Paragraph>
-            <ui.Space
-              data-id=""
-              data-binding={[{ label: 'Buttons', property: 'children' }]}
-              className={cn(
-                'flex flex-wrap justify-center gap-4',
-                //
-              )}
-            >
-              <ui.Button
-                data-id=""
-                data-binding={[{ label: 'Button 1 Text', property: 'innerText' }]}
-                size="large"
-                className={cn(
-                  'bg-indigo-500 px-8 text-base text-white',
-                  'hover:bg-indigo-600',
-                  //
-                )}
-              >
-                View Documentation
-              </ui.Button>
-              <ui.Button
-                data-id=""
-                data-binding={[{ label: 'Button 2 Text', property: 'innerText' }]}
-                variant="outlined"
-                size="large"
-                className={cn(
-                  'border-2 border-indigo-500 px-8 text-base text-indigo-500',
-                  'hover:bg-indigo-50',
-                  //
-                )}
-              >
-                View Examples
-              </ui.Button>
-            </ui.Space>
-          </div>
+              View Examples
+            </ui.Button>
+          </ui.Space>
         </div>
       </section>
     `,
@@ -509,7 +548,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
           >
             <ui.Card
               data-id=""
-              data-binding={[{ label: 'Card 1 Content', property: 'children' }]}
+              data-binding={[
+                {
+                  label: 'Card 1 Content',
+                  property: 'children',
+                },
+              ]}
               className={cn(
                 'rounded-lg border-2 border-gray-200 bg-white p-8',
                 //
@@ -517,7 +561,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
             >
               <ui.Typography.Title
                 data-id=""
-                data-binding={[{ label: 'Card 1 Title', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 1 Title',
+                    property: 'innerText',
+                  },
+                ]}
                 level={3}
                 className={cn(
                   'mb-2 text-2xl font-bold text-gray-800',
@@ -528,7 +577,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </ui.Typography.Title>
               <ui.Typography.Paragraph
                 data-id=""
-                data-binding={[{ label: 'Card 1 Icon', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 1 Icon',
+                    property: 'innerText',
+                  },
+                ]}
                 className={cn(
                   'mb-6 text-4xl font-bold text-indigo-600',
                   //
@@ -548,7 +602,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </ul>
               <ui.Button
                 data-id=""
-                data-binding={[{ label: 'Card 1 Button', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 1 Button',
+                    property: 'innerText',
+                  },
+                ]}
                 variant="outlined"
                 size="large"
                 block
@@ -563,7 +622,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
             </ui.Card>
             <ui.Card
               data-id=""
-              data-binding={[{ label: 'Card 2 Content', property: 'children' }]}
+              data-binding={[
+                {
+                  label: 'Card 2 Content',
+                  property: 'children',
+                },
+              ]}
               className={cn(
                 'relative rounded-lg border-2 border-indigo-500 bg-white p-8',
                 //
@@ -580,7 +644,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </div>
               <ui.Typography.Title
                 data-id=""
-                data-binding={[{ label: 'Card 2 Title', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 2 Title',
+                    property: 'innerText',
+                  },
+                ]}
                 level={3}
                 className={cn(
                   'mb-2 text-2xl font-bold text-gray-800',
@@ -591,7 +660,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </ui.Typography.Title>
               <ui.Typography.Paragraph
                 data-id=""
-                data-binding={[{ label: 'Card 2 Icon', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 2 Icon',
+                    property: 'innerText',
+                  },
+                ]}
                 className={cn(
                   'mb-6 text-4xl font-bold text-indigo-600',
                   //
@@ -611,7 +685,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </ul>
               <ui.Button
                 data-id=""
-                data-binding={[{ label: 'Card 2 Button', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 2 Button',
+                    property: 'innerText',
+                  },
+                ]}
                 size="large"
                 block
                 className={cn(
@@ -625,7 +704,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
             </ui.Card>
             <ui.Card
               data-id=""
-              data-binding={[{ label: 'Card 3 Content', property: 'children' }]}
+              data-binding={[
+                {
+                  label: 'Card 3 Content',
+                  property: 'children',
+                },
+              ]}
               className={cn(
                 'rounded-lg border-2 border-gray-200 bg-white p-8',
                 //
@@ -633,7 +717,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
             >
               <ui.Typography.Title
                 data-id=""
-                data-binding={[{ label: 'Card 3 Title', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 3 Title',
+                    property: 'innerText',
+                  },
+                ]}
                 level={3}
                 className={cn(
                   'mb-2 text-2xl font-bold text-gray-800',
@@ -644,7 +733,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </ui.Typography.Title>
               <ui.Typography.Paragraph
                 data-id=""
-                data-binding={[{ label: 'Card 3 Icon', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 3 Icon',
+                    property: 'innerText',
+                  },
+                ]}
                 className={cn(
                   'mb-6 text-4xl font-bold text-indigo-600',
                   //
@@ -664,7 +758,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
               </ul>
               <ui.Button
                 data-id=""
-                data-binding={[{ label: 'Card 3 Button', property: 'innerText' }]}
+                data-binding={[
+                  {
+                    label: 'Card 3 Button',
+                    property: 'innerText',
+                  },
+                ]}
                 variant="outlined"
                 size="large"
                 block
@@ -689,142 +788,96 @@ export const DRAGGABLE_ITEMS: Section[] = [
       <section
         data-name="Key Features"
         className={cn(
+          'bg-indigo-50 px-5 py-16',
           //
         )}
       >
         <div
-          data-id=""
-          data-binding={[
-            { label: 'Background Style', property: 'style' },
-          ]}
-          style={{ backgroundColor: '#eef2ff' }}
           className={cn(
-            'px-5 py-16',
+            'mx-auto max-w-6xl',
             //
           )}
         >
-          <div
-            className={cn(
-              'mx-auto max-w-6xl',
-              //
-            )}
-          >
-          <ui.Typography.Title
-            data-id=""
-            data-binding={[{ label: 'Title', property: 'innerText' }]}
-            level={2}
+          <h2
             className={cn(
               'mb-12 text-center text-4xl font-bold text-gray-800',
               //
             )}
           >
             Key Features
-          </ui.Typography.Title>
-          <ui.Space
-            data-id=""
-            data-binding={[{ label: 'Feature Cards', property: 'children' }]}
+          </h2>
+          <div
             className={cn(
               'grid gap-8 md:grid-cols-2',
               //
             )}
-            orientation="vertical"
           >
-            <ui.Card
+            <div
               className={cn(
-                'bg-white p-8 shadow-md',
+                'rounded-lg bg-white p-8 shadow-md',
                 //
               )}
             >
-              <ui.Space orientation="vertical" size="middle">
-                <div
-                  data-id=""
-                  data-binding={[
-                    { label: 'Icon', property: 'innerText' },
-                  ]}
-                  className={cn(
-                    'text-4xl',
-                    //
-                  )}
-                >
-                  🎨
-                </div>
-                <ui.Typography.Title
-                  data-id=""
-                  data-binding={[
-                    { label: 'Title', property: 'innerText' },
-                  ]}
-                  level={3}
-                  className={cn(
-                    'text-2xl font-bold text-gray-800',
-                    //
-                  )}
-                >
-                  Visual Editing
-                </ui.Typography.Title>
-                <ui.Typography.Paragraph
-                  data-id=""
-                  data-binding={[
-                    { label: 'Description', property: 'innerText' },
-                  ]}
-                  className={cn(
-                    'text-gray-600',
-                    //
-                  )}
-                >
-                  See your changes in real-time as you build. Live Editor provides instant
-                  visual feedback, making it easier to understand how code affects your
-                  interface.
-                </ui.Typography.Paragraph>
-              </ui.Space>
-            </ui.Card>
-            <ui.Card
+              <div
+                className={cn(
+                  'mb-4 text-4xl',
+                  //
+                )}
+              >
+                🎨
+              </div>
+              <h3
+                className={cn(
+                  'mb-4 text-2xl font-bold text-gray-800',
+                  //
+                )}
+              >
+                Visual Editing
+              </h3>
+              <p
+                className={cn(
+                  'text-gray-600',
+                  //
+                )}
+              >
+                See your changes in real-time as you build. Live Editor provides
+                instant visual feedback, making it easier to understand how code
+                affects your interface.
+              </p>
+            </div>
+            <div
               className={cn(
-                'bg-white p-8 shadow-md',
+                'rounded-lg bg-white p-8 shadow-md',
                 //
               )}
             >
-              <ui.Space orientation="vertical" size="middle">
-                <div
-                  data-id=""
-                  data-binding={[
-                    { label: 'Icon', property: 'innerText' },
-                  ]}
-                  className={cn(
-                    'text-4xl',
-                    //
-                  )}
-                >
-                  🧩
-                </div>
-                <ui.Typography.Title
-                  data-id=""
-                  data-binding={[
-                    { label: 'Title', property: 'innerText' },
-                  ]}
-                  level={3}
-                  className={cn(
-                    'text-2xl font-bold text-gray-800',
-                    //
-                  )}
-                >
-                  Component-Based
-                </ui.Typography.Title>
-                <ui.Typography.Paragraph
-                  data-id=""
-                  data-binding={[
-                    { label: 'Description', property: 'innerText' },
-                  ]}
-                  className={cn(
-                    'text-gray-600',
-                    //
-                  )}
-                >
-                  Build with reusable components that you can drag, drop, and customize.
-                  Learn modern development patterns while creating your interface.
-                </ui.Typography.Paragraph>
-              </ui.Space>
-            </ui.Card>
-          </ui.Space>
+              <div
+                className={cn(
+                  'mb-4 text-4xl',
+                  //
+                )}
+              >
+                🧩
+              </div>
+              <h3
+                className={cn(
+                  'mb-4 text-2xl font-bold text-gray-800',
+                  //
+                )}
+              >
+                Component-Based
+              </h3>
+              <p
+                className={cn(
+                  'text-gray-600',
+                  //
+                )}
+              >
+                Build with reusable components that you can drag, drop, and
+                customize. Learn modern development patterns while creating your
+                interface.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -837,24 +890,17 @@ export const DRAGGABLE_ITEMS: Section[] = [
       <section
         data-name="Stats"
         className={cn(
-          'text-white',
+          'bg-indigo-600 text-white',
           //
         )}
       >
         <ui.Marquees
           data-id=""
-          data-binding={[
-            { label: 'Stats Items', property: 'items' },
-            { label: 'Background Style', property: 'style' },
-          ]}
-          style={{ backgroundColor: '#4f46e5' }}
-          className={cn(
-            'px-5 py-16',
-            //
-          )}
+          data-binding={[{ label: 'Stats Items', property: 'items' }]}
           speed={100}
           pauseOnHover={true}
           autoFill={true}
+          className="px-5 py-16"
           items={[
             {
               key: 'stats-row',
@@ -862,7 +908,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 <div
                   data-id=""
                   data-binding={[
-                    { label: 'Stats Cards', property: 'children' },
+                    {
+                      label: 'Stats Cards',
+                      property: 'children',
+                    },
                   ]}
                   className={cn('flex gap-20')}
                 >
@@ -874,7 +923,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   >
                     <p
                       data-id=""
-                      data-binding={[{ label: 'Title', property: 'innerText' }]}
+                      data-binding={[
+                        {
+                          label: 'Title',
+                          property: 'innerText',
+                        },
+                      ]}
                       className={cn(
                         'mb-2 text-5xl font-bold',
                         //
@@ -885,7 +939,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     <p
                       data-id=""
                       data-binding={[
-                        { label: 'Description', property: 'innerText' },
+                        {
+                          label: 'Description',
+                          property: 'innerText',
+                        },
                       ]}
                       className={cn(
                         'text-indigo-200',
@@ -903,7 +960,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   >
                     <p
                       data-id=""
-                      data-binding={[{ label: 'Title', property: 'innerText' }]}
+                      data-binding={[
+                        {
+                          label: 'Title',
+                          property: 'innerText',
+                        },
+                      ]}
                       className={cn(
                         'mb-2 text-5xl font-bold',
                         //
@@ -914,7 +976,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     <p
                       data-id=""
                       data-binding={[
-                        { label: 'Description', property: 'innerText' },
+                        {
+                          label: 'Description',
+                          property: 'innerText',
+                        },
                       ]}
                       className={cn(
                         'text-indigo-200',
@@ -932,7 +997,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   >
                     <p
                       data-id=""
-                      data-binding={[{ label: 'Title', property: 'innerText' }]}
+                      data-binding={[
+                        {
+                          label: 'Title',
+                          property: 'innerText',
+                        },
+                      ]}
                       className={cn(
                         'mb-2 text-5xl font-bold',
                         //
@@ -943,7 +1013,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     <p
                       data-id=""
                       data-binding={[
-                        { label: 'Description', property: 'innerText' },
+                        {
+                          label: 'Description',
+                          property: 'innerText',
+                        },
                       ]}
                       className={cn(
                         'text-indigo-200',
@@ -961,7 +1034,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   >
                     <p
                       data-id=""
-                      data-binding={[{ label: 'Title', property: 'innerText' }]}
+                      data-binding={[
+                        {
+                          label: 'Title',
+                          property: 'innerText',
+                        },
+                      ]}
                       className={cn(
                         'mb-2 text-5xl font-bold',
                         //
@@ -972,7 +1050,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     <p
                       data-id=""
                       data-binding={[
-                        { label: 'Description', property: 'innerText' },
+                        {
+                          label: 'Description',
+                          property: 'innerText',
+                        },
                       ]}
                       className={cn(
                         'text-indigo-200',
@@ -1028,7 +1109,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   <ui.Typography.Text
                     data-id=""
                     data-binding={[
-                      { label: 'Question 1', property: 'innerText' },
+                      {
+                        label: 'Question 1',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-lg font-semibold text-gray-800')}
                   >
@@ -1038,12 +1122,17 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
-                    data-binding={[{ label: 'Answer 1', property: 'innerText' }]}
+                    data-binding={[
+                      {
+                        label: 'Answer 1',
+                        property: 'innerText',
+                      },
+                    ]}
                     className={cn('text-gray-600')}
                   >
-                    Live Editor is an open-source tool for building web interfaces visually.
-                    It helps you learn web development by providing instant feedback as you
-                    build components.
+                    Live Editor is an open-source tool for building web
+                    interfaces visually. It helps you learn web development by
+                    providing instant feedback as you build components.
                   </ui.Typography.Paragraph>
                 ),
               },
@@ -1053,7 +1142,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   <ui.Typography.Text
                     data-id=""
                     data-binding={[
-                      { label: 'Question 2', property: 'innerText' },
+                      {
+                        label: 'Question 2',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-lg font-semibold text-gray-800')}
                   >
@@ -1063,12 +1155,17 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
-                    data-binding={[{ label: 'Answer 2', property: 'innerText' }]}
+                    data-binding={[
+                      {
+                        label: 'Answer 2',
+                        property: 'innerText',
+                      },
+                    ]}
                     className={cn('text-gray-600')}
                   >
-                    No! Live Editor is designed for all skill levels. Beginners can learn
-                    through visual editing, while experienced developers can work directly
-                    with code.
+                    No! Live Editor is designed for all skill levels. Beginners
+                    can learn through visual editing, while experienced
+                    developers can work directly with code.
                   </ui.Typography.Paragraph>
                 ),
               },
@@ -1078,7 +1175,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   <ui.Typography.Text
                     data-id=""
                     data-binding={[
-                      { label: 'Question 3', property: 'innerText' },
+                      {
+                        label: 'Question 3',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-lg font-semibold text-gray-800')}
                   >
@@ -1088,11 +1188,17 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
-                    data-binding={[{ label: 'Answer 3', property: 'innerText' }]}
+                    data-binding={[
+                      {
+                        label: 'Answer 3',
+                        property: 'innerText',
+                      },
+                    ]}
                     className={cn('text-gray-600')}
                   >
-                    Yes, completely free! Live Editor is an open-source project with no hidden
-                    costs or premium tiers. All features are available to everyone.
+                    Yes, completely free! Live Editor is an open-source project
+                    with no hidden costs or premium tiers. All features are
+                    available to everyone.
                   </ui.Typography.Paragraph>
                 ),
               },
@@ -1102,7 +1208,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
                   <ui.Typography.Text
                     data-id=""
                     data-binding={[
-                      { label: 'Question 4', property: 'innerText' },
+                      {
+                        label: 'Question 4',
+                        property: 'innerText',
+                      },
                     ]}
                     className={cn('text-lg font-semibold text-gray-800')}
                   >
@@ -1112,12 +1221,17 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 children: (
                   <ui.Typography.Paragraph
                     data-id=""
-                    data-binding={[{ label: 'Answer 4', property: 'innerText' }]}
+                    data-binding={[
+                      {
+                        label: 'Answer 4',
+                        property: 'innerText',
+                      },
+                    ]}
                     className={cn('text-gray-600')}
                   >
-                    You can contribute by reporting bugs, suggesting features, sharing your
-                    projects, or contributing code. Check our GitHub repository for more
-                    details.
+                    You can contribute by reporting bugs, suggesting features,
+                    sharing your projects, or contributing code. Check our
+                    GitHub repository for more details.
                   </ui.Typography.Paragraph>
                 ),
               },
