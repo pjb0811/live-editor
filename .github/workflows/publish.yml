@@ -27,18 +27,24 @@ jobs:
           version: 9
 
       # v6+ is required for npm's OIDC "Trusted Publishing" used below.
+      # No built-in `cache: 'pnpm'` here on purpose — this job skips
+      # `pnpm install` whenever already_tagged is true (the common case
+      # under changesets, since most main pushes are plain PR merges with
+      # no version bump), and setup-node's post-job cache-save step errors
+      # if the store directory it expects was never created. The cache
+      # step below is scoped to the same already_tagged condition as
+      # Install dependencies.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24.x
-          cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
-      # package.json's current version is untagged only right after a
-      # release PR (created below) has just been merged — that's the
-      # signal to actually build/publish/tag. Otherwise this push is an
-      # ordinary main update and we may have new Unreleased changes to
-      # promote into a fresh release PR instead.
+      # package.json's version is untagged only right after a Version
+      # Packages PR (opened on main by version.yml/changesets) has just
+      # merged and landed a new version — that's the signal to actually
+      # build/publish/tag. Otherwise this push is an ordinary main update
+      # with nothing new to release.
       - name: Check if current version is already tagged
         id: tag_check
         run: |
@@ -50,24 +56,18 @@ jobs:
             echo "already_tagged=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Promote Unreleased changelog to a version
-        id: promote
-        if: steps.tag_check.outputs.already_tagged == 'true'
-        run: node .github/scripts/promote-changelog.mjs
+      - name: Get pnpm store directory
+        if: steps.tag_check.outputs.already_tagged == 'false'
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> "$GITHUB_ENV"
 
-      - name: Open release PR
-        if: steps.promote.outputs.released == 'true'
-        uses: peter-evans/create-pull-request@v5
+      - name: Setup pnpm cache
+        if: steps.tag_check.outputs.already_tagged == 'false'
+        uses: actions/cache@v4
         with:
-          commit-message: '🔖 chore: release v${{ steps.promote.outputs.version }}'
-          title: '🔖 chore: release v${{ steps.promote.outputs.version }}'
-          body: |
-            `package.json`을 `v${{ steps.promote.outputs.version }}`로 올리고
-            `CHANGELOG.md` 항목을 확정합니다.
-
-            이 PR을 머지하면 빌드 + (공개 패키지인 경우) npm 배포 + git 태그가 실행됩니다.
-          branch: 'release/v${{ steps.promote.outputs.version }}'
-          base: main
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
         if: steps.tag_check.outputs.already_tagged == 'false'
@@ -79,7 +79,9 @@ jobs:
 
       # package.json currently has "private": true, so there is nothing to
       # publish to npm yet — flip that flag (and add publishConfig.access)
-      # when this package is ready to go public.
+      # when this package is ready to go public. Tagging + the GitHub
+      # Release below still happen either way, since those don't require
+      # an npm registry entry.
       - name: Check if package is publishable
         id: publishable
         if: steps.tag_check.outputs.already_tagged == 'false'
@@ -101,3 +103,71 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "v${{ steps.tag_check.outputs.version }}"
           git push origin "v${{ steps.tag_check.outputs.version }}"
+
+      # release.yml used to do this on tag push, but a tag pushed with the
+      # default GITHUB_TOKEN (as above) never triggers another workflow run
+      # — GitHub blocks that to prevent recursive runs — so it never fired.
+      # Doing it here, in the same job/token context, sidesteps that
+      # entirely instead of needing a separate PAT.
+      - name: Get changelog entry
+        if: steps.tag_check.outputs.already_tagged == 'false'
+        id: changelog
+        env:
+          # Reused for the release-note polishing step below — a personal
+          # PAT with models:read (GITHUB_TOKEN doesn't get the free-tier
+          # rate-limit benefit of the personal subscription).
+          GITHUB_TOKEN: ${{ secrets.GH_MODELS_PAT }}
+        run: |
+          VERSION=${{ steps.tag_check.outputs.version }}
+          CHANGELOG_FILE="CHANGELOG.md"
+          RAW=""
+          if [ -f "$CHANGELOG_FILE" ]; then
+            # Can't use awk's `/start/,/end/` range here: the end pattern
+            # (any "## " header) also matches the start line itself, so the
+            # range would close immediately and yield nothing. Skip the
+            # start header explicitly and exit before printing the next one.
+            # changesets writes headers as "## VERSION" with no brackets
+            # (older entries in this file predate the changesets migration
+            # and still use "## [VERSION] - date" — the exit pattern below
+            # matches either since it only checks the "## " prefix).
+            RAW=$(awk -v version="$VERSION" '
+              $0 ~ "^## " version "$" { found=1; next }
+              found && /^## / { exit }
+              found { print }
+            ' "$CHANGELOG_FILE")
+          fi
+
+          CONTENT="$RAW"
+          if [ -n "$RAW" ]; then
+            # Best-effort: polish the raw changelog bullets into flowing
+            # release notes via GitHub Models. Never blocks the release —
+            # fall back to the raw changelog text on any failure.
+            if POLISHED=$(echo "$RAW" | PACKAGE_NAME="@jbpark/live-editor" VERSION="$VERSION" node .github/scripts/polish-release-notes.mjs); then
+              CONTENT="$POLISHED"
+            else
+              echo "::warning::Release-note polishing failed, falling back to raw changelog"
+            fi
+          fi
+
+          # %0A/%0D/%25 escaping only applied to the old, deprecated
+          # `::set-output` command syntax (which the runner auto-decoded).
+          # The modern $GITHUB_OUTPUT file doesn't decode that, so it was
+          # writing literal "%0A" text into the release body. Use the
+          # heredoc form instead, which preserves real newlines as-is.
+          {
+            echo "body<<EOF"
+            echo "$CONTENT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: steps.tag_check.outputs.already_tagged == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.tag_check.outputs.version }}
+          body: ${{ steps.changelog.outputs.body || format('Release {0}', steps.tag_check.outputs.version) }}
+          draft: false
+          prerelease: ${{ contains(steps.tag_check.outputs.version, 'alpha') || contains(steps.tag_check.outputs.version, 'beta') || contains(steps.tag_check.outputs.version, 'rc') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

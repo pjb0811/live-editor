@@ -98,6 +98,7 @@
     "typescript": "~5.8.3"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
     "@eslint/js": "^9.39.2",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/babel__standalone": "^7.1.9",
