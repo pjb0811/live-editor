@@ -1,0 +1,69 @@
+name: Changeset Draft
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+concurrency: changeset-draft-${{ github.event.pull_request.number }}
+
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    # Skip PRs from forks (bot token can't push back to them) and skip the
+    # changesets bot's own Version Packages PR (nothing to draft a
+    # changeset for — and drafting one would just describe its own version
+    # bump).
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !startsWith(github.event.pull_request.head.ref, 'changeset-release/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+
+      # Only draft once per PR — if a changeset already exists (hand-written
+      # or from an earlier run of this workflow on this PR), leave it alone
+      # rather than overwriting a human's edits on every subsequent push.
+      - name: Check for existing changeset
+        id: existing
+        run: |
+          if compgen -G ".changeset/pr-${{ github.event.pull_request.number }}.md" > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Draft changeset via GitHub Models
+        if: steps.existing.outputs.exists == 'false'
+        env:
+          # Use a personal PAT with models:read — GITHUB_TOKEN doesn't get
+          # the free-tier rate-limit benefit of the personal subscription.
+          GITHUB_TOKEN: ${{ secrets.GH_MODELS_PAT }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node .github/scripts/draft-changeset.mjs
+
+      - name: Commit and push changeset
+        if: steps.existing.outputs.exists == 'false'
+        run: |
+          if git status --porcelain -- '.changeset/*.md' | grep -q .; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .changeset/*.md
+            git commit -m "📝 docs: draft changeset for PR #${{ github.event.pull_request.number }}"
+            git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          else
+            echo "No changeset produced (nothing under src/, or model found no user-facing change) — skipping commit."
+          fi

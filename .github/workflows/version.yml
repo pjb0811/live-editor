@@ -1,0 +1,50 @@
+name: Version
+
+on:
+  push:
+    branches: [main]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      # No `publish` input here on purpose — this only opens/updates a
+      # "Version Packages" PR against main from whatever .changeset/*.md
+      # files have accumulated (via manual `pnpm changeset` or the
+      # Changeset Draft workflow). It never publishes; the existing
+      # publish.yml (also push to main) still owns that, unchanged, using
+      # whatever version ends up in package.json once this PR is reviewed
+      # and merged.
+      - name: Open/update Version Packages PR
+        uses: changesets/action@v1
+        with:
+          version: pnpm exec changeset version
+          commit: '🔖 chore: version packages'
+          title: '🔖 chore: version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
