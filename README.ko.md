@@ -100,18 +100,18 @@ pnpm run preview
 
 ## 📦 버전 관리 & 배포
 
-이 프로젝트는 `develop` → `main` 브랜치 흐름과 AI 기반 자동 릴리스 노트를 사용합니다 — 수동 changeset 파일이 없습니다:
+배포는 [changesets](https://github.com/changesets/changesets)로 완전히 자동화되어 있습니다:
 
-- **기능 브랜치**는 `develop`으로 머지합니다.
-- `develop`에 푸시할 때마다 워크플로우가 diff를 분석해 `CHANGELOG.md`의 `## [Unreleased]` 섹션에 항목을 추가합니다 (아직 버전은 올리지 않음).
-- `develop`이 `main`으로 머지되면 그 `Unreleased` 섹션에 버전과 날짜가 확정되고 `package.json` 버전도 함께 올라간 뒤, 릴리스 PR로 열립니다.
-- 릴리스 PR을 머지하면 빌드, 태그 생성, (이 패키지가 공개로 전환되면) npm 배포가 실행됩니다.
+- `main`으로 향하는 PR마다 AI가 변경 내용을 요약한 changeset 파일을 초안으로 작성합니다.
+- `main`에 changeset들이 쌓이면 "Version Packages" PR이 `package.json`의 버전을 승격시키고 `CHANGELOG.md`를 정리합니다.
+- 이 PR을 머지하면 빌드, 태그 생성, (이 패키지가 공개로 전환되면) npm 배포가 실행됩니다.
 
 CI 워크플로우:
 
-- `changelog-develop.yml`: `develop` 푸시마다 AI가 생성한 changelog 항목을 추가
-- `publish.yml`: `Unreleased`를 릴리스 PR로 승격하고, 머지 시 빌드/배포/태그 실행
-- `release.yml`: 태그 푸시 시 GitHub Release 생성 (예: `v1.2.3`)
+- `changeset-draft.yml`: `main` 대상 PR이 열리거나 갱신될 때 AI가 changeset 초안을 작성
+- `version.yml`: changeset이 쌓이면 "Version Packages" PR을 열거나 갱신
+- `publish.yml`: `main` 머지 시 버전이 미태그 상태면 빌드/(공개 패키지면 배포)/태그/GitHub Release 생성
+- `release.yml`: 기존 태그에 대한 GitHub Release를 수동(`workflow_dispatch`)으로 재생성하는 백업 유틸리티
 - `docs-deploy.yml`: 빌드 후 `dist/`를 GitHub Pages에 배포
 
 참고: GitHub Pages 사용 시 저장소 설정에서 Pages Source를 "GitHub Actions"로 지정하세요. 저장소 서브경로로 배포한다면 `vite.config.ts`의 `base` 값을 경로에 맞게 설정해야 합니다.

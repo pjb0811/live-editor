@@ -100,18 +100,18 @@ pnpm run preview
 
 ## 📦 Versioning & Release
 
-This project uses a `develop` → `main` branch flow with automated, AI-assisted release notes — no manual changeset files:
+Releases are fully automated via [changesets](https://github.com/changesets/changesets):
 
-- **Feature branches** merge into `develop`.
-- On every push to `develop`, a workflow analyzes the diff and appends bullet points to the `## [Unreleased]` section of `CHANGELOG.md` (no version bump yet).
-- When `develop` is merged into `main`, that `Unreleased` section is stamped with a version + date and `package.json` is bumped to match, opened as a release PR.
-- Merging the release PR builds, tags the release, and (once this package is made public) publishes to npm.
+- Each PR against `main` gets an AI-drafted changeset file describing its change.
+- Once changesets accumulate on `main`, a "Version Packages" PR bumps `package.json`'s version and consolidates `CHANGELOG.md`.
+- Merging that PR builds, tags the release, and (once this package is made public) publishes to npm.
 
 CI workflows:
 
-- `changelog-develop.yml`: Appends AI-generated changelog bullets on every `develop` push.
-- `publish.yml`: Promotes `Unreleased` into a release PR, then builds/publishes/tags on merge.
-- `release.yml`: Creates GitHub Releases on tag push (e.g., `v1.2.3`).
+- `changeset-draft.yml`: Drafts an AI-generated changeset on PR open/sync against `main`.
+- `version.yml`: Opens/updates the "Version Packages" PR once changesets accumulate.
+- `publish.yml`: Builds/(publishes if public)/tags/creates the GitHub Release on merge to `main` when the version is untagged.
+- `release.yml`: Manual `workflow_dispatch` fallback to (re)create a GitHub Release for an existing tag.
 - `docs-deploy.yml`: Builds and deploys `dist/` to GitHub Pages.
 
 Note: For GitHub Pages, set the repository Pages source to “GitHub Actions”. If deploying under a repo subpath, configure `base` in `vite.config.ts` accordingly.
