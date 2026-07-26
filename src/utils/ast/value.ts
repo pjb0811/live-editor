@@ -24,6 +24,69 @@ const dedent = (str: string): string => {
     : lines.map(line => line.slice(indent)).join('\n');
 };
 
+// AST 노드를 코드 실행(new Function/eval) 없이 순수 리터럴 구조만 재귀적으로
+// 실제 JS 값으로 변환한다. 함수 호출, 변수 참조 등 리터럴이 아닌 표현식은
+// 평가하지 않고 undefined를 반환한다 — 사용자 코드는 iframe 안에서만 실행한다는
+// 이 저장소의 원칙(AGENTS.md)을 이 패널 UI(메인 문서에서 렌더링됨)에서도 지키기 위함.
+const evaluateLiteral = (node: t.Node): unknown => {
+  if (t.isStringLiteral(node)) {
+    return node.value;
+  }
+
+  if (t.isNumericLiteral(node)) {
+    return node.value;
+  }
+
+  if (t.isBooleanLiteral(node)) {
+    return node.value;
+  }
+
+  if (t.isNullLiteral(node)) {
+    return null;
+  }
+
+  if (t.isIdentifier(node) && node.name === 'undefined') {
+    return undefined;
+  }
+
+  if (
+    t.isUnaryExpression(node) &&
+    node.operator === '-' &&
+    t.isNumericLiteral(node.argument)
+  ) {
+    return -node.argument.value;
+  }
+
+  if (t.isTemplateLiteral(node) && node.expressions.length === 0) {
+    return node.quasis[0]?.value.cooked ?? node.quasis[0]?.value.raw ?? '';
+  }
+
+  if (t.isJSXElement(node) || t.isJSXFragment(node)) {
+    return generateCode(node);
+  }
+
+  if (t.isArrayExpression(node)) {
+    return node.elements.map(element =>
+      element ? evaluateLiteral(element) : null,
+    );
+  }
+
+  if (t.isObjectExpression(node)) {
+    const result: Record<string, unknown> = {};
+
+    for (const prop of node.properties) {
+      if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) {
+        continue;
+      }
+      result[prop.key.name] = evaluateLiteral(prop.value);
+    }
+
+    return result;
+  }
+
+  return undefined;
+};
+
 export const parseValue = (value: unknown): unknown => {
   if (typeof value !== 'string') {
     return value;
@@ -59,35 +122,18 @@ export const parseValue = (value: unknown): unknown => {
     (trimmed.startsWith('[') && trimmed.endsWith(']'))
   ) {
     try {
-      return new Function(`return (${trimmed})`)();
-    } catch {
-      try {
-        const ast = parseExpression(trimmed, {
-          plugins: ['jsx', 'typescript'],
-        });
+      const ast = parseExpression(trimmed, {
+        plugins: ['jsx', 'typescript'],
+      });
 
-        if (t.isObjectExpression(ast)) {
-          const result: Record<string, unknown> = {};
-
-          for (const prop of ast.properties) {
-            if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) {
-              continue;
-            }
-            if (t.isJSXElement(prop.value) || t.isJSXFragment(prop.value)) {
-              result[prop.key.name] = generateCode(prop.value);
-              continue;
-            }
-            result[prop.key.name] = extractNodeValue(prop.value).value;
-          }
-
-          return result;
-        }
-      } catch {
-        /* ignore */
+      if (t.isObjectExpression(ast) || t.isArrayExpression(ast)) {
+        return evaluateLiteral(ast);
       }
-
-      return value;
+    } catch {
+      /* ignore */
     }
+
+    return value;
   }
 
   return value;
