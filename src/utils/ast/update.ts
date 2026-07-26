@@ -251,7 +251,9 @@ export const update = (
     let result = unwrap(generateCode(ast));
 
     for (const [placeholder, original] of jsxPlaceholders) {
-      result = result.replace(placeholder, original);
+      // 두 번째 인자가 문자열이면 $&, $$ 같은 특수 치환 패턴으로 해석되어
+      // original 안에 그런 문자가 있으면 결과가 깨진다 — 함수형 치환자로 방지.
+      result = result.replace(placeholder, () => original);
     }
 
     return result;
