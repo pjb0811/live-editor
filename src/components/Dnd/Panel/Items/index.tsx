@@ -308,7 +308,9 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     }
 
     for (const [placeholder, code] of jsxPlaceholders) {
-      nextValue = nextValue.replace(placeholder, code);
+      // 두 번째 인자가 문자열이면 $&, $$ 같은 특수 치환 패턴으로 해석되어
+      // code 안에 그런 문자가 있으면 결과가 깨진다 — 함수형 치환자로 방지.
+      nextValue = nextValue.replace(placeholder, () => code);
     }
 
     onChange?.(nextValue);
