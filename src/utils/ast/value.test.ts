@@ -38,8 +38,8 @@ describe('parseValue', () => {
     expect(parseValue('[1, "x", true]')).toEqual([1, 'x', true]);
   });
 
-  it('maps array elisions to undefined', () => {
-    expect(parseValue('[1, , 3]')).toEqual([1, undefined, 3]);
+  it('maps array elisions to null', () => {
+    expect(parseValue('[1, , 3]')).toEqual([1, null, 3]);
   });
 
   it('never executes side-effecting expressions embedded in object/array-shaped strings', () => {
