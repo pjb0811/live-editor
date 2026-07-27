@@ -13,7 +13,6 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   treeshake: true,
-  unbundle: true,
   inlineOnly: [
     /^@babel\//,
     /^@codemirror\//,
