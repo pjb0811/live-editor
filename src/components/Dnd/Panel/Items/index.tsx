@@ -71,7 +71,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     const primitiveItems: PrimitiveItem[] = [];
     const allElements = ast.elements.filter(Boolean) as t.Expression[];
 
-    ast.elements.forEach((element, itemIndex) => {
+    ast.elements.forEach(element => {
       if (!element) {
         return;
       }
@@ -80,7 +80,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
         const extracted = extractNodeValue(element);
         primitiveItems.push({
           id: nanoid(6),
-          index: itemIndex,
+          index: primitiveItems.length,
           value: extracted.value,
           type: extracted.type,
           astNode: element as t.Expression,
@@ -139,7 +139,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
       objectItems.push({
         id: nanoid(6),
-        index: itemIndex,
+        index: objectItems.length,
         editableProperties: extractObjectProperties(element),
         originalElement: element,
         jsxBindings,
