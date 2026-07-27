@@ -7,7 +7,11 @@ import {
   SaveOutlined,
   UndoOutlined,
 } from '@ant-design/icons';
-import { useDebounce, useHistoryState } from '@jbpark/use-hooks';
+import {
+  useDebounce,
+  useHistoryState,
+  useLocalStorage,
+} from '@jbpark/use-hooks';
 import { Button, Flex, Radio, Space, Splitter, message } from 'antd';
 
 import './App.css';
@@ -21,9 +25,12 @@ const options = [
 ];
 
 const App = () => {
-  const [value, setValue] = useState(
-    () => localStorage.getItem(STORAGE_KEY) || DEFAULT_TEMPLATE,
+  const [savedValue, setSavedValue] = useLocalStorage(
+    STORAGE_KEY,
+    DEFAULT_TEMPLATE,
   );
+
+  const [value, setValue] = useState(savedValue);
   const {
     value: historyValue,
     setValue: commitHistory,
@@ -109,7 +116,7 @@ const App = () => {
               icon={<SaveOutlined />}
               type="primary"
               onClick={() => {
-                localStorage.setItem(STORAGE_KEY, value);
+                setSavedValue(value);
                 message.success('Code saved successfully');
               }}
             />
