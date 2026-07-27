@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { EyeOutlined, SaveOutlined } from '@ant-design/icons';
+import {
+  EyeOutlined,
+  RedoOutlined,
+  SaveOutlined,
+  UndoOutlined,
+} from '@ant-design/icons';
+import { useDebounce, useHistoryState } from '@jbpark/use-hooks';
 import { Button, Flex, Radio, Space, Splitter, message } from 'antd';
 
 import './App.css';
@@ -18,11 +24,63 @@ const App = () => {
   const [value, setValue] = useState(
     () => localStorage.getItem(STORAGE_KEY) || DEFAULT_TEMPLATE,
   );
+  const {
+    value: historyValue,
+    setValue: commitHistory,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useHistoryState(value);
   const [type, setType] = useState<'dnd' | 'editor'>('editor');
 
   const navigate = useNavigate();
 
   const editable = type === 'editor';
+
+  // Commit to undo/redo history only after edits settle, so rapid typing in
+  // the raw editor doesn't create a history entry per keystroke.
+  useDebounce(
+    () => {
+      commitHistory(value);
+    },
+    { delay: 500 },
+    [value],
+  );
+
+  // Reflect undo/redo (or the debounced commit above catching up) back into
+  // the editable value.
+  useEffect(() => {
+    setValue(historyValue);
+  }, [historyValue]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+
+      if (!isMod || e.key.toLowerCase() !== 'z') {
+        return;
+      }
+
+      const target = e.target as HTMLElement | null;
+
+      if (target?.closest('.cm-editor')) {
+        // Let CodeMirror's own text-level undo/redo handle this instead.
+        return;
+      }
+
+      e.preventDefault();
+
+      if (e.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [undo, redo]);
 
   return (
     <>
@@ -36,6 +94,16 @@ const App = () => {
               optionType="button"
               buttonStyle="solid"
               onChange={e => setType(e.target.value)}
+            />
+            <Button
+              icon={<UndoOutlined />}
+              disabled={!canUndo}
+              onClick={undo}
+            />
+            <Button
+              icon={<RedoOutlined />}
+              disabled={!canRedo}
+              onClick={redo}
             />
             <Button
               icon={<SaveOutlined />}
