@@ -17,13 +17,15 @@ export interface Props {
   onLoaded?: () => void;
 }
 
+const EMPTY_STRING_ARRAY: string[] = [];
+
 const IFrame = ({
   title = 'Live Preview',
   sandbox,
   style = {},
-  scripts = [],
-  styles = [],
-  stylesheets = [],
+  scripts = EMPTY_STRING_ARRAY,
+  styles = EMPTY_STRING_ARRAY,
+  stylesheets = EMPTY_STRING_ARRAY,
   autoHeight = false,
   syncStyle = false,
   children,
