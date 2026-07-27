@@ -1,11 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Checkbox, ColorPicker, Input, Select } from '@jbpark/ui-kit';
 
 import CoreEditor from '~/components/Editor/Core';
 import TiptapEditor from '~/components/Editor/Tiptap';
 import { BINDING_PROP } from '~/enums';
-import { type BindingItem, parseValue } from '~/utils/ast';
+import {
+  type BindingItem,
+  parseValue,
+  validateBindingValue,
+} from '~/utils/ast';
 
 import Children from '../Children';
 import Items from '../Items';
@@ -42,6 +46,8 @@ const Field = ({ binding, id, value, onChange }: Props) => {
   const parsedValue = useMemo(() => {
     return parseValue(value);
   }, [value]);
+
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   if (
     binding.property === 'items' ||
@@ -228,12 +234,57 @@ const Field = ({ binding, id, value, onChange }: Props) => {
 
   if (typeof parsedValue === 'number') {
     return (
-      <Input
-        type="number"
-        defaultValue={stringValue}
-        placeholder="Enter a numeric value"
+      <div>
+        <Input
+          type="number"
+          defaultValue={stringValue}
+          placeholder="Enter a numeric value"
+          onBlur={e => {
+            const next = e.target.value.trim();
+            const result = validateBindingValue(
+              binding,
+              next ? Number(next) : '',
+            );
+
+            if (!result.valid) {
+              setValidationError(result.message ?? 'Invalid value.');
+              return;
+            }
+
+            setValidationError(null);
+
+            if (next && next !== value) {
+              onChange?.({
+                id,
+                label: binding.label,
+                value: next,
+              });
+            }
+          }}
+        />
+        {validationError && (
+          <p className="mt-1 text-xs text-red-500">{validationError}</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <Input.TextArea
+        defaultValue={value}
+        placeholder="Enter a value"
         onBlur={e => {
           const next = e.target.value.trim();
+          const result = validateBindingValue(binding, next);
+
+          if (!result.valid) {
+            setValidationError(result.message ?? 'Invalid value.');
+            return;
+          }
+
+          setValidationError(null);
+
           if (next && next !== value) {
             onChange?.({
               id,
@@ -243,24 +294,10 @@ const Field = ({ binding, id, value, onChange }: Props) => {
           }
         }}
       />
-    );
-  }
-
-  return (
-    <Input.TextArea
-      defaultValue={value}
-      placeholder="Enter a value"
-      onBlur={e => {
-        const next = e.target.value.trim();
-        if (next && next !== value) {
-          onChange?.({
-            id,
-            label: binding.label,
-            value: next,
-          });
-        }
-      }}
-    />
+      {validationError && (
+        <p className="mt-1 text-xs text-red-500">{validationError}</p>
+      )}
+    </div>
   );
 };
 

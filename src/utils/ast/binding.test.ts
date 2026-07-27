@@ -70,6 +70,33 @@ describe('parseBinding', () => {
     });
   });
 
+  it('extracts min/max/pattern/required constraints when present', () => {
+    const result = parseBinding(
+      "[{label: 'Age', property: 'data-age', type: 'number', min: 0, max: 120, pattern: '^[0-9]+$', required: true}]",
+    );
+
+    expect(result).toEqual([
+      {
+        label: 'Age',
+        property: 'data-age',
+        type: 'number',
+        min: 0,
+        max: 120,
+        pattern: '^[0-9]+$',
+        required: true,
+      },
+    ]);
+  });
+
+  it('omits min/max/pattern/required fields entirely when not authored', () => {
+    const result = parseBinding("[{label: 'Title', property: 'innerText'}]");
+
+    expect(result[0]).not.toHaveProperty('min');
+    expect(result[0]).not.toHaveProperty('max');
+    expect(result[0]).not.toHaveProperty('pattern');
+    expect(result[0]).not.toHaveProperty('required');
+  });
+
   it('returns an empty array without throwing for malformed binding syntax', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
