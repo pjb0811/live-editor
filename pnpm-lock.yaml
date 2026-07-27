@@ -32,6 +32,9 @@ importers:
       '@jbpark/ui-kit':
         specifier: ^2.3.4
         version: 2.3.4(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(gsap@3.14.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@jbpark/use-hooks':
+        specifier: ^2.4.0
+        version: 2.4.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tailwindcss/vite':
         specifier: ^4.1.13
         version: 4.1.18(vite@7.3.1(@types/node@24.10.9)(jiti@2.6.1)(lightningcss@1.30.2)(yaml@2.8.2))
@@ -685,8 +688,8 @@ packages:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
-  '@jbpark/use-hooks@2.1.0':
-    resolution: {integrity: sha512-/rgfrPG3zT74OFA/snZOJbBtgTiTDP0Naq/xWUNzTJGnyto7ssNCq9zTsGVeTVEqa3TYnUe/CS3bWoJ4WzCeBg==}
+  '@jbpark/use-hooks@2.4.0':
+    resolution: {integrity: sha512-nKo/TGmtqTVV3HC0Q7z1wV2jmtUdDuQ6feIsTjpJKVN1PUBVQEDsIUhSMu8AzuDgwcdBXQ+P+gNRKh0eEAy2SQ==}
     peerDependencies:
       react: ^19.1.1
       react-dom: ^19.1.1
@@ -4946,7 +4949,7 @@ snapshots:
   '@jbpark/ui-kit@2.3.4(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(gsap@3.14.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@gsap/react': 2.1.2(gsap@3.14.2)(react@19.2.3)
-      '@jbpark/use-hooks': 2.1.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@jbpark/use-hooks': 2.4.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-accordion': 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-checkbox': 1.3.3(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-dialog': 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -4977,7 +4980,7 @@ snapshots:
       - '@types/react-dom'
       - gsap
 
-  '@jbpark/use-hooks@2.1.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@jbpark/use-hooks@2.4.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)

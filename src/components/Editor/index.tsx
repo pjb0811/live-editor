@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
-import { useDebounce } from 'react-use';
+
+import { useDebounce } from '@jbpark/use-hooks';
 
 import { useError, usePreview } from '~/components/Context/states';
 import { DEFAULT_TEMPLATE } from '~/enums';
@@ -49,7 +50,7 @@ const Editor = ({
     () => {
       setCode(value);
     },
-    debounce,
+    { delay: debounce },
     [value],
   );
 
