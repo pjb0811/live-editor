@@ -40,6 +40,18 @@ const parseRenderObject = (
         type: (typeProp.value as t.StringLiteral).value as BindingType,
       };
 
+      const propertyProp = prop.value.properties.find(
+        p =>
+          t.isObjectProperty(p) &&
+          t.isIdentifier(p.key) &&
+          p.key.name === 'property' &&
+          t.isStringLiteral(p.value),
+      ) as t.ObjectProperty | undefined;
+
+      if (propertyProp) {
+        leaf.property = (propertyProp.value as t.StringLiteral).value;
+      }
+
       const renderProp = prop.value.properties.find(
         p =>
           t.isObjectProperty(p) &&

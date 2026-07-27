@@ -139,6 +139,8 @@ const compileModule = (
 
   let render: RenderFunction;
 
+  // Runs in this window's own JS realm, not inside the preview iframe — the iframe only
+  // renders the resulting React elements via portal. See README "Security Notes".
   try {
     render = new Function(
       'exports',
@@ -245,6 +247,21 @@ export const getCachedScriptBlob = async (src: string): Promise<string> => {
     .then(text => {
       const blob = new Blob([text], { type: 'application/javascript' });
       const blobUrl = URL.createObjectURL(blob);
+
+      if (scriptCache.size >= CONFIG.CACHE_LIMIT) {
+        const firstKey = scriptCache.keys().next().value;
+
+        if (firstKey) {
+          const evictedUrl = scriptCache.get(firstKey);
+
+          if (evictedUrl) {
+            URL.revokeObjectURL(evictedUrl);
+          }
+
+          scriptCache.delete(firstKey);
+        }
+      }
+
       scriptCache.set(src, blobUrl);
       loadingScriptCache.delete(src);
       return blobUrl;

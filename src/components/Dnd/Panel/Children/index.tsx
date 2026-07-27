@@ -69,9 +69,8 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
   });
 
   const cloneDataAttrNode = (node: DataAttrNode): DataAttrNode => ({
+    ...node,
     id: nanoid(6),
-    tagName: node.tagName,
-    textContent: node.textContent,
     attributes: node.attributes.map(attr => ({
       ...attr,
       value: attr.name === 'data-id' ? nanoid(6) : attr.value,

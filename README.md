@@ -2,7 +2,7 @@
 
 [English](./README.md) | [한국어](./README.ko.md)
 
-An interactive editor for building UIs with real-time preview and drag‑and‑drop. Canvas edits are synced back to source code via AST transforms, and the result runs safely in an isolated iframe sandbox. Built with React 19 and TypeScript.
+An interactive editor for building UIs with real-time preview and drag‑and‑drop. Canvas edits are synced back to source code via AST transforms, and the result renders inside an iframe for DOM/CSS isolation. Built with React 19 and TypeScript. See [Security Notes](#-security-notes) — the iframe is not a security sandbox.
 
 ## 📁 Project Structure
 
@@ -31,9 +31,15 @@ live-editor/
 - **Interactive property panel**: Edit numbers, strings, booleans, arrays, and objects from the side panel.
 - **Advanced JSX binding system**: Automatically detects and enables editing for all JSX element properties (children, label, icon, etc.) through type-based detection.
 - **Smart Items editor**: Manage array items with add/move/delete operations, edit properties and nested JSX components with stable component identity across reorders.
-- **Isolated preview runtime**: Runs user code in a sandboxed iframe to keep the main app safe.
+- **Preview runtime**: Renders compiled output inside an iframe for DOM/CSS isolation (not a security sandbox — see [Security Notes](#-security-notes)).
 - **Robust drag-and-drop**: Powered by `@dnd-kit` for smooth sorting and positioning.
 - **Save & Preview**: Save your code to localStorage and view it in a dedicated full-screen preview page (`/preview`).
+
+## 🔒 Security Notes
+
+- The `sandbox` prop on the preview `<iframe>` (`src/components/Frame/IFrame`) is **not a security boundary**. Compiled preview code is executed via `new Function(...)` in the host page's own JS realm (`compileModule` in `src/utils/index.ts`); only the resulting React elements are portaled into the iframe's `contentDocument` for DOM/CSS rendering. The iframe itself never evaluates user code.
+- Practical implication: previewed code runs with the same JS-level access as the host application (cookies, DOM, in-memory state) — the iframe boundary does not contain it.
+- Only open/edit projects you trust. Don't use this editor to preview arbitrary third-party project files without adding real isolation yourself (e.g. running compilation inside the iframe's own `contentWindow` realm and communicating results back via `postMessage`) — that isolation is not implemented here today.
 
 ## 🧰 Tech Stack
 

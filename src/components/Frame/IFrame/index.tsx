@@ -6,6 +6,7 @@ import { getCachedScriptBlob } from '~/utils';
 
 export interface Props {
   title?: string;
+  /** Forwarded to the iframe's `sandbox` attribute for DOM/CSS isolation only — not a security boundary, since preview code executes in the host window's realm (see `compileModule` in `~/utils`). */
   sandbox?: string;
   style?: React.CSSProperties;
   scripts?: string[];
@@ -17,13 +18,15 @@ export interface Props {
   onLoaded?: () => void;
 }
 
+const EMPTY_STRING_ARRAY: string[] = [];
+
 const IFrame = ({
   title = 'Live Preview',
   sandbox,
   style = {},
-  scripts = [],
-  styles = [],
-  stylesheets = [],
+  scripts = EMPTY_STRING_ARRAY,
+  styles = EMPTY_STRING_ARRAY,
+  stylesheets = EMPTY_STRING_ARRAY,
   autoHeight = false,
   syncStyle = false,
   children,

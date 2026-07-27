@@ -6,6 +6,7 @@ import { Button } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
+import { BINDING_PROP } from '~/enums';
 import {
   type BindingRenderLeaf,
   type BindingRenderMap,
@@ -70,7 +71,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     const primitiveItems: PrimitiveItem[] = [];
     const allElements = ast.elements.filter(Boolean) as t.Expression[];
 
-    ast.elements.forEach((element, itemIndex) => {
+    ast.elements.forEach(element => {
       if (!element) {
         return;
       }
@@ -79,7 +80,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
         const extracted = extractNodeValue(element);
         primitiveItems.push({
           id: nanoid(6),
-          index: itemIndex,
+          index: primitiveItems.length,
           value: extracted.value,
           type: extracted.type,
           astNode: element as t.Expression,
@@ -138,7 +139,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
       objectItems.push({
         id: nanoid(6),
-        index: itemIndex,
+        index: objectItems.length,
         editableProperties: extractObjectProperties(element),
         originalElement: element,
         jsxBindings,
@@ -235,7 +236,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
         : null;
 
     const isJsx = renderLeaf?.type === 'jsx';
-    const isInnerHTML = renderLeaf?.type === ('innerHTML' as string);
+    const isInnerHTML = renderLeaf?.property === BINDING_PROP.INNER_HTML;
     let nextAstValue: t.Expression | null = null;
 
     if (isInnerHTML) {
@@ -497,7 +498,8 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
                       label: key,
                       property:
                         render?.[key] && 'type' in render[key]
-                          ? (render[key].type as string)
+                          ? ((render[key] as BindingRenderLeaf).property ??
+                            (render[key].type as string))
                           : key,
                       type:
                         render?.[key] && 'type' in render[key]
