@@ -37,6 +37,7 @@ export type BindingType =
 
 export interface BindingRenderLeaf {
   type: BindingType;
+  property?: string;
   render?: BindingRenderMap;
 }
 

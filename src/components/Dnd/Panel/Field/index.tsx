@@ -82,9 +82,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
   }
 
   if (binding.property === BINDING_PROP.INNER_HTML || binding.type === 'jsx') {
-    const isHTML =
-      binding.property === BINDING_PROP.INNER_HTML ||
-      binding.type === ('innerHTML' as string);
+    const isHTML = binding.property === BINDING_PROP.INNER_HTML;
 
     return (
       <CoreEditor
