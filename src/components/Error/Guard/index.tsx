@@ -33,8 +33,6 @@ const Guard = ({ children, onError }: Props) => {
       console.error('⚡ [Guard] Event handler error:', errorMessage);
 
       event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
 
       setError(errorMessage);
       onError?.(event.error || new window.Error(errorMessage));
