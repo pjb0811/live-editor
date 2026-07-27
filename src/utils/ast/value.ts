@@ -59,35 +59,43 @@ export const parseValue = (value: unknown): unknown => {
     (trimmed.startsWith('[') && trimmed.endsWith(']'))
   ) {
     try {
-      return new Function(`return (${trimmed})`)();
-    } catch {
-      try {
-        const ast = parseExpression(trimmed, {
-          plugins: ['jsx', 'typescript'],
-        });
+      const ast = parseExpression(trimmed, {
+        plugins: ['jsx', 'typescript'],
+      });
 
-        if (t.isObjectExpression(ast)) {
-          const result: Record<string, unknown> = {};
+      if (t.isObjectExpression(ast)) {
+        const result: Record<string, unknown> = {};
 
-          for (const prop of ast.properties) {
-            if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) {
-              continue;
-            }
-            if (t.isJSXElement(prop.value) || t.isJSXFragment(prop.value)) {
-              result[prop.key.name] = generateCode(prop.value);
-              continue;
-            }
-            result[prop.key.name] = extractNodeValue(prop.value).value;
+        for (const prop of ast.properties) {
+          if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) {
+            continue;
           }
-
-          return result;
+          if (t.isJSXElement(prop.value) || t.isJSXFragment(prop.value)) {
+            result[prop.key.name] = generateCode(prop.value);
+            continue;
+          }
+          result[prop.key.name] = extractNodeValue(prop.value).value;
         }
-      } catch {
-        /* ignore */
+
+        return result;
       }
 
-      return value;
+      if (t.isArrayExpression(ast)) {
+        return ast.elements.map(el => {
+          if (el === null) {
+            return undefined;
+          }
+          if (t.isJSXElement(el) || t.isJSXFragment(el)) {
+            return generateCode(el);
+          }
+          return extractNodeValue(el).value;
+        });
+      }
+    } catch {
+      /* ignore */
     }
+
+    return value;
   }
 
   return value;
