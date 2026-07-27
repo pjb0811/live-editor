@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- b622c6b: Introduce evaluateLiteral function to convert AST nodes to pure literal values without executing code, enhancing the handling of object and array expressions.
+- 0468952: Prevent incorrect replacements in JSX placeholders by using function-based replacements to handle special characters.
+- 85c3395: Introduce new binding properties and improve the handling of data attributes in the drag-and-drop panel.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
