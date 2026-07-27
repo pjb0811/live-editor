@@ -139,6 +139,8 @@ const compileModule = (
 
   let render: RenderFunction;
 
+  // Runs in this window's own JS realm, not inside the preview iframe — the iframe only
+  // renders the resulting React elements via portal. See README "Security Notes".
   try {
     render = new Function(
       'exports',
