@@ -51,6 +51,10 @@ export interface BindingItem {
   type?: BindingType;
   options?: BindingOption[];
   render?: BindingRenderMap;
+  min?: number;
+  max?: number;
+  pattern?: string;
+  required?: boolean;
 }
 
 export type NodeValueType =

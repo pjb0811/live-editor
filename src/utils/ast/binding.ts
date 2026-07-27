@@ -213,6 +213,56 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
                 }
               }
 
+              const minProp = element.properties.find(
+                p =>
+                  t.isObjectProperty(p) &&
+                  t.isIdentifier(p.key) &&
+                  p.key.name === 'min' &&
+                  t.isNumericLiteral(p.value),
+              ) as t.ObjectProperty | undefined;
+
+              if (minProp) {
+                binding.min = (minProp.value as t.NumericLiteral).value;
+              }
+
+              const maxProp = element.properties.find(
+                p =>
+                  t.isObjectProperty(p) &&
+                  t.isIdentifier(p.key) &&
+                  p.key.name === 'max' &&
+                  t.isNumericLiteral(p.value),
+              ) as t.ObjectProperty | undefined;
+
+              if (maxProp) {
+                binding.max = (maxProp.value as t.NumericLiteral).value;
+              }
+
+              const patternProp = element.properties.find(
+                p =>
+                  t.isObjectProperty(p) &&
+                  t.isIdentifier(p.key) &&
+                  p.key.name === 'pattern' &&
+                  t.isStringLiteral(p.value),
+              ) as t.ObjectProperty | undefined;
+
+              if (patternProp) {
+                binding.pattern = (patternProp.value as t.StringLiteral).value;
+              }
+
+              const requiredProp = element.properties.find(
+                p =>
+                  t.isObjectProperty(p) &&
+                  t.isIdentifier(p.key) &&
+                  p.key.name === 'required' &&
+                  t.isBooleanLiteral(p.value),
+              ) as t.ObjectProperty | undefined;
+
+              if (requiredProp) {
+                binding.required = (
+                  requiredProp.value as t.BooleanLiteral
+                ).value;
+              }
+
               return binding;
             }
           }
