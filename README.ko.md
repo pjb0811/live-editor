@@ -37,7 +37,7 @@ live-editor/
 
 ## 🔒 보안 참고사항
 
-- 프리뷰 `<iframe>`(`src/components/Frame/IFrame`)의 `sandbox` prop은 **실제 보안 경계가 아닙니다**. 컴파일된 프리뷰 코드는 host 페이지 자신의 JS realm에서 `new Function(...)`으로 실행되며(`src/utils/index.ts`의 `compileModule`), iframe에는 그 결과로 생성된 React 엘리먼트만 `contentDocument`에 포탈되어 DOM/CSS 렌더링 용도로만 쓰입니다. iframe 자체는 사용자 코드를 실행하지 않습니다.
+- 프리뷰 `<iframe>`(`src/components/frame/iframe.tsx`)의 `sandbox` prop은 **실제 보안 경계가 아닙니다**. 컴파일된 프리뷰 코드는 host 페이지 자신의 JS realm에서 `new Function(...)`으로 실행되며(`src/utils/index.ts`의 `compileModule`), iframe에는 그 결과로 생성된 React 엘리먼트만 `contentDocument`에 포탈되어 DOM/CSS 렌더링 용도로만 쓰입니다. iframe 자체는 사용자 코드를 실행하지 않습니다.
 - 실질적 의미: 미리보기되는 코드는 호스트 애플리케이션과 동일한 수준의 JS 접근 권한(쿠키, DOM, 메모리상의 상태 등)을 가지며, iframe 경계가 이를 막아주지 않습니다.
 - 신뢰할 수 있는 프로젝트만 열어서 편집하세요. 직접 별도의 격리 조치(예: iframe 자체 `contentWindow` realm에서 컴파일을 실행하고 결과를 `postMessage`로 주고받는 방식)를 추가하지 않은 채로, 신뢰할 수 없는 제3자 프로젝트 파일을 미리보기하는 용도로 사용하지 마세요 — 그런 격리는 현재 구현되어 있지 않습니다.
 

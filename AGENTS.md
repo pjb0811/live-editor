@@ -67,15 +67,15 @@ live-editor/
 
 ## 🏗️ 주요 파일 요약
 
-| 파일                                      | 역할                                                                                                                                                |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/utils/index.ts`                      | `compile()`, `cn()`, `baseModules`, `getCachedScriptBlob()`                                                                                         |
-| `src/utils/ast/`                          | `extract()`, `update()`/`bulkUpdate()`, `parseBinding()`, `getCurrentValue()`, `clone()` — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
-| `src/enums/index.ts`                      | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                         |
-| `src/types/index.ts`                      | `Module`, `Section` 타입                                                                                                                            |
-| `src/components/Context/states/index.tsx` | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                      |
-| `src/components/Preview/Client/index.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                             |
-| `src/components/Frame/IFrame/index.tsx`   | iframe 샌드박스 + 스타일 동기화 + 자동 높이                                                                                                         |
+| 파일                                | 역할                                                                                                                                                |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/utils/index.ts`                | `compile()`, `cn()`, `baseModules`, `getCachedScriptBlob()`                                                                                         |
+| `src/utils/ast/`                    | `extract()`, `update()`/`bulkUpdate()`, `parseBinding()`, `getCurrentValue()`, `clone()` — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
+| `src/enums/index.ts`                | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                         |
+| `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                            |
+| `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                      |
+| `src/components/preview/client.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                             |
+| `src/components/frame/iframe.tsx`   | iframe 샌드박스 + 스타일 동기화 + 자동 높이                                                                                                         |
 
 ---
 
