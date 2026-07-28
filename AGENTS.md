@@ -88,6 +88,10 @@ live-editor/
 - `index.ts`는 그 파일들을 import해서 조합/재수출만 하는 얇은 **barrel**. 정적 프로퍼티로 합성되는 경우(`Editor.Core`, `Error.Boundary` 등)는 barrel에서 조합하고, 구현 파일(`error.tsx` 등)은 원래 export 식별자명을 그대로 유지 — barrel에서만 `import ErrorImpl from './error'`처럼 import 시점에 별칭을 준다
 - 정적으로 합성되지 않고 내부적으로만 쓰이거나 직접 subpath import되는 하위 파일(예: `editor/tiptap.tsx`, `context/states.ts`)은 barrel을 거치지 않고 그대로 둔다
 
+### 재사용 가능한 UI/훅은 공유 라이브러리에 먼저
+
+새 컴포넌트/기능을 만들 때 그 안의 UI 요소나 훅이 이 저장소를 넘어 재사용될 만하면(예: 범용 UI 프리미티브, 특정 도메인에 안 묶인 상태/이벤트 훅), 여기에 바로 구현하지 말고 **`ui-kit`(UI 컴포넌트) / `use-hooks`(React 훅)에 먼저 구현 → 머지/배포 → 여기서는 그 패키지를 의존성으로 가져다 쓰기**. 이 저장소의 AST 변환 로직처럼 이 앱 도메인 자체에 강하게 결합된 것만 로컬 구현이 맞다. 판단 기준/절차는 `.claude/skills/coding-style/SKILL.md`의 "D. 재사용 가능한 UI/훅은 공유 라이브러리에 먼저 구현" 참고 — `useHistoryState`/`useDebounce`/`useLocalStorage`(`@jbpark/use-hooks`)가 이 패턴으로 처리된 실제 사례.
+
 ### 경로 alias
 
 ```ts
