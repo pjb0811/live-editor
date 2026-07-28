@@ -1,6 +1,6 @@
 ---
 name: coding-style
-description: "Repo-agnostic coding-conventions toolkit — a growing set of procedures for working consistently within any codebase. Currently covers: (A) discovering and following a project's existing directory structure and coding conventions before writing/editing code (checks CLAUDE.md/AGENTS.md, README/CONTRIBUTING, formatter/linter configs, and neighboring files); (B) safely renaming directories/files to a different naming convention (e.g. PascalCase to kebab-case) across a codebase without breaking imports or losing git history. Use when the user says '코딩 스타일대로', '컨벤션 맞춰줘', '이 프로젝트 스타일로', 'follow the project conventions', 'match the existing style', '케밥 케이스로 바꿔줘', '폴더명 리네임', 'rename directories to kebab-case', or before creating/editing a file in an unfamiliar repo without already having its conventions in context."
+description: "Repo-agnostic coding-conventions toolkit — a growing set of procedures for working consistently within any codebase. Currently covers: (A) discovering and following a project's existing directory structure and coding conventions before writing/editing code (checks CLAUDE.md/AGENTS.md, README/CONTRIBUTING, formatter/linter configs, and neighboring files); (B) safely renaming directories/files to a different naming convention (e.g. PascalCase to kebab-case) across a codebase without breaking imports or losing git history; (C) restructuring a grouped/composition component (a parent with sub-components living in their own subdirectories, e.g. Error/Boundary, Input/Search) into named files with a thin composing barrel index.ts, matching ui-kit's own components/atoms/input/ pattern. Use when the user says '코딩 스타일대로', '컨벤션 맞춰줘', '이 프로젝트 스타일로', 'follow the project conventions', 'match the existing style', '케밥 케이스로 바꿔줘', '폴더명 리네임', 'rename directories to kebab-case', '배럴 파일 규칙', '그룹화된 컴포넌트 구조', or before creating/editing a file in an unfamiliar repo without already having its conventions in context."
 ---
 
 # Coding Style
@@ -9,6 +9,7 @@ description: "Repo-agnostic coding-conventions toolkit — a growing set of proc
 
 - **A. 기존 컨벤션 파악하고 따르기** — 코드를 작성/수정하기 전에 항상 먼저 확인
 - **B. 네이밍 컨벤션 일괄 변경** — 디렉토리/파일명 케이스 컨벤션을 바꿔야 할 때
+- **C. 그룹화된/합성 컴포넌트의 배럴 파일 구조** — 하위 컴포넌트가 서브디렉토리+자체 index.tsx로 흩어져 있는 걸 named file + 얇은 배럴로 평탄화할 때
 
 ---
 
@@ -135,3 +136,89 @@ const importRe = /(from\s+|require\()(['"])(\.[^'"]*)\2/g;
 - **같은 leaf 이름이 여러 부모 아래 중복됨** (예: `Item`이 `Menu/Item`, `List/Item`에 각각 존재): 이름 기반 매핑이라도 세그먼트 경계를 지키면 문제없다 — 어차피 같은 변환 함수를 적용하므로 결과가 항상 일관된다.
 - **범위 밖인데 이름이 겹치는 디렉토리가 있음**: 매핑 테이블에 포함하지 말고, 혹시 스크립트가 잘못 건드렸으면 typecheck 에러로 발견해서 되돌린다.
 - **public export 이름까지 바꿔야 하는지 애매함**: 추측하지 말고 사용자에게 breaking change 여부를 확인한다.
+
+---
+
+## C. 그룹화된/합성 컴포넌트의 배럴 파일 구조
+
+부모 컴포넌트가 하나 이상의 하위 컴포넌트를 갖고 있고, 그 하위 컴포넌트들이 각자 서브디렉토리 + 자체 `index.tsx`로 흩어져 있는 경우("그룹화된" 컴포넌트)에 적용하는 구조 규칙. 이 저장소(`ui-kit`) 자신의 `packages/ui/src/components/atoms/input/`에서 이미 쓰이던 패턴이며, `live-editor` 저장소 전체(`src/components/*`, `src/pages/*`)에 실제 적용해서 검증됨.
+
+### C0. 판별 기준
+
+다음에 해당하면 이 패턴을 적용한다:
+
+- 부모 디렉토리 안에 하위 컴포넌트가 각자 자기 이름의 서브디렉토리(`Boundary/`, `Core/`, `Field/` 등) 안에서 `index.tsx` 하나로만 구성되어 있음
+- 하위 컴포넌트가 정적 프로퍼티로 부모에 합성되는 경우(`Input.Search`, `Error.Boundary` 등)든, 부모 내부에서만 쓰이는 구현 디테일이든(`Dnd`의 `Draggable`/`Droppable` 등), 직접 subpath로 import되어 쓰이는 것이든(`Editor.Tiptap`처럼 합성 안 되고 `~/components/editor/tiptap`으로 바로 쓰이는 경우) 상관없이 동일하게 적용
+- 하위 컴포넌트 자체가 또 하위 컴포넌트를 가지면(예: `Dnd/Panel/Field` 등) 같은 패턴을 재귀적으로 적용 — `Panel` 자신도 하나의 "그룹"이 되어 자기만의 named file들 + 자기만의 `index.ts` 배럴을 가짐
+
+### C1. 목표 구조
+
+```
+error/
+  index.ts       ← 순수 배럴 — 아래 파일들 import해서 조합/재수출만 함, 자체 JSX/로직 없음
+  error.tsx      ← 그룹 자신의 구현 (기존 Error/index.tsx의 실제 내용)
+  boundary.tsx   ← 기존 Error/Boundary/index.tsx
+  guard.tsx      ← 기존 Error/Guard/index.tsx
+  runtime.tsx    ← 기존 Error/Runtime/index.tsx
+```
+
+정적으로 합성되는 하위 컴포넌트는 `index.ts`에서 `X.Y = Y` 형태로 조합 (이 저장소의 `input/index.ts`가 원조 예시):
+
+```ts
+// error/index.ts
+import ErrorBoundary from './boundary';
+import ErrorImpl, { type Props } from './error';
+import ErrorGuard from './guard';
+import ErrorRuntime from './runtime';
+
+type ErrorComponent = typeof ErrorImpl & {
+  Boundary: typeof ErrorBoundary;
+  Runtime: typeof ErrorRuntime;
+  Guard: typeof ErrorGuard;
+};
+
+const Error = ErrorImpl as ErrorComponent;
+
+Error.Boundary = ErrorBoundary;
+Error.Runtime = ErrorRuntime;
+Error.Guard = ErrorGuard;
+
+export { ErrorBoundary, ErrorRuntime, ErrorGuard };
+export type { Props };
+export default Error;
+```
+
+정적 합성 없이 그룹 자신의 구현만 재수출하면 되는 경우(하위 파일들은 그룹 내부에서만 import되거나, 다른 곳에서 직접 subpath로 import됨)는 배럴이 훨씬 단순해진다:
+
+```ts
+// frame/index.ts
+export { default, type FrameProps } from './frame';
+```
+
+### C2. 핵심 규칙 — 구현 파일의 export 식별자는 바꾸지 않는다
+
+옮겨진 구현 파일(`error.tsx` 등)은 원래 쓰던 export 식별자명을 그대로 유지한다 (`export default Error;`). 배럴에서만 import 시점에 별칭을 준다 (`import ErrorImpl from './error'`) — 이건 배럴 스코프 안에서 합성용 변수(`const Error = ...`)와 이름이 충돌하는 걸 피하기 위한 것일 뿐, 실제로 바뀌는 건 파일/디렉토리 경로뿐이고 export되는 식별자 자체는 하나도 바뀌지 않는다.
+
+### C3. 구현 파일에서 하위 컴포넌트를 실제로 렌더링에 쓰는 경우
+
+`Editor`의 경우 `Editor.Core = Core`로 합성도 되지만, `editor.tsx` 자신의 렌더링 로직 안에서도 `<Core ... />`를 실제로 사용한다. 이런 경우 구현 파일에서 하위 컴포넌트 import를 지우면 안 된다 — 배럴로 옮기는 건 **합성 대입문(`Editor.Core = Core;`)과 그 재수출**뿐이고, 구현에 실제로 필요한 import/사용은 구현 파일에 그대로 남긴다.
+
+### C4. 실행 절차 (섹션 B 절차의 확장)
+
+섹션 B(네이밍 일괄 변경)의 deepest-first / git mv / 경로-세그먼트 인식 치환 / typecheck 기반 검증 절차를 그대로 따르되, 각 그룹마다 다음을 추가한다:
+
+1. 하위 컴포넌트들을 `git mv Parent/SubPart/index.tsx Parent/sub-part.tsx`로 부모 레벨까지 끌어올리고 kebab-case로 리네임 (한 번의 git mv로 이동+리네임 동시 처리됨)
+2. 부모 자신의 `index.tsx`를 `git mv Parent/index.tsx Parent/parent-name.tsx`로 옮김
+3. 옮겨진 부모 구현 파일에서 합성 대입문(`X.Y = Z;`)과 그로 인한 재수출(`export { Z };`)만 제거 — 실제 렌더링에 쓰이는 import/사용은 유지 (C3 참고)
+4. 새 `index.ts` 배럴 작성 (C1 패턴)
+5. 그룹 내부에서 서로를 상대경로로 참조하던 import들을 전부 수정 — 서브디렉토리 관계(`../Field`, `..`)가 이제 형제 관계(`./field`, `./error`)로 바뀌었기 때문에 특히 주의. 원래 `Error/Boundary/index.tsx`가 `import Error from '..'`로 부모를 참조하던 게, 평탄화 후엔 `import Error from './error'`가 되는 식 — 이걸 놓치면 부모 디렉토리 자체를 잘못 가리키게 되어 타입체크에서 잡힌다
+6. 마지막으로 그룹 디렉토리 자체를 kebab-case로 리네임
+
+### C5. 검증
+
+섹션 B와 동일 — typecheck/lint/test/build, 그리고 각 `index.ts`를 직접 읽어서 원래 합성되던 정적 프로퍼티/재수출 타입이 전부 그대로 보존됐는지 눈으로 한 번 더 확인한다 (기계적 치환만으로는 놓치기 쉬운 부분).
+
+### C 엣지 케이스
+
+- **하위 컴포넌트가 실제로는 부모에 합성되지 않고 그냥 형제로만 서로 참조함** (예: `Dnd/Panel/Field`가 `Dnd/Panel/Children`을 import): 이것도 동일하게 평탄화 대상. "합성되는가"는 배럴이 조합 로직을 갖는지 여부만 결정하고, 평탄화 자체의 적용 여부와는 무관
+- **파일에 JSX가 없는 하위 모듈** (예: `Context/states/index.tsx`처럼 `createContext`/`useContext`만 있는 경우): 확장자를 `.tsx` → `.ts`로 바꿔도 됨. 다른 곳에서 이 모듈을 배럴 경유가 아니라 직접 subpath(`~/components/context/states`)로 import해왔다면 그 관례는 그대로 유지 — 억지로 배럴에 재수출을 추가하지 않는다
