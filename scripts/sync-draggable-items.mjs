@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 const playgroundPath = path.resolve(
   __dirname,
-  '../src/pages/Playground/index.tsx',
+  '../src/pages/playground/index.tsx',
 );
 const enumsPath = path.resolve(__dirname, '../src/enums/index.ts');
 

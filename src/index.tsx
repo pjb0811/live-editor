@@ -1,11 +1,11 @@
 import './index.css';
 import '@jbpark/ui-kit/style.css';
 
-import Context from './components/Context';
-import LiveDnd from './components/Dnd';
-import LiveEditor from './components/Editor';
-import LiveError from './components/Error';
-import LivePreview from './components/Preview';
+import Context from './components/context';
+import LiveDnd from './components/dnd';
+import LiveEditor from './components/editor';
+import LiveError from './components/error';
+import LivePreview from './components/preview';
 
 const App = ({ children }: { children?: React.ReactNode }) => {
   return <Context>{children}</Context>;

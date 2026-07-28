@@ -14,21 +14,21 @@ live-editor/
 │  └─ copilot-instructions.md  # GitHub Copilot 프로젝트 지침
 ├─ src/
 │  ├─ components/
-│  │  ├─ Context/           # 전역 상태 (PreviewContext, ErrorContext)
-│  │  ├─ Dnd/               # DnD 시스템 (Canvas + Panel + Renderer)
-│  │  │  ├─ Panel/          # 프로퍼티 편집 패널
-│  │  │  ├─ Renderer/       # 선택 요소 JSX 구조 렌더링
-│  │  │  ├─ Draggable/      # 드래그 가능한 섹션 아이템
-│  │  │  ├─ Droppable/      # 드롭 영역
-│  │  │  ├─ Sortable/       # 정렬 가능한 리스트
-│  │  │  └─ Overlay/        # 드래그 인디케이터
-│  │  ├─ Editor/            # CodeMirror 코드 에디터
-│  │  ├─ Error/             # 에러 처리 (Boundary, Guard, Runtime)
-│  │  ├─ Frame/             # 미리보기 컨테이너 (IFrame, Shadow)
-│  │  └─ Preview/           # 컴파일 + 렌더링 (Client)
+│  │  ├─ context/           # 전역 상태 (PreviewContext, ErrorContext)
+│  │  ├─ dnd/               # DnD 시스템 (Canvas + Panel + Renderer)
+│  │  │  ├─ panel/          # 프로퍼티 편집 패널 (children/field/items/node.tsx)
+│  │  │  ├─ renderer.tsx    # 선택 요소 JSX 구조 렌더링
+│  │  │  ├─ draggable.tsx   # 드래그 가능한 섹션 아이템
+│  │  │  ├─ droppable.tsx   # 드롭 영역
+│  │  │  ├─ sortable.tsx    # 정렬 가능한 리스트
+│  │  │  └─ overlay.tsx     # 드래그 인디케이터
+│  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, tiptap.tsx)
+│  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
+│  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx)
+│  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx)
 │  ├─ pages/
-│  │  ├─ Playground/        # 메인 에디터 페이지
-│  │  └─ Preview/           # 풀스크린 미리보기 페이지
+│  │  ├─ playground/        # 메인 에디터 페이지
+│  │  └─ preview/           # 풀스크린 미리보기 페이지
 │  ├─ utils/
 │  │  ├─ index.ts           # compile(), cn(), baseModules 등 핵심 유틸
 │  │  ├─ ast/               # Babel AST 조작 유틸 (파이프라인 단계별 분리, index.ts는 재수출 배럴)
@@ -67,15 +67,15 @@ live-editor/
 
 ## 🏗️ 주요 파일 요약
 
-| 파일                                      | 역할                                                                                                                                                |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/utils/index.ts`                      | `compile()`, `cn()`, `baseModules`, `getCachedScriptBlob()`                                                                                         |
-| `src/utils/ast/`                          | `extract()`, `update()`/`bulkUpdate()`, `parseBinding()`, `getCurrentValue()`, `clone()` — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
-| `src/enums/index.ts`                      | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                         |
-| `src/types/index.ts`                      | `Module`, `Section` 타입                                                                                                                            |
-| `src/components/Context/states/index.tsx` | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                      |
-| `src/components/Preview/Client/index.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                             |
-| `src/components/Frame/IFrame/index.tsx`   | iframe 샌드박스 + 스타일 동기화 + 자동 높이                                                                                                         |
+| 파일                                | 역할                                                                                                                                                |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/utils/index.ts`                | `compile()`, `cn()`, `baseModules`, `getCachedScriptBlob()`                                                                                         |
+| `src/utils/ast/`                    | `extract()`, `update()`/`bulkUpdate()`, `parseBinding()`, `getCurrentValue()`, `clone()` — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
+| `src/enums/index.ts`                | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                         |
+| `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                            |
+| `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                      |
+| `src/components/preview/client.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                             |
+| `src/components/frame/iframe.tsx`   | iframe 샌드박스 + 스타일 동기화 + 자동 높이                                                                                                         |
 
 ---
 
@@ -83,8 +83,10 @@ live-editor/
 
 ### 디렉토리 패턴
 
-- 각 컴포넌트 폴더는 `index.tsx` 중심의 **barrel export** 패턴 사용
-- 하위 컴포넌트도 같은 폴더 내 서브 디렉토리로 구성
+- 디렉토리명은 kebab-case (`error/`, `dnd/panel/` 등)
+- "그룹화된" 컴포넌트(하위 컴포넌트를 가진 부모, 예: `error/`, `editor/`, `frame/`, `dnd/panel/`)는 각 하위 컴포넌트를 서브 디렉토리가 아니라 **같은 폴더 내 named file**로 둔다 (예: `error/boundary.tsx`, `editor/core.tsx`) — `ui-kit`의 `input/` 컴포넌트와 동일한 패턴
+- `index.ts`는 그 파일들을 import해서 조합/재수출만 하는 얇은 **barrel**. 정적 프로퍼티로 합성되는 경우(`Editor.Core`, `Error.Boundary` 등)는 barrel에서 조합하고, 구현 파일(`error.tsx` 등)은 원래 export 식별자명을 그대로 유지 — barrel에서만 `import ErrorImpl from './error'`처럼 import 시점에 별칭을 준다
+- 정적으로 합성되지 않고 내부적으로만 쓰이거나 직접 subpath import되는 하위 파일(예: `editor/tiptap.tsx`, `context/states.ts`)은 barrel을 거치지 않고 그대로 둔다
 
 ### 경로 alias
 

@@ -27,7 +27,7 @@ description: 'Babel AST 변환 코드를 작성하거나 src/utils/ast/ 모듈�
 2. `binding.ts`의 `parseBinding()` 내 유효 타입 배열(`['array', 'object', ..., 'richtext']`)에 추가
 3. 읽기 시 특수 처리가 필요하면 `binding.ts`의 `getCurrentValue()`에 분기 추가
 4. 쓰기 시 특수 처리가 필요하면 `update.ts`에 `updateXxx()` 헬퍼를 추가하고 `update()`의 해당 `switch` 분기(`property` 또는 `propertyBinding.type`)에서 호출
-5. 패널 UI에서 새 타입을 렌더링해야 하면 `src/components/Dnd/Panel/Field/index.tsx`에 분기 추가
+5. 패널 UI에서 새 타입을 렌더링해야 하면 `src/components/dnd/panel/field.tsx`에 분기 추가
 
 ## 의존 방향 (순환 참조 금지)
 
