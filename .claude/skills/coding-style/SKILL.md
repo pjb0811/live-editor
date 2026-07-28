@@ -1,6 +1,6 @@
 ---
 name: coding-style
-description: "Repo-agnostic coding-conventions toolkit — a growing set of procedures for working consistently within any codebase. Currently covers: (A) discovering and following a project's existing directory structure and coding conventions before writing/editing code (checks CLAUDE.md/AGENTS.md, README/CONTRIBUTING, formatter/linter configs, and neighboring files); (B) safely renaming directories/files to a different naming convention (e.g. PascalCase to kebab-case) across a codebase without breaking imports or losing git history; (C) restructuring a grouped/composition component (a parent with sub-components living in their own subdirectories, e.g. Error/Boundary, Input/Search) into named files with a thin composing barrel index.ts, matching ui-kit's own components/atoms/input/ pattern. Use when the user says '코딩 스타일대로', '컨벤션 맞춰줘', '이 프로젝트 스타일로', 'follow the project conventions', 'match the existing style', '케밥 케이스로 바꿔줘', '폴더명 리네임', 'rename directories to kebab-case', '배럴 파일 규칙', '그룹화된 컴포넌트 구조', or before creating/editing a file in an unfamiliar repo without already having its conventions in context."
+description: "Repo-agnostic coding-conventions toolkit — a growing set of procedures for working consistently within any codebase. Currently covers: (A) discovering and following a project's existing directory structure and coding conventions before writing/editing code (checks CLAUDE.md/AGENTS.md, README/CONTRIBUTING, formatter/linter configs, and neighboring files); (B) safely renaming directories/files to a different naming convention (e.g. PascalCase to kebab-case) across a codebase without breaking imports or losing git history; (C) restructuring a grouped/composition component (a parent with sub-components living in their own subdirectories, e.g. Error/Boundary, Input/Search) into named files with a thin composing barrel index.ts, matching ui-kit's own components/atoms/input/ pattern; (D) deciding whether a new reusable UI element or hook belongs in the shared ui-kit/use-hooks libraries first, before implementing it inline in an app repo. Use when the user says '코딩 스타일대로', '컨벤션 맞춰줘', '이 프로젝트 스타일로', 'follow the project conventions', 'match the existing style', '케밥 케이스로 바꿔줘', '폴더명 리네임', 'rename directories to kebab-case', '배럴 파일 규칙', '그룹화된 컴포넌트 구조', '재사용 가능한 컴포넌트', '공유 라이브러리에 먼저', or before creating/editing a file in an unfamiliar repo without already having its conventions in context."
 ---
 
 # Coding Style
@@ -10,6 +10,7 @@ description: "Repo-agnostic coding-conventions toolkit — a growing set of proc
 - **A. 기존 컨벤션 파악하고 따르기** — 코드를 작성/수정하기 전에 항상 먼저 확인
 - **B. 네이밍 컨벤션 일괄 변경** — 디렉토리/파일명 케이스 컨벤션을 바꿔야 할 때
 - **C. 그룹화된/합성 컴포넌트의 배럴 파일 구조** — 하위 컴포넌트가 서브디렉토리+자체 index.tsx로 흩어져 있는 걸 named file + 얇은 배럴로 평탄화할 때
+- **D. 재사용 가능한 UI/훅은 공유 라이브러리에 먼저 구현** — 새 컴포넌트/훅을 앱 저장소에 바로 만들지, `ui-kit`/`use-hooks`에 먼저 만들지 판단할 때
 
 ---
 
@@ -222,3 +223,43 @@ export { default, type FrameProps } from './frame';
 
 - **하위 컴포넌트가 실제로는 부모에 합성되지 않고 그냥 형제로만 서로 참조함** (예: `Dnd/Panel/Field`가 `Dnd/Panel/Children`을 import): 이것도 동일하게 평탄화 대상. "합성되는가"는 배럴이 조합 로직을 갖는지 여부만 결정하고, 평탄화 자체의 적용 여부와는 무관
 - **파일에 JSX가 없는 하위 모듈** (예: `Context/states/index.tsx`처럼 `createContext`/`useContext`만 있는 경우): 확장자를 `.tsx` → `.ts`로 바꿔도 됨. 다른 곳에서 이 모듈을 배럴 경유가 아니라 직접 subpath(`~/components/context/states`)로 import해왔다면 그 관례는 그대로 유지 — 억지로 배럴에 재수출을 추가하지 않는다
+
+---
+
+## D. 재사용 가능한 UI/훅은 공유 라이브러리에 먼저 구현
+
+새 컴포넌트/기능을 구현할 때, 그 안에 포함된 UI 요소나 훅이 지금 작업 중인 저장소를 넘어 재사용될 가능성이 있다면, 그 앱 저장소(`live-editor` 등)에 바로(inline) 구현하지 않고 **공유 라이브러리에 먼저 구현**한다 — UI 컴포넌트는 `ui-kit`, React 훅은 `use-hooks`. 거기서 머지/배포한 뒤, 앱 저장소는 그 패키지를 의존성으로 추가해서 가져다 쓴다.
+
+### D0. 판단 기준
+
+새 컴포넌트/훅을 만들기 전에 스스로 묻는다: "이게 지금 작업 중인 프로젝트 말고 다른 프로젝트에서도 쓸모가 있을까?"
+
+- **그렇다 / 애매하다** → 공유 라이브러리 우선 경로를 기본값으로 제안한다 (아래 D1)
+- **아니다, 이 앱의 특정 로직에 강하게 결합돼 있다** (예: `live-editor`의 AST 변환 내부 로직처럼 그 저장소의 도메인 자체) → 로컬 구현이 맞다. 억지로 추상화하지 않는다
+
+일반적인 재사용성 신호:
+
+- 순수 UI 프리미티브/합성 컴포넌트 (버튼, 입력, 피커, 레이아웃 등) → `ui-kit` 후보
+- 특정 도메인 로직 없이 범용적인 상태/이벤트/브라우저 API 훅 (디바운스, 로컬스토리지, 히스토리 상태, 스크롤 등) → `use-hooks` 후보
+
+### D1. 실행 순서
+
+1. 공유 라이브러리(`ui-kit` 또는 `use-hooks`) 저장소로 가서 새 브랜치에 구현 (섹션 A대로 그 저장소의 기존 컨벤션을 먼저 파악하고 따른다)
+2. 테스트/데모 페이지 등 그 라이브러리 자체의 기존 관례에 맞춰 추가
+3. PR 올리고 머지 (changesets 기반 버전업 → npm 배포까지 필요하면 그 흐름도 완료됐는지 확인)
+4. 그 다음에야 원래 작업하던 앱 저장소로 돌아와서, 방금 배포된 패키지 버전을 의존성으로 추가하고 가져다 쓴다
+5. 앱 저장소 쪽 PR은 "라이브러리 X에 Y를 추가하고, 여기서는 그걸 가져다 쓴다"는 게 diff에 분명히 드러나야 한다 — 로컬 구현과 섞어서 한 PR에 욱여넣지 않는다
+
+### D2. 실제 사례
+
+`live-editor`에 undo/redo를 추가할 때(2026-07-28), `useHistoryState`라는 undo/redo 가능한 상태 훅이 필요했는데, `live-editor` 로컬에 바로 구현하는 대신:
+
+- `use-hooks`에 `useHistoryState` 구현 → PR → 머지 → npm 배포 (`@jbpark/use-hooks` 새 버전)
+- `live-editor`가 그 새 버전을 의존성으로 추가해서 `App.tsx`에서 가져다 씀
+- 같은 세션에서, `live-editor`가 직접 구현해서 쓰던 `useDebounce`도 `use-hooks`의 기존 구현으로 교체
+
+### D 엣지 케이스
+
+- **공유 라이브러리에 이미 비슷한 게 있는데 완전히 똑같진 않음**: 새로 만들기 전에 기존 것을 확장/일반화할 수 있는지부터 검토한다.
+- **급하게 먼저 써봐야 검증이 되는 경우**: 앱 저장소에 임시로 구현해서 프로토타이핑하는 것 자체는 막지 않지만, 검증되면 공유 라이브러리로 옮기는 후속 작업이 뒤따라야 한다 — "임시"가 영구적으로 로컬에 남지 않도록 사용자에게 후속 작업으로 남겨둔다.
+- **어느 라이브러리로 가야 할지 애매함** (UI 컴포넌트인데 훅도 포함): UI 렌더링이 주된 산출물이면 `ui-kit`, 순수 로직/상태 관리가 주된 산출물이면 `use-hooks`. 둘 다 필요하면 분리해서 각각 해당 라이브러리에 넣는다.
