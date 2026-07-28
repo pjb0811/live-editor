@@ -97,4 +97,34 @@ describe('validateBindingValue', () => {
       validateBindingValue(makeBinding({ pattern: '^[0-9]+$' }), 42),
     ).toEqual({ valid: true });
   });
+
+  it('fails for an invalid URL when type is url', () => {
+    const result = validateBindingValue(
+      makeBinding({ type: 'url' }),
+      'not a url',
+    );
+
+    expect(result.valid).toBe(false);
+  });
+
+  it('passes for a valid URL when type is url', () => {
+    expect(
+      validateBindingValue(makeBinding({ type: 'url' }), 'https://example.com'),
+    ).toEqual({ valid: true });
+  });
+
+  it('fails for an invalid date when type is date', () => {
+    const result = validateBindingValue(
+      makeBinding({ type: 'date' }),
+      'not a date',
+    );
+
+    expect(result.valid).toBe(false);
+  });
+
+  it('passes for a valid date when type is date', () => {
+    expect(
+      validateBindingValue(makeBinding({ type: 'date' }), '2026-01-01'),
+    ).toEqual({ valid: true });
+  });
 });

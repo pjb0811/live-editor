@@ -12,6 +12,7 @@ import {
 } from '~/utils/ast';
 
 import Children from './children';
+import { ICON_MAP } from './icon-map';
 import Items from './items';
 
 interface Props {
@@ -41,6 +42,16 @@ const normalizeToHex = (value: string): string => {
   }
   return '#000000';
 };
+
+const ICON_OPTIONS = Object.entries(ICON_MAP).map(([name, Icon]) => ({
+  label: (
+    <span className="flex items-center gap-2">
+      <Icon size={14} />
+      {name}
+    </span>
+  ),
+  value: name,
+}));
 
 const Field = ({ binding, id, value, onChange }: Props) => {
   const parsedValue = useMemo(() => {
@@ -229,6 +240,163 @@ const Field = ({ binding, id, value, onChange }: Props) => {
           }
         }}
       />
+    );
+  }
+
+  if (binding.type === 'date') {
+    return (
+      <div>
+        <Input
+          type="date"
+          defaultValue={stringValue}
+          onBlur={e => {
+            const next = e.target.value.trim();
+            const result = validateBindingValue(binding, next);
+
+            if (!result.valid) {
+              setValidationError(result.message ?? 'Invalid value.');
+              return;
+            }
+
+            setValidationError(null);
+
+            if (next && next !== value) {
+              onChange?.({
+                id,
+                label: binding.label,
+                value: next,
+              });
+            }
+          }}
+        />
+        {validationError && (
+          <p className="mt-1 text-xs text-red-500">{validationError}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (binding.type === 'url') {
+    return (
+      <div>
+        <Input
+          type="url"
+          defaultValue={stringValue}
+          placeholder="https://example.com"
+          onBlur={e => {
+            const next = e.target.value.trim();
+            const result = validateBindingValue(binding, next);
+
+            if (!result.valid) {
+              setValidationError(result.message ?? 'Invalid value.');
+              return;
+            }
+
+            setValidationError(null);
+
+            if (next && next !== value) {
+              onChange?.({
+                id,
+                label: binding.label,
+                value: next,
+              });
+            }
+          }}
+        />
+        {validationError && (
+          <p className="mt-1 text-xs text-red-500">{validationError}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (binding.type === 'icon-picker') {
+    const SelectedIcon = ICON_MAP[stringValue];
+
+    return (
+      <div className="flex items-center gap-2">
+        <Select
+          value={stringValue}
+          options={ICON_OPTIONS}
+          onChange={next => {
+            if (next !== value) {
+              onChange?.({
+                id,
+                label: binding.label,
+                value: next,
+              });
+            }
+          }}
+        />
+        {SelectedIcon && <SelectedIcon size={18} className="shrink-0" />}
+      </div>
+    );
+  }
+
+  if (binding.type === 'asset-picker') {
+    return (
+      <div className="space-y-2">
+        {stringValue && (
+          <img
+            src={stringValue}
+            alt=""
+            className="h-20 w-20 rounded border border-gray-200 object-cover"
+          />
+        )}
+        <Input
+          defaultValue={stringValue}
+          placeholder="Enter an image URL"
+          onBlur={e => {
+            const next = e.target.value.trim();
+            const result = validateBindingValue(binding, next);
+
+            if (!result.valid) {
+              setValidationError(result.message ?? 'Invalid value.');
+              return;
+            }
+
+            setValidationError(null);
+
+            if (next !== value) {
+              onChange?.({
+                id,
+                label: binding.label,
+                value: next,
+              });
+            }
+          }}
+        />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={e => {
+            const file = e.target.files?.[0];
+
+            if (!file) {
+              return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = () => {
+              const dataUrl = reader.result;
+
+              if (typeof dataUrl === 'string') {
+                onChange?.({
+                  id,
+                  label: binding.label,
+                  value: dataUrl,
+                });
+              }
+            };
+
+            reader.readAsDataURL(file);
+          }}
+        />
+        {validationError && (
+          <p className="mt-1 text-xs text-red-500">{validationError}</p>
+        )}
+      </div>
     );
   }
 

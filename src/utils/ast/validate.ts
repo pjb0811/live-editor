@@ -48,5 +48,19 @@ export const validateBindingValue = (
     }
   }
 
+  if (typeof value === 'string' && binding.type === 'url') {
+    try {
+      new URL(value);
+    } catch {
+      return { valid: false, message: 'Must be a valid URL.' };
+    }
+  }
+
+  if (typeof value === 'string' && binding.type === 'date') {
+    if (Number.isNaN(Date.parse(value))) {
+      return { valid: false, message: 'Must be a valid date.' };
+    }
+  }
+
   return VALID;
 };
