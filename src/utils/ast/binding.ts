@@ -155,6 +155,10 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
                     'color',
                     'jsx',
                     'richtext',
+                    'date',
+                    'url',
+                    'icon-picker',
+                    'asset-picker',
                   ].includes(typeValue)
                 ) {
                   binding.type = typeValue as BindingType;

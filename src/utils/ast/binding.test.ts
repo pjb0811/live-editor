@@ -53,6 +53,18 @@ describe('parseBinding', () => {
     expect(result[0]).not.toHaveProperty('type');
   });
 
+  it.each(['date', 'url', 'icon-picker', 'asset-picker'])(
+    'accepts %s as a valid type value',
+    typeValue => {
+      const result = parseBinding(
+        `[{label: 'X', property: 'y', type: '${typeValue}'}]`,
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveProperty('type', typeValue);
+    },
+  );
+
   it('extracts both type and property on nested render leaves', () => {
     const result = parseBinding(`
       [{

@@ -33,7 +33,11 @@ export type BindingType =
   | 'boolean'
   | 'color'
   | 'jsx'
-  | 'richtext';
+  | 'richtext'
+  | 'date'
+  | 'url'
+  | 'icon-picker'
+  | 'asset-picker';
 
 export interface BindingRenderLeaf {
   type: BindingType;

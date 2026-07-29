@@ -30,8 +30,8 @@ importers:
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.3)
       '@jbpark/ui-kit':
-        specifier: ^2.3.4
-        version: 2.3.4(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(gsap@3.14.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^3.2.0
+        version: 3.2.0(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@jbpark/use-hooks':
         specifier: ^2.4.0
         version: 2.4.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -58,7 +58,7 @@ importers:
         version: 4.25.4(@babel/runtime@7.28.6)(@codemirror/autocomplete@6.20.0)(@codemirror/language@6.12.1)(@codemirror/lint@6.9.2)(@codemirror/search@6.6.0)(@codemirror/state@6.5.4)(@codemirror/theme-one-dark@6.1.3)(@codemirror/view@6.39.11)(codemirror@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       antd:
         specifier: ^6.2.0
-        version: 6.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 6.2.0(date-fns@4.4.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.3)
@@ -391,6 +391,9 @@ packages:
   '@codemirror/view@6.39.11':
     resolution: {integrity: sha512-bWdeR8gWM87l4DB/kYSF9A+dVackzDb/V56Tq7QVrQ7rn86W0rgZFtlL3g3pem6AeGcb9NQNoy3ao4WpW4h5tQ==}
 
+  '@date-fns/tz@1.5.0':
+    resolution: {integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==}
+
   '@dnd-kit/accessibility@3.1.1':
     resolution: {integrity: sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw==}
     peerDependencies:
@@ -682,14 +685,20 @@ packages:
     resolution: {integrity: sha512-ZT55BDLV0yv0RBm2czMiZ+SqCGO7AvmOM3G/w2xhVPH+te0aKgFjmBvGlL1dH+ql2tgGO3MVrbb3jCKyvpgnxA==}
     engines: {node: 20 || >=22}
 
-  '@jbpark/ui-kit@2.3.4':
-    resolution: {integrity: sha512-e4uwDhftdZlA0azf4nbF5hWA/2C6vv0SFoLlNeNiuqSr2S3UTWvQp+UlpE3DmW0nGVwtVteR3Uz+hl0gf3Swqg==}
+  '@jbpark/ui-kit@3.2.0':
+    resolution: {integrity: sha512-ZvIeeP7XWQsMp3OMz4hL4CFPsNRlsCkrUHdZ6fz0C07Zio4sBDwcZaOxBFIrt3Ygxe6QU4ya6y8/JfB+y5DJqQ==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
   '@jbpark/use-hooks@2.4.0':
     resolution: {integrity: sha512-nKo/TGmtqTVV3HC0Q7z1wV2jmtUdDuQ6feIsTjpJKVN1PUBVQEDsIUhSMu8AzuDgwcdBXQ+P+gNRKh0eEAy2SQ==}
+    peerDependencies:
+      react: ^19.1.1
+      react-dom: ^19.1.1
+
+  '@jbpark/use-hooks@2.6.0':
+    resolution: {integrity: sha512-OofmeebAYntUcPnSKp8BdBVkeksg6bk7Dcu6ZIJmn/2aY+9rtAgWw+HoJyYzlk/xTfdbSxJ6olcSdgH/GbryNw==}
     peerDependencies:
       react: ^19.1.1
       react-dom: ^19.1.1
@@ -2441,13 +2450,6 @@ packages:
     resolution: {integrity: sha512-LZ2NqIHFhvFwxG0qZeLL9DvdNAHPGCY5dIRwBhyYeU+LfLhcStE1ImjsuTG/WaVh3XysGaeLW8Rqq7cGkPCFvw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@uidotdev/usehooks@2.4.1':
-    resolution: {integrity: sha512-1I+RwWyS+kdv3Mv0Vmc+p0dPYH0DTRAo04HLyXReYBL9AeseDWUJyi4THuksBJcu9F0Pih69Ak150VDnqbVnXg==}
-    engines: {node: '>=16'}
-    peerDependencies:
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
-
   '@uiw/codemirror-extensions-basic-setup@4.25.4':
     resolution: {integrity: sha512-YzNwkm0AbPv1EXhCHYR5v0nqfemG2jEB0Z3Att4rBYqKrlG7AA9Rhjc3IyBaOzsBu18wtrp9/+uhTyu7TXSRng==}
     peerDependencies:
@@ -2766,6 +2768,9 @@ packages:
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
+  date-fns@4.4.0:
+    resolution: {integrity: sha512-+1UMbeh68lH1SegH83CGWwpb6OHHbpSgr3+s5Eww5M4CAgswBpoWS0AjTOfEJ33HiYKz1hdj/KTFprzXHmq/6w==}
+
   dayjs@1.11.19:
     resolution: {integrity: sha512-t5EcLVS6QPBNqM2z8fakk/NKel+Xzshgt8FFKAn+qwlD1pzZWxh0nVCrvFK7ZDb6XucZeF9z8C7CBWTRIVApAw==}
 
@@ -3071,8 +3076,8 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
-  gsap@3.14.2:
-    resolution: {integrity: sha512-P8/mMxVLU7o4+55+1TCnQrPmgjPKnwkzkXOK1asnR9Jg2lna4tEY5qBJjMmAaOBDDZWtlRjBXjLa0w53G/uBLA==}
+  gsap@3.15.0:
+    resolution: {integrity: sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==}
 
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -3713,6 +3718,16 @@ packages:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
 
+  react-day-picker@10.0.1:
+    resolution: {integrity: sha512-eNh6BlwcYInWaJtRv18mXQ06Ys/H6rdTZAnTaSdOYJuTpwP1JMCHNd1FDRadA+gbeinq+psdULN5Xnowy9mV8w==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/react': '>=16.8.0'
+      react: '>=16.8.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
   react-dom@19.2.3:
     resolution: {integrity: sha512-yELu4WmLPw5Mr/lmeEpox5rw3RETacE++JgHqQzd2dg+YbJuat3jH4ingc+WPZhxaoFzdv9y33G+F7Nl5O0GBg==}
     peerDependencies:
@@ -3744,6 +3759,12 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  react-resizable-panels@4.12.2:
+    resolution: {integrity: sha512-NwY5LCo4WrxVvDh0xoMML6EMLPONP/8ckKcIdpnojxexoatZdjLiRqLJQjQK5CPkd4SYiB/2M5BVrjZBQtOO7Q==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
 
   react-router-dom@7.12.0:
     resolution: {integrity: sha512-pfO9fiBcpEfX4Tx+iTYKDtPbrSLLCbwJ5EqP+SPYQu1VYCXdy79GSj0wttR0U4cikVdlImZuEZ/9ZNCgoaxwBA==}
@@ -4724,6 +4745,8 @@ snapshots:
       style-mod: 4.1.3
       w3c-keyname: 2.2.8
 
+  '@date-fns/tz@1.5.0': {}
+
   '@dnd-kit/accessibility@3.1.1(react@19.2.3)':
     dependencies:
       react: 19.2.3
@@ -4917,9 +4940,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@gsap/react@2.1.2(gsap@3.14.2)(react@19.2.3)':
+  '@gsap/react@2.1.2(gsap@3.15.0)(react@19.2.3)':
     dependencies:
-      gsap: 3.14.2
+      gsap: 3.15.0
       react: 19.2.3
 
   '@humanfs/core@0.19.1': {}
@@ -4946,10 +4969,10 @@ snapshots:
     dependencies:
       '@isaacs/balanced-match': 4.0.1
 
-  '@jbpark/ui-kit@2.3.4(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(gsap@3.14.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@jbpark/ui-kit@3.2.0(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@gsap/react': 2.1.2(gsap@3.14.2)(react@19.2.3)
-      '@jbpark/use-hooks': 2.4.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@gsap/react': 2.1.2(gsap@3.15.0)(react@19.2.3)
+      '@jbpark/use-hooks': 2.6.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-accordion': 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-checkbox': 1.3.3(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-dialog': 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -4958,16 +4981,19 @@ snapshots:
       '@radix-ui/react-progress': 1.1.8(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-slot': 1.2.4(@types/react@19.2.8)(react@19.2.3)
       '@radix-ui/react-switch': 1.2.6(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@uidotdev/usehooks': 2.4.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       class-variance-authority: 0.7.1
       clsx: 2.1.1
+      date-fns: 4.4.0
+      gsap: 3.15.0
       lucide-react: 0.542.0(react@19.2.3)
       motion: 12.34.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       postcss: 8.5.6
       radix-ui: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
       react-colorful: 5.6.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      react-day-picker: 10.0.1(@types/react@19.2.8)(react@19.2.3)
       react-dom: 19.2.3(react@19.2.3)
+      react-resizable-panels: 4.12.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react-use: 17.6.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       swiper: 11.2.10
       tailwind-merge: 3.4.0
@@ -4978,9 +5004,13 @@ snapshots:
       - '@emotion/is-prop-valid'
       - '@types/react'
       - '@types/react-dom'
-      - gsap
 
   '@jbpark/use-hooks@2.4.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+
+  '@jbpark/use-hooks@2.6.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
@@ -6050,7 +6080,7 @@ snapshots:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
-  '@rc-component/picker@1.9.0(dayjs@1.11.19)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@rc-component/picker@1.9.0(date-fns@4.4.0)(dayjs@1.11.19)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@rc-component/overflow': 1.0.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@rc-component/resize-observer': 1.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -6060,6 +6090,7 @@ snapshots:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
     optionalDependencies:
+      date-fns: 4.4.0
       dayjs: 1.11.19
 
   '@rc-component/portal@2.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
@@ -6816,11 +6847,6 @@ snapshots:
       '@typescript-eslint/types': 8.53.0
       eslint-visitor-keys: 4.2.1
 
-  '@uidotdev/usehooks@2.4.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
-    dependencies:
-      react: 19.2.3
-      react-dom: 19.2.3(react@19.2.3)
-
   '@uiw/codemirror-extensions-basic-setup@4.25.4(@codemirror/autocomplete@6.20.0)(@codemirror/commands@6.10.1)(@codemirror/language@6.12.1)(@codemirror/lint@6.9.2)(@codemirror/search@6.6.0)(@codemirror/state@6.5.4)(@codemirror/view@6.39.11)':
     dependencies:
       '@codemirror/autocomplete': 6.20.0
@@ -7017,7 +7043,7 @@ snapshots:
 
   ansis@4.2.0: {}
 
-  antd@6.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+  antd@6.2.0(date-fns@4.4.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
       '@ant-design/colors': 8.0.1
       '@ant-design/cssinjs': 2.0.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -7043,7 +7069,7 @@ snapshots:
       '@rc-component/mutate-observer': 2.0.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@rc-component/notification': 1.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@rc-component/pagination': 1.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@rc-component/picker': 1.9.0(dayjs@1.11.19)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@rc-component/picker': 1.9.0(date-fns@4.4.0)(dayjs@1.11.19)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@rc-component/progress': 1.0.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@rc-component/qrcode': 1.1.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@rc-component/rate': 1.0.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -7211,6 +7237,8 @@ snapshots:
       source-map: 0.6.1
 
   csstype@3.2.3: {}
+
+  date-fns@4.4.0: {}
 
   dayjs@1.11.19: {}
 
@@ -7516,7 +7544,7 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  gsap@3.14.2: {}
+  gsap@3.15.0: {}
 
   has-flag@4.0.0: {}
 
@@ -8092,6 +8120,14 @@ snapshots:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
+  react-day-picker@10.0.1(@types/react@19.2.8)(react@19.2.3):
+    dependencies:
+      '@date-fns/tz': 1.5.0
+      date-fns: 4.4.0
+      react: 19.2.3
+    optionalDependencies:
+      '@types/react': 19.2.8
+
   react-dom@19.2.3(react@19.2.3):
     dependencies:
       react: 19.2.3
@@ -8119,6 +8155,11 @@ snapshots:
       use-sidecar: 1.1.3(@types/react@19.2.8)(react@19.2.3)
     optionalDependencies:
       '@types/react': 19.2.8
+
+  react-resizable-panels@4.12.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    dependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
 
   react-router-dom@7.12.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
