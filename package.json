@@ -65,6 +65,7 @@
   "scripts": {
     "dev": "vite",
     "build": "pnpm check-types && tsdown",
+    "build:demo": "vite build --outDir dist-demo",
     "check-types": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run",
