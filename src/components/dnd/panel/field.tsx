@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react';
 
-import { Checkbox, ColorPicker, Input, Select } from '@jbpark/ui-kit';
+import {
+  Checkbox,
+  ColorPicker,
+  DatePicker,
+  Input,
+  Select,
+  Upload,
+  type UploadFile,
+} from '@jbpark/ui-kit';
 
 import CoreEditor from '~/components/editor/core';
 import TiptapEditor from '~/components/editor/tiptap';
@@ -41,6 +49,27 @@ const normalizeToHex = (value: string): string => {
     return trimmed;
   }
   return '#000000';
+};
+
+const parseDateValue = (value: string): Date | undefined => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+
+  if (!match) {
+    return undefined;
+  }
+
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+
+  return Number.isNaN(date.getTime()) ? undefined : date;
+};
+
+const formatDateValue = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 };
 
 const ICON_OPTIONS = Object.entries(ICON_MAP).map(([name, Icon]) => ({
@@ -246,11 +275,10 @@ const Field = ({ binding, id, value, onChange }: Props) => {
   if (binding.type === 'date') {
     return (
       <div>
-        <Input
-          type="date"
-          defaultValue={stringValue}
-          onBlur={e => {
-            const next = e.target.value.trim();
+        <DatePicker
+          defaultValue={parseDateValue(stringValue)}
+          onChange={date => {
+            const next = date ? formatDateValue(date) : '';
             const result = validateBindingValue(binding, next);
 
             if (!result.valid) {
@@ -260,7 +288,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
 
             setValidationError(null);
 
-            if (next && next !== value) {
+            if (next !== value) {
               onChange?.({
                 id,
                 label: binding.label,
@@ -334,15 +362,18 @@ const Field = ({ binding, id, value, onChange }: Props) => {
   }
 
   if (binding.type === 'asset-picker') {
+    const defaultUploadValue: UploadFile[] = stringValue
+      ? [
+          {
+            uid: 'current',
+            name: stringValue.split('/').pop() || 'asset',
+            url: stringValue,
+          },
+        ]
+      : [];
+
     return (
       <div className="space-y-2">
-        {stringValue && (
-          <img
-            src={stringValue}
-            alt=""
-            className="h-20 w-20 rounded border border-gray-200 object-cover"
-          />
-        )}
         <Input
           defaultValue={stringValue}
           placeholder="Enter an image URL"
@@ -366,31 +397,21 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             }
           }}
         />
-        <input
-          type="file"
+        <Upload
+          multiple={false}
+          maxCount={1}
           accept="image/*"
-          onChange={e => {
-            const file = e.target.files?.[0];
+          defaultValue={defaultUploadValue}
+          onChange={files => {
+            const next = files[0]?.url ?? '';
 
-            if (!file) {
-              return;
+            if (next !== value) {
+              onChange?.({
+                id,
+                label: binding.label,
+                value: next,
+              });
             }
-
-            const reader = new FileReader();
-
-            reader.onload = () => {
-              const dataUrl = reader.result;
-
-              if (typeof dataUrl === 'string') {
-                onChange?.({
-                  id,
-                  label: binding.label,
-                  value: dataUrl,
-                });
-              }
-            };
-
-            reader.readAsDataURL(file);
           }}
         />
         {validationError && (
