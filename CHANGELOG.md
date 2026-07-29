@@ -1,5 +1,10 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## 0.2.0
 
 ### Minor Changes
@@ -8,28 +13,19 @@
 - 0468952: Prevent incorrect replacements in JSX placeholders by using function-based replacements to handle special characters.
 - 85c3395: Introduce new binding properties and improve the handling of data attributes in the drag-and-drop panel.
 
-All notable changes to this project will be documented in this file.
+## 0.1.0
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### Minor Changes
 
-## [Unreleased]
+- Add commit message generation feature
+- Add publish checklist
+- Add changelog auto-update workflow
+- Change CI/CD configuration
 
-<!-- next-bump: major -->
-
-### Removed
+### Patch Changes
 
 - Remove .changeset/README.md
 - Remove changeset config files
 - Remove commit message generation guide (English)
 - Remove commit message generation guide (Korean)
 - Remove commit message convention
-
-## [0.1.0] - 2026-07-05
-
-### Added
-
-- Add commit message generation feature
-- Add publish checklist
-- Add changelog auto-update workflow
-- Change CI/CD configuration
