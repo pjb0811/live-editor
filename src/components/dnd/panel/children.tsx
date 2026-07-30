@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { Button, Checkbox } from '@jbpark/ui-kit';
+import { useMultiSelect } from '@jbpark/use-hooks';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
@@ -8,11 +9,7 @@ import { type DataAttrNode, findEditableChildren } from '~/utils/ast';
 
 import { BulkActionsBar } from './items';
 import Node from './node';
-import {
-  moveSelectedIndices,
-  removeIndices,
-  useMultiSelect,
-} from './selection';
+import { moveSelectedIndices, removeIndices } from './selection';
 
 interface Props {
   value: DataAttrNode[];

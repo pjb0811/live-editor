@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 import { Button, Checkbox } from '@jbpark/ui-kit';
+import { useMultiSelect } from '@jbpark/use-hooks';
 import { ArrowDown, ArrowUp, Copy, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
@@ -27,11 +28,7 @@ import {
 
 import Field from './field';
 import Node from './node';
-import {
-  moveSelectedIndices,
-  removeIndices,
-  useMultiSelect,
-} from './selection';
+import { moveSelectedIndices, removeIndices } from './selection';
 
 interface ItemProperty extends ExtractedNodeValue {
   astNode: t.Node;
