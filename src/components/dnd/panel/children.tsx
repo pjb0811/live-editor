@@ -1,12 +1,15 @@
 import { useMemo } from 'react';
 
-import { Button } from '@jbpark/ui-kit';
+import { Button, Checkbox } from '@jbpark/ui-kit';
+import { useMultiSelect } from '@jbpark/use-hooks';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
 import { type DataAttrNode, findEditableChildren } from '~/utils/ast';
 
+import { BulkActionsBar } from './items';
 import Node from './node';
+import { moveSelectedIndices, removeIndices } from './selection';
 
 interface Props {
   value: DataAttrNode[];
@@ -16,6 +19,8 @@ interface Props {
 
 const Children = ({ value, onChange, onNodeChange }: Props) => {
   const items = useMemo(() => (Array.isArray(value) ? value : []), [value]);
+
+  const selection = useMultiSelect(items.length);
 
   const editableChildrenMap = useMemo(() => {
     const map = new Map<number, DataAttrNode[]>();
@@ -36,14 +41,30 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
     onChange?.(JSON.stringify(nextItems));
   };
 
-  const deleteItem = (index: number) => {
-    if (items.length <= 1) {
+  const moveSelectedItems = (
+    indices: Set<number>,
+    direction: 'up' | 'down',
+  ) => {
+    const { items: nextItems, indices: nextIndices } = moveSelectedIndices(
+      items,
+      indices,
+      direction,
+    );
+
+    selection.replace(nextIndices);
+    onChange?.(JSON.stringify(nextItems));
+  };
+
+  const deleteSelectedItems = (indices: Set<number>) => {
+    if (items.length - indices.size < 1) {
       return;
     }
 
-    const nextItems = items.filter((_, i) => i !== index);
+    const nextItems = removeIndices(items, indices);
     onChange?.(JSON.stringify(nextItems));
   };
+
+  const deleteItem = (index: number) => deleteSelectedItems(new Set([index]));
 
   const addItem = () => {
     const template = items[0] || createDefaultItem();
@@ -51,6 +72,20 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
 
     const nextItems = [...items, newItem];
     onChange?.(JSON.stringify(nextItems));
+  };
+
+  const duplicateSelectedItems = (indices: Set<number>) => {
+    const sources = [...indices]
+      .sort((a, b) => a - b)
+      .map(index => items[index])
+      .filter((item): item is DataAttrNode => Boolean(item));
+
+    if (sources.length === 0) {
+      return;
+    }
+
+    const clones = sources.map(cloneDataAttrNode);
+    onChange?.(JSON.stringify([...items, ...clones]));
   };
 
   const createDefaultItem = (): DataAttrNode => ({
@@ -92,14 +127,38 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
           Add Child
         </Button>
       </div>
+
+      <BulkActionsBar
+        count={selection.selected.size}
+        onDuplicate={() => duplicateSelectedItems(selection.selected)}
+        onMoveUp={() => moveSelectedItems(selection.selected, 'up')}
+        onMoveDown={() => moveSelectedItems(selection.selected, 'down')}
+        onDelete={() => {
+          deleteSelectedItems(selection.selected);
+          selection.clear();
+        }}
+        onClear={selection.clear}
+      />
+
       {items.map((item, itemIndex) => (
         <div
           key={item.id || itemIndex}
           className="space-y-2 rounded border border-green-200 bg-green-50 p-3"
         >
           <div className="flex items-center justify-between">
-            <div className="text-xs font-medium text-green-800">
-              Child {itemIndex + 1} ({item.tagName || 'fragment'})
+            <div className="flex items-center space-x-2">
+              <div
+                onClick={e => selection.toggle(itemIndex, e.shiftKey)}
+                className="inline-flex"
+              >
+                <Checkbox
+                  checked={selection.isSelected(itemIndex)}
+                  onChange={() => {}}
+                />
+              </div>
+              <div className="text-xs font-medium text-green-800">
+                Child {itemIndex + 1} ({item.tagName || 'fragment'})
+              </div>
             </div>
 
             <div className="flex space-x-1">

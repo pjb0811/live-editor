@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 
 import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
-import { Button } from '@jbpark/ui-kit';
-import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
+import { Button, Checkbox } from '@jbpark/ui-kit';
+import { useMultiSelect } from '@jbpark/use-hooks';
+import { ArrowDown, ArrowUp, Copy, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
 import { BINDING_PROP } from '~/enums';
@@ -27,6 +28,7 @@ import {
 
 import Field from './field';
 import Node from './node';
+import { moveSelectedIndices, removeIndices } from './selection';
 
 interface ItemProperty extends ExtractedNodeValue {
   astNode: t.Node;
@@ -58,6 +60,67 @@ interface Props {
     value: string;
   }) => void;
 }
+
+interface BulkActionsBarProps {
+  count: number;
+  onDuplicate: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDelete: () => void;
+  onClear: () => void;
+}
+
+const BulkActionsBar = ({
+  count,
+  onDuplicate,
+  onMoveUp,
+  onMoveDown,
+  onDelete,
+  onClear,
+}: BulkActionsBarProps) => {
+  if (count === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className="flex items-center justify-between rounded border
+        border-blue-200 bg-blue-50 p-2"
+    >
+      <div className="text-xs font-medium text-blue-700">{count} selected</div>
+      <div className="flex items-center space-x-1">
+        <Button
+          size="small"
+          icon={<Copy />}
+          title="Duplicate selected"
+          onClick={onDuplicate}
+        />
+        <Button
+          size="small"
+          icon={<ArrowUp />}
+          title="Move selected up"
+          onClick={onMoveUp}
+        />
+        <Button
+          size="small"
+          icon={<ArrowDown />}
+          title="Move selected down"
+          onClick={onMoveDown}
+        />
+        <Button
+          danger
+          size="small"
+          icon={<X />}
+          title="Delete selected"
+          onClick={onDelete}
+        />
+        <Button size="small" onClick={onClear}>
+          Clear
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 const Items = ({ value, render, onChange, onChildChange }: Props) => {
   const { objectItems, primitiveItems, allElements } = useMemo(() => {
@@ -151,6 +214,10 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
   const isPrimitive = primitiveItems.length > 0 && objectItems.length === 0;
 
+  const selection = useMultiSelect(
+    isPrimitive ? primitiveItems.length : objectItems.length,
+  );
+
   const updatePrimitive = (index: number, next: string) => {
     const ast = parseArrayExpression(value);
 
@@ -184,15 +251,18 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     onChange?.(generateCode(t.arrayExpression(nextElements)));
   };
 
-  const deletePrimitive = (index: number) => {
-    if (allElements.length <= 1) {
+  const deleteSelectedPrimitives = (indices: Set<number>) => {
+    if (allElements.length - indices.size < 1) {
       return;
     }
 
-    const nextElements = allElements.filter((_, i) => i !== index);
+    const nextElements = removeIndices(allElements, indices);
 
     onChange?.(generateCode(t.arrayExpression(nextElements)));
   };
+
+  const deletePrimitive = (index: number) =>
+    deleteSelectedPrimitives(new Set([index]));
 
   const addPrimitive = () => {
     const first = primitiveItems[0];
@@ -208,6 +278,34 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     }
 
     onChange?.(generateCode(t.arrayExpression([...allElements, newNode])));
+  };
+
+  const duplicateSelectedPrimitives = (indices: Set<number>) => {
+    const clones = [...indices]
+      .sort((a, b) => a - b)
+      .map(index => allElements[index])
+      .filter((node): node is t.Expression => Boolean(node))
+      .map(node => clone(node) as t.Expression);
+
+    if (clones.length === 0) {
+      return;
+    }
+
+    onChange?.(generateCode(t.arrayExpression([...allElements, ...clones])));
+  };
+
+  const moveSelectedPrimitives = (
+    indices: Set<number>,
+    direction: 'up' | 'down',
+  ) => {
+    const { items: nextElements, indices: nextIndices } = moveSelectedIndices(
+      allElements,
+      indices,
+      direction,
+    );
+
+    selection.replace(nextIndices);
+    onChange?.(generateCode(t.arrayExpression(nextElements)));
   };
 
   const moveItem = (fromIndex: number, toIndex: number) => {
@@ -317,14 +415,12 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     onChange?.(nextValue);
   };
 
-  const deleteItem = (index: number) => {
-    if (objectItems.length <= 1) {
+  const deleteSelectedItems = (indices: Set<number>) => {
+    if (objectItems.length - indices.size < 1) {
       return;
     }
 
-    const nextItems = objectItems.filter(
-      (_: ItemData, i: number) => i !== index,
-    );
+    const nextItems = removeIndices(objectItems, indices);
     const nextValue = arrayExpressionToCode(
       nextItems.map((item: ItemData) => item.originalElement),
     );
@@ -332,17 +428,15 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     onChange?.(nextValue);
   };
 
-  const addItem = () => {
-    const firstItem = objectItems[0]!;
+  const deleteItem = (index: number) => deleteSelectedItems(new Set([index]));
 
-    const clonedElement = clone(
-      firstItem.originalElement,
-    ) as t.ObjectExpression;
+  const cloneObjectItemElement = (source: ItemData): t.ObjectExpression => {
+    const clonedElement = clone(source.originalElement) as t.ObjectExpression;
 
     clonedElement.properties.forEach(prop => {
       if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) {
         const key = prop.key.name;
-        const editableProp = firstItem.editableProperties[key];
+        const editableProp = source.editableProperties[key];
 
         if (key === 'key' && t.isStringLiteral(prop.value)) {
           const originalKey = prop.value.value;
@@ -364,6 +458,12 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
       }
     });
 
+    return clonedElement;
+  };
+
+  const addItem = () => {
+    const firstItem = objectItems[0]!;
+    const clonedElement = cloneObjectItemElement(firstItem);
     const editableProperties = extractObjectProperties(clonedElement);
 
     const nextItems = [...objectItems];
@@ -376,6 +476,44 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     };
 
     nextItems.push(newItemData);
+
+    const nextValue = arrayExpressionToCode(
+      nextItems.map(item => item.originalElement),
+    );
+
+    onChange?.(nextValue);
+  };
+
+  const duplicateSelectedItems = (indices: Set<number>) => {
+    const sources = [...indices]
+      .sort((a, b) => a - b)
+      .map(index => objectItems[index])
+      .filter((item): item is ItemData => Boolean(item));
+
+    if (sources.length === 0) {
+      return;
+    }
+
+    const clonedElements = sources.map(cloneObjectItemElement);
+    const nextValue = arrayExpressionToCode([
+      ...objectItems.map(item => item.originalElement),
+      ...clonedElements,
+    ]);
+
+    onChange?.(nextValue);
+  };
+
+  const moveSelectedItems = (
+    indices: Set<number>,
+    direction: 'up' | 'down',
+  ) => {
+    const { items: nextItems, indices: nextIndices } = moveSelectedIndices(
+      objectItems,
+      indices,
+      direction,
+    );
+
+    selection.replace(nextIndices);
 
     const nextValue = arrayExpressionToCode(
       nextItems.map(item => item.originalElement),
@@ -402,31 +540,54 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           </Button>
         </div>
 
+        <BulkActionsBar
+          count={selection.selected.size}
+          onDuplicate={() => duplicateSelectedPrimitives(selection.selected)}
+          onMoveUp={() => moveSelectedPrimitives(selection.selected, 'up')}
+          onMoveDown={() => moveSelectedPrimitives(selection.selected, 'down')}
+          onDelete={() => {
+            deleteSelectedPrimitives(selection.selected);
+            selection.clear();
+          }}
+          onClear={selection.clear}
+        />
+
         {primitiveItems.map((item, i) => (
           <div
             key={item.id}
             className="space-y-2 rounded border border-gray-100 bg-gray-50 p-2"
           >
-            <div className="flex justify-end space-x-1">
-              <Button
-                size="small"
-                icon={<ArrowUp />}
-                disabled={i === 0}
-                onClick={() => movePrimitive(item.index, item.index - 1)}
-              />
-              <Button
-                size="small"
-                icon={<ArrowDown />}
-                disabled={i === primitiveItems.length - 1}
-                onClick={() => movePrimitive(item.index, item.index + 1)}
-              />
-              <Button
-                danger
-                size="small"
-                icon={<X />}
-                disabled={primitiveItems.length <= 1}
-                onClick={() => deletePrimitive(item.index)}
-              />
+            <div className="flex items-center justify-between space-x-1">
+              <div
+                onClick={e => selection.toggle(item.index, e.shiftKey)}
+                className="inline-flex"
+              >
+                <Checkbox
+                  checked={selection.isSelected(item.index)}
+                  onChange={() => {}}
+                />
+              </div>
+              <div className="flex space-x-1">
+                <Button
+                  size="small"
+                  icon={<ArrowUp />}
+                  disabled={i === 0}
+                  onClick={() => movePrimitive(item.index, item.index - 1)}
+                />
+                <Button
+                  size="small"
+                  icon={<ArrowDown />}
+                  disabled={i === primitiveItems.length - 1}
+                  onClick={() => movePrimitive(item.index, item.index + 1)}
+                />
+                <Button
+                  danger
+                  size="small"
+                  icon={<X />}
+                  disabled={primitiveItems.length <= 1}
+                  onClick={() => deletePrimitive(item.index)}
+                />
+              </div>
             </div>
             <Field
               binding={{
@@ -460,10 +621,33 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
         </Button>
       </div>
 
+      <BulkActionsBar
+        count={selection.selected.size}
+        onDuplicate={() => duplicateSelectedItems(selection.selected)}
+        onMoveUp={() => moveSelectedItems(selection.selected, 'up')}
+        onMoveDown={() => moveSelectedItems(selection.selected, 'down')}
+        onDelete={() => {
+          deleteSelectedItems(selection.selected);
+          selection.clear();
+        }}
+        onClear={selection.clear}
+      />
+
       {objectItems.map(item => (
         <div key={item.id} className="space-y-3 rounded border bg-gray-50 p-3">
           <div className="flex items-center justify-between">
-            <div className="text-xs font-medium">Item {item.index + 1}</div>
+            <div className="flex items-center space-x-2">
+              <div
+                onClick={e => selection.toggle(item.index, e.shiftKey)}
+                className="inline-flex"
+              >
+                <Checkbox
+                  checked={selection.isSelected(item.index)}
+                  onChange={() => {}}
+                />
+              </div>
+              <div className="text-xs font-medium">Item {item.index + 1}</div>
+            </div>
             <div className="flex space-x-1">
               <Button
                 size="small"
@@ -567,3 +751,4 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 };
 
 export default Items;
+export { BulkActionsBar };

@@ -33,8 +33,8 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@jbpark/use-hooks':
-        specifier: ^2.4.0
-        version: 2.4.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^2.7.0
+        version: 2.7.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tailwindcss/vite':
         specifier: ^4.1.13
         version: 4.1.18(vite@7.3.1(@types/node@24.10.9)(jiti@2.6.1)(lightningcss@1.30.2)(yaml@2.8.2))
@@ -691,14 +691,8 @@ packages:
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
 
-  '@jbpark/use-hooks@2.4.0':
-    resolution: {integrity: sha512-nKo/TGmtqTVV3HC0Q7z1wV2jmtUdDuQ6feIsTjpJKVN1PUBVQEDsIUhSMu8AzuDgwcdBXQ+P+gNRKh0eEAy2SQ==}
-    peerDependencies:
-      react: ^19.1.1
-      react-dom: ^19.1.1
-
-  '@jbpark/use-hooks@2.6.0':
-    resolution: {integrity: sha512-OofmeebAYntUcPnSKp8BdBVkeksg6bk7Dcu6ZIJmn/2aY+9rtAgWw+HoJyYzlk/xTfdbSxJ6olcSdgH/GbryNw==}
+  '@jbpark/use-hooks@2.7.0':
+    resolution: {integrity: sha512-s+VzkxxwLJ6gWBc3FwLsVl7K03KsEj5w6EgctpNz0Ui328lh/+uw4JQS5Esb48spP4FCk9n8PQt0ErS+/l5MbA==}
     peerDependencies:
       react: ^19.1.1
       react-dom: ^19.1.1
@@ -4972,7 +4966,7 @@ snapshots:
   '@jbpark/ui-kit@3.2.0(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@gsap/react': 2.1.2(gsap@3.15.0)(react@19.2.3)
-      '@jbpark/use-hooks': 2.6.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@jbpark/use-hooks': 2.7.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-accordion': 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-checkbox': 1.3.3(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@radix-ui/react-dialog': 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -5005,12 +4999,7 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  '@jbpark/use-hooks@2.4.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
-    dependencies:
-      react: 19.2.3
-      react-dom: 19.2.3(react@19.2.3)
-
-  '@jbpark/use-hooks@2.6.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@jbpark/use-hooks@2.7.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
