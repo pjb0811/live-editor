@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+### Patch Changes
+
+- 47d5199: No functional changes. Bump past `1.0.0`, which npm permanently refuses to accept (a previously-unpublished exact version number cannot be republished).
+
 ## 1.0.0
 
 ### Major Changes
