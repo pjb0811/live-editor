@@ -34,6 +34,14 @@ describe('parseValue', () => {
     expect(parseValue('{a: 1, b: "x"}')).toEqual({ a: 1, b: 'x' });
   });
 
+  it('round-trips JSON.stringify output (string-literal keys) without losing properties', () => {
+    const original = [
+      { tagName: 'div', attributes: { id: 'x' }, children: [] },
+    ];
+
+    expect(parseValue(JSON.stringify(original))).toEqual(original);
+  });
+
   it('parses an array literal string into a real array', () => {
     expect(parseValue('[1, "x", true]')).toEqual([1, 'x', true]);
   });
