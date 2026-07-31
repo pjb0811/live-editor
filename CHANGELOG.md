@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0
+
+### Minor Changes
+
+- 411ea7d: Remove the Desktop/Tablet/Mobile viewport-size preset toggle and custom width input from the editor toolbar.
+- 23133d5: Fix evaluateLiteral to correctly parse JSON-stringified object keys, fixing data loss when moving or editing items in the Children panel.
+- b96f003: Refactor the data-binding config parser to validate/normalize via Zod schemas instead of manually walking Babel AST nodes field by field, and derive the allowed binding type list from a single source of truth shared with the type definitions.
+- f31e36f: Make the drag-and-drop builder responsive on mobile: the canvas is now full-width, and the component palette and properties panel open as bottom drawers instead of fixed side columns.
+
 ## 1.1.0
 
 ### Minor Changes
