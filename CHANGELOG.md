@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0
+
+### Minor Changes
+
+- 39a40e7: Add multi-select and bulk operations (duplicate, move up/down, delete) to `Panel/Items` and `Panel/Children`, resolving #34. Checkbox-select individual rows or shift-click for range-select; a bulk actions bar appears once anything is selected. Bulk delete/duplicate/move are implemented by generalizing the existing single-item mutation functions (`deleteItem`, `moveItem`, etc.) to operate on an index set rather than introducing a parallel code path. Selection state comes from `@jbpark/use-hooks`'s new `useMultiSelect` (bumped to `^2.7.0`) rather than a local copy, since the same hook is now shared with other list-selection UIs.
+- 39a40e7: Introduce bulk actions for selected items in the drag-and-drop panel, allowing users to duplicate, move, and delete multiple items at once.
+- fb87068: Add viewport presets and custom width input for responsive design in the editor.
+- fb87068: Add a viewport-size toggle (Desktop/Tablet/Mobile presets + custom width input) to the demo app's toolbar, resolving #35. Applied by composing `frame.style.width` on the existing `Live.Preview`/`Live.Dnd` `frame` prop — no changes to `Frame`/`IFrame` themselves.
+
 ## 1.0.1
 
 ### Patch Changes
