@@ -1,84 +1,77 @@
 import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
+import { z } from 'zod';
 
 import { BINDING_PROP, DATA_ATTR } from '../../enums';
-import type {
-  BindingItem,
-  BindingOption,
-  BindingRenderLeaf,
-  BindingRenderMap,
-  BindingType,
-  DataAttrNode,
+import {
+  BINDING_TYPES,
+  type BindingItem,
+  type BindingOption,
+  type BindingRenderMap,
+  type DataAttrNode,
 } from './types';
+import { evaluateLiteral, parseArrayExpression } from './value';
 
-const parseRenderObject = (
-  node: t.ObjectExpression,
-): BindingRenderMap | null => {
+const bindingTypeSchema = z.enum(BINDING_TYPES);
+
+const bindingOptionSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+});
+
+const bindingRenderLeafSchema = z.object({
+  type: bindingTypeSchema,
+  property: z.string().optional(),
+});
+
+const rawBindingItemSchema = z.object({
+  label: z.string(),
+  property: z.string().optional(),
+  type: bindingTypeSchema.optional(),
+  options: z.array(bindingOptionSchema).optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  pattern: z.string().optional(),
+  required: z.boolean().optional(),
+});
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+// A render map entry is either a "leaf" (has its own `type`) or a nested
+// map of further entries — recurse into whichever it looks like, and drop
+// anything that matches neither instead of failing the whole map.
+const sanitizeRenderMap = (value: unknown): BindingRenderMap | undefined => {
+  if (!isPlainObject(value)) {
+    return undefined;
+  }
+
   const map: BindingRenderMap = {};
 
-  node.properties.forEach(prop => {
-    if (
-      !t.isObjectProperty(prop) ||
-      !t.isIdentifier(prop.key) ||
-      !t.isObjectExpression(prop.value)
-    ) {
-      return;
+  for (const [key, raw] of Object.entries(value)) {
+    if (!isPlainObject(raw)) {
+      continue;
     }
 
-    const key = prop.key.name;
+    if ('type' in raw) {
+      const leaf = bindingRenderLeafSchema.safeParse(raw);
 
-    const typeProp = prop.value.properties.find(
-      p =>
-        t.isObjectProperty(p) &&
-        t.isIdentifier(p.key) &&
-        p.key.name === 'type' &&
-        t.isStringLiteral(p.value),
-    ) as t.ObjectProperty | undefined;
-
-    if (typeProp) {
-      const leaf: BindingRenderLeaf = {
-        type: (typeProp.value as t.StringLiteral).value as BindingType,
-      };
-
-      const propertyProp = prop.value.properties.find(
-        p =>
-          t.isObjectProperty(p) &&
-          t.isIdentifier(p.key) &&
-          p.key.name === 'property' &&
-          t.isStringLiteral(p.value),
-      ) as t.ObjectProperty | undefined;
-
-      if (propertyProp) {
-        leaf.property = (propertyProp.value as t.StringLiteral).value;
+      if (leaf.success) {
+        const render = sanitizeRenderMap(raw.render);
+        map[key] = render ? { ...leaf.data, render } : leaf.data;
       }
-
-      const renderProp = prop.value.properties.find(
-        p =>
-          t.isObjectProperty(p) &&
-          t.isIdentifier(p.key) &&
-          p.key.name === 'render' &&
-          t.isObjectExpression(p.value),
-      ) as t.ObjectProperty | undefined;
-
-      if (renderProp) {
-        const nested = parseRenderObject(
-          renderProp.value as t.ObjectExpression,
-        );
-        if (nested) {
-          leaf.render = nested;
-        }
-      }
-
-      map[key] = leaf;
-    } else {
-      const nested = parseRenderObject(prop.value);
-      if (nested) {
-        map[key] = nested;
-      }
+      continue;
     }
-  });
 
-  return Object.keys(map).length > 0 ? map : null;
+    const nested = sanitizeRenderMap(raw);
+
+    if (nested) {
+      map[key] = nested;
+    }
+  }
+
+  return Object.keys(map).length > 0 ? map : undefined;
 };
 
 export const parseBinding = (bindingValue: string | null): BindingItem[] => {
@@ -86,199 +79,75 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
     return [];
   }
 
-  try {
-    const ast = parseExpression(bindingValue, {
-      plugins: ['jsx', 'typescript'],
-    });
+  const ast = parseArrayExpression(bindingValue);
 
-    if (t.isArrayExpression(ast)) {
-      return ast.elements
-        .map(element => {
-          if (t.isObjectExpression(element)) {
-            const labelProp = element.properties.find(
-              p =>
-                t.isObjectProperty(p) &&
-                t.isIdentifier(p.key) &&
-                p.key.name === 'label' &&
-                t.isStringLiteral(p.value),
-            ) as t.ObjectProperty | undefined;
-
-            const propertyProp = element.properties.find(
-              p =>
-                t.isObjectProperty(p) &&
-                t.isIdentifier(p.key) &&
-                p.key.name === 'property' &&
-                t.isStringLiteral(p.value),
-            ) as t.ObjectProperty | undefined;
-
-            const optionsProp = element.properties.find(
-              p =>
-                t.isObjectProperty(p) &&
-                t.isIdentifier(p.key) &&
-                p.key.name === 'options' &&
-                t.isArrayExpression(p.value),
-            ) as t.ObjectProperty | undefined;
-
-            const typePropEarly = element.properties.find(
-              p =>
-                t.isObjectProperty(p) &&
-                t.isIdentifier(p.key) &&
-                p.key.name === 'type' &&
-                t.isStringLiteral(p.value),
-            ) as t.ObjectProperty | undefined;
-
-            const earlyTypeValue = typePropEarly
-              ? (typePropEarly.value as t.StringLiteral).value
-              : undefined;
-
-            const isRichtext = earlyTypeValue === 'richtext';
-
-            if (labelProp && (propertyProp || isRichtext)) {
-              const binding: BindingItem = {
-                label: (labelProp.value as t.StringLiteral).value,
-                property: propertyProp
-                  ? (propertyProp.value as t.StringLiteral).value
-                  : BINDING_PROP.INNER_HTML,
-              };
-
-              const typeProp = typePropEarly;
-
-              if (typeProp) {
-                const typeValue = (typeProp.value as t.StringLiteral).value;
-                if (
-                  [
-                    'array',
-                    'object',
-                    'string',
-                    'number',
-                    'boolean',
-                    'color',
-                    'jsx',
-                    'richtext',
-                    'date',
-                    'url',
-                    'icon-picker',
-                    'asset-picker',
-                  ].includes(typeValue)
-                ) {
-                  binding.type = typeValue as BindingType;
-                }
-              }
-
-              const renderProp = element.properties.find(
-                p =>
-                  t.isObjectProperty(p) &&
-                  t.isIdentifier(p.key) &&
-                  p.key.name === 'render' &&
-                  t.isObjectExpression(p.value),
-              ) as t.ObjectProperty | undefined;
-
-              if (renderProp && t.isObjectExpression(renderProp.value)) {
-                const renderMap = parseRenderObject(renderProp.value);
-
-                if (renderMap) {
-                  binding.render = renderMap;
-                }
-              }
-
-              if (optionsProp && t.isArrayExpression(optionsProp.value)) {
-                const options = optionsProp.value.elements
-                  .map(el => {
-                    if (t.isObjectExpression(el)) {
-                      const labelProp = el.properties.find(
-                        p =>
-                          t.isObjectProperty(p) &&
-                          t.isIdentifier(p.key) &&
-                          p.key.name === 'label' &&
-                          t.isStringLiteral(p.value),
-                      ) as t.ObjectProperty | undefined;
-
-                      const valueProp = el.properties.find(
-                        p =>
-                          t.isObjectProperty(p) &&
-                          t.isIdentifier(p.key) &&
-                          p.key.name === 'value' &&
-                          t.isStringLiteral(p.value),
-                      ) as t.ObjectProperty | undefined;
-
-                      if (labelProp && valueProp) {
-                        return {
-                          label: (labelProp.value as t.StringLiteral).value,
-                          value: (valueProp.value as t.StringLiteral).value,
-                        };
-                      }
-                    }
-                    return null;
-                  })
-                  .filter((item): item is BindingOption => item !== null);
-
-                if (options.length > 0) {
-                  binding.options = options;
-                }
-              }
-
-              const minProp = element.properties.find(
-                p =>
-                  t.isObjectProperty(p) &&
-                  t.isIdentifier(p.key) &&
-                  p.key.name === 'min' &&
-                  t.isNumericLiteral(p.value),
-              ) as t.ObjectProperty | undefined;
-
-              if (minProp) {
-                binding.min = (minProp.value as t.NumericLiteral).value;
-              }
-
-              const maxProp = element.properties.find(
-                p =>
-                  t.isObjectProperty(p) &&
-                  t.isIdentifier(p.key) &&
-                  p.key.name === 'max' &&
-                  t.isNumericLiteral(p.value),
-              ) as t.ObjectProperty | undefined;
-
-              if (maxProp) {
-                binding.max = (maxProp.value as t.NumericLiteral).value;
-              }
-
-              const patternProp = element.properties.find(
-                p =>
-                  t.isObjectProperty(p) &&
-                  t.isIdentifier(p.key) &&
-                  p.key.name === 'pattern' &&
-                  t.isStringLiteral(p.value),
-              ) as t.ObjectProperty | undefined;
-
-              if (patternProp) {
-                binding.pattern = (patternProp.value as t.StringLiteral).value;
-              }
-
-              const requiredProp = element.properties.find(
-                p =>
-                  t.isObjectProperty(p) &&
-                  t.isIdentifier(p.key) &&
-                  p.key.name === 'required' &&
-                  t.isBooleanLiteral(p.value),
-              ) as t.ObjectProperty | undefined;
-
-              if (requiredProp) {
-                binding.required = (
-                  requiredProp.value as t.BooleanLiteral
-                ).value;
-              }
-
-              return binding;
-            }
-          }
-          return null;
-        })
-        .filter((item): item is BindingItem => item !== null);
-    }
-  } catch (error) {
-    console.error('❌ Binding parsing error:', error);
+  if (!ast) {
+    return [];
   }
 
-  return [];
+  const raw = evaluateLiteral(ast);
+
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const items: BindingItem[] = [];
+
+  for (const rawItem of raw) {
+    if (!isPlainObject(rawItem)) {
+      continue;
+    }
+
+    // Drop an unrecognized `type` instead of rejecting the whole item — an
+    // authored binding with a typo'd/future type string still works as an
+    // untyped field rather than disappearing entirely.
+    const sanitizedType = bindingTypeSchema.safeParse(rawItem.type);
+
+    // Drop individually malformed options instead of rejecting the whole
+    // item — a select field with 3 valid options and 1 malformed one should
+    // still work with the 3 valid ones.
+    const sanitizedOptions = Array.isArray(rawItem.options)
+      ? rawItem.options
+          .map(option => {
+            const parsed = bindingOptionSchema.safeParse(option);
+            return parsed.success ? parsed.data : null;
+          })
+          .filter((option): option is BindingOption => option !== null)
+      : undefined;
+
+    const parsed = rawBindingItemSchema.safeParse({
+      ...rawItem,
+      type: sanitizedType.success ? sanitizedType.data : undefined,
+      options: sanitizedOptions?.length ? sanitizedOptions : undefined,
+    });
+
+    if (!parsed.success) {
+      continue;
+    }
+
+    const { label, property, type, options, min, max, pattern, required } =
+      parsed.data;
+
+    if (property === undefined && type !== 'richtext') {
+      continue;
+    }
+
+    const render = sanitizeRenderMap(rawItem.render);
+
+    items.push({
+      label,
+      property: property ?? BINDING_PROP.INNER_HTML,
+      ...(type !== undefined && { type }),
+      ...(options?.length && { options }),
+      ...(render && { render }),
+      ...(min !== undefined && { min }),
+      ...(max !== undefined && { max }),
+      ...(pattern !== undefined && { pattern }),
+      ...(required !== undefined && { required }),
+    });
+  }
+
+  return items;
 };
 
 export const getCurrentValue = (
