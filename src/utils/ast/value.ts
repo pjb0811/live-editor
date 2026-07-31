@@ -28,7 +28,7 @@ const dedent = (str: string): string => {
 // 실제 JS 값으로 변환한다. 함수 호출, 변수 참조 등 리터럴이 아닌 표현식은
 // 평가하지 않고 undefined를 반환한다 — 사용자 코드는 iframe 안에서만 실행한다는
 // 이 저장소의 원칙(AGENTS.md)을 이 패널 UI(메인 문서에서 렌더링됨)에서도 지키기 위함.
-const evaluateLiteral = (node: t.Node): unknown => {
+export const evaluateLiteral = (node: t.Node): unknown => {
   if (t.isStringLiteral(node)) {
     return node.value;
   }
@@ -75,10 +75,25 @@ const evaluateLiteral = (node: t.Node): unknown => {
     const result: Record<string, unknown> = {};
 
     for (const prop of node.properties) {
-      if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) {
+      if (!t.isObjectProperty(prop)) {
         continue;
       }
-      result[prop.key.name] = evaluateLiteral(prop.value);
+
+      let key: string | null = null;
+
+      if (t.isIdentifier(prop.key)) {
+        key = prop.key.name;
+      } else if (t.isStringLiteral(prop.key)) {
+        key = prop.key.value;
+      } else if (t.isNumericLiteral(prop.key)) {
+        key = String(prop.key.value);
+      }
+
+      if (key === null) {
+        continue;
+      }
+
+      result[key] = evaluateLiteral(prop.value);
     }
 
     return result;
