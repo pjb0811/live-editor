@@ -18,7 +18,9 @@ import {
   arrayMove,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Space, Typography } from '@jbpark/ui-kit';
+import { Button, Drawer, Space, Typography } from '@jbpark/ui-kit';
+import { useResponsiveSize } from '@jbpark/use-hooks';
+import { LayoutGrid } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { DRAGGABLE_ITEMS } from '~/enums';
@@ -76,6 +78,10 @@ const Dnd = ({
   ...restProps
 }: Props) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false);
+
+  const { breakpoint } = useResponsiveSize();
+  const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
 
   const { setCode } = usePreview();
 
@@ -240,6 +246,16 @@ const Dnd = ({
     }
   }, [frame?.scripts]);
 
+  const renderPaletteItems = (
+    onAdd: (item: (typeof DRAGGABLE_ITEMS)[0]) => void,
+  ) => (
+    <Space orientation="vertical" align="start">
+      {(items?.length ? items : DRAGGABLE_ITEMS).map(item => (
+        <Draggable key={item.id} item={item} onAdd={onAdd} />
+      ))}
+    </Space>
+  );
+
   return (
     <>
       <DndContext
@@ -255,25 +271,21 @@ const Dnd = ({
       >
         <div
           className={cn(
-            'flex w-full',
+            'relative flex w-full',
             className,
             //
           )}
           {...restProps}
         >
-          <div className="w-1/5 overflow-y-auto">
+          <div className="hidden w-1/5 overflow-y-auto md:block">
             <div className="h-full bg-gray-50 p-4">
-              <Space orientation="vertical" align="start">
-                {(items?.length ? items : DRAGGABLE_ITEMS).map(item => (
-                  <Draggable key={item.id} item={item} onAdd={addItem} />
-                ))}
-              </Space>
+              {renderPaletteItems(addItem)}
             </div>
           </div>
           <div
             className={cn(
               'relative',
-              'h-full w-3/5',
+              'h-full w-full md:w-3/5',
               'overflow-y-auto',
               //
             )}
@@ -336,12 +348,44 @@ const Dnd = ({
               )}
             </Droppable>
           </div>
-          <div className="w-1/5">
+          <div className="hidden w-1/5 md:block">
             <Panel
               item={sections.find(s => s.id === selectedId)}
               onChange={onChange}
             />
           </div>
+          <Button
+            type="primary"
+            shape="circle"
+            icon={<LayoutGrid />}
+            aria-label="Components"
+            className="fixed right-4 bottom-4 z-20 md:hidden"
+            onClick={() => setMobilePaletteOpen(true)}
+          />
+          <Drawer
+            open={isMobile && mobilePaletteOpen}
+            onClose={() => setMobilePaletteOpen(false)}
+            direction="bottom"
+            size="large"
+            title="Components"
+          >
+            {renderPaletteItems(item => {
+              addItem(item);
+              setMobilePaletteOpen(false);
+            })}
+          </Drawer>
+          <Drawer
+            open={isMobile && Boolean(selectedId)}
+            onClose={() => setSelectedId(null)}
+            direction="bottom"
+            size="large"
+            title="Properties"
+          >
+            <Panel
+              item={sections.find(s => s.id === selectedId)}
+              onChange={onChange}
+            />
+          </Drawer>
         </div>
         <DragOverlay>
           <Overlay
