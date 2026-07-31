@@ -82,6 +82,23 @@ describe('parseBinding', () => {
     });
   });
 
+  it('drops a nested render leaf with an unrecognized type instead of keeping it as-is', () => {
+    const result = parseBinding(`
+      [{
+        label: 'Items',
+        property: 'items',
+        render: {
+          icon: { type: 'string', property: 'innerText' },
+          bogus: { type: 'not-a-real-type', property: 'innerText' }
+        }
+      }]
+    `);
+
+    expect(result[0]!.render).toEqual({
+      icon: { type: 'string', property: 'innerText' },
+    });
+  });
+
   it('extracts min/max/pattern/required constraints when present', () => {
     const result = parseBinding(
       "[{label: 'Age', property: 'data-age', type: 'number', min: 0, max: 120, pattern: '^[0-9]+$', required: true}]",
@@ -107,6 +124,57 @@ describe('parseBinding', () => {
     expect(result[0]).not.toHaveProperty('max');
     expect(result[0]).not.toHaveProperty('pattern');
     expect(result[0]).not.toHaveProperty('required');
+  });
+
+  it('drops individually malformed options while keeping the valid ones', () => {
+    const result = parseBinding(`
+      [{
+        label: 'Size',
+        property: 'size',
+        options: [
+          { label: 'small', value: 'small' },
+          { label: 'no-value' },
+          { label: 'large', value: 'large' }
+        ]
+      }]
+    `);
+
+    expect(result[0]!.options).toEqual([
+      { label: 'small', value: 'small' },
+      { label: 'large', value: 'large' },
+    ]);
+  });
+
+  it('omits the options field entirely when no option is valid', () => {
+    const result = parseBinding(`
+      [{
+        label: 'Size',
+        property: 'size',
+        options: [{ label: 'no-value' }]
+      }]
+    `);
+
+    expect(result[0]).not.toHaveProperty('options');
+  });
+
+  it('skips non-object entries in the top-level binding array', () => {
+    const result = parseBinding(
+      "[1, 'x', {label: 'Title', property: 'innerText'}]",
+    );
+
+    expect(result).toEqual([{ label: 'Title', property: 'innerText' }]);
+  });
+
+  it('drops an item that has no label', () => {
+    const result = parseBinding("[{property: 'innerText'}]");
+
+    expect(result).toEqual([]);
+  });
+
+  it('drops an item that has neither a property nor a richtext type', () => {
+    const result = parseBinding("[{label: 'Title'}]");
+
+    expect(result).toEqual([]);
   });
 
   it('returns an empty array without throwing for malformed binding syntax', () => {

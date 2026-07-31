@@ -25,19 +25,22 @@ export interface BindingOption {
   value: string;
 }
 
-export type BindingType =
-  | 'array'
-  | 'object'
-  | 'string'
-  | 'number'
-  | 'boolean'
-  | 'color'
-  | 'jsx'
-  | 'richtext'
-  | 'date'
-  | 'url'
-  | 'icon-picker'
-  | 'asset-picker';
+export const BINDING_TYPES = [
+  'array',
+  'object',
+  'string',
+  'number',
+  'boolean',
+  'color',
+  'jsx',
+  'richtext',
+  'date',
+  'url',
+  'icon-picker',
+  'asset-picker',
+] as const;
+
+export type BindingType = (typeof BINDING_TYPES)[number];
 
 export interface BindingRenderLeaf {
   type: BindingType;
