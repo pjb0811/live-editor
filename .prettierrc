@@ -10,7 +10,7 @@
     "^next(.*)",
     "<THIRD_PARTY_MODULES>",
     "^~/(.*)$",
-    "^./*.*.(c|le|sc)ss",
+    "^\\.{1,2}/.*\\.(css|less|scss)$",
     "^[./]"
   ],
   "importOrderSeparation": true,
