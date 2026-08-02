@@ -8,7 +8,11 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+// "-latest" alias: Google keeps this pointed at their current lightest/
+// cheapest Flash model, so this stays valid across model retirements
+// (unlike a dated model id, which can 404 once Google sunsets it — as
+// happened with the previous gemini-2.5-flash-lite pin).
+const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const MAX_DIFF_CHARS = 12000;
 const PACKAGE_NAME = '@jbpark/live-editor';
