@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
-import { Button, Checkbox } from '@jbpark/ui-kit';
+import { Button, Checkbox, Toast } from '@jbpark/ui-kit';
 import { useMultiSelect } from '@jbpark/use-hooks';
 import { ArrowDown, ArrowUp, Copy, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
@@ -123,94 +123,108 @@ const BulkActionsBar = ({
 };
 
 const Items = ({ value, render, onChange, onChildChange }: Props) => {
-  const { objectItems, primitiveItems, allElements } = useMemo(() => {
-    const ast = parseArrayExpression(value);
+  const { objectItems, primitiveItems, allElements, parseError } =
+    useMemo(() => {
+      const ast = parseArrayExpression(value);
 
-    if (!ast) {
-      return { objectItems: [], primitiveItems: [], allElements: [] };
-    }
-
-    const objectItems: ItemData[] = [];
-    const primitiveItems: PrimitiveItem[] = [];
-    const allElements = ast.elements.filter(Boolean) as t.Expression[];
-
-    ast.elements.forEach(element => {
-      if (!element) {
-        return;
+      if (!ast) {
+        return {
+          objectItems: [],
+          primitiveItems: [],
+          allElements: [],
+          parseError: true,
+        };
       }
 
-      if (!t.isObjectExpression(element)) {
-        const extracted = extractNodeValue(element);
-        primitiveItems.push({
-          id: nanoid(6),
-          index: primitiveItems.length,
-          value: extracted.value,
-          type: extracted.type,
-          astNode: element as t.Expression,
-        });
-        return;
-      }
+      const objectItems: ItemData[] = [];
+      const primitiveItems: PrimitiveItem[] = [];
+      const allElements = ast.elements.filter(Boolean) as t.Expression[];
 
-      const jsxBindings: Record<string, DataAttrNode[]> = {};
-
-      element.properties.forEach(prop => {
-        if (
-          !t.isObjectProperty(prop) ||
-          !t.isIdentifier(prop.key) ||
-          !t.isJSXElement(prop.value)
-        ) {
+      ast.elements.forEach(element => {
+        if (!element) {
           return;
         }
 
-        const propertyName = prop.key.name;
-
-        try {
-          const jsxCode = generateCode(prop.value);
-          const nodes = extract(jsxCode);
-          const bindings: DataAttrNode[] = [];
-
-          const bindingContainer = nodes.find(node =>
-            node.bindings?.some(b => b.property === 'children'),
-          );
-
-          if (bindingContainer) {
-            bindings.push(bindingContainer);
-          } else {
-            nodes.forEach(node => {
-              if (
-                node.bindings &&
-                node.bindings.length > 0 &&
-                node.dataAttributes.some(a => a.name === 'data-id')
-              ) {
-                bindings.push(node);
-              }
-              const editableChildren = findEditableChildren(node);
-              bindings.push(...editableChildren);
-            });
-          }
-
-          if (bindings.length > 0) {
-            jsxBindings[propertyName] = bindings;
-          }
-        } catch (error) {
-          console.error(
-            `Failed to parse JSX in property '${propertyName}':`,
-            error,
-          );
+        if (!t.isObjectExpression(element)) {
+          const extracted = extractNodeValue(element);
+          primitiveItems.push({
+            id: nanoid(6),
+            index: primitiveItems.length,
+            value: extracted.value,
+            type: extracted.type,
+            astNode: element as t.Expression,
+          });
+          return;
         }
+
+        const jsxBindings: Record<string, DataAttrNode[]> = {};
+
+        element.properties.forEach(prop => {
+          if (
+            !t.isObjectProperty(prop) ||
+            !t.isIdentifier(prop.key) ||
+            !t.isJSXElement(prop.value)
+          ) {
+            return;
+          }
+
+          const propertyName = prop.key.name;
+
+          try {
+            const jsxCode = generateCode(prop.value);
+            const nodes = extract(jsxCode);
+            const bindings: DataAttrNode[] = [];
+
+            const bindingContainer = nodes.find(node =>
+              node.bindings?.some(b => b.property === 'children'),
+            );
+
+            if (bindingContainer) {
+              bindings.push(bindingContainer);
+            } else {
+              nodes.forEach(node => {
+                if (
+                  node.bindings &&
+                  node.bindings.length > 0 &&
+                  node.dataAttributes.some(a => a.name === 'data-id')
+                ) {
+                  bindings.push(node);
+                }
+                const editableChildren = findEditableChildren(node);
+                bindings.push(...editableChildren);
+              });
+            }
+
+            if (bindings.length > 0) {
+              jsxBindings[propertyName] = bindings;
+            }
+          } catch (error) {
+            console.error(
+              `Failed to parse JSX in property '${propertyName}':`,
+              error,
+            );
+          }
+        });
+
+        objectItems.push({
+          id: nanoid(6),
+          index: objectItems.length,
+          editableProperties: extractObjectProperties(element),
+          originalElement: element,
+          jsxBindings,
+        });
       });
 
-      objectItems.push({
-        id: nanoid(6),
-        index: objectItems.length,
-        editableProperties: extractObjectProperties(element),
-        originalElement: element,
-        jsxBindings,
-      });
-    });
+      return { objectItems, primitiveItems, allElements, parseError: false };
+    }, [value]);
 
-    return { objectItems, primitiveItems, allElements };
-  }, [value]);
+  useEffect(() => {
+    if (parseError) {
+      Toast.error('Failed to parse items', {
+        description: 'Check the console for details.',
+      });
+    }
+  }, [parseError]);
 
   const isPrimitive = primitiveItems.length > 0 && objectItems.length === 0;
 
@@ -222,6 +236,9 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     const ast = parseArrayExpression(value);
 
     if (!ast) {
+      Toast.error('Failed to update this item', {
+        description: 'Check the console for details.',
+      });
       return;
     }
 
