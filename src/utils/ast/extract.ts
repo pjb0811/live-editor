@@ -6,7 +6,7 @@ import { nanoid } from 'nanoid';
 import { BINDING_PROP, CONFIG, DATA_ATTR } from '../../enums';
 import { parseBinding } from './binding';
 import { attrValue, generateCode, wrap } from './helpers';
-import type { Attribute, DataAttrNode } from './types';
+import type { Attribute, BindingItem, DataAttrNode } from './types';
 
 const collectText = (
   children: (
@@ -39,13 +39,13 @@ const getTagName = (opening: t.JSXOpeningElement): string => {
 const resolveMemberName = (expr: t.JSXMemberExpression): string => {
   const parts: string[] = [];
 
-  const traverse = (
+  const collectMemberParts = (
     node: t.JSXMemberExpression['object'] | t.JSXMemberExpression['property'],
   ): void => {
     if (t.isJSXIdentifier(node)) {
       parts.push(node.name);
     } else if (t.isJSXMemberExpression(node)) {
-      traverse(node.object);
+      collectMemberParts(node.object);
 
       if (t.isJSXIdentifier(node.property)) {
         parts.push(node.property.name);
@@ -53,7 +53,7 @@ const resolveMemberName = (expr: t.JSXMemberExpression): string => {
     }
   };
 
-  traverse(expr.object);
+  collectMemberParts(expr.object);
 
   if (t.isJSXIdentifier(expr.property)) {
     parts.push(expr.property.name);
@@ -329,6 +329,61 @@ const markProcessedJSX = (
   }
 };
 
+interface NodeBindingInfo {
+  tagName: string;
+  allAttrs: Attribute[];
+  dataAttrs: Attribute[];
+  bindings: BindingItem[];
+  childrenBinding: BindingItem | undefined;
+  arrayBindings: BindingItem[];
+  rawChildren: string | undefined;
+}
+
+// Shared prefix for the top-level traverse() visitor below and the manual
+// recursive descent in extractFromNode: read the tag name, attributes, and
+// parsed bindings off one JSXElement. What differs between the two callers
+// is how childrenNodes gets computed and whether the result is pushed at
+// all — traverse() only records elements with data-* attributes, while
+// extractFromNode always records the children it's asked to (see each call
+// site for details).
+const readNodeBindingInfo = (node: t.JSXElement): NodeBindingInfo => {
+  const opening = node.openingElement;
+  const tagName = getTagName(opening);
+  const { allAttrs, dataAttrs } = extractAttributes(opening.attributes);
+
+  const bindingAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING);
+  const bindings = bindingAttr?.value ? parseBinding(bindingAttr.value) : [];
+
+  const childrenBinding = bindings.find(
+    b => b.property === BINDING_PROP.CHILDREN,
+  );
+  const arrayBindings = bindings.filter(
+    b => b.property === BINDING_PROP.ITEMS || b.type === 'array',
+  );
+
+  const innerHtmlBinding = bindings.find(
+    b => b.property === BINDING_PROP.INNER_HTML,
+  );
+
+  let rawChildren: string | undefined;
+  if (innerHtmlBinding && node.children.length > 0) {
+    rawChildren = node.children
+      .map(child => generateCode(child))
+      .join('')
+      .trim();
+  }
+
+  return {
+    tagName,
+    allAttrs,
+    dataAttrs,
+    bindings,
+    childrenBinding,
+    arrayBindings,
+    rawChildren,
+  };
+};
+
 const parseToNodes = (raw: string): DataAttrNode[] => {
   const wrapped = wrap(raw);
   const ast = parse(wrapped, {
@@ -338,6 +393,19 @@ const parseToNodes = (raw: string): DataAttrNode[] => {
   });
 
   const results: DataAttrNode[] = [];
+
+  // babel's traverse() below visits every JSXElement in the tree, top to
+  // bottom, regardless of structure. But some elements are meant to be
+  // recorded as *structural* children of another result — e.g. a node
+  // wrapped by processChildrenBinding()/extractFromNode() into a parent's
+  // `children` array, or an element sitting inside an `items` binding's
+  // array literal (skipped via skipItemsChildren()/markProcessedJSX()) —
+  // not as their own top-level entry in `results`. Without this WeakSet,
+  // traverse() would independently re-visit those same elements once it
+  // reaches them in the tree and add a second, duplicate entry for them.
+  // Each helper below adds a node here the moment it pulls that node out
+  // of the normal top-level flow, and the JSXElement() visitor skips
+  // anything already marked.
   const processedNodes = new WeakSet<t.JSXElement | t.JSXFragment>();
 
   traverse(ast, {
@@ -346,75 +414,51 @@ const parseToNodes = (raw: string): DataAttrNode[] => {
         return;
       }
 
-      const opening = path.node.openingElement;
-      const tagName = getTagName(opening);
+      const {
+        tagName,
+        allAttrs,
+        dataAttrs,
+        bindings,
+        childrenBinding,
+        arrayBindings,
+        rawChildren,
+      } = readNodeBindingInfo(path.node);
 
-      if (!tagName) {
+      if (!tagName || !dataAttrs.length) {
         return;
       }
 
-      const { allAttrs, dataAttrs } = extractAttributes(opening.attributes);
+      let childrenNodes: DataAttrNode[] | undefined;
 
-      if (dataAttrs.length) {
-        let childrenNodes: DataAttrNode[] | undefined;
-
-        const bindingAttr = dataAttrs.find(
-          attr => attr.name === DATA_ATTR.BINDING,
-        );
-
-        const bindings = bindingAttr?.value
-          ? parseBinding(bindingAttr.value)
-          : [];
-        const childrenBinding = bindings.find(
-          b => b.property === BINDING_PROP.CHILDREN,
-        );
-
-        if (childrenBinding) {
-          childrenNodes = processChildrenBinding(path.node, processedNodes);
-        }
-
-        const arrayBindings = bindings.filter(
-          b => b.property === BINDING_PROP.ITEMS || b.type === 'array',
-        );
-
-        for (const arrayBinding of arrayBindings) {
-          skipItemsChildren(path.node, processedNodes, arrayBinding.property);
-        }
-
-        const innerHtmlBinding = bindings.find(
-          b => b.property === BINDING_PROP.INNER_HTML,
-        );
-
-        let rawChildren: string | undefined;
-        if (innerHtmlBinding && path.node.children.length > 0) {
-          rawChildren = path.node.children
-            .map(child => generateCode(child))
-            .join('')
-            .trim();
-        }
-
-        results.push({
-          tagName,
-          attributes: allAttrs,
-          dataAttributes: dataAttrs,
-          textContent: collectText(path.node.children),
-          rawChildren,
-          children: childrenNodes,
-          bindings,
-          loc: path.node.loc
-            ? {
-                start: {
-                  line: path.node.loc.start.line,
-                  column: path.node.loc.start.column,
-                },
-                end: {
-                  line: path.node.loc.end.line,
-                  column: path.node.loc.end.column,
-                },
-              }
-            : undefined,
-        });
+      if (childrenBinding) {
+        childrenNodes = processChildrenBinding(path.node, processedNodes);
       }
+
+      for (const arrayBinding of arrayBindings) {
+        skipItemsChildren(path.node, processedNodes, arrayBinding.property);
+      }
+
+      results.push({
+        tagName,
+        attributes: allAttrs,
+        dataAttributes: dataAttrs,
+        textContent: collectText(path.node.children),
+        rawChildren,
+        children: childrenNodes,
+        bindings,
+        loc: path.node.loc
+          ? {
+              start: {
+                line: path.node.loc.start.line,
+                column: path.node.loc.start.column,
+              },
+              end: {
+                line: path.node.loc.end.line,
+                column: path.node.loc.end.column,
+              },
+            }
+          : undefined,
+      });
     },
   });
 
@@ -444,23 +488,18 @@ function extractFromNode(
   node: t.JSXElement,
   processedNodes?: WeakSet<t.JSXElement | t.JSXFragment>,
 ): DataAttrNode[] {
-  const results: DataAttrNode[] = [];
-  const opening = node.openingElement;
-
   processedNodes?.add(node);
 
-  const tagName = getTagName(opening);
-
-  const { allAttrs, dataAttrs } = extractAttributes(opening.attributes);
+  const {
+    tagName,
+    allAttrs,
+    dataAttrs,
+    bindings,
+    childrenBinding,
+    rawChildren,
+  } = readNodeBindingInfo(node);
 
   let childrenNodes: DataAttrNode[] | undefined;
-
-  const bindingAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING);
-  const bindings = bindingAttr?.value ? parseBinding(bindingAttr.value) : [];
-
-  const childrenBinding = bindings.find(
-    b => b.property === BINDING_PROP.CHILDREN,
-  );
 
   if (childrenBinding) {
     childrenNodes = processChildrenBinding(node, processedNodes);
@@ -470,29 +509,17 @@ function extractFromNode(
     childrenNodes = processChildrenBinding(node, processedNodes, false);
   }
 
-  const innerHtmlBinding = bindings.find(
-    b => b.property === BINDING_PROP.INNER_HTML,
-  );
-
-  let rawChildren: string | undefined;
-  if (innerHtmlBinding && node.children.length > 0) {
-    rawChildren = node.children
-      .map(child => generateCode(child))
-      .join('')
-      .trim();
-  }
-
-  results.push({
-    tagName,
-    attributes: allAttrs,
-    dataAttributes: dataAttrs,
-    textContent: collectText(node.children),
-    rawChildren,
-    children: childrenNodes,
-    bindings,
-  });
-
-  return results;
+  return [
+    {
+      tagName,
+      attributes: allAttrs,
+      dataAttributes: dataAttrs,
+      textContent: collectText(node.children),
+      rawChildren,
+      children: childrenNodes,
+      bindings,
+    },
+  ];
 }
 
 export function clearExtractCache() {
