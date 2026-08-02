@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0
+
+### Minor Changes
+
+- 7122002: Type the `data-binding` JSX attribute as `BindingItem[]`, giving editor autocomplete and compile-time errors while authoring binding configs instead of silent runtime failures.
+
 ## 1.3.0
 
 ### Minor Changes
