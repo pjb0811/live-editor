@@ -25,15 +25,39 @@ const updateInnerText = (
   return true;
 };
 
+// Injects a `{__PREFIX_<id>__}` JSX expression container as a placeholder,
+// then records how the placeholder's *generated source text* should be
+// string-replaced with the real value once generateCode() has run — used
+// for values (raw HTML, arbitrary JSX/expressions) that can't be
+// represented as AST literals, so we can't just build the real node here.
+//
+// `asRawContent: true` replaces the placeholder *including* its enclosing
+// braces, so the raw value lands as literal children content instead of a
+// JS expression (used for innerHTML). Leaving it false replaces only the
+// identifier inside the braces, so the value is inserted as the expression
+// itself (used for a `type: 'jsx'` attribute value).
+const injectPlaceholder = (
+  prefix: string,
+  value: string,
+  placeholders: Map<string, string>,
+  { asRawContent = false }: { asRawContent?: boolean } = {},
+): t.JSXExpressionContainer => {
+  const name = `__${prefix}_${nanoid(6)}__`;
+  const container = t.jsxExpressionContainer(t.identifier(name));
+
+  placeholders.set(asRawContent ? `{${name}}` : name, value);
+
+  return container;
+};
+
 const updateInnerHTML = (
   path: NodePath<t.JSXElement>,
   value: string,
   placeholders: Map<string, string>,
 ): boolean => {
-  const placeholder = `__HTML_${nanoid(6)}__`;
-
-  path.node.children = [t.jsxExpressionContainer(t.identifier(placeholder))];
-  placeholders.set(`{${placeholder}}`, value);
+  path.node.children = [
+    injectPlaceholder('HTML', value, placeholders, { asRawContent: true }),
+  ];
 
   return true;
 };
@@ -228,11 +252,11 @@ export const update = (
               );
 
               if (attr && t.isJSXAttribute(attr)) {
-                const placeholder = `__JSX_${nanoid(6)}__`;
-                attr.value = t.jsxExpressionContainer(
-                  t.identifier(placeholder),
+                attr.value = injectPlaceholder(
+                  'JSX',
+                  value.trim(),
+                  jsxPlaceholders,
                 );
-                jsxPlaceholders.set(placeholder, value.trim());
                 changed = true;
               }
             } else {
