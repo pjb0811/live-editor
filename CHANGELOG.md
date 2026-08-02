@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0
+
+### Minor Changes
+
+- d20abbe: Add a project intro page at "/" with the title, tagline, highlights, and links to the editor/GitHub/npm. The interactive editor moved from "/" to "/editor".
+- 0dca09e: Fix a CSS cascade-order bug that permanently hid the Dnd builder's palette/properties columns on desktop, regardless of viewport width. Also fixes the underlying `.prettierrc` import-sort regex that was silently undoing the fix on every format run.
+- 8abd8a9: Make the Editor-mode Preview/CodeMirror Splitter responsive: it now stacks vertically on mobile instead of staying side-by-side.
+
 ## 1.2.0
 
 ### Minor Changes
