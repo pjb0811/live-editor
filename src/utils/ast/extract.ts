@@ -393,6 +393,19 @@ const parseToNodes = (raw: string): DataAttrNode[] => {
   });
 
   const results: DataAttrNode[] = [];
+
+  // babel's traverse() below visits every JSXElement in the tree, top to
+  // bottom, regardless of structure. But some elements are meant to be
+  // recorded as *structural* children of another result — e.g. a node
+  // wrapped by processChildrenBinding()/extractFromNode() into a parent's
+  // `children` array, or an element sitting inside an `items` binding's
+  // array literal (skipped via skipItemsChildren()/markProcessedJSX()) —
+  // not as their own top-level entry in `results`. Without this WeakSet,
+  // traverse() would independently re-visit those same elements once it
+  // reaches them in the tree and add a second, duplicate entry for them.
+  // Each helper below adds a node here the moment it pulls that node out
+  // of the normal top-level flow, and the JSXElement() visitor skips
+  // anything already marked.
   const processedNodes = new WeakSet<t.JSXElement | t.JSXFragment>();
 
   traverse(ast, {
