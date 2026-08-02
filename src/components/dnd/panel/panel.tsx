@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
-import { Typography } from '@jbpark/ui-kit';
+import { Toast, Typography } from '@jbpark/ui-kit';
 
 import type { Section } from '~/types';
 import { cn } from '~/utils';
@@ -14,9 +14,9 @@ interface Props {
 }
 
 const Panel = ({ item, onChange }: Props) => {
-  const { dataAttrNodes, updatedCode } = useMemo(() => {
+  const { dataAttrNodes, updatedCode, parseError } = useMemo(() => {
     if (!item?.code) {
-      return { dataAttrNodes: [], updatedCode: '' };
+      return { dataAttrNodes: [], updatedCode: '', parseError: false };
     }
 
     try {
@@ -28,12 +28,21 @@ const Panel = ({ item, onChange }: Props) => {
       return {
         dataAttrNodes: filtered,
         updatedCode: updatedCode !== item.code ? updatedCode : item.code,
+        parseError: false,
       };
     } catch (e) {
       console.warn('⚠️ Parsing error', e);
-      return { dataAttrNodes: [], updatedCode: '' };
+      return { dataAttrNodes: [], updatedCode: '', parseError: true };
     }
   }, [item?.code]);
+
+  useEffect(() => {
+    if (parseError) {
+      Toast.error('Failed to parse this section', {
+        description: 'Check the console for details.',
+      });
+    }
+  }, [parseError]);
 
   if (!item) {
     return (
@@ -69,9 +78,18 @@ const Panel = ({ item, onChange }: Props) => {
           key={`${item.id}-${index}`}
           data={node}
           onChange={({ id, label, value }) => {
+            const result = update(updatedCode, id, label, value);
+
+            if (!result.success) {
+              Toast.error('Failed to update this field', {
+                description: 'Check the console for details.',
+              });
+              return;
+            }
+
             onChange?.({
               ...item,
-              code: update(updatedCode, id, label, value),
+              code: result.code,
             });
           }}
         />

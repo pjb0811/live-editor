@@ -125,12 +125,17 @@ const updateAttribute = (
   return false;
 };
 
+export interface UpdateResult {
+  code: string;
+  success: boolean;
+}
+
 export const update = (
   code: string,
   dataId: string,
   label: string,
   value: string,
-) => {
+): UpdateResult => {
   try {
     const wrapped = wrap(code);
     const ast = parse(wrapped, {
@@ -245,7 +250,7 @@ export const update = (
     });
 
     if (!changed) {
-      return code;
+      return { code, success: false };
     }
 
     let result = unwrap(generateCode(ast));
@@ -256,22 +261,25 @@ export const update = (
       result = result.replace(placeholder, () => original);
     }
 
-    return result;
+    return { code: result, success: true };
   } catch (error) {
     console.error('❌ Code update error:', error);
-    return code;
+    return { code, success: false };
   }
 };
 
 export const bulkUpdate = (
   raw: string,
   entries: { dataId: string; label: string; value: string }[],
-): string => {
+): UpdateResult => {
   let current = raw;
+  let allSucceeded = true;
 
   for (const entry of entries) {
-    current = update(current, entry.dataId, entry.label, entry.value);
+    const result = update(current, entry.dataId, entry.label, entry.value);
+    current = result.code;
+    allSucceeded = allSucceeded && result.success;
   }
 
-  return current;
+  return { code: current, success: allSucceeded };
 };
