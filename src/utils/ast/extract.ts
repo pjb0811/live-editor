@@ -39,13 +39,13 @@ const getTagName = (opening: t.JSXOpeningElement): string => {
 const resolveMemberName = (expr: t.JSXMemberExpression): string => {
   const parts: string[] = [];
 
-  const traverse = (
+  const collectMemberParts = (
     node: t.JSXMemberExpression['object'] | t.JSXMemberExpression['property'],
   ): void => {
     if (t.isJSXIdentifier(node)) {
       parts.push(node.name);
     } else if (t.isJSXMemberExpression(node)) {
-      traverse(node.object);
+      collectMemberParts(node.object);
 
       if (t.isJSXIdentifier(node.property)) {
         parts.push(node.property.name);
@@ -53,7 +53,7 @@ const resolveMemberName = (expr: t.JSXMemberExpression): string => {
     }
   };
 
-  traverse(expr.object);
+  collectMemberParts(expr.object);
 
   if (t.isJSXIdentifier(expr.property)) {
     parts.push(expr.property.name);
