@@ -11,6 +11,7 @@ import {
   useDebounce,
   useHistoryState,
   useLocalStorage,
+  useResponsiveSize,
 } from '@jbpark/use-hooks';
 import { Button, Flex, Radio, Space, Splitter, message } from 'antd';
 
@@ -40,6 +41,9 @@ const App = () => {
     canRedo,
   } = useHistoryState(value);
   const [type, setType] = useState<'dnd' | 'editor'>('editor');
+
+  const { breakpoint } = useResponsiveSize();
+  const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
 
   const navigate = useNavigate();
 
@@ -141,7 +145,7 @@ const App = () => {
         >
           <Live>
             {editable ? (
-              <Splitter>
+              <Splitter layout={isMobile ? 'vertical' : 'horizontal'}>
                 <Splitter.Panel
                   defaultSize="50%"
                   min="20%"
