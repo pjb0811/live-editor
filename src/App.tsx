@@ -1,177 +1,70 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import {
-  EyeOutlined,
-  RedoOutlined,
-  SaveOutlined,
-  UndoOutlined,
-} from '@ant-design/icons';
-import {
-  useDebounce,
-  useHistoryState,
-  useLocalStorage,
-  useResponsiveSize,
-} from '@jbpark/use-hooks';
-import { Button, Flex, Radio, Space, Splitter, message } from 'antd';
+import { Button, Space, Typography } from '@jbpark/ui-kit';
+import { ExternalLink, Github } from 'lucide-react';
 
 import './App.css';
 
-import Live from './';
-import { DEFAULT_TEMPLATE, STORAGE_KEY } from './enums';
-
-const options = [
-  { label: 'Drag & Drop', value: 'dnd' },
-  { label: 'Editor', value: 'editor' },
+const HIGHLIGHTS = [
+  'Real-time canvas edits sync back to source code via AST transforms',
+  'Drag-and-drop builder with an interactive property panel',
+  'Isolated iframe preview for DOM/CSS separation',
 ];
 
-const App = () => {
-  const [savedValue, setSavedValue] = useLocalStorage(
-    STORAGE_KEY,
-    DEFAULT_TEMPLATE,
-  );
-
-  const [value, setValue] = useState(savedValue);
-  const {
-    value: historyValue,
-    setValue: commitHistory,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-  } = useHistoryState(value);
-  const [type, setType] = useState<'dnd' | 'editor'>('editor');
-
-  const { breakpoint } = useResponsiveSize();
-  const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
-
+const Intro = () => {
   const navigate = useNavigate();
 
-  const editable = type === 'editor';
-
-  const previewFrame = {
-    mode: 'iframe' as const,
-    syncStyle: true,
-    scripts: ['/js/tailwindcss.js'],
-  };
-
-  // Commit to undo/redo history only after edits settle, so rapid typing in
-  // the raw editor doesn't create a history entry per keystroke.
-  useDebounce(
-    () => {
-      commitHistory(value);
-    },
-    { delay: 500 },
-    [value],
-  );
-
-  // Reflect undo/redo (or the debounced commit above catching up) back into
-  // the editable value.
-  useEffect(() => {
-    setValue(historyValue);
-  }, [historyValue]);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const isMod = e.metaKey || e.ctrlKey;
-
-      if (!isMod || e.key.toLowerCase() !== 'z') {
-        return;
-      }
-
-      const target = e.target as HTMLElement | null;
-
-      if (target?.closest('.cm-editor')) {
-        // Let CodeMirror's own text-level undo/redo handle this instead.
-        return;
-      }
-
-      e.preventDefault();
-
-      if (e.shiftKey) {
-        redo();
-      } else {
-        undo();
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo]);
-
   return (
-    <>
-      <Flex gap="middle" vertical className="h-full">
-        <Flex justify="end">
-          <Space className="p-2">
-            <Radio.Group
-              size="small"
-              value={type}
-              options={options}
-              optionType="button"
-              buttonStyle="solid"
-              onChange={e => setType(e.target.value)}
-            />
-            <Button
-              icon={<UndoOutlined />}
-              disabled={!canUndo}
-              onClick={undo}
-            />
-            <Button
-              icon={<RedoOutlined />}
-              disabled={!canRedo}
-              onClick={redo}
-            />
-            <Button
-              icon={<SaveOutlined />}
-              type="primary"
-              onClick={() => {
-                setSavedValue(value);
-                message.success('Code saved successfully');
-              }}
-            />
-            <Button
-              icon={<EyeOutlined />}
-              onClick={() => {
-                navigate('/preview');
-              }}
-            />
-          </Space>
-        </Flex>
-        <Flex
-          style={{
-            height: 'calc(100vh - 72px)',
-          }}
-        >
-          <Live>
-            {editable ? (
-              <Splitter layout={isMobile ? 'vertical' : 'horizontal'}>
-                <Splitter.Panel
-                  defaultSize="50%"
-                  min="20%"
-                  max="80%"
-                  collapsible
-                >
-                  <div className="h-full overflow-auto p-2">
-                    <Live.Preview showError frame={previewFrame} />
-                  </div>
-                </Splitter.Panel>
-                <Splitter.Panel collapsible>
-                  <Live.Editor value={value} onChange={setValue} />
-                </Splitter.Panel>
-              </Splitter>
-            ) : (
-              <Live.Dnd
-                frame={previewFrame}
-                value={value}
-                onChange={setValue}
-              />
-            )}
-          </Live>
-        </Flex>
-      </Flex>
-    </>
+    <div className="flex min-h-screen items-center justify-center p-6">
+      <Space
+        orientation="vertical"
+        align="center"
+        size="large"
+        className="max-w-2xl text-center"
+      >
+        <Typography.Title level={1}>Live Editor</Typography.Title>
+        <Typography.Paragraph className="text-lg text-gray-500">
+          An interactive editor for building UIs with real-time preview and
+          drag-and-drop.
+        </Typography.Paragraph>
+        <ul className="space-y-2 text-left text-gray-600">
+          {HIGHLIGHTS.map(highlight => (
+            <li key={highlight}>• {highlight}</li>
+          ))}
+        </ul>
+        <Space size="middle">
+          <Button
+            type="primary"
+            size="large"
+            onClick={() => navigate('/editor')}
+          >
+            Open Editor
+          </Button>
+          <Button
+            size="large"
+            icon={<Github />}
+            onClick={() =>
+              window.open('https://github.com/pjb0811/live-editor', '_blank')
+            }
+          >
+            GitHub
+          </Button>
+          <Button
+            size="large"
+            icon={<ExternalLink />}
+            onClick={() =>
+              window.open(
+                'https://www.npmjs.com/package/@jbpark/live-editor',
+                '_blank',
+              )
+            }
+          >
+            npm
+          </Button>
+        </Space>
+      </Space>
+    </div>
   );
 };
 
-export default App;
+export default Intro;
