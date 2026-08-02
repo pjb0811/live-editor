@@ -1,16 +1,15 @@
 #!/usr/bin/env node
-// Drafts a .changeset/pr-<number>.md file by asking GitHub Models to
-// summarize this PR's diff to src/ as a semver bump + one-paragraph
-// description, in changesets' own file format. Runs once per PR (the
-// calling workflow skips this script entirely if a changeset file for this
-// PR already exists), so it never overwrites something a human already
-// wrote or edited.
+// Drafts a .changeset/pr-<number>.md file by asking Gemini to summarize
+// this PR's diff to src/ as a semver bump + one-paragraph description, in
+// changesets' own file format. Runs once per PR (the calling workflow skips
+// this script entirely if a changeset file for this PR already exists), so
+// it never overwrites something a human already wrote or edited.
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 
-const MODEL = process.env.GITHUB_MODELS_MODEL || 'openai/gpt-4o-mini';
-const API_URL = 'https://models.github.ai/inference/chat/completions';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const MAX_DIFF_CHARS = 12000;
 const PACKAGE_NAME = '@jbpark/live-editor';
 const PACKAGE_DIR = 'src';
@@ -29,14 +28,8 @@ function diffBetween(base, head) {
   );
 }
 
-function extractJson(content) {
-  const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const raw = fenced ? fenced[1] : content;
-  return JSON.parse(raw.trim());
-}
-
 async function main() {
-  const token = requireEnv('GITHUB_TOKEN');
+  const apiKey = requireEnv('GEMINI_API_KEY');
   const baseSha = requireEnv('BASE_SHA');
   const headSha = requireEnv('HEAD_SHA');
   const prNumber = requireEnv('PR_NUMBER');
@@ -66,8 +59,6 @@ async function main() {
     'includes a drag-and-drop panel, a CodeMirror-based code view, and a',
     'Tiptap rich-text editor for text bindings.',
     'You will be given a git diff for one pull request.',
-    'Respond with ONLY a JSON object, no prose, no markdown code fences,',
-    "matching: { \"bump\": \"major\" | \"minor\" | \"patch\", \"summary\": string }.",
     'bump: major = breaking API change (exported types/functions/props),',
     'minor = new backward-compatible feature or export, patch = bug fix,',
     'internal refactor, docs, or other non-breaking change.',
@@ -76,43 +67,56 @@ async function main() {
     'is used verbatim as a changelog entry, so do not include prose about',
     'the diff itself, file names, or meta-commentary.',
     'If the diff has no user-facing or API-relevant effect (pure test/',
-    'internal-only noise), respond with { "bump": "patch", "summary": "" }.',
+    'internal-only noise), respond with bump "patch" and an empty summary.',
   ].join(' ');
 
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'Content-Type': 'application/json',
-      'X-GitHub-Api-Version': '2022-11-28',
+      'x-goog-api-key': apiKey,
+      'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: MODEL,
-      temperature: 0,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `\`\`\`diff\n${truncatedDiff}\n\`\`\`` },
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: `\`\`\`diff\n${truncatedDiff}\n\`\`\`` }],
+        },
       ],
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            bump: { type: 'STRING', enum: ['major', 'minor', 'patch'] },
+            summary: { type: 'STRING' },
+          },
+          required: ['bump', 'summary'],
+        },
+      },
     }),
   });
 
   if (!response.ok) {
     throw new Error(
-      `GitHub Models request failed: ${response.status} ${response.statusText} — ${await response.text()}`,
+      `Gemini API request failed: ${response.status} ${response.statusText} — ${await response.text()}`,
     );
   }
 
   const body = await response.json();
-  const content = body.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('GitHub Models response missing choices[0].message.content');
+  const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    const blockReason = body.promptFeedback?.blockReason;
+    throw new Error(
+      blockReason
+        ? `Gemini blocked the request: ${blockReason}`
+        : 'Gemini response missing candidates[0].content.parts[0].text',
+    );
   }
 
-  const result = extractJson(content);
-  if (!result || typeof result !== 'object') {
-    throw new Error('Model response is not an object');
-  }
+  const result = JSON.parse(text);
   if (!['major', 'minor', 'patch'].includes(result.bump)) {
     throw new Error(`Invalid bump type "${result.bump}"`);
   }
