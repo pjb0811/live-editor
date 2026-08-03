@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 
-import { Toast, Typography } from '@jbpark/ui-kit';
+import { Button, Toast, Typography } from '@jbpark/ui-kit';
+import { Trash } from 'lucide-react';
 
 import type { Section } from '~/types';
 import { cn } from '~/utils';
@@ -11,9 +12,10 @@ import Node from './node';
 interface Props {
   item?: Section;
   onChange?: (next: Partial<Section>) => void;
+  onDelete?: (id: string) => void;
 }
 
-const Panel = ({ item, onChange }: Props) => {
+const Panel = ({ item, onChange, onDelete }: Props) => {
   const { dataAttrNodes, updatedCode, parseError } = useMemo(() => {
     if (!item?.code) {
       return { dataAttrNodes: [], updatedCode: '', parseError: false };
@@ -65,9 +67,14 @@ const Panel = ({ item, onChange }: Props) => {
         //
       )}
     >
-      <Typography.Title className="text-lg font-semibold">
-        {item.name}
-      </Typography.Title>
+      <div className="flex items-center justify-between">
+        <Typography.Title className="text-lg font-semibold">
+          {item.name}
+        </Typography.Title>
+        {onDelete && (
+          <Button danger icon={<Trash />} onClick={() => onDelete(item.id)} />
+        )}
+      </div>
       {!dataAttrNodes.length && (
         <Typography.Text className="text-xs text-gray-400">
           No editable elements.
