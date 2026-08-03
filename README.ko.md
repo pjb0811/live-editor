@@ -19,7 +19,7 @@ live-editor/
 │  │  ├─ Playground/        # 메인 에디터 페이지
 │  │  └─ Preview/           # 전체화면 프리뷰 페이지
 │  ├─ utils/ast/            # AST 조작 및 코드 생성
-│  ├─ enums/                # 상수 및 설정
+│  ├─ constants/            # 상수 및 설정
 │  ├─ types/                # TypeScript 타입 정의
 │  └─ App.tsx               # 라우팅이 포함된 앱 레이아웃
 └─ package.json

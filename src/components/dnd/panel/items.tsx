@@ -7,7 +7,7 @@ import { useMultiSelect } from '@jbpark/use-hooks';
 import { ArrowDown, ArrowUp, Copy, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
-import { BINDING_PROP } from '~/enums';
+import { BINDING_PROP } from '~/constants';
 import {
   type BindingRenderLeaf,
   type BindingRenderMap,

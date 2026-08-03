@@ -16,7 +16,7 @@ import {
 import { Button, Flex, Radio, Space, Splitter, message } from 'antd';
 
 import Live from '../../';
-import { DEFAULT_TEMPLATE, STORAGE_KEY } from '../../enums';
+import { DEFAULT_TEMPLATE, STORAGE_KEY } from '../../constants';
 
 const options = [
   { label: 'Drag & Drop', value: 'dnd' },

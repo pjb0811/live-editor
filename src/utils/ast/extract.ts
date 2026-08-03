@@ -3,7 +3,7 @@ import traverse from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
-import { BINDING_PROP, CONFIG, DATA_ATTR } from '../../enums';
+import { BINDING_PROP, CONFIG, DATA_ATTR } from '../../constants';
 import { parseBinding } from './binding';
 import { attrValue, generateCode, wrap } from './helpers';
 import type { Attribute, BindingItem, DataAttrNode } from './types';

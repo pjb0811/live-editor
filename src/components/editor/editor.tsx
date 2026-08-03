@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { useDebounce } from '@jbpark/use-hooks';
 
 import { useError, usePreview } from '~/components/context/states';
-import { DEFAULT_TEMPLATE } from '~/enums';
+import { DEFAULT_TEMPLATE } from '~/constants';
 
 import Core, { type Props as CoreProps } from './core';
 

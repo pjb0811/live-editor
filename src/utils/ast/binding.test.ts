@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { BINDING_PROP, DATA_ATTR } from '../../enums';
+import { BINDING_PROP, DATA_ATTR } from '../../constants';
 import { findEditableChildren, getCurrentValue, parseBinding } from './binding';
 import type { Attribute, DataAttrNode } from './types';
 

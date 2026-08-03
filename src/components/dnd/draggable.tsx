@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { Card } from '@jbpark/ui-kit';
 
-import type { DRAGGABLE_ITEMS } from '~/enums';
+import type { DRAGGABLE_ITEMS } from '~/constants';
 import { cn } from '~/utils';
 
 type Item = (typeof DRAGGABLE_ITEMS)[0];

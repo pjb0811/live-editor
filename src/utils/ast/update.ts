@@ -3,7 +3,7 @@ import traverse, { NodePath } from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
-import { BINDING_PROP, DATA_ATTR, REGEX } from '../../enums';
+import { BINDING_PROP, DATA_ATTR, REGEX } from '../../constants';
 import { parseBinding } from './binding';
 import { nodeToJSX } from './extract';
 import { attrValue, generateCode, unwrap, wrap } from './helpers';

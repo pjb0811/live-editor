@@ -9,7 +9,7 @@ import type * as TS from 'typescript';
 
 import type { Module, Section } from '~/types';
 
-import { CONFIG, REGEX, TS_PATTERNS } from '../enums';
+import { CONFIG, REGEX, TS_PATTERNS } from '../constants';
 
 const ts = await import('typescript');
 

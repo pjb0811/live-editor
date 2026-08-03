@@ -23,11 +23,11 @@ import { useResponsiveSize } from '@jbpark/use-hooks';
 import { LayoutGrid } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
-import { DRAGGABLE_ITEMS } from '~/enums';
+import { DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
 import { replaceIds } from '~/utils/ast';
 
-import { DEFAULT_TEMPLATE } from '../../enums';
+import { DEFAULT_TEMPLATE } from '../../constants';
 import {
   cn,
   extractSections,

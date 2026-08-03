@@ -12,7 +12,7 @@ import {
 
 import CoreEditor from '~/components/editor/core';
 import TiptapEditor from '~/components/editor/tiptap';
-import { BINDING_PROP } from '~/enums';
+import { BINDING_PROP } from '~/constants';
 import {
   type BindingItem,
   parseValue,
