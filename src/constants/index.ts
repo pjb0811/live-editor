@@ -19,6 +19,8 @@ export const REGEX = {
   COMMENT: /\{\s*\/\*[\s\S]*?\*\/\s*\}/g,
   SECTION: /<section[\s\S]*?<\/section>/g,
   DATA_NAME: /data-name=["']([^"']+)["']/,
+  MODULE_IMPORT_EXPORT_LINE:
+    /^\s*(?:import|export)\b[^\n]*\bfrom\s+['"][^'"]*['"];?\s*$/gm,
 } as const;
 
 export const TS_PATTERNS = [
