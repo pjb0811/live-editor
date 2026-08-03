@@ -352,6 +352,7 @@ const Dnd = ({
             <Panel
               item={sections.find(s => s.id === selectedId)}
               onChange={onChange}
+              onDelete={onDelete}
             />
           </div>
           <Button
@@ -384,6 +385,7 @@ const Dnd = ({
             <Panel
               item={sections.find(s => s.id === selectedId)}
               onChange={onChange}
+              onDelete={onDelete}
             />
           </Drawer>
         </div>
