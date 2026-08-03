@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import Live from '~/.';
-import { STORAGE_KEY } from '~/enums';
+import { STORAGE_KEY } from '~/constants';
 
 const PreviewPage = () => {
   const code = useMemo(() => localStorage.getItem(STORAGE_KEY), []);

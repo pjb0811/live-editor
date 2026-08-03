@@ -2,7 +2,7 @@ import generate from '@babel/generator';
 import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 
-import { REGEX } from '../../enums';
+import { REGEX } from '../../constants';
 import type { Attribute } from './types';
 
 export const wrap = (code: string) => {

@@ -12,7 +12,7 @@ const playgroundPath = path.resolve(
   __dirname,
   '../src/pages/playground/index.tsx',
 );
-const enumsPath = path.resolve(__dirname, '../src/enums/index.ts');
+const constantsPath = path.resolve(__dirname, '../src/constants/index.ts');
 
 const dedent = value => {
   const lines = value.replace(/^\n/, '').replace(/\s*$/, '').split('\n');
@@ -178,25 +178,25 @@ const serializeItems = items => {
 };
 
 const syncDraggableItems = async () => {
-  const [playgroundSource, enumsSource] = await Promise.all([
+  const [playgroundSource, constantsSource] = await Promise.all([
     readFile(playgroundPath, 'utf8'),
-    readFile(enumsPath, 'utf8'),
+    readFile(constantsPath, 'utf8'),
   ]);
 
   const items = extractSections(playgroundSource);
   const nextBlock = serializeItems(items);
-  const nextSource = enumsSource.replace(
+  const nextSource = constantsSource.replace(
     /export const DRAGGABLE_ITEMS: Section\[] = \[[\s\S]*?\n\];\s*$/,
     `${nextBlock}\n`,
   );
 
-  if (nextSource === enumsSource) {
+  if (nextSource === constantsSource) {
     throw new Error(
-      'Could not replace DRAGGABLE_ITEMS block in src/enums/index.ts.',
+      'Could not replace DRAGGABLE_ITEMS block in src/constants/index.ts.',
     );
   }
 
-  await writeFile(enumsPath, nextSource, 'utf8');
+  await writeFile(constantsPath, nextSource, 'utf8');
 
   console.log(`Synced ${items.length} sections into DRAGGABLE_ITEMS.`);
 };

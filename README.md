@@ -19,7 +19,7 @@ live-editor/
 │  │  ├─ Playground/        # Main editor page
 │  │  └─ Preview/           # Full-screen preview page
 │  ├─ utils/ast/            # AST manipulation & code generation
-│  ├─ enums/                # Constants and configurations
+│  ├─ constants/            # Constants and configurations
 │  ├─ types/                # TypeScript type definitions
 │  └─ App.tsx               # App layout with routing
 └─ package.json

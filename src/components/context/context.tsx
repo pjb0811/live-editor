@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 
-import { DEFAULT_TEMPLATE } from '~/enums';
+import { DEFAULT_TEMPLATE } from '~/constants';
 import { clearCompilationCache } from '~/utils';
 
 import type { ErrorContextType } from './states';

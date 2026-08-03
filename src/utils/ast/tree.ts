@@ -2,7 +2,7 @@ import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
-import { DATA_ATTR } from '../../enums';
+import { DATA_ATTR } from '../../constants';
 import { generateCode } from './helpers';
 
 export const replaceIds = (

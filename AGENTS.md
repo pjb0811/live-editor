@@ -40,7 +40,7 @@ live-editor/
 │  │  │  ├─ update.ts       # 값 → AST 반영 (update(), bulkUpdate())
 │  │  │  └─ tree.ts         # replaceIds()/fillIds()/clone()
 │  │  └─ tailwind/          # Tailwind 관련 유틸
-│  ├─ enums/index.ts        # 상수, 정규식, 기본 템플릿
+│  ├─ constants/index.ts    # 상수, 정규식, 기본 템플릿
 │  ├─ types/index.ts        # TypeScript 타입 정의
 │  ├─ App.tsx               # 앱 레이아웃 (Editor/DnD 모드 토글)
 │  └─ main.tsx              # 진입점
@@ -71,7 +71,7 @@ live-editor/
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/utils/index.ts`                | `compile()`, `cn()`, `baseModules`, `getCachedScriptBlob()`                                                                                         |
 | `src/utils/ast/`                    | `extract()`, `update()`/`bulkUpdate()`, `parseBinding()`, `getCurrentValue()`, `clone()` — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
-| `src/enums/index.ts`                | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                         |
+| `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                         |
 | `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                            |
 | `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                      |
 | `src/components/preview/client.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                             |
@@ -97,7 +97,7 @@ live-editor/
 ```ts
 ~/components  →  src/cemnnoopst;
 ~/utils       →  src/ilstu;
-~/enums       →  src/emnsu;
+~/constants   →  src/acnnosstt;
 ~/types       →  src/epsty;
 ```
 

@@ -1,7 +1,7 @@
 import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 
-import { REGEX } from '../../enums';
+import { REGEX } from '../../constants';
 import { generateCode } from './helpers';
 import type { ExtractedNodeValue, NodeValueType } from './types';
 

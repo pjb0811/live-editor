@@ -2,7 +2,7 @@ import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 import { z } from 'zod';
 
-import { BINDING_PROP, DATA_ATTR } from '../../enums';
+import { BINDING_PROP, DATA_ATTR } from '../../constants';
 import {
   BINDING_TYPES,
   type BindingItem,
