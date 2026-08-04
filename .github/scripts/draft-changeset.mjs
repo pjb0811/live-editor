@@ -18,6 +18,38 @@ const MAX_DIFF_CHARS = 12000;
 const PACKAGE_NAME = '@jbpark/live-editor';
 const PACKAGE_DIR = 'src';
 
+// Gemini occasionally returns 503 ("high demand") or 429 for a few minutes
+// at a time — retry those with backoff instead of failing the required
+// "draft" check outright. Non-retryable statuses (bad key, bad request,
+// etc.) still fail on the first attempt.
+const MAX_ATTEMPTS = 4;
+const RETRY_BASE_DELAY_MS = 2000;
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url, options) {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const response = await fetch(url, options);
+
+    if (
+      response.ok ||
+      !RETRYABLE_STATUSES.has(response.status) ||
+      attempt === MAX_ATTEMPTS
+    ) {
+      return response;
+    }
+
+    const delayMs = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+    console.log(
+      `Gemini API returned ${response.status}, retrying in ${delayMs}ms (attempt ${attempt}/${MAX_ATTEMPTS})...`,
+    );
+    await sleep(delayMs);
+  }
+}
+
 function requireEnv(name) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env var: ${name}`);
@@ -74,7 +106,7 @@ async function main() {
     'internal-only noise), respond with bump "patch" and an empty summary.',
   ].join(' ');
 
-  const response = await fetch(API_URL, {
+  const response = await fetchWithRetry(API_URL, {
     method: 'POST',
     headers: {
       'x-goog-api-key': apiKey,
