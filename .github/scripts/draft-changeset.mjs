@@ -1,27 +1,67 @@
 #!/usr/bin/env node
-// Drafts a .changeset/pr-<number>.md file by asking Gemini to summarize
+// Drafts a .changeset/pr-<number>.md file by asking an LLM to summarize
 // this PR's diff to src/ as a semver bump + one-paragraph description, in
 // changesets' own file format. Runs once per PR (the calling workflow skips
 // this script entirely if a changeset file for this PR already exists), so
 // it never overwrites something a human already wrote or edited.
+//
+// Uses NVIDIA's OpenAI-compatible API Catalog endpoint (not Gemini/GitHub
+// Models — both have hit sustained outages/retirement before this).
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 
-// "-latest" alias: Google keeps this pointed at their current lightest/
-// cheapest Flash model, so this stays valid across model retirements
-// (unlike a dated model id, which can 404 once Google sunsets it — as
-// happened with the previous gemini-2.5-flash-lite pin).
-const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
+const API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const MAX_DIFF_CHARS = 12000;
 const PACKAGE_NAME = '@jbpark/live-editor';
 const PACKAGE_DIR = 'src';
+
+// The API occasionally returns 503/429 for a few minutes at a time — retry
+// those with backoff instead of failing the required "draft" check
+// outright. Non-retryable statuses (bad key, bad request, etc.) still fail
+// on the first attempt.
+const MAX_ATTEMPTS = 4;
+const RETRY_BASE_DELAY_MS = 2000;
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url, options) {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const response = await fetch(url, options);
+
+    if (
+      response.ok ||
+      !RETRYABLE_STATUSES.has(response.status) ||
+      attempt === MAX_ATTEMPTS
+    ) {
+      return response;
+    }
+
+    const delayMs = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+    console.log(
+      `NVIDIA API returned ${response.status}, retrying in ${delayMs}ms (attempt ${attempt}/${MAX_ATTEMPTS})...`,
+    );
+    await sleep(delayMs);
+  }
+}
 
 function requireEnv(name) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required env var: ${name}`);
   return value;
+}
+
+// The model isn't guaranteed to honor a strict JSON-only instruction, so
+// pull the object out of a ```json fenced block if present and fall back to
+// parsing the raw content otherwise.
+function extractJson(content) {
+  const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const raw = fenced ? fenced[1] : content;
+  return JSON.parse(raw.trim());
 }
 
 function diffBetween(base, head) {
@@ -33,7 +73,7 @@ function diffBetween(base, head) {
 }
 
 async function main() {
-  const apiKey = requireEnv('GEMINI_API_KEY');
+  const apiKey = requireEnv('NVIDIA_API_KEY');
   const baseSha = requireEnv('BASE_SHA');
   const headSha = requireEnv('HEAD_SHA');
   const prNumber = requireEnv('PR_NUMBER');
@@ -72,57 +112,58 @@ async function main() {
     'the diff itself, file names, or meta-commentary.',
     'If the diff has no user-facing or API-relevant effect (pure test/',
     'internal-only noise), respond with bump "patch" and an empty summary.',
+    'Respond with ONLY a JSON object, no prose, no markdown code fences,',
+    "matching: { \"bump\": \"major\" | \"minor\" | \"patch\", \"summary\": string }.",
   ].join(' ');
 
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'x-goog-api-key': apiKey,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `\`\`\`diff\n${truncatedDiff}\n\`\`\`` }],
-        },
-      ],
-      generationConfig: {
-        temperature: 0,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            bump: { type: 'STRING', enum: ['major', 'minor', 'patch'] },
-            summary: { type: 'STRING' },
-          },
-          required: ['bump', 'summary'],
-        },
+  // A drafted changeset is a nice-to-have, not something worth failing the
+  // required "draft" check over — if the API is unavailable even after
+  // retries, skip drafting (exit 0) instead of blocking the PR. A human can
+  // always add a changeset by hand.
+  let result;
+  try {
+    const response = await fetchWithRetry(API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-    }),
-  });
+      body: JSON.stringify({
+        model: MODEL,
+        temperature: 0,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `\`\`\`diff\n${truncatedDiff}\n\`\`\`` },
+        ],
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(
-      `Gemini API request failed: ${response.status} ${response.statusText} — ${await response.text()}`,
+    if (!response.ok) {
+      throw new Error(
+        `NVIDIA API request failed: ${response.status} ${response.statusText} — ${await response.text()}`,
+      );
+    }
+
+    const body = await response.json();
+    const content = body.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error(
+        'NVIDIA API response missing choices[0].message.content',
+      );
+    }
+
+    result = extractJson(content);
+    if (!result || typeof result !== 'object') {
+      throw new Error('Model response is not an object');
+    }
+    if (!['major', 'minor', 'patch'].includes(result.bump)) {
+      throw new Error(`Invalid bump type "${result.bump}"`);
+    }
+  } catch (err) {
+    console.log(
+      `NVIDIA API unavailable, skipping changeset draft: ${err.message}`,
     );
-  }
-
-  const body = await response.json();
-  const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    const blockReason = body.promptFeedback?.blockReason;
-    throw new Error(
-      blockReason
-        ? `Gemini blocked the request: ${blockReason}`
-        : 'Gemini response missing candidates[0].content.parts[0].text',
-    );
-  }
-
-  const result = JSON.parse(text);
-  if (!['major', 'minor', 'patch'].includes(result.bump)) {
-    throw new Error(`Invalid bump type "${result.bump}"`);
+    return;
   }
 
   if (!result.summary || !result.summary.trim()) {
