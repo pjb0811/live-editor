@@ -1,17 +1,17 @@
-import { parse, parseExpression } from '@babel/parser';
+import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import * as t from '@babel/types';
 
 import { CONFIG } from '../../constants';
 import type { Section } from '../../types';
 import { createBoundedCache } from '../cache';
-import { generateCode } from './helpers';
 
 const APP_CONTAINER_ID = 'app-container';
 const SECTION_TAG = 'section';
 const DATA_NAME_ATTR = 'data-name';
 
 export interface DocumentTree {
+  code: string;
   ast: t.File;
   container: t.JSXElement;
 }
@@ -38,9 +38,6 @@ const getAttrValue = (
 const isSectionElement = (node: t.Node): node is t.JSXElement =>
   t.isJSXElement(node) && getTagName(node) === SECTION_TAG;
 
-const isBlankJSXText = (node: t.Node): boolean =>
-  t.isJSXText(node) && !node.value.trim();
-
 const findContainer = (ast: t.File): t.JSXElement | undefined => {
   let container: t.JSXElement | undefined;
 
@@ -56,21 +53,43 @@ const findContainer = (ast: t.File): t.JSXElement | undefined => {
   return container;
 };
 
+// Recursively finds every *outermost* <section> under a container — a
+// <section> nested inside another <section> is left to its parent, so the
+// document's section count stays unambiguous (matches how the old
+// regex-based path treated nesting, and how #96 asked for it).
+const findOutermostSections = (
+  children: t.JSXElement['children'],
+): t.JSXElement[] => {
+  const sections: t.JSXElement[] = [];
+
+  for (const child of children) {
+    if (isSectionElement(child)) {
+      sections.push(child);
+      continue;
+    }
+
+    if (t.isJSXElement(child) || t.isJSXFragment(child)) {
+      sections.push(...findOutermostSections(child.children));
+    }
+  }
+
+  return sections;
+};
+
 const parseCache = createBoundedCache<string, t.File>(CONFIG.CACHE_LIMIT);
 
-// Every caller of parseDocument() below goes on to mutate the returned
-// container's `children` in place (see replaceDocumentSections/
-// generateSectionPreview), so a cache hit must hand back a clone — reusing
-// the cached File node directly would let one caller's edit corrupt what the
-// next cache hit returns. Cloning is still far cheaper than re-lexing and
-// re-parsing the same source string from scratch, which is what happens
-// today once per section per render (extractSections + one generateSection
-// per <section>) even though the source hasn't changed since the last call.
+// document.ts locates positions in the *original* source (section start/end
+// offsets, the container's opening/closing tag positions) and edits by
+// slicing that string — see replaceDocumentSections/generateSectionPreview
+// below. It never round-trips through @babel/generator and never mutates
+// the parsed tree, so every caller can safely share one cached AST: unlike
+// an approach that hands out a tree for the caller to edit in place, a
+// cache hit here needs no clone at all.
 const parseSource = (code: string): t.File => {
   const cached = parseCache.get(code);
 
   if (cached) {
-    return t.cloneNode(cached, true);
+    return cached;
   }
 
   const ast = parse(code, {
@@ -80,23 +99,19 @@ const parseSource = (code: string): t.File => {
 
   parseCache.set(code, ast);
 
-  // Never hand out the object stored in the cache itself — every caller
-  // mutates its container's children, and the first parseDocument() call for
-  // a given source is a cache miss too, so it needs the same clone-on-return
-  // treatment as a hit.
-  return t.cloneNode(ast, true);
+  return ast;
 };
 
 // Parses the whole source once into a single Babel AST — the shared "document
 // tree" that section-level (this file) and field-level (extract.ts/update.ts)
-// operations both read/write via @babel/* instead of the previous regex-based
+// operations both read via @babel/* instead of the previous regex-based
 // section slicing living in a separate, conflicting parser.
 export const parseDocument = (code: string): DocumentTree | undefined => {
   try {
     const ast = parseSource(code);
     const container = findContainer(ast);
 
-    return container ? { ast, container } : undefined;
+    return container ? { code, ast, container } : undefined;
   } catch (e) {
     console.warn('⚠️ Failed to parse document', e);
     return undefined;
@@ -108,28 +123,50 @@ export const clearDocumentParseCache = () => {
 };
 
 export const getSections = (doc: DocumentTree): Section[] =>
-  doc.container.children.filter(isSectionElement).map((node, index) => ({
+  findOutermostSections(doc.container.children).map((node, index) => ({
     id: `${index}`,
     name: getAttrValue(node, DATA_NAME_ATTR) || `${index + 1}번째 컴포넌트`,
-    code: generateCode(node),
+    code: doc.code.slice(node.start!, node.end!),
   }));
 
-export const generateDocumentCode = (doc: DocumentTree): string =>
-  generateCode(doc.ast);
+export const generateDocumentCode = (doc: DocumentTree): string => doc.code;
 
-const parseSectionNode = (code: string): t.JSXElement | undefined => {
-  try {
-    const expr = parseExpression(code, {
-      plugins: ['jsx', 'typescript'],
-    });
-
-    return t.isJSXElement(expr) ? expr : undefined;
-  } catch (e) {
-    console.warn('⚠️ Failed to parse section', e);
+// The span of source text occupied by `container`'s children — right after
+// its opening tag's `>` through right before its closing tag's `<`.
+// undefined for a self-closing container, which has no children slot.
+const getContainerInnerSpan = (
+  container: t.JSXElement,
+): { start: number; end: number } | undefined => {
+  if (!container.closingElement) {
     return undefined;
   }
+
+  return {
+    start: container.openingElement.end!,
+    end: container.closingElement.start!,
+  };
 };
 
+const spliceCode = (
+  code: string,
+  start: number,
+  end: number,
+  replacement: string,
+): string => code.slice(0, start) + replacement + code.slice(end);
+
+// Replaces the container's <section> children with `sectionCodes`, leaving
+// everything else in the file — non-section content before/after the
+// sections, and anything outside the container entirely — byte-for-byte
+// untouched (no whole-file reformatting, no reordering; see #96). Content
+// interspersed *between* the original sections is not separately preserved:
+// the whole span from the first section's start to the last section's end
+// is replaced as one block, since `sectionCodes` is a flat replacement list
+// with no way to say where such content should land in the new order.
+//
+// `sectionCodes` are spliced in as raw text with no parsing or validation:
+// an invalid entry still lands in the output rather than being silently
+// dropped, and gets surfaced through the normal compile-error path instead
+// of vanishing (#96).
 export const replaceDocumentSections = (
   fullCode: string,
   sectionCodes: string[],
@@ -140,31 +177,37 @@ export const replaceDocumentSections = (
     return fullCode;
   }
 
-  const nextSections = sectionCodes
-    .map(parseSectionNode)
-    .filter((node): node is t.JSXElement => Boolean(node));
+  const sections = findOutermostSections(doc.container.children);
+  const replacement = sectionCodes.join('\n');
 
-  const preserved = doc.container.children.filter(
-    child => !isSectionElement(child) && !isBlankJSXText(child),
-  );
+  if (sections.length > 0) {
+    const start = sections[0]!.start!;
+    const end = sections[sections.length - 1]!.end!;
 
-  doc.container.children = [...nextSections, ...preserved];
+    return spliceCode(fullCode, start, end, replacement);
+  }
 
-  return generateDocumentCode(doc);
+  // No existing sections to anchor a replacement span on — append after
+  // whatever the container already holds (e.g. a still-empty
+  // <main id="app-container">) instead of discarding it.
+  const span = getContainerInnerSpan(doc.container);
+
+  return span
+    ? spliceCode(fullCode, span.end, span.end, replacement)
+    : fullCode;
 };
 
+// Produces a document whose container holds only `sectionCode`, discarding
+// any other container content — used for Renderer's isolated per-section
+// preview compile, not as a general-purpose section-list edit.
 export const generateSectionPreview = (
   fullCode: string,
   sectionCode: string,
 ): string => {
   const doc = parseDocument(fullCode);
-  const sectionNode = parseSectionNode(sectionCode);
+  const span = doc && getContainerInnerSpan(doc.container);
 
-  if (!doc || !sectionNode) {
-    return fullCode;
-  }
-
-  doc.container.children = [sectionNode];
-
-  return generateDocumentCode(doc);
+  return span
+    ? spliceCode(fullCode, span.start, span.end, sectionCode)
+    : fullCode;
 };
