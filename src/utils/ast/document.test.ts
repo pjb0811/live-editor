@@ -54,14 +54,17 @@ describe('parseDocument', () => {
 });
 
 describe('getSections', () => {
-  it('extracts each top-level <section> in document order', () => {
+  it('extracts each top-level <section> in document order, as an exact slice of the original source', () => {
     const doc = parseDocument(FULL_CODE)!;
     const sections = getSections(doc);
 
     expect(sections).toHaveLength(2);
-    expect(sections[0]).toMatchObject({ id: '0', name: 'Hero' });
+    expect(sections[0]).toMatchObject({
+      id: '0',
+      name: 'Hero',
+      code: '<section data-name="Hero"><h1>Hero</h1></section>',
+    });
     expect(sections[1]).toMatchObject({ id: '1', name: 'Features' });
-    expect(sections[0]!.code).toContain('<h1>Hero</h1>');
   });
 
   it('falls back to a positional name when data-name is missing', () => {
@@ -95,6 +98,36 @@ describe('getSections', () => {
     expect(getSections(doc)).toHaveLength(1);
     expect(getSections(doc)[0]!.name).toBe('Real');
   });
+
+  it('finds a <section> nested inside a non-section wrapper (#96 point D)', () => {
+    const doc = parseDocument(`
+      const App = () => (
+        <main id="app-container">
+          <div className="wrap">
+            <section data-name="래핑됨"><p>1</p></section>
+          </div>
+        </main>
+      );
+    `)!;
+
+    expect(getSections(doc)).toHaveLength(1);
+    expect(getSections(doc)[0]!.name).toBe('래핑됨');
+  });
+
+  it('treats a <section> nested inside another <section> as part of its parent, not a separate entry', () => {
+    const doc = parseDocument(`
+      const App = () => (
+        <main id="app-container">
+          <section data-name="Outer">
+            <section data-name="Inner"><p>x</p></section>
+          </section>
+        </main>
+      );
+    `)!;
+
+    expect(getSections(doc)).toHaveLength(1);
+    expect(getSections(doc)[0]!.name).toBe('Outer');
+  });
 });
 
 describe('replaceDocumentSections', () => {
@@ -109,23 +142,56 @@ describe('replaceDocumentSections', () => {
     expect(sections[0]!.name).toBe('About');
   });
 
-  it('preserves non-section children of the container', () => {
-    const codeWithComment = `
+  it('does not reformat any code outside the replaced section span (#96 point A)', () => {
+    const code = `import * as ui from 'ui-kit';
+const App = ({
+  container
+}) => {
+  return <main id="app-container"><section data-name="Hero"><h1>Hero</h1></section></main>;
+};
+export default App;
+`;
+
+    const next = replaceDocumentSections(code, [
+      '<section data-name="Hero2"><h1>Hero2</h1></section>',
+    ]);
+
+    expect(next).toBe(
+      `import * as ui from 'ui-kit';
+const App = ({
+  container
+}) => {
+  return <main id="app-container"><section data-name="Hero2"><h1>Hero2</h1></section></main>;
+};
+export default App;
+`,
+    );
+  });
+
+  it('keeps non-section content in its original position instead of moving it after the sections (#96 point B)', () => {
+    const codeWithHeader = `
       const App = () => (
         <main id="app-container">
+          <div className="header">헤더</div>
           {/* keep me */}
           <section data-name="Hero"><h1>Hero</h1></section>
         </main>
       );
     `;
 
-    const next = replaceDocumentSections(codeWithComment, [
-      `<section data-name="Hero2"><h1>Hero2</h1></section>
-`,
+    const next = replaceDocumentSections(codeWithHeader, [
+      '<section data-name="Hero2"><h1>Hero2</h1></section>',
     ]);
 
     expect(next).toContain('keep me');
-    expect(getSections(parseDocument(next)!)[0]!.name).toBe('Hero2');
+
+    const headerIndex = next.indexOf('className="header"');
+    const commentIndex = next.indexOf('keep me');
+    const sectionIndex = next.indexOf('data-name="Hero2"');
+
+    expect(headerIndex).toBeGreaterThan(-1);
+    expect(headerIndex).toBeLessThan(commentIndex);
+    expect(commentIndex).toBeLessThan(sectionIndex);
   });
 
   it('returns the original code unchanged when it fails to parse', () => {
@@ -134,12 +200,34 @@ describe('replaceDocumentSections', () => {
     expect(replaceDocumentSections(broken, ['<section />'])).toBe(broken);
   });
 
-  it('skips section strings that fail to parse instead of throwing', () => {
+  it('inserts section strings verbatim without validating them — an invalid one still lands in the output instead of being silently dropped (#96 point C)', () => {
     const next = replaceDocumentSections(FULL_CODE, [
       '<section data-name="Good"><p>Good</p></section>',
       '<not-jsx',
     ]);
 
+    // Landed as-is rather than being filtered out — genuinely invalid, so
+    // it can't be re-parsed here either; that failure now surfaces through
+    // the normal compile-error path instead of vanishing silently.
+    expect(next).toContain('<section data-name="Good"><p>Good</p></section>');
+    expect(next).toContain('<not-jsx');
+    expect(parseDocument(next)).toBeUndefined();
+  });
+
+  it('appends into an empty container instead of discarding what it already holds', () => {
+    const codeWithHeaderOnly = `
+      const App = () => (
+        <main id="app-container">
+          <div className="header">헤더</div>
+        </main>
+      );
+    `;
+
+    const next = replaceDocumentSections(codeWithHeaderOnly, [
+      '<section data-name="Hero"><h1>Hero</h1></section>',
+    ]);
+
+    expect(next).toContain('className="header"');
     expect(getSections(parseDocument(next)!)).toHaveLength(1);
   });
 });
@@ -157,8 +245,31 @@ describe('generateSectionPreview', () => {
     expect(sections[0]!.name).toBe('Solo');
   });
 
-  it('returns fullCode unchanged when the section fails to parse', () => {
-    expect(generateSectionPreview(FULL_CODE, '<not-jsx')).toBe(FULL_CODE);
+  it('does not reformat code outside the container (#96 point A)', () => {
+    const code = `import * as ui from 'ui-kit';
+const App = ({
+  container
+}) => {
+  return <main id="app-container"><section data-name="Hero"><h1>Hero</h1></section></main>;
+};
+export default App;
+`;
+
+    const preview = generateSectionPreview(
+      code,
+      '<section data-name="Solo"><p>Solo</p></section>',
+    );
+
+    expect(preview).toBe(
+      `import * as ui from 'ui-kit';
+const App = ({
+  container
+}) => {
+  return <main id="app-container"><section data-name="Solo"><p>Solo</p></section></main>;
+};
+export default App;
+`,
+    );
   });
 
   it('returns fullCode unchanged when fullCode fails to parse', () => {
@@ -169,30 +280,22 @@ describe('generateSectionPreview', () => {
 });
 
 describe('generateDocumentCode', () => {
-  it('regenerates code that still contains the surrounding module scaffold', () => {
+  it('returns the document code the tree was parsed from', () => {
     const doc = parseDocument(FULL_CODE)!;
-    const code = generateDocumentCode(doc);
 
-    expect(code).toContain("import * as ui from 'ui-kit'");
-    expect(code).toContain('export default App');
+    expect(generateDocumentCode(doc)).toBe(FULL_CODE);
   });
 });
 
 describe('parseDocument caching', () => {
-  it('reuses a cached parse for a repeated source string without sharing mutable state', () => {
+  it('reuses the same parsed AST for a repeated source string — safe since nothing ever mutates it', () => {
     clearDocumentParseCache();
 
     const first = parseDocument(FULL_CODE)!;
     const second = parseDocument(FULL_CODE)!;
 
-    // Distinct objects (mutating one must not corrupt the cache or the
-    // other caller's tree) that still describe the same document.
-    expect(second.container).not.toBe(first.container);
-    expect(getSections(second)).toEqual(getSections(first));
-
-    first.container.children = [];
-    expect(getSections(second)).toHaveLength(2);
-    expect(getSections(parseDocument(FULL_CODE)!)).toHaveLength(2);
+    expect(second.ast).toBe(first.ast);
+    expect(second.container).toBe(first.container);
   });
 
   it('clearDocumentParseCache() forces a fresh parse', () => {
