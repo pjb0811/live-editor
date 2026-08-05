@@ -16,6 +16,7 @@ import {
   parseDocument,
   replaceDocumentSections,
 } from './ast/document';
+import { createBoundedCache } from './cache';
 
 const ts = await import('typescript');
 
@@ -28,7 +29,7 @@ export const baseModules = {
   'ui-kit/utils': utils,
 };
 
-const compilationCache = new Map<string, Module>();
+const compilationCache = createBoundedCache<string, Module>(CONFIG.CACHE_LIMIT);
 
 const simpleHash = (str: string): string => {
   let hash = 0;
@@ -67,14 +68,6 @@ export const compile = (
   }
 
   const result = compileModule(code, modules);
-
-  if (compilationCache.size >= CONFIG.CACHE_LIMIT) {
-    const firstKey = compilationCache.keys().next().value;
-
-    if (firstKey) {
-      compilationCache.delete(firstKey);
-    }
-  }
 
   compilationCache.set(cacheKey, result);
   return result;
@@ -205,7 +198,10 @@ export const generateSection = (code: string, fullCode: string) => {
   return generateSectionPreview(fullCode, code);
 };
 
-const scriptCache = new Map<string, string>();
+const scriptCache = createBoundedCache<string, string>(
+  CONFIG.CACHE_LIMIT,
+  (_src, blobUrl) => URL.revokeObjectURL(blobUrl),
+);
 const loadingScriptCache = new Map<string, Promise<string>>();
 
 export const getCachedScriptBlob = async (src: string): Promise<string> => {
@@ -226,20 +222,6 @@ export const getCachedScriptBlob = async (src: string): Promise<string> => {
     .then(text => {
       const blob = new Blob([text], { type: 'application/javascript' });
       const blobUrl = URL.createObjectURL(blob);
-
-      if (scriptCache.size >= CONFIG.CACHE_LIMIT) {
-        const firstKey = scriptCache.keys().next().value;
-
-        if (firstKey) {
-          const evictedUrl = scriptCache.get(firstKey);
-
-          if (evictedUrl) {
-            URL.revokeObjectURL(evictedUrl);
-          }
-
-          scriptCache.delete(firstKey);
-        }
-      }
 
       scriptCache.set(src, blobUrl);
       loadingScriptCache.delete(src);
