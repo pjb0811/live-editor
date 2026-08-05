@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0
+
+### Minor Changes
+
+- 4b258e0: Add a welcome landing page intro view and integrate Toast notifications for item parsing errors.
+- e2ba1af: Add a delete button to the drag-and-drop panel to allow removing sections directly from the editor.
+- daaf167: Add support for parsing and manipulating JSX documents, including extracting sections, replacing sections, and generating section previews.
+- a4079f1: Added bounded caching to improve performance by limiting the number of cached items and evicting the oldest entry when the limit is reached.
+- da1b700: Added caching to improve performance of document parsing, allowing for repeated parses of the same source string without re-lexing and re-parsing from scratch.
+
+### Patch Changes
+
+- c41a7f3: Improve state synchronization in the preview page by utilizing the local storage hook for persistent code viewing.
+- 63f9420: Fix false-positive TypeScript detection for ES module import and export aliasing syntax.
+
 ## 1.4.0
 
 ### Minor Changes
