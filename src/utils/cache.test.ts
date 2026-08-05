@@ -49,4 +49,31 @@ describe('createBoundedCache', () => {
     expect(cache.size).toBe(0);
     expect(cache.has('b')).toBe(false);
   });
+
+  it('evicts least-recently-used, not literally-oldest-inserted — a get() hit protects an entry from the next eviction', () => {
+    const cache = createBoundedCache<string, number>(2);
+
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.get('a'); // touch 'a' so 'b' becomes the least-recently-used entry
+    cache.set('c', 3);
+
+    expect(cache.has('a')).toBe(true);
+    expect(cache.has('b')).toBe(false);
+    expect(cache.has('c')).toBe(true);
+  });
+
+  it('set() on an existing key refreshes its recency instead of double-counting it', () => {
+    const cache = createBoundedCache<string, number>(2);
+
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.set('a', 10); // re-set 'a' so 'b' becomes the least-recently-used entry
+    cache.set('c', 3);
+
+    expect(cache.get('a')).toBe(10);
+    expect(cache.has('b')).toBe(false);
+    expect(cache.has('c')).toBe(true);
+    expect(cache.size).toBe(2);
+  });
 });
