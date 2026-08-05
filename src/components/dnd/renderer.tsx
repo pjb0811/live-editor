@@ -1,25 +1,22 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 import Frame, { type FrameProps } from '~/components/frame';
-import { baseModules, compile, generateSection } from '~/utils';
+import { baseModules, compile } from '~/utils';
 
 interface Props {
-  fullCode: string;
-  code: string;
+  preview: string;
   modules?: Record<string, unknown>;
   headers?: Record<string, boolean>;
   frame?: FrameProps;
   provider?: (children: React.ReactNode) => React.ReactNode;
 }
 
-const Renderer = ({
-  fullCode,
-  code,
-  headers,
-  modules,
-  frame,
-  provider,
-}: Props) => {
+// Wrapped in memo() because `preview` is a plain string: for a section that
+// didn't change, the parent hands back the same content it computed last
+// render (see generateSections()/dnd.tsx), so a shallow prop comparison
+// lets React skip both the recompile below and reconciling this section's
+// iframe tree at all — see #97.
+const Renderer = ({ preview, headers, modules, frame, provider }: Props) => {
   const memoizedModules = useMemo(
     () => ({
       ...baseModules,
@@ -28,14 +25,9 @@ const Renderer = ({
     [modules],
   );
 
-  const memoizedSection = useMemo(
-    () => generateSection(code, fullCode),
-    [code, fullCode],
-  );
-
   const module = useMemo(
-    () => compile(memoizedSection, memoizedModules),
-    [memoizedSection, memoizedModules],
+    () => compile(preview, memoizedModules),
+    [preview, memoizedModules],
   );
 
   const renderProvider = (component: React.ReactNode) => {
@@ -65,4 +57,4 @@ const Renderer = ({
   );
 };
 
-export default Renderer;
+export default memo(Renderer);

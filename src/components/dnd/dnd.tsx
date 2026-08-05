@@ -31,6 +31,7 @@ import { DEFAULT_TEMPLATE } from '../../constants';
 import {
   cn,
   extractSections,
+  generateSections,
   preloadScripts,
   replaceSections,
 } from '../../utils';
@@ -95,6 +96,14 @@ const Dnd = ({
 
   const value = _value || DEFAULT_TEMPLATE;
   const sections = useMemo(() => extractSections(value), [value]);
+  const previews = useMemo(
+    () =>
+      generateSections(
+        sections.map(s => s.code),
+        value,
+      ),
+    [sections, value],
+  );
 
   const onDragStart = (_: DragStartEvent) => {};
 
@@ -324,7 +333,7 @@ const Dnd = ({
                   items={sections.map(s => s.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  {sections.map(section => (
+                  {sections.map((section, index) => (
                     <Sortable
                       key={section.id}
                       id={section.id}
@@ -335,8 +344,7 @@ const Dnd = ({
                       onCopy={onCopy}
                     >
                       <Renderer
-                        fullCode={value}
-                        code={section.code}
+                        preview={previews[index]!}
                         modules={modules}
                         frame={frame}
                         provider={provider}

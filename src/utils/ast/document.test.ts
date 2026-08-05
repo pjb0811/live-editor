@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   clearDocumentParseCache,
   generateDocumentCode,
   generateSectionPreview,
+  generateSectionPreviews,
   getSections,
   parseDocument,
   replaceDocumentSections,
@@ -279,6 +280,57 @@ export default App;
   });
 });
 
+describe('generateSectionPreviews', () => {
+  it('produces one preview per section code, in order', () => {
+    const previews = generateSectionPreviews(FULL_CODE, [
+      '<section data-name="A"><p>A</p></section>',
+      '<section data-name="B"><p>B</p></section>',
+    ]);
+
+    expect(previews).toHaveLength(2);
+    expect(getSections(parseDocument(previews[0]!)!)[0]!.name).toBe('A');
+    expect(getSections(parseDocument(previews[1]!)!)[0]!.name).toBe('B');
+  });
+
+  it('matches generateSectionPreview called once per section (#97)', () => {
+    const codes = [
+      '<section data-name="A"><p>A</p></section>',
+      '<section data-name="B"><p>B</p></section>',
+      '<section data-name="C"><p>C</p></section>',
+    ];
+
+    const batched = generateSectionPreviews(FULL_CODE, codes);
+    const oneAtATime = codes.map(code =>
+      generateSectionPreview(FULL_CODE, code),
+    );
+
+    expect(batched).toEqual(oneAtATime);
+  });
+
+  it('leaves an unrelated section untouched when only one code changes — same string both times (#97)', () => {
+    const codes = [
+      '<section data-name="A"><p>A</p></section>',
+      '<section data-name="B"><p>B</p></section>',
+    ];
+
+    const before = generateSectionPreviews(FULL_CODE, codes);
+
+    codes[0] = '<section data-name="A-edited"><p>A edited</p></section>';
+    const after = generateSectionPreviews(FULL_CODE, codes);
+
+    expect(after[1]).toBe(before[1]);
+    expect(after[0]).not.toBe(before[0]);
+  });
+
+  it('returns fullCode for every entry when fullCode fails to parse', () => {
+    const broken = '<main id="app-container">';
+
+    expect(
+      generateSectionPreviews(broken, ['<section />', '<section />']),
+    ).toEqual([broken, broken]);
+  });
+});
+
 describe('generateDocumentCode', () => {
   it('returns the document code the tree was parsed from', () => {
     const doc = parseDocument(FULL_CODE)!;
@@ -309,5 +361,18 @@ describe('parseDocument caching', () => {
 
     expect(second.ast).not.toBe(first.ast);
     expect(getSections(second)).toEqual(getSections(first));
+  });
+
+  it('caches a parse failure too, instead of re-parsing the same broken source on every call (#97)', () => {
+    clearDocumentParseCache();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const broken = '<main id="app-container">';
+
+    expect(parseDocument(broken)).toBeUndefined();
+    expect(parseDocument(broken)).toBeUndefined();
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    warn.mockRestore();
   });
 });

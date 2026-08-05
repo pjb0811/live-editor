@@ -2,6 +2,7 @@ import { useDndContext } from '@dnd-kit/core';
 
 import type { FrameProps } from '~/components/frame';
 import type { Section } from '~/types';
+import { generateSection } from '~/utils';
 
 import Draggable from './draggable';
 import Renderer from './renderer';
@@ -32,9 +33,15 @@ const Overlay = ({ sections, renderProps }: Props) => {
   const section = sections.find(s => s.id === active.id);
 
   if (section) {
+    const preview = generateSection(section.code, renderProps.fullCode);
+
     return (
       <Sortable id={section.id} name={section.name}>
-        <Renderer {...renderProps} code={section.code} />
+        <Renderer
+          preview={preview}
+          modules={renderProps.modules}
+          frame={renderProps.frame}
+        />
       </Sortable>
     );
   }

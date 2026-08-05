@@ -76,39 +76,25 @@ const findOutermostSections = (
   return sections;
 };
 
-const parseCache = createBoundedCache<string, t.File>(CONFIG.CACHE_LIMIT);
+// Caches the outcome for a source string, success or failure — `null` marks
+// a cached failure (bad syntax, or no app-container), distinct from
+// `undefined` meaning "not looked up yet" (createBoundedCache.get()'s own
+// miss signal). Without this, an in-progress syntax error (the document
+// mid-edit, before the next keystroke fixes it) would get re-parsed from
+// scratch by every one of the N call sites that ask for it on every render
+// (#97) — parsing determines nothing here except whether it throws, so
+// there's no separate "did it parse" fact to cache apart from the result.
+const documentCache = createBoundedCache<string, DocumentTree | null>(
+  CONFIG.CACHE_LIMIT,
+);
 
-// document.ts locates positions in the *original* source (section start/end
-// offsets, the container's opening/closing tag positions) and edits by
-// slicing that string — see replaceDocumentSections/generateSectionPreview
-// below. It never round-trips through @babel/generator and never mutates
-// the parsed tree, so every caller can safely share one cached AST: unlike
-// an approach that hands out a tree for the caller to edit in place, a
-// cache hit here needs no clone at all.
-const parseSource = (code: string): t.File => {
-  const cached = parseCache.get(code);
-
-  if (cached) {
-    return cached;
-  }
-
-  const ast = parse(code, {
-    sourceType: 'module',
-    plugins: ['jsx', 'typescript'],
-  });
-
-  parseCache.set(code, ast);
-
-  return ast;
-};
-
-// Parses the whole source once into a single Babel AST — the shared "document
-// tree" that section-level (this file) and field-level (extract.ts/update.ts)
-// operations both read via @babel/* instead of the previous regex-based
-// section slicing living in a separate, conflicting parser.
-export const parseDocument = (code: string): DocumentTree | undefined => {
+const buildDocument = (code: string): DocumentTree | undefined => {
   try {
-    const ast = parseSource(code);
+    const ast = parse(code, {
+      sourceType: 'module',
+      plugins: ['jsx', 'typescript'],
+    });
+
     const container = findContainer(ast);
 
     return container ? { code, ast, container } : undefined;
@@ -118,8 +104,34 @@ export const parseDocument = (code: string): DocumentTree | undefined => {
   }
 };
 
+// Parses the whole source once into a single Babel AST — the shared "document
+// tree" that section-level (this file) and field-level (extract.ts/update.ts)
+// operations both read via @babel/* instead of the previous regex-based
+// section slicing living in a separate, conflicting parser.
+//
+// document.ts locates positions in the *original* source (section start/end
+// offsets, the container's opening/closing tag positions) and edits by
+// slicing that string — see replaceDocumentSections/generateSectionPreview
+// below. It never round-trips through @babel/generator and never mutates
+// the parsed tree, so every caller can safely share the same cached
+// DocumentTree: unlike an approach that hands out a tree for the caller to
+// edit in place, a cache hit here needs no clone at all.
+export const parseDocument = (code: string): DocumentTree | undefined => {
+  const cached = documentCache.get(code);
+
+  if (cached !== undefined) {
+    return cached ?? undefined;
+  }
+
+  const doc = buildDocument(code);
+
+  documentCache.set(code, doc ?? null);
+
+  return doc;
+};
+
 export const clearDocumentParseCache = () => {
-  parseCache.clear();
+  documentCache.clear();
 };
 
 export const getSections = (doc: DocumentTree): Section[] =>
@@ -203,11 +215,29 @@ export const replaceDocumentSections = (
 export const generateSectionPreview = (
   fullCode: string,
   sectionCode: string,
-): string => {
+): string => generateSectionPreviews(fullCode, [sectionCode])[0]!;
+
+// Same as generateSectionPreview, but for every section in one call —
+// parses `fullCode` once and reuses the same container span for each,
+// instead of the N separate parseDocument calls one-at-a-time callers would
+// otherwise make per render (#97). Each entry only depends on the
+// container's surrounding code and that one section's own code, so an
+// unrelated edit elsewhere in `sectionCodes` still yields byte-identical
+// strings for the sections that didn't change — letting a caller pass
+// each one down as a stable prop instead of forcing every section to
+// recompute (and, with React.memo, re-render) on every edit.
+export const generateSectionPreviews = (
+  fullCode: string,
+  sectionCodes: string[],
+): string[] => {
   const doc = parseDocument(fullCode);
   const span = doc && getContainerInnerSpan(doc.container);
 
-  return span
-    ? spliceCode(fullCode, span.start, span.end, sectionCode)
-    : fullCode;
+  if (!span) {
+    return sectionCodes.map(() => fullCode);
+  }
+
+  return sectionCodes.map(sectionCode =>
+    spliceCode(fullCode, span.start, span.end, sectionCode),
+  );
 };

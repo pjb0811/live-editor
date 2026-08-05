@@ -12,6 +12,7 @@ import type { Module, Section } from '~/types';
 import { CONFIG, REGEX, TS_PATTERNS } from '../constants';
 import {
   generateSectionPreview,
+  generateSectionPreviews,
   getSections,
   parseDocument,
   replaceDocumentSections,
@@ -196,6 +197,18 @@ export const replaceSections = (code: string, sections: string[]): string => {
 
 export const generateSection = (code: string, fullCode: string) => {
   return generateSectionPreview(fullCode, code);
+};
+
+// Batched form of generateSection() — computes every section's preview from
+// a single parse of fullCode instead of one parseDocument call per section
+// (see generateSectionPreviews). Unchanged sections come back byte-identical
+// to their previous preview string, which is what lets a caller pass each
+// one down as a stable prop (see Renderer's React.memo).
+export const generateSections = (
+  codes: string[],
+  fullCode: string,
+): string[] => {
+  return generateSectionPreviews(fullCode, codes);
 };
 
 const scriptCache = createBoundedCache<string, string>(
