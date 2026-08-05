@@ -4,6 +4,7 @@ import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
 import { BINDING_PROP, CONFIG, DATA_ATTR } from '../../constants';
+import { createBoundedCache } from '../cache';
 import { parseBinding } from './binding';
 import { attrValue, generateCode, wrap } from './helpers';
 import type { Attribute, BindingItem, DataAttrNode } from './types';
@@ -82,7 +83,9 @@ const parseJSXName = (
   return expr;
 };
 
-const extractCache = new Map<string, DataAttrNode[]>();
+const extractCache = createBoundedCache<string, DataAttrNode[]>(
+  CONFIG.CACHE_LIMIT,
+);
 
 const extractAttributes = (
   attributes: (t.JSXAttribute | t.JSXSpreadAttribute)[],
@@ -471,13 +474,6 @@ export function extract(raw: string): DataAttrNode[] {
   }
 
   const results = parseToNodes(raw);
-
-  if (extractCache.size >= CONFIG.CACHE_LIMIT) {
-    const firstKey = extractCache.keys().next().value;
-    if (firstKey) {
-      extractCache.delete(firstKey);
-    }
-  }
 
   extractCache.set(raw, results);
 
