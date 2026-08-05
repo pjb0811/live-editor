@@ -15,10 +15,6 @@ export const DATA_ATTR = {
 export const REGEX = {
   NUMBER: /^\d+(\.\d+)?$/,
   BOOLEAN_OR_NULL: /^(true|false|null|undefined)$/,
-  CONTAINER: /(<main[^>]*id=["']app-container["'][^>]*>)([\s\S]*?)(<\/main>)/m,
-  COMMENT: /\{\s*\/\*[\s\S]*?\*\/\s*\}/g,
-  SECTION: /<section[\s\S]*?<\/section>/g,
-  DATA_NAME: /data-name=["']([^"']+)["']/,
   MODULE_IMPORT_EXPORT_LINE:
     /^\s*(?:import|export)\b[^\n]*\bfrom\s+['"][^'"]*['"];?\s*$/gm,
 } as const;

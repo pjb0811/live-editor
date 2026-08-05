@@ -10,6 +10,12 @@ import type * as TS from 'typescript';
 import type { Module, Section } from '~/types';
 
 import { CONFIG, REGEX, TS_PATTERNS } from '../constants';
+import {
+  generateSectionPreview,
+  getSections,
+  parseDocument,
+  replaceDocumentSections,
+} from './ast/document';
 
 const ts = await import('typescript');
 
@@ -186,51 +192,17 @@ const compileModule = (
 };
 
 export const extractSections = (code: string): Section[] => {
-  const cleanCode = code.replace(REGEX.COMMENT, '');
-  const matches = [...cleanCode.matchAll(REGEX.SECTION)];
+  const doc = parseDocument(code);
 
-  return matches.map((m, i) => {
-    const sectionCode = m[0];
-
-    const dataNameMatch = sectionCode.match(REGEX.DATA_NAME);
-
-    return {
-      code: sectionCode,
-      id: `${i}`,
-      name: dataNameMatch?.[1] || `${i + 1}번째 컴포넌트`,
-    };
-  });
+  return doc ? getSections(doc) : [];
 };
 
 export const replaceSections = (code: string, sections: string[]): string => {
-  const comments = [...code.matchAll(REGEX.COMMENT)].map(match => match[0]);
-
-  const cleanCode = code.replace(REGEX.SECTION, '');
-  const match = cleanCode.match(REGEX.CONTAINER);
-
-  if (match) {
-    const [, openTag, , closeTag] = match;
-    const allContent = [...sections, ...comments].join('\n');
-
-    return cleanCode.replace(
-      REGEX.CONTAINER,
-      `${openTag}\n${allContent}\n${closeTag}`,
-    );
-  }
-
-  return code;
+  return replaceDocumentSections(code, sections);
 };
 
 export const generateSection = (code: string, fullCode: string) => {
-  const match = fullCode.match(REGEX.CONTAINER);
-
-  if (!match) {
-    return fullCode;
-  }
-
-  const [, openTag, , closeTag] = match;
-
-  return fullCode.replace(REGEX.CONTAINER, `${openTag}\n${code}\n${closeTag}`);
+  return generateSectionPreview(fullCode, code);
 };
 
 const scriptCache = new Map<string, string>();

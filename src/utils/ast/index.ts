@@ -21,6 +21,14 @@ export {
 } from './value';
 export { generateCode } from './helpers';
 export { clearExtractCache, extract } from './extract';
+export type { DocumentTree } from './document';
+export {
+  generateDocumentCode,
+  generateSectionPreview,
+  getSections,
+  parseDocument,
+  replaceDocumentSections,
+} from './document';
 export { bulkUpdate, update } from './update';
 export { clone, fillIds, replaceIds } from './tree';
 export type { ValidationResult } from './validate';
