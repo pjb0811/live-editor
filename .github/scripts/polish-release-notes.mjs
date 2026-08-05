@@ -1,13 +1,47 @@
 #!/usr/bin/env node
 // Rewrites a raw Keep-a-Changelog-style version section into flowing prose
-// release notes via GitHub Models, for use as a GitHub Release body. Reads
-// the raw changelog text from stdin, writes polished text to stdout.
-// Exits non-zero on any failure — the caller falls back to the raw
-// changelog text in that case, so a release is never blocked on this.
+// release notes, for use as a GitHub Release body. Reads the raw changelog
+// text from stdin, writes polished text to stdout. Exits non-zero on any
+// failure — the caller falls back to the raw changelog text in that case,
+// so a release is never blocked on this.
+//
+// Uses NVIDIA's OpenAI-compatible API Catalog endpoint (not GitHub Models —
+// retired as of 2026-07-30; see draft-changeset.mjs for the same move).
 
-const MODEL = process.env.GITHUB_MODELS_MODEL || 'openai/gpt-4o-mini';
-const API_URL = 'https://models.github.ai/inference/chat/completions';
+const MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
+const API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const MAX_CHARS = 6000;
+
+// The API occasionally returns 503/429 for a few minutes at a time — retry
+// those with backoff instead of failing outright. Non-retryable statuses
+// (bad key, bad request, etc.) still fail on the first attempt.
+const MAX_ATTEMPTS = 4;
+const RETRY_BASE_DELAY_MS = 2000;
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url, options) {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const response = await fetch(url, options);
+
+    if (
+      response.ok ||
+      !RETRYABLE_STATUSES.has(response.status) ||
+      attempt === MAX_ATTEMPTS
+    ) {
+      return response;
+    }
+
+    const delayMs = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+    console.log(
+      `NVIDIA API returned ${response.status}, retrying in ${delayMs}ms (attempt ${attempt}/${MAX_ATTEMPTS})...`,
+    );
+    await sleep(delayMs);
+  }
+}
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -22,7 +56,7 @@ async function readStdin() {
 }
 
 async function main() {
-  const token = requireEnv('GITHUB_TOKEN');
+  const apiKey = requireEnv('NVIDIA_API_KEY');
   const version = requireEnv('VERSION');
   const packageName = process.env.PACKAGE_NAME || '';
   const raw = (await readStdin()).trim();
@@ -46,13 +80,11 @@ async function main() {
     'no code fences.',
   ].join(' ');
 
-  const response = await fetch(API_URL, {
+  const response = await fetchWithRetry(API_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'X-GitHub-Api-Version': '2022-11-28',
     },
     body: JSON.stringify({
       model: MODEL,
@@ -66,14 +98,14 @@ async function main() {
 
   if (!response.ok) {
     throw new Error(
-      `GitHub Models request failed: ${response.status} ${response.statusText} — ${await response.text()}`,
+      `NVIDIA API request failed: ${response.status} ${response.statusText} — ${await response.text()}`,
     );
   }
 
   const body = await response.json();
   const content = body.choices?.[0]?.message?.content?.trim();
   if (!content) {
-    throw new Error('GitHub Models response missing choices[0].message.content');
+    throw new Error('NVIDIA API response missing choices[0].message.content');
   }
 
   process.stdout.write(content);
