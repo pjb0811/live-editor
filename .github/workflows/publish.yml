@@ -113,10 +113,10 @@ jobs:
         if: steps.tag_check.outputs.already_tagged == 'false'
         id: changelog
         env:
-          # Reused for the release-note polishing step below — a personal
-          # PAT with models:read (GITHUB_TOKEN doesn't get the free-tier
-          # rate-limit benefit of the personal subscription).
-          GITHUB_TOKEN: ${{ secrets.GH_MODELS_PAT }}
+          # Used by the release-note polishing step below. GH_MODELS_PAT/
+          # GitHub Models is retired (2026-07-30) — see draft-changeset.mjs
+          # for the same move to NVIDIA's API Catalog.
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: |
           VERSION=${{ steps.tag_check.outputs.version }}
           CHANGELOG_FILE="CHANGELOG.md"
@@ -140,7 +140,7 @@ jobs:
           CONTENT="$RAW"
           if [ -n "$RAW" ]; then
             # Best-effort: polish the raw changelog bullets into flowing
-            # release notes via GitHub Models. Never blocks the release —
+            # release notes via NVIDIA's API. Never blocks the release —
             # fall back to the raw changelog text on any failure.
             if POLISHED=$(echo "$RAW" | PACKAGE_NAME="@jbpark/live-editor" VERSION="$VERSION" node .github/scripts/polish-release-notes.mjs); then
               CONTENT="$POLISHED"
