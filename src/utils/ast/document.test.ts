@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  clearDocumentParseCache,
   generateDocumentCode,
   generateSectionPreview,
   getSections,
@@ -174,5 +175,36 @@ describe('generateDocumentCode', () => {
 
     expect(code).toContain("import * as ui from 'ui-kit'");
     expect(code).toContain('export default App');
+  });
+});
+
+describe('parseDocument caching', () => {
+  it('reuses a cached parse for a repeated source string without sharing mutable state', () => {
+    clearDocumentParseCache();
+
+    const first = parseDocument(FULL_CODE)!;
+    const second = parseDocument(FULL_CODE)!;
+
+    // Distinct objects (mutating one must not corrupt the cache or the
+    // other caller's tree) that still describe the same document.
+    expect(second.container).not.toBe(first.container);
+    expect(getSections(second)).toEqual(getSections(first));
+
+    first.container.children = [];
+    expect(getSections(second)).toHaveLength(2);
+    expect(getSections(parseDocument(FULL_CODE)!)).toHaveLength(2);
+  });
+
+  it('clearDocumentParseCache() forces a fresh parse', () => {
+    clearDocumentParseCache();
+
+    const first = parseDocument(FULL_CODE)!;
+
+    clearDocumentParseCache();
+
+    const second = parseDocument(FULL_CODE)!;
+
+    expect(second.ast).not.toBe(first.ast);
+    expect(getSections(second)).toEqual(getSections(first));
   });
 });

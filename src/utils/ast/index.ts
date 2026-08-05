@@ -23,6 +23,7 @@ export { generateCode } from './helpers';
 export { clearExtractCache, extract } from './extract';
 export type { DocumentTree } from './document';
 export {
+  clearDocumentParseCache,
   generateDocumentCode,
   generateSectionPreview,
   getSections,
