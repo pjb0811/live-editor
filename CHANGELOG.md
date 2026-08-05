@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.0
+
+### Minor Changes
+
+- a1e6443: Added support for batched generation of section previews, improving performance when multiple sections change.
+- c2719ab: The editor now correctly handles nested sections, preserving non-section content and not reformatting code outside the replaced section span.
+
 ## 1.5.0
 
 ### Minor Changes
