@@ -1,14 +1,18 @@
 import { bench, describe } from 'vitest';
 
-import { generateSectionPreview, getSections, parseDocument } from './document';
+import {
+  generateSectionPreview,
+  generateSectionPreviews,
+  getSections,
+  parseDocument,
+} from './document';
 
 // Regression guard for the perf claims made in document.ts's parse cache
-// (introduced in #80): whether cache-hit cloning actually beats a fresh
-// re-parse depends heavily on document size, and doesn't hold at the
-// section counts a real editor sees (see issue #95). Run via `pnpm bench`
-// and compare `parseDocument (cache hit, clone)` against
-// `parseDocument (no cache, fresh parse)` at each size below before relying
-// on that cache providing a speedup.
+// (introduced in #80, reworked in #96/#97): a cache hit here no longer
+// clones (#96 made parseDocument's result read-only, so callers can safely
+// share it), so it should stay far cheaper than a fresh parse at every size
+// below — that gap used to nearly vanish at real section counts back when
+// this cache still cloned on every hit (see issue #95).
 const buildDocument = (sectionCount: number): string => {
   const sections = Array.from(
     { length: sectionCount },
@@ -58,7 +62,7 @@ for (const sectionCount of SECTION_COUNTS) {
       parseDocument(`${code}\n// ${freshParseCounter++}`);
     });
 
-    bench('parseDocument (cache hit, clone)', () => {
+    bench('parseDocument (cache hit)', () => {
       parseDocument(code);
     });
 
@@ -66,9 +70,29 @@ for (const sectionCount of SECTION_COUNTS) {
       getSections(parseDocument(code)!);
     });
 
-    // What Renderer actually pays once per <section> per render — see #97.
     bench('generateSectionPreview', () => {
       generateSectionPreview(code, firstSectionCode);
     });
+
+    // Before #97, dnd.tsx called generateSectionPreview once per section
+    // per render regardless of which one actually changed — this is that
+    // N-calls pattern, compared below against the batched replacement.
+    const allSectionCodes = getSections(parseDocument(code)!).map(s => s.code);
+
+    bench(
+      'one generateSectionPreview call per section (pre-#97 pattern)',
+      () => {
+        allSectionCodes.map(sectionCode =>
+          generateSectionPreview(code, sectionCode),
+        );
+      },
+    );
+
+    bench(
+      'generateSectionPreviews (batched, one call for all sections)',
+      () => {
+        generateSectionPreviews(code, allSectionCodes);
+      },
+    );
   });
 }

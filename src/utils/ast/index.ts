@@ -26,6 +26,7 @@ export {
   clearDocumentParseCache,
   generateDocumentCode,
   generateSectionPreview,
+  generateSectionPreviews,
   getSections,
   parseDocument,
   replaceDocumentSections,
