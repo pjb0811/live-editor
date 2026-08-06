@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.0
+
+### Minor Changes
+
+- b8b002b: The editor now has a smaller memory footprint when editing large documents, with a separate cache limit for document ASTs to prevent unnecessary memory usage.
+
 ## 1.6.0
 
 ### Minor Changes
