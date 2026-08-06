@@ -4,6 +4,13 @@ export const STORAGE_KEY = 'live-editor-code';
 
 export const CONFIG = {
   CACHE_LIMIT: 50,
+  // Separate, much smaller limit for document.ts's parsed-AST cache — its
+  // entries are full Babel Files (~10-20x source size), not the compiled
+  // Module/string entries CACHE_LIMIT was sized for, and real hits only ever
+  // land on the document being actively edited (current + previous
+  // version), so keeping up to CACHE_LIMIT of them resident just wastes
+  // memory. See #106 (measured ~0.66MB/document, ~2.6MB at this limit).
+  DOCUMENT_CACHE_LIMIT: 4,
 } as const;
 
 export const DATA_ATTR = {

@@ -85,7 +85,7 @@ const findOutermostSections = (
 // (#97) — parsing determines nothing here except whether it throws, so
 // there's no separate "did it parse" fact to cache apart from the result.
 const documentCache = createBoundedCache<string, DocumentTree | null>(
-  CONFIG.CACHE_LIMIT,
+  CONFIG.DOCUMENT_CACHE_LIMIT,
 );
 
 const buildDocument = (code: string): DocumentTree | undefined => {

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { CONFIG } from '../../constants';
 import {
   clearDocumentParseCache,
   generateDocumentCode,
@@ -374,5 +375,19 @@ describe('parseDocument caching', () => {
     expect(warn).toHaveBeenCalledTimes(1);
 
     warn.mockRestore();
+  });
+
+  it('evicts old entries once DOCUMENT_CACHE_LIMIT is exceeded — a document that fell out re-parses fresh instead of staying resident forever (#106)', () => {
+    clearDocumentParseCache();
+
+    const first = parseDocument(FULL_CODE)!;
+
+    for (let i = 0; i < CONFIG.DOCUMENT_CACHE_LIMIT; i++) {
+      parseDocument(`${FULL_CODE}\n// filler ${i}`);
+    }
+
+    const second = parseDocument(FULL_CODE)!;
+
+    expect(second.ast).not.toBe(first.ast);
   });
 });

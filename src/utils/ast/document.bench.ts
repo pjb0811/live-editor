@@ -94,5 +94,25 @@ for (const sectionCount of SECTION_COUNTS) {
         generateSectionPreviews(code, allSectionCodes);
       },
     );
+
+    // #106: documentCache's limit was shrunk from 50 (shared with the
+    // compile cache) to 4 (see CONFIG.DOCUMENT_CACHE_LIMIT), since it holds
+    // full Babel Files rather than compiled Modules/strings. This simulates
+    // the actual access pattern a real edit produces — dnd.tsx's
+    // extractSections() and generateSections() both call parseDocument() on
+    // the *same* current value within one render, so only the
+    // most-recently-edited version ever needs to be resident, not a long
+    // tail of every version edited so far.
+    let editCounter = 0;
+
+    bench(
+      'simulated edit: extractSections()+generateSections() lookup pattern',
+      () => {
+        const edited = `${code}\n// edit ${editCounter++}`;
+
+        parseDocument(edited);
+        parseDocument(edited);
+      },
+    );
   });
 }
