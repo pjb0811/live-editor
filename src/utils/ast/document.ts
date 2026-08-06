@@ -166,14 +166,53 @@ const spliceCode = (
   replacement: string,
 ): string => code.slice(0, start) + replacement + code.slice(end);
 
-// Replaces the container's <section> children with `sectionCodes`, leaving
-// everything else in the file — non-section content before/after the
-// sections, and anything outside the container entirely — byte-for-byte
-// untouched (no whole-file reformatting, no reordering; see #96). Content
-// interspersed *between* the original sections is not separately preserved:
-// the whole span from the first section's start to the last section's end
-// is replaced as one block, since `sectionCodes` is a flat replacement list
-// with no way to say where such content should land in the new order.
+// Length of the run at the start of `a`/`b` where elements are equal
+// (by exact string value), e.g. commonPrefixLength(['a','b','x'], ['a','b','y']) === 2.
+const commonPrefixLength = (a: string[], b: string[]): number => {
+  const max = Math.min(a.length, b.length);
+  let i = 0;
+
+  while (i < max && a[i] === b[i]) {
+    i++;
+  }
+
+  return i;
+};
+
+// Same as commonPrefixLength but from the end, bounded by `limit` so it
+// can't reclaim elements the prefix already matched.
+const commonSuffixLength = (
+  a: string[],
+  b: string[],
+  limit: number,
+): number => {
+  let i = 0;
+
+  while (i < limit && a[a.length - 1 - i] === b[b.length - 1 - i]) {
+    i++;
+  }
+
+  return i;
+};
+
+// Replaces the container's <section> children with `sectionCodes`. Rather
+// than treating "all the sections" as one contiguous block to overwrite —
+// which silently deleted whatever sat between them, including entire
+// wrapper elements around sections that live in different parents (#102) —
+// this diffs the old and new section-code lists by common prefix/suffix
+// (matching by exact content, same idea as a line-based text diff) and only
+// touches the byte range spanning the run that actually changed. Everything
+// outside that run — unchanged leading/trailing sections and all
+// non-section content around them, including different wrappers — is left
+// byte-for-byte untouched. A no-op call (sectionCodes identical to the
+// current sections) touches nothing at all.
+//
+// This doesn't reach full minimal-diff generality for content that's
+// simultaneously reordered *and* unchanged (e.g. swapping two sections with
+// nothing else different still replaces the whole swapped run, so content
+// sitting between them isn't preserved) — every real caller (dnd.tsx) only
+// ever performs one edit/add/delete/reorder per call, which this handles
+// precisely; see #102 for the general case this doesn't cover.
 //
 // `sectionCodes` are spliced in as raw text with no parsing or validation:
 // an invalid entry still lands in the output rather than being silently
@@ -190,23 +229,57 @@ export const replaceDocumentSections = (
   }
 
   const sections = findOutermostSections(doc.container.children);
-  const replacement = sectionCodes.join('\n');
 
-  if (sections.length > 0) {
-    const start = sections[0]!.start!;
-    const end = sections[sections.length - 1]!.end!;
+  if (sections.length === 0) {
+    // No existing sections to diff against — append after whatever the
+    // container already holds (e.g. a still-empty <main id="app-container">)
+    // instead of discarding it.
+    const span = getContainerInnerSpan(doc.container);
 
-    return spliceCode(fullCode, start, end, replacement);
+    return span
+      ? spliceCode(fullCode, span.end, span.end, sectionCodes.join('\n'))
+      : fullCode;
   }
 
-  // No existing sections to anchor a replacement span on — append after
-  // whatever the container already holds (e.g. a still-empty
-  // <main id="app-container">) instead of discarding it.
-  const span = getContainerInnerSpan(doc.container);
+  const oldCodes = sections.map(node => fullCode.slice(node.start!, node.end!));
 
-  return span
-    ? spliceCode(fullCode, span.end, span.end, replacement)
-    : fullCode;
+  const prefixLength = commonPrefixLength(oldCodes, sectionCodes);
+  const suffixLength = commonSuffixLength(
+    oldCodes,
+    sectionCodes,
+    Math.min(oldCodes.length, sectionCodes.length) - prefixLength,
+  );
+
+  const oldChangedStart = prefixLength;
+  const oldChangedEndExclusive = oldCodes.length - suffixLength;
+  const newChanged = sectionCodes.slice(
+    prefixLength,
+    sectionCodes.length - suffixLength,
+  );
+
+  if (oldChangedStart >= oldChangedEndExclusive) {
+    // Nothing removed — either a pure no-op (newChanged also empty) or a
+    // pure insertion, anchored right before the first untouched section
+    // that follows it (or after the last section, if inserted at the end).
+    if (newChanged.length === 0) {
+      return fullCode;
+    }
+
+    if (oldChangedStart < sections.length) {
+      const at = sections[oldChangedStart]!.start!;
+
+      return spliceCode(fullCode, at, at, `${newChanged.join('\n')}\n`);
+    }
+
+    const at = sections[sections.length - 1]!.end!;
+
+    return spliceCode(fullCode, at, at, `\n${newChanged.join('\n')}`);
+  }
+
+  const start = sections[oldChangedStart]!.start!;
+  const end = sections[oldChangedEndExclusive - 1]!.end!;
+
+  return spliceCode(fullCode, start, end, newChanged.join('\n'));
 };
 
 // Produces a document whose container holds only `sectionCode`, discarding
