@@ -234,6 +234,139 @@ export default App;
   });
 });
 
+describe('replaceDocumentSections diffing (#102)', () => {
+  it('a true no-op round-trip is byte-for-byte identical to the input', () => {
+    const code = `
+      const App = () => (
+        <div id="app-container">
+          <div className="header">header</div>
+          {/* between */}
+          <section data-name="s1"><p>1</p></section>
+          <div className="mid">middle content</div>
+          <section data-name="s2"><p>2</p></section>
+          <div className="footer">footer</div>
+        </div>
+      );
+    `;
+
+    const roundTripped = replaceDocumentSections(
+      code,
+      getSections(parseDocument(code)!).map(s => s.code),
+    );
+
+    expect(roundTripped).toBe(code);
+  });
+
+  it('editing one section leaves a sibling section in a different wrapper — and its wrapper — untouched', () => {
+    const code = `
+      const App = () => (
+        <div id="app-container">
+          <div className="a">
+            <section data-name="s1"><p>1</p></section>
+          </div>
+          <div className="b">
+            <section data-name="s2"><p>2</p></section>
+          </div>
+        </div>
+      );
+    `;
+
+    const sections = getSections(parseDocument(code)!);
+
+    const next = replaceDocumentSections(code, [
+      '<section data-name="s1-edited"><p>1 edited</p></section>',
+      sections[1]!.code,
+    ]);
+
+    expect(next).toContain('className="a"');
+    expect(next).toContain('className="b"');
+    expect(next).toContain('<section data-name="s2"><p>2</p></section>');
+    expect(getSections(parseDocument(next)!).map(s => s.name)).toEqual([
+      's1-edited',
+      's2',
+    ]);
+  });
+
+  it('deleting one section leaves non-section content between the others untouched', () => {
+    const code = `
+      const App = () => (
+        <div id="app-container">
+          <section data-name="s1"><p>1</p></section>
+          <div className="mid">middle banner</div>
+          <section data-name="s2"><p>2</p></section>
+          <section data-name="s3"><p>3</p></section>
+        </div>
+      );
+    `;
+
+    const sections = getSections(parseDocument(code)!);
+
+    // Delete s2, keeping s1 and s3 (dnd.tsx's onDelete: filter, preserve order)
+    const next = replaceDocumentSections(code, [
+      sections[0]!.code,
+      sections[2]!.code,
+    ]);
+
+    expect(next).toContain('middle banner');
+    expect(getSections(parseDocument(next)!).map(s => s.name)).toEqual([
+      's1',
+      's3',
+    ]);
+  });
+
+  it('inserting a section in the middle leaves the rest of the document untouched', () => {
+    const code = `
+      const App = () => (
+        <div id="app-container">
+          <section data-name="s1"><p>1</p></section>
+          <div className="mid">middle banner</div>
+          <section data-name="s2"><p>2</p></section>
+        </div>
+      );
+    `;
+
+    const sections = getSections(parseDocument(code)!);
+
+    const next = replaceDocumentSections(code, [
+      sections[0]!.code,
+      '<section data-name="new"><p>new</p></section>',
+      sections[1]!.code,
+    ]);
+
+    expect(next).toContain('middle banner');
+    expect(getSections(parseDocument(next)!).map(s => s.name)).toEqual([
+      's1',
+      'new',
+      's2',
+    ]);
+  });
+
+  it('appending a section at the end leaves earlier sections and their wrappers untouched', () => {
+    const code = `
+      const App = () => (
+        <div id="app-container">
+          <div className="a">
+            <section data-name="s1"><p>1</p></section>
+          </div>
+        </div>
+      );
+    `;
+
+    const sections = getSections(parseDocument(code)!);
+
+    const next = replaceDocumentSections(code, [
+      sections[0]!.code,
+      '<section data-name="s2"><p>2</p></section>',
+    ]);
+
+    expect(next).toContain('className="a"');
+    expect(getSections(parseDocument(next)!).map(s => s.name)).toEqual([
+      's1',
+      's2',
+    ]);
+  });
+});
+
 describe('generateSectionPreview', () => {
   it('produces a document whose container holds only the given section', () => {
     const preview = generateSectionPreview(
