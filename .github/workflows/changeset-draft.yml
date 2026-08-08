@@ -32,13 +32,31 @@ jobs:
         with:
           node-version: 24.x
 
-      # Only draft once per PR — if a changeset already exists (hand-written
-      # or from an earlier run of this workflow on this PR), leave it alone
-      # rather than overwriting a human's edits on every subsequent push.
+      # Only draft once per PR — if a changeset already exists for *this
+      # branch* (hand-written, or from an earlier run of this workflow on
+      # this PR), leave it alone rather than overwriting a human's edits on
+      # every subsequent push. Keyed off the branch name (slugified: `/`
+      # and other unsafe characters become `-`) rather than PR number so
+      # the check itself doubles as a human-readable filename — matches
+      # ui-kit#197/use-hooks#138, which fixed a false positive elsewhere
+      # from checking "does any changeset file exist at all" instead of
+      # scoping to a specific PR/branch (an older, still-unreleased PR's
+      # changeset would otherwise make every PR merged after it silently
+      # skip drafting its own). This repo's check was already scoped
+      # per-PR (by number) and never had that bug — switching to a branch
+      # slug here is purely for the readable-filename benefit and
+      # consistency with the other two repos, not a bug fix.
       - name: Check for existing changeset
         id: existing
+        env:
+          BRANCH_REF: ${{ github.event.pull_request.head.ref }}
         run: |
-          if compgen -G ".changeset/pr-${{ github.event.pull_request.number }}.md" > /dev/null; then
+          slug=$(printf '%s' "$BRANCH_REF" | tr '/' '-' | tr -c 'a-zA-Z0-9._-' '-')
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+          shopt -s nullglob
+          files=(".changeset/${slug}"*.md)
+          shopt -u nullglob
+          if [ "${#files[@]}" -gt 0 ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -50,7 +68,7 @@ jobs:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BRANCH_SLUG: ${{ steps.existing.outputs.slug }}
         run: node .github/scripts/draft-changeset.mjs
 
       - name: Commit and push changeset

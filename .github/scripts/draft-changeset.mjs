@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Drafts a .changeset/pr-<number>.md file by asking an LLM to summarize
+// Drafts a .changeset/<branch-slug>.md file by asking an LLM to summarize
 // this PR's diff to src/ as a semver bump + one-paragraph description, in
 // changesets' own file format. Runs once per PR (the calling workflow skips
-// this script entirely if a changeset file for this PR already exists), so
-// it never overwrites something a human already wrote or edited.
+// this script entirely if a changeset file for this branch already
+// exists), so it never overwrites something a human already wrote or
+// edited.
 //
 // Uses NVIDIA's OpenAI-compatible API Catalog endpoint (not Gemini/GitHub
 // Models — both have hit sustained outages/retirement before this).
@@ -76,7 +77,7 @@ async function main() {
   const apiKey = requireEnv('NVIDIA_API_KEY');
   const baseSha = requireEnv('BASE_SHA');
   const headSha = requireEnv('HEAD_SHA');
-  const prNumber = requireEnv('PR_NUMBER');
+  const branchSlug = requireEnv('BRANCH_SLUG');
 
   let diff;
   try {
@@ -171,7 +172,7 @@ async function main() {
     return;
   }
 
-  const filePath = `.changeset/pr-${prNumber}.md`;
+  const filePath = `.changeset/${branchSlug}.md`;
   const fileContent = [
     '---',
     `'${PACKAGE_NAME}': ${result.bump}`,
