@@ -1,5 +1,5 @@
 ---
-'@jbpark/live-editor': minor
+'@jbpark/live-editor': patch
 ---
 
-Dynamic Tailwind CSS is now properly cleaned up when components are unmounted, preventing potential memory leaks.
+Fixed a race condition where rapid code edits could let a stale Tailwind CSS generation request overwrite the current one, and fixed dynamically-generated CSS staying injected after turning dynamicTailwind off.
