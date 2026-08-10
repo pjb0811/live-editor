@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 
-import { useDebounce } from '@jbpark/use-hooks';
+import { useDebouncedValue } from '@jbpark/use-hooks';
 
 import { useError, usePreview } from '~/components/context/states';
 import { DEFAULT_TEMPLATE } from '~/constants';
@@ -46,13 +46,11 @@ const Editor = ({
     [setError],
   );
 
-  useDebounce(
-    () => {
-      setCode(value);
-    },
-    { delay: debounce },
-    [value],
-  );
+  const debouncedValue = useDebouncedValue(value, debounce);
+
+  useEffect(() => {
+    setCode(debouncedValue);
+  }, [debouncedValue, setCode]);
 
   return (
     <Core

@@ -10,6 +10,7 @@ import {
 import {
   useDebounce,
   useHistoryState,
+  useKeyPress,
   useLocalStorage,
   useResponsiveSize,
 } from '@jbpark/use-hooks';
@@ -69,33 +70,13 @@ const App = () => {
     setValue(historyValue);
   }, [historyValue]);
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const isMod = e.metaKey || e.ctrlKey;
-
-      if (!isMod || e.key.toLowerCase() !== 'z') {
-        return;
-      }
-
-      const target = e.target as HTMLElement | null;
-
-      if (target?.closest('.cm-editor')) {
-        // Let CodeMirror's own text-level undo/redo handle this instead.
-        return;
-      }
-
-      e.preventDefault();
-
-      if (e.shiftKey) {
-        redo();
-      } else {
-        undo();
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo]);
+  // Let CodeMirror's own text-level undo/redo handle keystrokes inside the
+  // raw editor instead of triggering the history-level undo/redo here.
+  useKeyPress('mod+z', undo, { ignore: '.cm-editor', preventDefault: true });
+  useKeyPress('mod+shift+z', redo, {
+    ignore: '.cm-editor',
+    preventDefault: true,
+  });
 
   return (
     <>

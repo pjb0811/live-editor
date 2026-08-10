@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { useEventListener } from '@jbpark/use-hooks';
+
 import ErrorComponent from './error';
 
 export interface Props {
@@ -13,14 +15,9 @@ const Guard = ({ children, onError }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const errorHandled = useRef(false);
 
-  useEffect(() => {
-    const container = containerRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    const handleWindowError = (event: ErrorEvent) => {
+  useEventListener(
+    'error',
+    event => {
       if (errorHandled.current) {
         return;
       }
@@ -40,9 +37,16 @@ const Guard = ({ children, onError }: Props) => {
       setTimeout(() => {
         errorHandled.current = false;
       }, 100);
+    },
+    { capture: true },
+  );
 
-      return true;
-    };
+  useEffect(() => {
+    const container = containerRef.current;
+
+    if (!container) {
+      return;
+    }
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       if (errorHandled.current) {
@@ -62,7 +66,6 @@ const Guard = ({ children, onError }: Props) => {
       }, 100);
     };
 
-    window.addEventListener('error', handleWindowError, true);
     window.addEventListener(
       'unhandledrejection',
       handleUnhandledRejection,
@@ -70,7 +73,6 @@ const Guard = ({ children, onError }: Props) => {
     );
 
     return () => {
-      window.removeEventListener('error', handleWindowError, true);
       window.removeEventListener(
         'unhandledrejection',
         handleUnhandledRejection,
