@@ -27,6 +27,17 @@ const Preview = ({
 }: Props) => {
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [dynamicCSS, setDynamicCSS] = useState('');
+  // "Adjusting state when a prop changes" pattern (React docs) rather than
+  // a useEffect: resets synchronously within the same render `code`
+  // changes in, before Guard/Component render at all, so there's no
+  // passive-effect-ordering window where a genuinely new runtime error
+  // could get wiped back out right after Guard's onError sets it.
+  const [prevCode, setPrevCode] = useState(code);
+
+  if (code !== prevCode) {
+    setPrevCode(code);
+    setRuntimeError(null);
+  }
 
   const renderProvider = (component: React.ReactNode) => {
     return provider ? provider(component) : component;
@@ -74,6 +85,7 @@ const Preview = ({
 
     return (
       <LiveError.Boundary
+        resetKeys={[code]}
         fallback={message => (
           <LiveError title="Rendering Error" message={message} />
         )}
