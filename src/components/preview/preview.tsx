@@ -48,7 +48,17 @@ const Preview = ({
       return;
     }
 
-    generateTailwindCSS(code).then(setDynamicCSS);
+    let cancelled = false;
+
+    generateTailwindCSS(code).then(css => {
+      if (!cancelled) {
+        setDynamicCSS(css);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [code, dynamicTailwind]);
 
   if (runtimeError) {
@@ -93,7 +103,7 @@ const Preview = ({
         {renderProvider(
           <LiveError.Guard onError={e => setRuntimeError(e.message)}>
             <Component {...props} />
-            {dynamicCSS && <style>{dynamicCSS}</style>}
+            {dynamicTailwind && dynamicCSS && <style>{dynamicCSS}</style>}
           </LiveError.Guard>,
         )}
       </LiveError.Boundary>
