@@ -73,7 +73,16 @@ const Preview = ({
   }
 
   if (code) {
-    const module = compile(code, { ...baseModules, ...modules });
+    let module;
+
+    try {
+      module = compile(code, { ...baseModules, ...modules });
+    } catch (e) {
+      module = {
+        exports: {},
+        error: e instanceof Error ? e.message : 'Module transformation error',
+      };
+    }
 
     if (module.error) {
       return (

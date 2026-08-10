@@ -25,10 +25,16 @@ const Renderer = ({ preview, headers, modules, frame, provider }: Props) => {
     [modules],
   );
 
-  const module = useMemo(
-    () => compile(preview, memoizedModules),
-    [preview, memoizedModules],
-  );
+  const module = useMemo(() => {
+    try {
+      return compile(preview, memoizedModules);
+    } catch (e) {
+      return {
+        exports: {},
+        error: e instanceof Error ? e.message : 'Module transformation error',
+      };
+    }
+  }, [preview, memoizedModules]);
 
   const renderProvider = (component: React.ReactNode) => {
     return provider ? provider(component) : component;
