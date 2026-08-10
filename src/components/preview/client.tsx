@@ -25,12 +25,13 @@ const Client = ({
   const classNames = cn(isError && 'hidden', className);
 
   const mergedModules = { ...baseModules, ...modules };
+  const effectiveCode = _code || code;
 
   let module = null;
 
-  if (_code || code) {
+  if (effectiveCode) {
     try {
-      module = compile(_code || code, mergedModules);
+      module = compile(effectiveCode, mergedModules);
     } catch (e) {
       module = {
         exports: {},
@@ -73,7 +74,10 @@ const Client = ({
         <div className={cn('h-full w-full', classNames)}>
           <Frame {...(frame as FrameProps)}>
             {container => (
-              <LiveError.Boundary onError={(e: Error) => setError(e.message)}>
+              <LiveError.Boundary
+                resetKeys={[effectiveCode]}
+                onError={(e: Error) => setError(e.message)}
+              >
                 {renderProvider(
                   <LiveError.Guard onError={e => setError(e.message)}>
                     <Component {...componentProps} container={container} />
@@ -95,7 +99,10 @@ const Client = ({
             containerType: 'inline-size',
           }}
         >
-          <LiveError.Boundary onError={e => setError(e.message)}>
+          <LiveError.Boundary
+            resetKeys={[effectiveCode]}
+            onError={e => setError(e.message)}
+          >
             {renderProvider(
               <LiveError.Guard onError={e => setError(e.message)}>
                 <Component {...componentProps} />
