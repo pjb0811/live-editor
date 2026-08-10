@@ -41,48 +41,14 @@ const Shadow = ({ children }: Props) => {
       renderTargetRef.current = target;
       setRenderTarget(target);
     }
-
-    const onClick = (e: Event) => {
-      const eventInit = {
-        bubbles: true,
-        cancelable: true,
-        composed: true,
-      };
-
-      let newEvent: Event;
-
-      if (e instanceof MouseEvent) {
-        newEvent = new MouseEvent(e.type, {
-          ...eventInit,
-          clientX: e.clientX,
-          clientY: e.clientY,
-          button: e.button,
-        });
-      } else if (e instanceof PointerEvent) {
-        newEvent = new PointerEvent(e.type, {
-          ...eventInit,
-          clientX: e.clientX,
-          clientY: e.clientY,
-          pointerId: e.pointerId,
-        });
-      } else {
-        newEvent = new Event(e.type, eventInit);
-      }
-
-      hostRef.current?.dispatchEvent(newEvent);
-    };
-
-    const eventTypes = ['click', 'pointerdown', 'pointerup'];
-
-    eventTypes.forEach(type => {
-      target.addEventListener(type, onClick, true);
-    });
-
-    return () => {
-      eventTypes.forEach(type => {
-        target?.removeEventListener(type, onClick, true);
-      });
-    };
+    // click/pointerdown/pointerup are `composed: true` by spec, so they
+    // already retarget across the shadow boundary and reach listeners
+    // outside it (document, this host's ancestors, React's own root
+    // listener) on their own - manually redispatching them here used to
+    // make every one of those listeners see the interaction twice. Anyone
+    // needing the real element inside the shadow tree (not the retargeted
+    // host) can still read it via event.composedPath()[0], unaffected by
+    // this removal. See #92.
   }, []);
 
   useLayoutEffect(() => {
