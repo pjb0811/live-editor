@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 
+import { useEventListener } from '@jbpark/use-hooks';
+
 import { useError } from '~/components/context/states';
 
 import Error from './error';
@@ -12,18 +14,13 @@ export interface Props extends React.ComponentPropsWithRef<'div'> {
 const Runtime = ({ open = true, reset }: Props) => {
   const { error: message, setError } = useError();
 
+  useEventListener('error', e => {
+    setError(e.message);
+    e.preventDefault();
+  });
+
   useEffect(() => {
-    const onError = (e: ErrorEvent) => {
-      setError(e.message);
-      e.preventDefault();
-    };
-
-    window.addEventListener('error', onError);
-
-    return () => {
-      setError(null);
-      window.removeEventListener('error', onError);
-    };
+    return () => setError(null);
   }, [setError]);
 
   if (!open) {

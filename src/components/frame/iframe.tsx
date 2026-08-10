@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useMutationObserver, useResizeObserver } from '@jbpark/use-hooks';
+
 import { getCachedScriptBlob } from '~/utils';
 
 export interface Props {
@@ -106,6 +108,28 @@ const IFrame = ({
     }
   }, [syncStyle]);
 
+  const applyStyleTimeoutRef = useRef<number>(undefined);
+
+  // Debounced so a burst of head mutations (a stylesheet swap can fire
+  // several in quick succession) only re-runs applyStyle once, matching the
+  // original raw-MutationObserver setup's 50ms debounce.
+  const debouncedApplyStyle = useCallback(() => {
+    clearTimeout(applyStyleTimeoutRef.current);
+    applyStyleTimeoutRef.current = window.setTimeout(applyStyle, 50);
+  }, [applyStyle]);
+
+  useEffect(() => {
+    return () => clearTimeout(applyStyleTimeoutRef.current);
+  }, []);
+
+  useMutationObserver(document.head, debouncedApplyStyle, {
+    enabled: syncStyle,
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['href'],
+  });
+
   useEffect(() => {
     const $iframe = iframeRef.current;
 
@@ -162,33 +186,14 @@ const IFrame = ({
 
     $iframe.addEventListener('load', onLoad);
 
-    let timeoutId: number;
-    let observer: MutationObserver | null = null;
-
-    if (syncStyle) {
-      observer = new MutationObserver(() => {
-        clearTimeout(timeoutId);
-        timeoutId = window.setTimeout(applyStyle, 50);
-      });
-
-      observer.observe(document.head, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['href'],
-      });
-    }
-
     if ($iframe.contentDocument?.readyState === 'complete') {
       onLoad();
     }
 
     return () => {
       $iframe.removeEventListener('load', onLoad);
-      observer?.disconnect();
-      clearTimeout(timeoutId);
     };
-  }, [syncStyle, scripts, onLoaded, applyStyle]);
+  }, [scripts, onLoaded, applyStyle]);
 
   useEffect(() => {
     const doc = iframeRef.current?.contentDocument;
@@ -251,109 +256,124 @@ const IFrame = ({
     prevStylesheetCountRef.current = stylesheets.length;
   }, [styles, stylesheets]);
 
-  useEffect(() => {
+  const updateHeight = useCallback(() => {
     if (!shouldAutoHeight || !mountNode || !iframeRef.current) {
       return;
     }
 
     const iframe = iframeRef.current;
 
-    const updateHeight = () => {
-      const scrollParent = iframe.closest(
-        '[data-frame-container]',
-      ) as HTMLElement | null;
-      const savedScrollTop = scrollParent?.scrollTop ?? 0;
+    const scrollParent = iframe.closest(
+      '[data-frame-container]',
+    ) as HTMLElement | null;
+    const savedScrollTop = scrollParent?.scrollTop ?? 0;
 
-      iframe.style.height = '0px';
+    iframe.style.height = '0px';
 
-      let childrenHeight = 0;
+    let childrenHeight = 0;
 
-      Array.from(mountNode.children).forEach(child => {
-        const el = child as HTMLElement;
-        childrenHeight = Math.max(childrenHeight, el.scrollHeight);
-      });
-
-      const doc = iframe.contentDocument;
-      const win = doc?.defaultView;
-
-      const popups = mountNode.querySelectorAll<HTMLElement>(
-        '[data-floating-ui-focusable]',
-      );
-
-      popups.forEach(popup => {
-        if (popup.offsetHeight > 0) {
-          let offsetY = 0;
-
-          const transform = popup.style.transform;
-          if (transform) {
-            const match = transform.match(
-              /translate\([^,]+,\s*([+-]?\d+(?:\.\d+)?)/,
-            );
-            if (match?.[1]) {
-              offsetY = parseFloat(match[1]);
-            }
-          }
-
-          const estimatedHeight = offsetY + popup.offsetHeight;
-          childrenHeight = Math.max(childrenHeight, estimatedHeight);
-        }
-      });
-
-      if (win) {
-        Array.from(mountNode.children).forEach(child => {
-          const el = child as HTMLElement;
-          const style = win.getComputedStyle(el);
-
-          if (style.position === 'fixed' || style.position === 'absolute') {
-            if (el.offsetHeight > 0) {
-              let offsetY = 0;
-
-              const transform = el.style.transform;
-              if (transform) {
-                const match = transform.match(
-                  /translate\([^,]+,\s*([+-]?\d+(?:\.\d+)?)/,
-                );
-                if (match?.[1]) {
-                  offsetY = parseFloat(match[1]);
-                }
-              }
-
-              const estimatedHeight = offsetY + el.offsetHeight;
-              childrenHeight = Math.max(childrenHeight, estimatedHeight);
-            }
-          }
-        });
-      }
-
-      const contentHeight = Math.max(mountNode.scrollHeight, childrenHeight);
-
-      if (contentHeight > 0) {
-        iframe.style.height = `${Math.ceil(contentHeight)}px`;
-      }
-
-      if (scrollParent) {
-        scrollParent.scrollTop = savedScrollTop;
-      }
-    };
-
-    updateHeight();
-
-    const resizeObserver = new ResizeObserver(updateHeight);
-    resizeObserver.observe(mountNode);
-
-    const mutationObserver = new MutationObserver(updateHeight);
-    mutationObserver.observe(mountNode, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      characterData: true,
+    Array.from(mountNode.children).forEach(child => {
+      const el = child as HTMLElement;
+      childrenHeight = Math.max(childrenHeight, el.scrollHeight);
     });
 
-    return () => {
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
-    };
-  }, [mountNode, shouldAutoHeight]);
+    const doc = iframe.contentDocument;
+    const win = doc?.defaultView;
+
+    const popups = mountNode.querySelectorAll<HTMLElement>(
+      '[data-floating-ui-focusable]',
+    );
+
+    popups.forEach(popup => {
+      if (popup.offsetHeight > 0) {
+        let offsetY = 0;
+
+        const transform = popup.style.transform;
+        if (transform) {
+          const match = transform.match(
+            /translate\([^,]+,\s*([+-]?\d+(?:\.\d+)?)/,
+          );
+          if (match?.[1]) {
+            offsetY = parseFloat(match[1]);
+          }
+        }
+
+        const estimatedHeight = offsetY + popup.offsetHeight;
+        childrenHeight = Math.max(childrenHeight, estimatedHeight);
+      }
+    });
+
+    if (win) {
+      Array.from(mountNode.children).forEach(child => {
+        const el = child as HTMLElement;
+        const style = win.getComputedStyle(el);
+
+        if (style.position === 'fixed' || style.position === 'absolute') {
+          if (el.offsetHeight > 0) {
+            let offsetY = 0;
+
+            const transform = el.style.transform;
+            if (transform) {
+              const match = transform.match(
+                /translate\([^,]+,\s*([+-]?\d+(?:\.\d+)?)/,
+              );
+              if (match?.[1]) {
+                offsetY = parseFloat(match[1]);
+              }
+            }
+
+            const estimatedHeight = offsetY + el.offsetHeight;
+            childrenHeight = Math.max(childrenHeight, estimatedHeight);
+          }
+        }
+      });
+    }
+
+    const contentHeight = Math.max(mountNode.scrollHeight, childrenHeight);
+
+    if (contentHeight > 0) {
+      iframe.style.height = `${Math.ceil(contentHeight)}px`;
+    }
+
+    if (scrollParent) {
+      scrollParent.scrollTop = savedScrollTop;
+    }
+  }, [shouldAutoHeight, mountNode]);
+
+  useEffect(() => {
+    updateHeight();
+  }, [updateHeight]);
+
+  const [resizeRef, resizeSize] = useResizeObserver<HTMLElement>();
+
+  // useResizeObserver's ref callback isn't wired through this component's
+  // own JSX (mountNode is the portal's imperatively-created container, not
+  // something rendered here), so it's attached/detached imperatively
+  // instead. Its reported size is intentionally unused - updateHeight's own
+  // walk (popups, position:fixed/absolute children) computes a more
+  // accurate height than mountNode's own content-box size would, so a
+  // change in `resizeSize` is only used as a trigger to recompute.
+  useEffect(() => {
+    if (!shouldAutoHeight || !mountNode) {
+      return;
+    }
+
+    resizeRef(mountNode);
+    return () => resizeRef(null);
+  }, [shouldAutoHeight, mountNode, resizeRef]);
+
+  useEffect(() => {
+    updateHeight();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resizeSize]);
+
+  useMutationObserver(mountNode, updateHeight, {
+    enabled: shouldAutoHeight,
+    childList: true,
+    subtree: true,
+    attributes: true,
+    characterData: true,
+  });
 
   const content = mountNode
     ? createPortal(children(mountNode), mountNode)
