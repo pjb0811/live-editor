@@ -37,12 +37,24 @@ import {
 } from '../../utils';
 import { usePreview } from '../context/states';
 import { type FrameProps } from '../frame';
-import Draggable from './draggable';
+import DraggableItem, { DefaultDraggableItem } from './draggable';
 import Droppable from './droppable';
 import Overlay from './overlay';
 import Panel from './panel';
 import Renderer from './renderer';
 import Sortable from './sortable';
+
+export interface PaletteRenderData {
+  items: Section[];
+  onAdd: (item: Section) => void;
+  DraggableItem: typeof DraggableItem;
+}
+
+export interface PanelRenderData {
+  item?: Section;
+  onChange: (next: Partial<Section>) => void;
+  onDelete: (id: string) => void;
+}
 
 export interface Props extends Omit<
   React.ComponentPropsWithRef<'div'>,
@@ -55,6 +67,13 @@ export interface Props extends Omit<
   frame?: FrameProps;
   provider?: (children: React.ReactNode) => React.ReactNode;
   onChange?: (value: string) => void;
+  // Full replacements for the built-in left palette / right panel — receive
+  // the same data/callbacks Dnd itself uses, so drag-and-drop and field
+  // editing keep working exactly as before, just with custom markup. Used
+  // for both the desktop layout and the mobile drawer, since those already
+  // render identical content today.
+  renderPalette?: (data: PaletteRenderData) => React.ReactNode;
+  renderPanel?: (data: PanelRenderData) => React.ReactNode;
 }
 
 const conditionalModifiers: Modifier = args => {
@@ -76,6 +95,8 @@ const Dnd = ({
   items = [],
   frame,
   provider,
+  renderPalette,
+  renderPanel,
   ...restProps
 }: Props) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -255,15 +276,33 @@ const Dnd = ({
     }
   }, [frame?.scripts]);
 
-  const renderPaletteItems = (
-    onAdd: (item: (typeof DRAGGABLE_ITEMS)[0]) => void,
-  ) => (
-    <Space orientation="vertical" align="start">
-      {(items?.length ? items : DRAGGABLE_ITEMS).map(item => (
-        <Draggable key={item.id} item={item} onAdd={onAdd} />
-      ))}
-    </Space>
-  );
+  const renderPaletteItems = (onAdd: (item: Section) => void) => {
+    const paletteItems = items?.length ? items : DRAGGABLE_ITEMS;
+
+    if (renderPalette) {
+      return renderPalette({ items: paletteItems, onAdd, DraggableItem });
+    }
+
+    return (
+      <Space orientation="vertical" align="start">
+        {paletteItems.map(item => (
+          <DefaultDraggableItem key={item.id} item={item} onAdd={onAdd} />
+        ))}
+      </Space>
+    );
+  };
+
+  const renderPanelContent = () => {
+    const selectedItem = sections.find(s => s.id === selectedId);
+
+    if (renderPanel) {
+      return renderPanel({ item: selectedItem, onChange, onDelete });
+    }
+
+    return (
+      <Panel item={selectedItem} onChange={onChange} onDelete={onDelete} />
+    );
+  };
 
   return (
     <>
@@ -356,13 +395,7 @@ const Dnd = ({
               )}
             </Droppable>
           </div>
-          <div className="hidden w-1/5 md:block">
-            <Panel
-              item={sections.find(s => s.id === selectedId)}
-              onChange={onChange}
-              onDelete={onDelete}
-            />
-          </div>
+          <div className="hidden w-1/5 md:block">{renderPanelContent()}</div>
           <Button
             type="primary"
             shape="circle"
@@ -390,11 +423,7 @@ const Dnd = ({
             size="large"
             title="Properties"
           >
-            <Panel
-              item={sections.find(s => s.id === selectedId)}
-              onChange={onChange}
-              onDelete={onDelete}
-            />
+            {renderPanelContent()}
           </Drawer>
         </div>
         <DragOverlay>

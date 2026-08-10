@@ -4,7 +4,7 @@ import type { FrameProps } from '~/components/frame';
 import type { Section } from '~/types';
 import { generateSection } from '~/utils';
 
-import Draggable from './draggable';
+import { DefaultDraggableItem } from './draggable';
 import Renderer from './renderer';
 import Sortable from './sortable';
 
@@ -27,7 +27,7 @@ const Overlay = ({ sections, renderProps }: Props) => {
   if (active.data.current?.type === 'new-item') {
     const item = active.data.current.item;
 
-    return <Draggable item={item} />;
+    return <DefaultDraggableItem item={item} />;
   }
 
   const section = sections.find(s => s.id === active.id);
