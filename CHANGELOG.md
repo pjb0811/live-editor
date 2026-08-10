@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.8.1
+
+### Patch Changes
+
+- d776d47: Fixed ErrorBoundary (and Preview's own runtime-error state) staying stuck on a stale error screen after the underlying code was fixed. ErrorBoundary gained an optional resetKeys prop, but this is a backward-compatible fix — every real usage in Preview/Client now auto-recovers without any consumer action needed.
+- 274e4e6: Fixed the runtime/compile error overlay staying up indefinitely after the underlying code was fixed. ContextProvider's setCode now clears the stale error in the same update that changes the code.
+- 4b0cb33: Fixed a race condition where rapid code edits could let a stale Tailwind CSS generation request overwrite the current one, and fixed dynamically-generated CSS staying injected after turning dynamicTailwind off.
+- 6d314f2: Hardened Preview and the DnD renderer's compile() calls with try/catch, matching Client's existing defensive pattern, so a future regression in compileModule can't crash the whole tree instead of falling back to the existing error UI.
+- 151f377: Fixed the iframe frame not loading new scripts after the scripts prop changed post-initial-load, and fixed removed styles/stylesheets staying injected in the iframe instead of being cleaned up.
+- cc78d04: Fixed click/pointerdown/pointerup events being handled twice by listeners outside a shadow-mode frame. Shadow no longer manually redispatches these events on the host, since they already cross the shadow boundary on their own (composed: true).
+
 ## 1.8.0
 
 ### Minor Changes
