@@ -322,7 +322,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
 
             setValidationError(null);
 
-            if (next && next !== value) {
+            if (next !== value) {
               onChange?.({
                 id,
                 label: binding.label,
@@ -442,7 +442,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
 
             setValidationError(null);
 
-            if (next && next !== value) {
+            if (next !== value) {
               onChange?.({
                 id,
                 label: binding.label,
@@ -474,7 +474,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
 
           setValidationError(null);
 
-          if (next && next !== value) {
+          if (next !== value) {
             onChange?.({
               id,
               label: binding.label,

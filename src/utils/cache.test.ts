@@ -63,6 +63,39 @@ describe('createBoundedCache', () => {
     expect(cache.has('c')).toBe(true);
   });
 
+  it('calls onEvict when set() overwrites an existing key', () => {
+    const onEvict = vi.fn();
+    const cache = createBoundedCache<string, number>(3, onEvict);
+
+    cache.set('a', 1);
+    cache.set('a', 2);
+
+    expect(onEvict).toHaveBeenCalledExactlyOnceWith('a', 1);
+  });
+
+  it('calls onEvict when delete() removes an entry', () => {
+    const onEvict = vi.fn();
+    const cache = createBoundedCache<string, number>(3, onEvict);
+
+    cache.set('a', 1);
+    cache.delete('a');
+
+    expect(onEvict).toHaveBeenCalledExactlyOnceWith('a', 1);
+  });
+
+  it('calls onEvict for every remaining entry when clear() is called', () => {
+    const onEvict = vi.fn();
+    const cache = createBoundedCache<string, number>(3, onEvict);
+
+    cache.set('a', 1);
+    cache.set('b', 2);
+    cache.clear();
+
+    expect(onEvict).toHaveBeenCalledTimes(2);
+    expect(onEvict).toHaveBeenCalledWith('a', 1);
+    expect(onEvict).toHaveBeenCalledWith('b', 2);
+  });
+
   it('set() on an existing key refreshes its recency instead of double-counting it', () => {
     const cache = createBoundedCache<string, number>(2);
 

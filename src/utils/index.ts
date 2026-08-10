@@ -32,30 +32,18 @@ export const baseModules = {
 
 const compilationCache = createBoundedCache<string, Module>(CONFIG.CACHE_LIMIT);
 
-const simpleHash = (str: string): string => {
-  let hash = 0;
-
-  if (str.length === 0) {
-    return '0';
-  }
-
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-
-  return Math.abs(hash).toString(36);
-};
-
+// Uses the raw code+moduleKeys string as the key rather than hashing it —
+// a 32-bit hash (the previous approach) can collide between two genuinely
+// different inputs, which would silently serve one code string's compiled
+// Module for another. The bounded LRU cache already caps memory use, so
+// there's no need to shrink the key itself.
 const createCacheKey = (
   code: string,
   modules: Record<string, unknown>,
 ): string => {
   const moduleKeys = Object.keys(modules).sort().join(',');
-  const combined = code + '|' + moduleKeys;
 
-  return simpleHash(combined);
+  return code + '|' + moduleKeys;
 };
 
 export const compile = (
@@ -212,7 +200,7 @@ export const generateSections = (
 };
 
 const scriptCache = createBoundedCache<string, string>(
-  CONFIG.CACHE_LIMIT,
+  CONFIG.SCRIPT_CACHE_LIMIT,
   (_src, blobUrl) => URL.revokeObjectURL(blobUrl),
 );
 const loadingScriptCache = new Map<string, Promise<string>>();

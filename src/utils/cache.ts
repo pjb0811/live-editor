@@ -35,7 +35,10 @@ export const createBoundedCache = <K, V>(
 
   const set = (key: K, value: V) => {
     if (store.has(key)) {
+      const oldValue = store.get(key)!;
+
       store.delete(key);
+      onEvict?.(key, oldValue);
     } else if (store.size >= limit) {
       const oldestKey = store.keys().next().value;
 
@@ -50,12 +53,33 @@ export const createBoundedCache = <K, V>(
     store.set(key, value);
   };
 
+  const deleteKey = (key: K): boolean => {
+    if (!store.has(key)) {
+      return false;
+    }
+
+    const value = store.get(key)!;
+
+    store.delete(key);
+    onEvict?.(key, value);
+
+    return true;
+  };
+
+  const clear = () => {
+    for (const [key, value] of store) {
+      onEvict?.(key, value);
+    }
+
+    store.clear();
+  };
+
   return {
     has: key => store.has(key),
     get,
     set,
-    delete: key => store.delete(key),
-    clear: () => store.clear(),
+    delete: deleteKey,
+    clear,
     get size() {
       return store.size;
     },

@@ -479,7 +479,12 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
   };
 
   const addItem = () => {
-    const firstItem = objectItems[0]!;
+    const firstItem = objectItems[0];
+
+    if (!firstItem) {
+      return;
+    }
+
     const clonedElement = cloneObjectItemElement(firstItem);
     const editableProperties = extractObjectProperties(clonedElement);
 
@@ -632,6 +637,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           icon={<Plus />}
           variant="solid"
           color="green"
+          disabled={objectItems.length === 0}
           onClick={addItem}
         >
           Add Item
