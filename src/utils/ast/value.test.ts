@@ -94,6 +94,14 @@ describe('extractNodeValue', () => {
     });
   });
 
+  it('extracts negative numeric literals', () => {
+    const node = parseExpression('-5');
+    expect(extractNodeValue(node)).toEqual({
+      type: 'number',
+      value: -5,
+    });
+  });
+
   it('extracts string literals', () => {
     expect(extractNodeValue(t.stringLiteral('hi'))).toEqual({
       type: 'string',

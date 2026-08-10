@@ -11,6 +11,13 @@ export const CONFIG = {
   // version), so keeping up to CACHE_LIMIT of them resident just wastes
   // memory. See #106 (measured ~0.66MB/document, ~2.6MB at this limit).
   DOCUMENT_CACHE_LIMIT: 4,
+  // Separate limit for utils/index.ts's scriptCache — those entries are
+  // live blob URLs handed to <script src>, and its onEvict immediately
+  // revokes the URL, unlike compilationCache's evictions which just discard
+  // a cheap-to-recompute Module. Sharing CACHE_LIMIT with compilationCache
+  // was coincidental, not a sizing decision for scriptCache's actual usage
+  // (a handful of distinct external preview scripts). See #104.
+  SCRIPT_CACHE_LIMIT: 10,
 } as const;
 
 export const DATA_ATTR = {

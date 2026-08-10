@@ -163,6 +163,14 @@ export const extractNodeValue = (node: t.Node): ExtractedNodeValue => {
     return { type: 'number', value: node.value };
   }
 
+  if (
+    t.isUnaryExpression(node) &&
+    node.operator === '-' &&
+    t.isNumericLiteral(node.argument)
+  ) {
+    return { type: 'number', value: -node.argument.value };
+  }
+
   if (t.isStringLiteral(node)) {
     return { type: 'string', value: node.value };
   }

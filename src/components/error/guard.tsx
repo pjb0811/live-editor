@@ -20,7 +20,7 @@ const Guard = ({ children, onError }: Props) => {
       return;
     }
 
-    const onError = (event: ErrorEvent) => {
+    const handleWindowError = (event: ErrorEvent) => {
       if (errorHandled.current) {
         return;
       }
@@ -44,7 +44,7 @@ const Guard = ({ children, onError }: Props) => {
       return true;
     };
 
-    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       if (errorHandled.current) {
         return;
       }
@@ -62,14 +62,18 @@ const Guard = ({ children, onError }: Props) => {
       }, 100);
     };
 
-    window.addEventListener('error', onError, true);
-    window.addEventListener('unhandledrejection', onUnhandledRejection, true);
+    window.addEventListener('error', handleWindowError, true);
+    window.addEventListener(
+      'unhandledrejection',
+      handleUnhandledRejection,
+      true,
+    );
 
     return () => {
-      window.removeEventListener('error', onError, true);
+      window.removeEventListener('error', handleWindowError, true);
       window.removeEventListener(
         'unhandledrejection',
-        onUnhandledRejection,
+        handleUnhandledRejection,
         true,
       );
     };
