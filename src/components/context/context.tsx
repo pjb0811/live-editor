@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { clearCompilationCache } from '~/utils';
@@ -31,9 +31,23 @@ const ContextProvider = ({ children }: { children?: React.ReactNode }) => {
     };
   }, []);
 
+  // Without this, a new object identity on every ContextProvider render
+  // (even ones that don't touch code/error at all, e.g. a parent
+  // re-rendering) meant every usePreview()/useError() consumer re-rendered
+  // too, regardless of whether the values they care about actually changed.
+  const previewValue = useMemo<PreviewContextType>(
+    () => ({ code, setCode }),
+    [code, setCode],
+  );
+
+  const errorValue = useMemo<ErrorContextType>(
+    () => ({ error, setError }),
+    [error, setError],
+  );
+
   return (
-    <PreviewContext.Provider value={{ code, setCode }}>
-      <ErrorContext.Provider value={{ error, setError }}>
+    <PreviewContext.Provider value={previewValue}>
+      <ErrorContext.Provider value={errorValue}>
         {children}
       </ErrorContext.Provider>
     </PreviewContext.Provider>
