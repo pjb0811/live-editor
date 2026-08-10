@@ -35,7 +35,13 @@ const IFrame = ({
 }: Props) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
-  const scriptsLoadedRef = useRef<boolean>(false);
+  // Tracks which script srcs have already been injected into this iframe's
+  // document, keyed by src rather than a single loaded/not-loaded boolean —
+  // a boolean latched to `true` forever meant a later change to `scripts`
+  // (new entries) never got loaded once the first batch had.
+  const loadedScriptsRef = useRef<Set<string>>(new Set());
+  const prevStyleCountRef = useRef(0);
+  const prevStylesheetCountRef = useRef(0);
   const shouldAutoHeight = autoHeight && style.height == null;
 
   const styleManagerRef = useRef<{
@@ -129,10 +135,14 @@ const IFrame = ({
 
       applyStyle();
 
-      if (scripts.length && !scriptsLoadedRef.current) {
-        scriptsLoadedRef.current = true;
+      const pendingScripts = scripts.filter(
+        src => !loadedScriptsRef.current.has(src),
+      );
 
-        Promise.all(scripts.map(getCachedScriptBlob)).then(blobUrls => {
+      if (pendingScripts.length) {
+        pendingScripts.forEach(src => loadedScriptsRef.current.add(src));
+
+        Promise.all(pendingScripts.map(getCachedScriptBlob)).then(blobUrls => {
           if (!doc.head) {
             return;
           }
@@ -202,6 +212,19 @@ const IFrame = ({
       }
     });
 
+    // Indices beyond the current array's length are stale from a previous,
+    // longer `styles`/`stylesheets` — the loops above only add/update up to
+    // the current length, so anything past it (from before an item was
+    // removed, or the array shrank) would otherwise stay injected forever.
+    for (
+      let index = styles.length;
+      index < prevStyleCountRef.current;
+      index++
+    ) {
+      doc.getElementById(`injected-style-${index}`)?.remove();
+    }
+    prevStyleCountRef.current = styles.length;
+
     stylesheets.forEach((href, index) => {
       const linkId = `injected-stylesheet-${index}`;
       let linkEl = doc.getElementById(linkId) as HTMLLinkElement | null;
@@ -217,6 +240,15 @@ const IFrame = ({
         linkEl.href = href;
       }
     });
+
+    for (
+      let index = stylesheets.length;
+      index < prevStylesheetCountRef.current;
+      index++
+    ) {
+      doc.getElementById(`injected-stylesheet-${index}`)?.remove();
+    }
+    prevStylesheetCountRef.current = stylesheets.length;
   }, [styles, stylesheets]);
 
   useEffect(() => {
