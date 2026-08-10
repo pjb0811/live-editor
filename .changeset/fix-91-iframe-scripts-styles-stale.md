@@ -1,5 +1,5 @@
 ---
-'@jbpark/live-editor': minor
+'@jbpark/live-editor': patch
 ---
 
-Add support for injecting multiple scripts and stylesheets into an iframe's document, allowing for more complex and dynamic content to be rendered within the editor.
+Fixed the iframe frame not loading new scripts after the scripts prop changed post-initial-load, and fixed removed styles/stylesheets staying injected in the iframe instead of being cleaned up.
