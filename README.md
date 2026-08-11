@@ -12,16 +12,19 @@ live-editor/
 │  ├─ components/
 │  │  ├─ Context/           # Global state management
 │  │  ├─ Dnd/               # Drag-and-drop system with editing panels
-│  │  ├─ Editor/            # Code editor
-│  │  ├─ Error/             # Error boundary
-│  │  └─ Preview/           # Isolated preview runtime
+│  │  ├─ Editor/             # Code editor
+│  │  ├─ Error/              # Error boundary
+│  │  ├─ Frame/              # iframe/shadow-DOM preview isolation
+│  │  └─ Preview/            # Isolated preview runtime
 │  ├─ pages/
-│  │  ├─ Playground/        # Main editor page
-│  │  └─ Preview/           # Full-screen preview page
-│  ├─ utils/ast/            # AST manipulation & code generation
-│  ├─ constants/            # Constants and configurations
-│  ├─ types/                # TypeScript type definitions
-│  └─ App.tsx               # App layout with routing
+│  │  ├─ Docs/                # Docs-style demo site (overview + feature pages)
+│  │  ├─ Editor/              # Full editor app (editor + DnD toggle)
+│  │  ├─ Playground/          # Data-binding config test page
+│  │  └─ Preview/             # Full-screen preview page
+│  ├─ utils/ast/             # AST manipulation & code generation
+│  ├─ constants/             # Constants and configurations
+│  ├─ types/                 # TypeScript type definitions
+│  └─ main.tsx                # App entry + routing
 └─ package.json
 ```
 

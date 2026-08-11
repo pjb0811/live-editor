@@ -12,16 +12,19 @@ live-editor/
 │  ├─ components/
 │  │  ├─ Context/           # 전역 상태 관리
 │  │  ├─ Dnd/               # 드래그 앤 드롭 시스템 및 편집 패널
-│  │  ├─ Editor/            # 코드 에디터
-│  │  ├─ Error/             # 에러 바운더리
-│  │  └─ Preview/           # 격리된 프리뷰 런타임
+│  │  ├─ Editor/             # 코드 에디터
+│  │  ├─ Error/              # 에러 바운더리
+│  │  ├─ Frame/              # iframe/shadow DOM 프리뷰 격리
+│  │  └─ Preview/            # 격리된 프리뷰 런타임
 │  ├─ pages/
-│  │  ├─ Playground/        # 메인 에디터 페이지
-│  │  └─ Preview/           # 전체화면 프리뷰 페이지
-│  ├─ utils/ast/            # AST 조작 및 코드 생성
-│  ├─ constants/            # 상수 및 설정
-│  ├─ types/                # TypeScript 타입 정의
-│  └─ App.tsx               # 라우팅이 포함된 앱 레이아웃
+│  │  ├─ Docs/                # 문서 형태 데모 사이트 (개요 + 기능별 페이지)
+│  │  ├─ Editor/              # 전체 에디터 앱 (에디터 + DnD 전환)
+│  │  ├─ Playground/          # 데이터 바인딩 설정 테스트 페이지
+│  │  └─ Preview/             # 전체화면 프리뷰 페이지
+│  ├─ utils/ast/             # AST 조작 및 코드 생성
+│  ├─ constants/             # 상수 및 설정
+│  ├─ types/                 # TypeScript 타입 정의
+│  └─ main.tsx                # 앱 진입점 + 라우팅
 └─ package.json
 ```
 
