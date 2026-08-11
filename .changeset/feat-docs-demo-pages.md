@@ -1,5 +1,4 @@
 ---
-'@jbpark/live-editor': minor
 ---
 
-Added drag-and-drop builder with an interactive property panel, isolated iframe preview for DOM/CSS separation, and real-time canvas edits that sync back to source code via AST transforms.
+Demo-app-only change (src/pages/\*, main.tsx) — not part of the published package (package.json's `files` is `["dist"]`), so no version bump is needed here.
