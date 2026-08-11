@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.9.0
+
+### Minor Changes
+
+- 94de0ec: usePreview/useError now throw a clear error when used without a `<Live>` ancestor instead of silently no-op'ing (this is a behavior change for any code that was relying on the silent no-op — please verify all usages are correctly wrapped). Also memoized ContextProvider's Provider values so consumers only re-render when code/error actually change.
+- 3c0a2ac: Added renderPalette/renderPanel props to Dnd, letting consumers fully replace the built-in left component-palette and right property-panel with custom markup while drag-and-drop and field editing keep working. Also exported DraggableItem (Dnd.DraggableItem), a children-render-prop component that owns the drag wiring for custom palette items.
+
+### Patch Changes
+
+- 675e112: Internal refactor: adopted @jbpark/use-hooks 3.0.0's useKeyPress, useResizeObserver, useMutationObserver, useEventListener, and useDebouncedValue in place of hand-rolled window/DOM listener wiring in the editor shortcut handling, iframe auto-height/style-sync, error listeners, and debounced code commits. No intended behavior change.
+
 ## 1.8.1
 
 ### Patch Changes
