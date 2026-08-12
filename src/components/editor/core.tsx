@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 
 import { javascript } from '@codemirror/lang-javascript';
 import { vscodeLight } from '@uiw/codemirror-theme-vscode';
@@ -7,21 +7,10 @@ import CodeMirror, {
   type ReactCodeMirrorRef,
 } from '@uiw/react-codemirror';
 import { EditorView } from 'codemirror';
-import * as prettier from 'prettier';
-import prettierPluginBabel from 'prettier/plugins/babel';
-import prettierPluginEstree from 'prettier/plugins/estree';
-import prettierPluginTypeScript from 'prettier/plugins/typescript';
 
-import { cn, detectTypeScript } from '~/utils';
+import { cn } from '~/utils';
 
-const prettierInitialOptions: Record<string, unknown> = {
-  tabWidth: 2,
-  singleQuote: true,
-  trailingComma: 'all',
-  htmlWhitespaceSensitivity: 'ignore',
-  arrowParens: 'avoid',
-  printWidth: 60,
-};
+import { useFormatCode } from './use-format-code';
 
 export interface Props {
   value: string;
@@ -51,40 +40,7 @@ const Core = ({
 }: Props) => {
   const editorRef = useRef<ReactCodeMirrorRef>(null);
 
-  const prettierConfig = useMemo(
-    () => ({
-      ...prettierInitialOptions,
-      ...prettierOptions,
-    }),
-    [prettierOptions],
-  );
-
-  const formatCode = useCallback(
-    async (code: string) => {
-      const isTypeScript = detectTypeScript(code);
-      const source = fragment ? `<>${code}</>` : code;
-      const formatted = await prettier.format(source, {
-        parser: isTypeScript ? 'typescript' : 'babel',
-        plugins: [
-          prettierPluginBabel,
-          prettierPluginEstree,
-          prettierPluginTypeScript,
-        ],
-        ...prettierConfig,
-      });
-
-      if (fragment) {
-        return formatted
-          .replace(/^<>\n?/, '')
-          .replace(/\n?<\/>;?\s*$/, '')
-          .replace(/^ {2}/gm, '')
-          .trim();
-      }
-
-      return formatted;
-    },
-    [prettierConfig, fragment],
-  );
+  const formatCode = useFormatCode({ fragment, prettierOptions });
 
   const onSave = useCallback(
     async (val: string) => {

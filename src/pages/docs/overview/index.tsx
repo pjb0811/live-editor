@@ -13,6 +13,12 @@ const HIGHLIGHTS = [
     path: '/docs/editor-mode',
   },
   {
+    title: 'Custom Editor',
+    description:
+      'Replace the built-in CodeMirror editor with your own editing surface via a render prop.',
+    path: '/docs/editor-mode/custom-render',
+  },
+  {
     title: 'Drag & Drop',
     description:
       'Build UIs visually by dragging components onto a canvas and editing their properties from a side panel.',

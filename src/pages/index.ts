@@ -2,6 +2,7 @@ export {
   DocsLayout,
   Overview,
   EditorModeDoc,
+  EditorCustomRenderDoc,
   DndDoc,
   DndCustomRenderDoc,
   PreviewModesDoc,

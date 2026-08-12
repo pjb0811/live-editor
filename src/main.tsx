@@ -7,6 +7,7 @@ import {
   DndDoc,
   DocsLayout,
   Editor,
+  EditorCustomRenderDoc,
   EditorModeDoc,
   Overview,
   Playground,
@@ -21,6 +22,10 @@ createRoot(document.getElementById('root')!).render(
         <Route element={<DocsLayout />}>
           <Route path="/" element={<Overview />} />
           <Route path="/docs/editor-mode" element={<EditorModeDoc />} />
+          <Route
+            path="/docs/editor-mode/custom-render"
+            element={<EditorCustomRenderDoc />}
+          />
           <Route path="/docs/dnd" element={<DndDoc />} />
           <Route
             path="/docs/dnd/custom-render"
