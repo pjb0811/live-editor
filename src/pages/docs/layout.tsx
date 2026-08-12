@@ -10,6 +10,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: '/', label: 'Overview' },
   { key: '/docs/editor-mode', label: 'Editor Mode' },
+  { key: '/docs/editor-mode/custom-render', label: 'Custom Editor' },
   { key: '/docs/dnd', label: 'Drag & Drop' },
   { key: '/docs/dnd/custom-render', label: 'Custom Palette & Panel' },
   { key: '/docs/preview-modes', label: 'Preview Modes' },
