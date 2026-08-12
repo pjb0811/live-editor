@@ -18,6 +18,7 @@ import { Button, Flex, Radio, Space, Splitter, message } from 'antd';
 
 import Live from '../../';
 import { DEFAULT_TEMPLATE, STORAGE_KEY } from '../../constants';
+import DiffModal from './diff-modal';
 
 const options = [
   { label: 'Drag & Drop', value: 'dnd' },
@@ -40,6 +41,8 @@ const App = () => {
     canRedo,
   } = useHistoryState(value);
   const [type, setType] = useState<'dnd' | 'editor'>('editor');
+  const [diffModalOpen, setDiffModalOpen] = useState(false);
+  const hasUnsavedChanges = value !== savedValue;
 
   const { breakpoint } = useResponsiveSize();
   const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
@@ -104,10 +107,8 @@ const App = () => {
             <Button
               icon={<SaveOutlined />}
               type="primary"
-              onClick={() => {
-                setSavedValue(value);
-                message.success('Code saved successfully');
-              }}
+              disabled={!hasUnsavedChanges}
+              onClick={() => setDiffModalOpen(true)}
             />
             <Button
               icon={<EyeOutlined />}
@@ -149,6 +150,17 @@ const App = () => {
           </Live>
         </Flex>
       </Flex>
+      <DiffModal
+        open={diffModalOpen}
+        original={savedValue}
+        current={value}
+        onConfirm={() => {
+          setSavedValue(value);
+          setDiffModalOpen(false);
+          message.success('Code saved successfully');
+        }}
+        onCancel={() => setDiffModalOpen(false)}
+      />
     </>
   );
 };
