@@ -30,8 +30,8 @@ import { replaceIds } from '~/utils/ast';
 import { DEFAULT_TEMPLATE } from '../../constants';
 import {
   cn,
+  createSectionPreviewCache,
   extractSections,
-  generateSections,
   preloadScripts,
   replaceSections,
 } from '../../utils';
@@ -117,13 +117,18 @@ const Dnd = ({
 
   const value = _value || DEFAULT_TEMPLATE;
   const sections = useMemo(() => extractSections(value), [value]);
+
+  // One cache per Dnd instance (lazy `useState` initializer, never
+  // replaced) — see createSectionPreviewCache (#131). It's stateful by
+  // design (remembers the previous render's previews to reuse the ones
+  // that didn't change), which a `useMemo`/`useRef` can't do without
+  // touching a ref during render; a cache object stored via `useState`
+  // and only ever mutated through its own method isn't subject to that
+  // restriction the way `ref.current` is.
+  const [previewCache] = useState(() => createSectionPreviewCache());
   const previews = useMemo(
-    () =>
-      generateSections(
-        sections.map(s => s.code),
-        value,
-      ),
-    [sections, value],
+    () => previewCache.compute(value, sections),
+    [previewCache, sections, value],
   );
 
   const onDragStart = (_: DragStartEvent) => {};

@@ -1,10 +1,12 @@
 import { bench, describe } from 'vitest';
 
 import {
+  createSectionPreviewCache,
   generateSectionPreview,
   generateSectionPreviews,
   getSections,
   parseDocument,
+  replaceDocumentSections,
 } from './document';
 
 // Regression guard for the perf claims made in document.ts's parse cache
@@ -112,6 +114,60 @@ for (const sectionCount of SECTION_COUNTS) {
 
         parseDocument(edited);
         parseDocument(edited);
+      },
+    );
+
+    // #131: dnd.tsx recomputed every section's preview on every edit, even
+    // though only the one field/section actually touched needs a new
+    // preview string — the rest are still going to splice out
+    // byte-identical to what they were. These two benches simulate the
+    // *real* dnd.tsx data flow for one keystroke: the edited section's new
+    // code is spliced into the full document first (replaceDocumentSections,
+    // same as Dnd's own onChange), producing a brand new `fullCode` string
+    // every call — so, unlike naively varying only the section-level code
+    // while reusing the same `code` constant, `parseDocument(fullCode)`
+    // genuinely misses its cache on every iteration for *both* benches
+    // here, same as a real edit. What's being compared is only the N-splice
+    // step after that shared, unavoidable parse.
+    const baseSections = getSections(parseDocument(code)!).map(s => ({
+      id: s.id,
+      code: s.code,
+    }));
+
+    let recomputeEditCounter = 0;
+
+    bench(
+      'one section edited: generateSectionPreviews (recomputes every section)',
+      () => {
+        const editedCodes = baseSections.map((s, i) =>
+          i === 0
+            ? `${s.code}\n{/* edit ${recomputeEditCounter++} */}`
+            : s.code,
+        );
+        const editedFullCode = replaceDocumentSections(code, editedCodes);
+
+        generateSectionPreviews(editedFullCode, editedCodes);
+      },
+    );
+
+    const cache = createSectionPreviewCache();
+    cache.compute(code, baseSections); // prime it, like the first render
+    let cacheEditCounter = 0;
+
+    bench(
+      'one section edited: createSectionPreviewCache (reuses the rest)',
+      () => {
+        const editedSections = baseSections.map((s, i) =>
+          i === 0
+            ? { ...s, code: `${s.code}\n{/* edit ${cacheEditCounter++} */}` }
+            : s,
+        );
+        const editedFullCode = replaceDocumentSections(
+          code,
+          editedSections.map(s => s.code),
+        );
+
+        cache.compute(editedFullCode, editedSections);
       },
     );
   });

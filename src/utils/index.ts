@@ -11,6 +11,7 @@ import type { Module, Section } from '~/types';
 
 import { CONFIG, REGEX, TS_PATTERNS } from '../constants';
 import {
+  createSectionPreviewCache,
   generateSectionPreview,
   generateSectionPreviews,
   getSections,
@@ -198,6 +199,13 @@ export const generateSections = (
 ): string[] => {
   return generateSectionPreviews(fullCode, codes);
 };
+
+// Incremental counterpart to generateSections() — see createSectionPreviewCache
+// (#131). Pass a fresh instance's `compute` in place of generateSections()
+// where the caller can keep it alive across renders (e.g. Dnd holds one via
+// `useState(() => createSectionPreviewCache())`).
+export { createSectionPreviewCache };
+export type { SectionPreviewCache } from './ast/document';
 
 const scriptCache = createBoundedCache<string, string>(
   CONFIG.SCRIPT_CACHE_LIMIT,
