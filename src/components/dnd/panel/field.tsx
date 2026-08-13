@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   Checkbox,
@@ -9,6 +9,7 @@ import {
   Upload,
   type UploadFile,
 } from '@jbpark/ui-kit';
+import { useDebounce } from '@jbpark/use-hooks';
 
 import CoreEditor from '~/components/editor/core';
 import TiptapEditor from '~/components/editor/tiptap';
@@ -70,6 +71,89 @@ const formatDateValue = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+};
+
+// ColorPicker's onChange fires on every drag frame — committing straight
+// to `onChange` (which drives the AST parse/mutate/re-serialize +
+// generateSections + compile pipeline, see #130) makes a single drag cost
+// upward of 15-25ms per frame. Debouncing the *commit* keeps that pipeline
+// to roughly one run per pause instead of one per frame, while a local
+// `liveValue` state keeps the swatch/hex text updating every frame for
+// responsiveness — ColorPicker is fully controlled (`useControllableState`
+// with `value` always set here), so without this it would visually snap
+// back to the last committed color between debounced commits.
+const COLOR_COMMIT_DELAY = 75;
+
+interface ColorPickerFieldProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange?: (params: { id: string; label: string; value: string }) => void;
+}
+
+const ColorPickerField = ({
+  id,
+  label,
+  value,
+  onChange,
+}: ColorPickerFieldProps) => {
+  const [liveValue, setLiveValue] = useState(value);
+  // Tracks `value` purely to detect an external change during render (see
+  // below) — refs can't be read/written during render, so this has to be
+  // state even though nothing here reads `prevValue` itself afterward.
+  const [prevValue, setPrevValue] = useState(value);
+  const lastCommittedRef = useRef(value);
+
+  // The committed `value` can also change from outside (undo/redo, another
+  // field touching the same binding) — stay in sync with it rather than
+  // only ever tracking our own commits. Adjusted during render (React's
+  // recommended "reset state when a prop changes" pattern) rather than in
+  // an effect, so the mismatched frame never actually paints.
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setLiveValue(value);
+  }
+
+  // `lastCommittedRef` only needs to be current by the time `commit` next
+  // runs (always from an event handler / debounce timer, never render), so
+  // syncing it in an effect — instead of alongside the state adjustment
+  // above — keeps the ref access out of the render phase entirely.
+  useEffect(() => {
+    lastCommittedRef.current = value;
+  }, [value]);
+
+  const commit = (next: string) => {
+    if (next === lastCommittedRef.current) {
+      return;
+    }
+    lastCommittedRef.current = next;
+    onChange?.({ id, label, value: next });
+  };
+
+  const debouncedCommit = useDebounce(() => commit(liveValue), {
+    delay: COLOR_COMMIT_DELAY,
+    autoInvoke: false,
+  });
+
+  return (
+    <ColorPicker
+      showText
+      value={liveValue}
+      onChange={next => {
+        setLiveValue(next);
+        debouncedCommit();
+      }}
+      onOpenChange={open => {
+        // Flush immediately on close (picker dismissed / selection
+        // finished) instead of waiting out the debounce window, so the
+        // last color is never at risk of being dropped by an unmount
+        // racing the pending timeout.
+        if (!open) {
+          commit(liveValue);
+        }
+      }}
+    />
+  );
 };
 
 const ICON_OPTIONS = Object.entries(ICON_MAP).map(([name, Icon]) => ({
@@ -256,18 +340,11 @@ const Field = ({ binding, id, value, onChange }: Props) => {
 
   if (binding.type === 'color' || isColorProperty(binding.property)) {
     return (
-      <ColorPicker
-        showText
+      <ColorPickerField
+        id={id}
+        label={binding.label}
         value={normalizeToHex(stringValue)}
-        onChange={next => {
-          if (next !== value) {
-            onChange?.({
-              id,
-              label: binding.label,
-              value: next,
-            });
-          }
-        }}
+        onChange={onChange}
       />
     );
   }
