@@ -307,6 +307,64 @@ const IFrame = ({
     styleEl.textContent = `html { container-type: size !important; height: ${probeHeight}px !important; }`;
   };
 
+  // A second, separate style — inert (`media="not all"`) except for the
+  // brief window updateHeight actually measures in, toggled on right
+  // before and off right after (#132 stage 4). Two things it guards
+  // against:
+  //
+  // - transitions: if any rule in the preview (or a browser default)
+  //   gives `html`/an ancestor a `transition` on a property this
+  //   measurement touches, changing ensureContainerStyle's `height` would
+  //   animate instead of applying instantly, and a read taken right after
+  //   would catch a mid-transition value instead of the settled one.
+  // - scrollbar chrome: applying a new probe height can make a scrollbar
+  //   appear/disappear for exactly this measurement pass; on platforms
+  //   where it takes up layout width (Windows, unlike macOS's overlay
+  //   scrollbars), that narrows content and skews the height reading.
+  //   `scrollbar-width: none`/`::-webkit-scrollbar { display: none }`
+  //   only hides the *chrome* — unlike `overflow: hidden`, scrolling
+  //   itself still works, so content that ends up taller than its probe
+  //   height is still reachable rather than silently clipped.
+  //
+  // A single style element (not two, and never added/removed) so
+  // toggling it can't itself trip the MutationObserver watching for
+  // *content* changes.
+  const MEASUREMENT_OVERRIDE_STYLE_ID = 'autoheight-measurement-overrides';
+
+  const withMeasurementOverrides = (doc: Document, measure: () => void) => {
+    let styleEl = doc.getElementById(
+      MEASUREMENT_OVERRIDE_STYLE_ID,
+    ) as HTMLStyleElement | null;
+
+    if (!styleEl) {
+      styleEl = doc.createElement('style');
+      styleEl.id = MEASUREMENT_OVERRIDE_STYLE_ID;
+      styleEl.media = 'not all';
+      styleEl.textContent = [
+        '*, *::before, *::after { transition: none !important; }',
+        'html, body { scrollbar-width: none !important; }',
+        'html::-webkit-scrollbar, body::-webkit-scrollbar { display: none !important; }',
+      ].join('\n');
+      doc.head?.appendChild(styleEl);
+    }
+
+    styleEl.media = 'all';
+    measure();
+    styleEl.media = 'not all';
+  };
+
+  // Not ported from #132 stage 4: a "settled scrollHeight + settled probe
+  // height both unchanged -> skip" guard, meant to avoid redundant re-runs
+  // from updateHeight's own `iframe.style.height` write looping back
+  // through the ResizeObserver below (a real path — the iframe's own box
+  // size determines its *internal* viewport size, so this can genuinely
+  // fire again). Left out deliberately: `scrollHeight` only reflects
+  // normal document flow, but a position:fixed/absolute overlay opening or
+  // closing (its whole reason for needing the full-subtree walk above)
+  // often doesn't touch `scrollHeight` at all. A guard keyed on it would
+  // silently skip exactly the kind of update stage 3 exists to catch —
+  // reintroducing a narrower version of the bug this file just fixed
+  // would be a worse trade than the redundant-recompute cost it'd save.
   const updateHeight = useCallback(() => {
     if (!shouldAutoHeight || !mountNode || !iframeRef.current) {
       return;
@@ -362,41 +420,45 @@ const IFrame = ({
       probeHeight = computed;
     }
 
-    ensureContainerStyle(doc, probeHeight);
+    let contentHeight = 0;
 
-    // No 0px fold before measuring (that was the source of problem 1) —
-    // with cq*-unit content now sized against the fixed probe height
-    // instead of the iframe's own, a direct read is already stable.
-    let contentHeight = mountNode.scrollHeight;
+    withMeasurementOverrides(doc, () => {
+      ensureContainerStyle(doc, probeHeight);
 
-    // Full subtree, not just direct children (a popup/overlay nested a
-    // few components deep was previously invisible to this walk
-    // entirely — problem 2's "중첩된 오버레이는 아예 누락됩니다").
-    const descendants = mountNode.querySelectorAll<HTMLElement>('*');
+      // No 0px fold before measuring (that was the source of problem 1)
+      // — with cq*-unit content now sized against the fixed probe height
+      // instead of the iframe's own, a direct read is already stable.
+      contentHeight = mountNode.scrollHeight;
 
-    descendants.forEach(el => {
-      const style = win.getComputedStyle(el);
+      // Full subtree, not just direct children (a popup/overlay nested a
+      // few components deep was previously invisible to this walk
+      // entirely — problem 2's "중첩된 오버레이는 아예 누락됩니다").
+      const descendants = mountNode.querySelectorAll<HTMLElement>('*');
 
-      // visibility:hidden/opacity:0 elements (a closed bottom sheet,
-      // a not-yet-faded-in overlay) keep a non-zero offsetHeight —
-      // display:none doesn't need checking here since the browser
-      // already zeroes *its* offsetHeight on its own.
-      if (isVisuallyHidden(style)) {
-        return;
-      }
+      descendants.forEach(el => {
+        const style = win.getComputedStyle(el);
 
-      if (
-        (style.position === 'fixed' || style.position === 'absolute') &&
-        el.offsetHeight > 0
-      ) {
-        const estimatedHeight = estimatePositionedElementHeight(
-          el.offsetHeight,
-          style.transform,
-          probeHeight,
-        );
+        // visibility:hidden/opacity:0 elements (a closed bottom sheet,
+        // a not-yet-faded-in overlay) keep a non-zero offsetHeight —
+        // display:none doesn't need checking here since the browser
+        // already zeroes *its* offsetHeight on its own.
+        if (isVisuallyHidden(style)) {
+          return;
+        }
 
-        contentHeight = Math.max(contentHeight, estimatedHeight);
-      }
+        if (
+          (style.position === 'fixed' || style.position === 'absolute') &&
+          el.offsetHeight > 0
+        ) {
+          const estimatedHeight = estimatePositionedElementHeight(
+            el.offsetHeight,
+            style.transform,
+            probeHeight,
+          );
+
+          contentHeight = Math.max(contentHeight, estimatedHeight);
+        }
+      });
     });
 
     if (contentHeight > 0) {
