@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.11.0
+
+### Minor Changes
+
+- e4ac79d: Added debouncing to ColorPicker's onChange to improve performance and prevent visual snapping back to the last committed color between debounced commits.
+- c2f49f1: The live editor now correctly measures the height of nested overlays and position:fixed/absolute elements, avoiding previously introduced issues with content being invisible or clipped.
+- f0134e5: Added support for cq\*-unit content in preview iframe, enabling correct sizing against the viewport's height.
+- 5d2e37c: Rewrite vh/svh/lvh/dvh/vmin/vmax units to cqh/cqmin/cqmax equivalents in CSS dimensions, including nested inside calc()/var() fallbacks, while preserving vw and custom property names.
+- 2e109b4: Added a cache to reuse section previews when their code and container context haven't changed, improving performance in the drag-and-drop panel.
+
 ## 1.10.0
 
 ### Minor Changes
