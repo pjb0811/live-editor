@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CONFIG } from '../../constants';
 import {
   clearDocumentParseCache,
+  createSectionPreviewCache,
   generateDocumentCode,
   generateSectionPreview,
   generateSectionPreviews,
@@ -461,6 +462,117 @@ describe('generateSectionPreviews', () => {
 
     expect(
       generateSectionPreviews(broken, ['<section />', '<section />']),
+    ).toEqual([broken, broken]);
+  });
+});
+
+describe('createSectionPreviewCache (#131)', () => {
+  it('matches generateSectionPreviews for a first call', () => {
+    const cache = createSectionPreviewCache();
+    const sections = [
+      { id: 'a', code: '<section data-name="A"><p>A</p></section>' },
+      { id: 'b', code: '<section data-name="B"><p>B</p></section>' },
+    ];
+
+    const cached = cache.compute(FULL_CODE, sections);
+    const direct = generateSectionPreviews(
+      FULL_CODE,
+      sections.map(s => s.code),
+    );
+
+    expect(cached).toEqual(direct);
+  });
+
+  it('reuses the exact same preview string for a section whose code and container context are unchanged', () => {
+    const cache = createSectionPreviewCache();
+    const sections = [
+      { id: 'a', code: '<section data-name="A"><p>A</p></section>' },
+      { id: 'b', code: '<section data-name="B"><p>B</p></section>' },
+    ];
+
+    const first = cache.compute(FULL_CODE, sections);
+
+    const edited = [
+      sections[0]!,
+      {
+        id: 'b',
+        code: '<section data-name="B-edited"><p>B edited</p></section>',
+      },
+    ];
+    const second = cache.compute(FULL_CODE, edited);
+
+    expect(second[0]).toBe(first[0]); // untouched section: same string
+    expect(second[1]).not.toBe(first[1]); // edited section: recomputed
+    expect(getSections(parseDocument(second[1]!)!)[0]!.name).toBe('B-edited');
+  });
+
+  it('reuses cached previews across drag reorders (matched by id, not position)', () => {
+    const cache = createSectionPreviewCache();
+    const sections = [
+      { id: 'a', code: '<section data-name="A"><p>A</p></section>' },
+      { id: 'b', code: '<section data-name="B"><p>B</p></section>' },
+      { id: 'c', code: '<section data-name="C"><p>C</p></section>' },
+    ];
+
+    const first = cache.compute(FULL_CODE, sections);
+    const reordered = [sections[2]!, sections[0]!, sections[1]!];
+    const second = cache.compute(FULL_CODE, reordered);
+
+    expect(second[0]).toBe(first[2]); // c
+    expect(second[1]).toBe(first[0]); // a
+    expect(second[2]).toBe(first[1]); // b
+  });
+
+  it('recomputes every entry once the container context changes (e.g. an import added)', () => {
+    const cache = createSectionPreviewCache();
+    const sections = [
+      { id: 'a', code: '<section data-name="A"><p>A</p></section>' },
+      { id: 'b', code: '<section data-name="B"><p>B</p></section>' },
+    ];
+
+    const first = cache.compute(FULL_CODE, sections);
+
+    const withNewImport = FULL_CODE.replace(
+      "import * as ui from 'ui-kit';",
+      "import * as ui from 'ui-kit';\nimport { extra } from 'extra';",
+    );
+    const second = cache.compute(withNewImport, sections);
+
+    // Neither section's own code changed, but the container-context guard
+    // must still force a recompute so the new import makes it into both.
+    expect(second[0]).not.toBe(first[0]);
+    expect(second[1]).not.toBe(first[1]);
+    expect(second[0]).toContain("import { extra } from 'extra';");
+    expect(second[1]).toContain("import { extra } from 'extra';");
+  });
+
+  it('computes a fresh preview for a newly added section without disturbing cached ones', () => {
+    const cache = createSectionPreviewCache();
+    const sections = [
+      { id: 'a', code: '<section data-name="A"><p>A</p></section>' },
+    ];
+
+    const first = cache.compute(FULL_CODE, sections);
+
+    const withNewSection = [
+      sections[0]!,
+      { id: 'new', code: '<section data-name="New"><p>New</p></section>' },
+    ];
+    const second = cache.compute(FULL_CODE, withNewSection);
+
+    expect(second[0]).toBe(first[0]);
+    expect(getSections(parseDocument(second[1]!)!)[0]!.name).toBe('New');
+  });
+
+  it('returns fullCode for every entry when fullCode fails to parse', () => {
+    const cache = createSectionPreviewCache();
+    const broken = '<main id="app-container">';
+
+    expect(
+      cache.compute(broken, [
+        { id: 'a', code: '<section />' },
+        { id: 'b', code: '<section />' },
+      ]),
     ).toEqual([broken, broken]);
   });
 });

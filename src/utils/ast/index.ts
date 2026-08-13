@@ -21,9 +21,10 @@ export {
 } from './value';
 export { generateCode } from './helpers';
 export { clearExtractCache, extract } from './extract';
-export type { DocumentTree } from './document';
+export type { DocumentTree, SectionPreviewCache } from './document';
 export {
   clearDocumentParseCache,
+  createSectionPreviewCache,
   generateDocumentCode,
   generateSectionPreview,
   generateSectionPreviews,

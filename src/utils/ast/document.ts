@@ -314,3 +314,104 @@ export const generateSectionPreviews = (
     spliceCode(fullCode, span.start, span.end, sectionCode),
   );
 };
+
+export interface SectionPreviewCache {
+  // Recomputes only the sections that actually need it — see below. Call
+  // once per render with the full current section list; each entry needs
+  // a stable `id` (matched against the previous call, not position) since
+  // drag-reordering doesn't change any section's own code.
+  compute: (
+    fullCode: string,
+    sections: { id: string; code: string }[],
+  ) => string[];
+}
+
+// Stateful counterpart to generateSectionPreviews (#131) — that function
+// already returns character-for-character identical strings for an
+// untouched section (splicing the same container span with the same
+// section code can't produce anything else), which is enough for
+// React.memo's default Object.is comparison to bail on its own, since JS
+// compares string *primitives* by value, not by which computation produced
+// them. What this cache actually skips is redoing the N splices for
+// sections that didn't change, reusing their previous preview string
+// outright instead.
+//
+// Measured honestly (document.bench.ts's "one section edited" pair, which
+// — unlike comparing against a same-fullCode-every-call baseline — rebuilds
+// fullCode with the edit first, the same way a real Dnd edit does): the
+// splices this avoids cost low-single-digit microseconds even at 50
+// sections, dwarfed by the several-milliseconds-and-up cost of re-parsing
+// the changed `fullCode` itself, which every edit pays regardless of this
+// cache (parseDocument's own cache only helps for a *repeated* fullCode
+// string, and an edit's fullCode is new by definition). So don't expect
+// this alone to explain #131's originally-cited per-edit cost — most of
+// that appears to actually be the unavoidable re-parse, which is #82's
+// "share one AST across edits instead of re-parsing" territory, not
+// something a preview-level cache can reach. This is still a correct,
+// harmless, always-at-least-as-fast micro-optimization on its own terms,
+// just a smaller win in practice than the splice-count math alone suggests.
+//
+// One instance is meant to live for the lifetime of one document/editor
+// (e.g. `useState(() => createSectionPreviewCache())` in dnd.tsx) — it's
+// deliberately not a plain function so it can hold that document's last
+// result between calls, the same shape as createBoundedCache elsewhere in
+// this module, just keyed by section id instead of a bounded LRU since
+// there's normally only a few dozen sections open at once.
+export const createSectionPreviewCache = (): SectionPreviewCache => {
+  let containerPrefix: string | null = null;
+  let containerSuffix: string | null = null;
+  let previewsById = new Map<string, { code: string; preview: string }>();
+
+  const compute = (
+    fullCode: string,
+    sections: { id: string; code: string }[],
+  ): string[] => {
+    const doc = parseDocument(fullCode);
+    const span = doc && getContainerInnerSpan(doc.container);
+
+    if (!span) {
+      containerPrefix = null;
+      containerSuffix = null;
+      previewsById = new Map();
+      return sections.map(() => fullCode);
+    }
+
+    // Everything outside the container's inner span is what the splice
+    // leaves untouched — if it reads the same as last time (regardless of
+    // where `span` itself now falls in `fullCode`, which shifts whenever
+    // any section's length changes), an unchanged section's spliced
+    // output is guaranteed identical too, so it's safe to skip.
+    const prefix = fullCode.slice(0, span.start);
+    const suffix = fullCode.slice(span.end);
+    const containerUnchanged =
+      prefix === containerPrefix && suffix === containerSuffix;
+
+    const nextPreviewsById = new Map<
+      string,
+      { code: string; preview: string }
+    >();
+
+    const previews = sections.map(section => {
+      const cached = containerUnchanged
+        ? previewsById.get(section.id)
+        : undefined;
+
+      if (cached && cached.code === section.code) {
+        nextPreviewsById.set(section.id, cached);
+        return cached.preview;
+      }
+
+      const preview = spliceCode(fullCode, span.start, span.end, section.code);
+      nextPreviewsById.set(section.id, { code: section.code, preview });
+      return preview;
+    });
+
+    containerPrefix = prefix;
+    containerSuffix = suffix;
+    previewsById = nextPreviewsById;
+
+    return previews;
+  };
+
+  return { compute };
+};
