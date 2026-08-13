@@ -6,6 +6,14 @@ import { useMutationObserver, useResizeObserver } from '@jbpark/use-hooks';
 
 import { getCachedScriptBlob } from '~/utils';
 
+import {
+  FALLBACK_PROBE_HEIGHT,
+  computeProbeHeight,
+  estimatePositionedElementHeight,
+  isVisuallyHidden,
+} from './measure';
+import { convertViewportUnits } from './viewport-units';
+
 export interface Props {
   title?: string;
   /** Forwarded to the iframe's `sandbox` attribute for DOM/CSS isolation only — not a security boundary, since preview code executes in the host window's realm (see `compileModule` in `~/utils`). */
@@ -101,7 +109,13 @@ const IFrame = ({
       const fragment = doc.createDocumentFragment();
       newStyles.forEach(content => {
         const style = doc.createElement('style');
-        style.textContent = content;
+        // Host styles can legitimately use vh/svh/etc themselves (e.g. a
+        // shared design-system stylesheet) — converted the same way as
+        // the styles/stylesheets props below, so they resolve against
+        // the preview's own probe height instead of the iframe's, once
+        // autoHeight's container context (see ensureContainerStyle) is
+        // active.
+        style.textContent = convertViewportUnits(content);
         fragment.appendChild(style);
       });
       doc.head.appendChild(fragment);
@@ -212,8 +226,13 @@ const IFrame = ({
         doc.head.appendChild(styleEl);
       }
 
-      if (styleEl.textContent !== css) {
-        styleEl.textContent = css;
+      // The primary source of vh/svh/etc in a real preview — compiled
+      // component CSS (e.g. Tailwind's `h-screen` -> `height: 100vh`).
+      // See ensureContainerStyle below for why this needs converting.
+      const convertedCss = convertViewportUnits(css);
+
+      if (styleEl.textContent !== convertedCss) {
+        styleEl.textContent = convertedCss;
       }
     });
 
@@ -256,89 +275,151 @@ const IFrame = ({
     prevStylesheetCountRef.current = stylesheets.length;
   }, [styles, stylesheets]);
 
+  // The <html> element's own container-context style — id'd so it can be
+  // found/updated/removed across calls without holding a ref to it. Scoped
+  // to `html` (not `:root`, which is equivalent but the fork's own
+  // convention) so this only ever affects cq*-unit resolution and nothing
+  // else about the document.
+  const CONTAINER_STYLE_ID = 'autoheight-container';
+
+  // Ties `cqh`/`cqmin`/`cqmax` (what convertViewportUnits rewrote every
+  // vh/svh/lvh/dvh/vmin/vmax to) to a *fixed* reference height instead of
+  // the iframe's own height — this is what breaks the old approach's
+  // circularity (#132 problem 1): folding the iframe to 0px before
+  // measuring made vh-sized content resolve to 0 and stay there forever,
+  // while measuring without folding never converges (vh content sized
+  // against the iframe's own just-grown height keeps growing it further).
+  // `container-type: size` requires an explicit height to size against,
+  // which `probeHeight` (the *scroll container's* available height, not
+  // the iframe's) provides — genuinely independent of whatever height this
+  // function goes on to set on the iframe itself.
+  const ensureContainerStyle = (doc: Document, probeHeight: number) => {
+    let styleEl = doc.getElementById(
+      CONTAINER_STYLE_ID,
+    ) as HTMLStyleElement | null;
+
+    if (!styleEl) {
+      styleEl = doc.createElement('style');
+      styleEl.id = CONTAINER_STYLE_ID;
+      doc.head?.appendChild(styleEl);
+    }
+
+    styleEl.textContent = `html { container-type: size !important; height: ${probeHeight}px !important; }`;
+  };
+
   const updateHeight = useCallback(() => {
     if (!shouldAutoHeight || !mountNode || !iframeRef.current) {
       return;
     }
 
     const iframe = iframeRef.current;
-
-    const scrollParent = iframe.closest(
-      '[data-frame-container]',
-    ) as HTMLElement | null;
-    const savedScrollTop = scrollParent?.scrollTop ?? 0;
-
-    iframe.style.height = '0px';
-
-    let childrenHeight = 0;
-
-    Array.from(mountNode.children).forEach(child => {
-      const el = child as HTMLElement;
-      childrenHeight = Math.max(childrenHeight, el.scrollHeight);
-    });
-
     const doc = iframe.contentDocument;
     const win = doc?.defaultView;
 
-    const popups = mountNode.querySelectorAll<HTMLElement>(
-      '[data-floating-ui-focusable]',
-    );
-
-    popups.forEach(popup => {
-      if (popup.offsetHeight > 0) {
-        let offsetY = 0;
-
-        const transform = popup.style.transform;
-        if (transform) {
-          const match = transform.match(
-            /translate\([^,]+,\s*([+-]?\d+(?:\.\d+)?)/,
-          );
-          if (match?.[1]) {
-            offsetY = parseFloat(match[1]);
-          }
-        }
-
-        const estimatedHeight = offsetY + popup.offsetHeight;
-        childrenHeight = Math.max(childrenHeight, estimatedHeight);
-      }
-    });
-
-    if (win) {
-      Array.from(mountNode.children).forEach(child => {
-        const el = child as HTMLElement;
-        const style = win.getComputedStyle(el);
-
-        if (style.position === 'fixed' || style.position === 'absolute') {
-          if (el.offsetHeight > 0) {
-            let offsetY = 0;
-
-            const transform = el.style.transform;
-            if (transform) {
-              const match = transform.match(
-                /translate\([^,]+,\s*([+-]?\d+(?:\.\d+)?)/,
-              );
-              if (match?.[1]) {
-                offsetY = parseFloat(match[1]);
-              }
-            }
-
-            const estimatedHeight = offsetY + el.offsetHeight;
-            childrenHeight = Math.max(childrenHeight, estimatedHeight);
-          }
-        }
-      });
+    if (!doc || !win) {
+      return;
     }
 
-    const contentHeight = Math.max(mountNode.scrollHeight, childrenHeight);
+    const scrollParent = iframe.closest<HTMLElement>('[data-frame-container]');
+
+    let probeHeight: number;
+
+    if (!scrollParent) {
+      // No scroll container anywhere in the tree (Frame used directly,
+      // without Dnd) — fall back to a fixed default; see
+      // FALLBACK_PROBE_HEIGHT's own comment for why this differs from
+      // the "container exists but isn't laid out yet" case below.
+      probeHeight = FALLBACK_PROBE_HEIGHT;
+    } else {
+      let wrapperInsets = 0;
+      let node = iframe.parentElement;
+
+      while (node && node !== scrollParent) {
+        const style = win.getComputedStyle(node);
+
+        wrapperInsets +=
+          parseFloat(style.borderTopWidth) +
+          parseFloat(style.borderBottomWidth) +
+          parseFloat(style.paddingTop) +
+          parseFloat(style.paddingBottom);
+
+        node = node.parentElement;
+      }
+
+      const computed = computeProbeHeight(
+        scrollParent.clientHeight,
+        wrapperInsets,
+      );
+
+      if (computed === null) {
+        // Layout not ready yet (mid-transition, just mounted, etc) —
+        // skip this pass instead of guessing; the ResizeObserver/
+        // MutationObserver below will call this again once something
+        // actually changes, including the layout settling.
+        return;
+      }
+
+      probeHeight = computed;
+    }
+
+    ensureContainerStyle(doc, probeHeight);
+
+    // No 0px fold before measuring (that was the source of problem 1) —
+    // with cq*-unit content now sized against the fixed probe height
+    // instead of the iframe's own, a direct read is already stable.
+    let contentHeight = mountNode.scrollHeight;
+
+    // Full subtree, not just direct children (a popup/overlay nested a
+    // few components deep was previously invisible to this walk
+    // entirely — problem 2's "중첩된 오버레이는 아예 누락됩니다").
+    const descendants = mountNode.querySelectorAll<HTMLElement>('*');
+
+    descendants.forEach(el => {
+      const style = win.getComputedStyle(el);
+
+      // visibility:hidden/opacity:0 elements (a closed bottom sheet,
+      // a not-yet-faded-in overlay) keep a non-zero offsetHeight —
+      // display:none doesn't need checking here since the browser
+      // already zeroes *its* offsetHeight on its own.
+      if (isVisuallyHidden(style)) {
+        return;
+      }
+
+      if (
+        (style.position === 'fixed' || style.position === 'absolute') &&
+        el.offsetHeight > 0
+      ) {
+        const estimatedHeight = estimatePositionedElementHeight(
+          el.offsetHeight,
+          style.transform,
+          probeHeight,
+        );
+
+        contentHeight = Math.max(contentHeight, estimatedHeight);
+      }
+    });
 
     if (contentHeight > 0) {
       iframe.style.height = `${Math.ceil(contentHeight)}px`;
     }
-
-    if (scrollParent) {
-      scrollParent.scrollTop = savedScrollTop;
-    }
   }, [shouldAutoHeight, mountNode]);
+
+  // updateHeight only ever adds/refreshes the container-context style —
+  // if autoHeight is toggled off (or an explicit style.height is passed)
+  // at runtime, nothing else would ever remove or update it again,
+  // leaving cq*-unit content sized against a stale probe height instead
+  // of correctly falling back to real viewport-relative sizing (which
+  // cqh does on its own once nothing establishes a size container — see
+  // ensureContainerStyle's own comment).
+  useEffect(() => {
+    if (shouldAutoHeight) {
+      return;
+    }
+
+    iframeRef.current?.contentDocument
+      ?.getElementById(CONTAINER_STYLE_ID)
+      ?.remove();
+  }, [shouldAutoHeight]);
 
   useEffect(() => {
     updateHeight();
@@ -350,9 +431,10 @@ const IFrame = ({
   // own JSX (mountNode is the portal's imperatively-created container, not
   // something rendered here), so it's attached/detached imperatively
   // instead. Its reported size is intentionally unused - updateHeight's own
-  // walk (popups, position:fixed/absolute children) computes a more
-  // accurate height than mountNode's own content-box size would, so a
-  // change in `resizeSize` is only used as a trigger to recompute.
+  // walk (every descendant, position:fixed/absolute ones capped and offset
+  // by their transform) computes a more accurate height than mountNode's
+  // own content-box size would, so a change in `resizeSize` is only used
+  // as a trigger to recompute.
   useEffect(() => {
     if (!shouldAutoHeight || !mountNode) {
       return;
