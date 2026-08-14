@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -68,10 +68,14 @@ const App = () => {
   );
 
   // Reflect undo/redo (or the debounced commit above catching up) back into
-  // the editable value.
-  useEffect(() => {
+  // the editable value. Adjusted directly in render (React's "adjust state
+  // during render" pattern) instead of an effect, so it lands in the same
+  // render `historyValue` changes rather than the render after.
+  const [prevHistoryValue, setPrevHistoryValue] = useState(historyValue);
+  if (historyValue !== prevHistoryValue) {
+    setPrevHistoryValue(historyValue);
     setValue(historyValue);
-  }, [historyValue]);
+  }
 
   // Let CodeMirror's own text-level undo/redo handle keystrokes inside the
   // raw editor instead of triggering the history-level undo/redo here.

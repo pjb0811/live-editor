@@ -16,27 +16,34 @@ interface Props {
 }
 
 const Panel = ({ item, onChange, onDelete }: Props) => {
+  const code = item?.code;
+
+  // Reads only the extracted `code` local, not `item`, so the compiler can
+  // verify this dependency array actually matches what the body reads —
+  // mixing `item?.code` (the guard) and `item.code` (post-guard reads)
+  // made that unprovable and widened the inferred dependency to `item`
+  // itself, which would recompute on unrelated `item` identity changes.
   const { dataAttrNodes, updatedCode, parseError } = useMemo(() => {
-    if (!item?.code) {
+    if (!code) {
       return { dataAttrNodes: [], updatedCode: '', parseError: false };
     }
 
     try {
-      const updatedCode = fillIds(item.code);
+      const updatedCode = fillIds(code);
 
       const allNodes = extract(updatedCode);
       const filtered = allNodes.filter(node => node.tagName !== 'section');
 
       return {
         dataAttrNodes: filtered,
-        updatedCode: updatedCode !== item.code ? updatedCode : item.code,
+        updatedCode: updatedCode !== code ? updatedCode : code,
         parseError: false,
       };
     } catch (e) {
       console.warn('⚠️ Parsing error', e);
       return { dataAttrNodes: [], updatedCode: '', parseError: true };
     }
-  }, [item?.code]);
+  }, [code]);
 
   useEffect(() => {
     if (parseError) {
