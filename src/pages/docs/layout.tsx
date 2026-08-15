@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
-import { Layout, Menu } from '@jbpark/ui-kit';
+import { Button, Drawer, Layout, Menu } from '@jbpark/ui-kit';
+import { Menu as MenuIcon } from 'lucide-react';
 
 interface NavItem {
   key: string;
@@ -19,25 +21,66 @@ const NAV_ITEMS: NavItem[] = [
 const DocsLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const handleSelect = ({ key }: { key: React.Key }) => {
+    navigate(String(key));
+    setMobileNavOpen(false);
+  };
+
+  const nav = (
+    <Menu
+      mode="inline"
+      items={NAV_ITEMS}
+      selectedKeys={[location.pathname]}
+      onSelect={handleSelect}
+    />
+  );
 
   return (
     <Layout className="min-h-screen">
-      <Layout.Sider width={240} breakpoint="md" className="bg-gray-50">
+      {/* `collapsedWidth={0}` instead of the default 80px icon rail — NAV_ITEMS
+          has no icons, so an icon rail would just clip the full labels. The
+          nav moves into the Drawer below once collapsed. */}
+      <Layout.Sider
+        width={240}
+        collapsedWidth={0}
+        breakpoint="md"
+        collapsed={collapsed}
+        onBreakpoint={setCollapsed}
+        className="bg-gray-50"
+      >
         <div className="p-4">
           <span className="text-lg font-semibold">Live Editor</span>
         </div>
-        <Menu
-          mode="inline"
-          items={NAV_ITEMS}
-          selectedKeys={[location.pathname]}
-          onSelect={({ key }) => navigate(String(key))}
-        />
+        {nav}
       </Layout.Sider>
       <Layout.Content className="overflow-y-auto p-8">
+        {collapsed && (
+          <div className="mb-6 flex items-center justify-between">
+            <span className="text-lg font-semibold">Live Editor</span>
+            <Button
+              shape="circle"
+              icon={<MenuIcon />}
+              aria-label="Open navigation"
+              onClick={() => setMobileNavOpen(true)}
+            />
+          </div>
+        )}
         <div className="mx-auto max-w-4xl">
           <Outlet />
         </div>
       </Layout.Content>
+      <Drawer
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        direction="left"
+        size="small"
+        title="Live Editor"
+      >
+        {nav}
+      </Drawer>
     </Layout>
   );
 };
