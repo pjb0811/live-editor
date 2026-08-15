@@ -48,6 +48,13 @@ export interface PaletteRenderData {
   items: Section[];
   onAdd: (item: Section) => void;
   DraggableItem: typeof DraggableItem;
+  // True when the palette is rendering inside the mobile Drawer, where a
+  // tap can't be a failed drag attempt (there's nothing to drag onto —
+  // the canvas is stacked behind the Drawer) and native dblclick synthesis
+  // from double-tap is unreliable on touch. Custom renderPalette
+  // implementations should treat a single click/tap as "add" here instead
+  // of relying on onDoubleClick.
+  isMobile: boolean;
 }
 
 export interface PanelRenderData {
@@ -281,17 +288,30 @@ const Dnd = ({
     }
   }, [frame?.scripts]);
 
-  const renderPaletteItems = (onAdd: (item: Section) => void) => {
+  const renderPaletteItems = (
+    onAdd: (item: Section) => void,
+    forMobileDrawer = false,
+  ) => {
     const paletteItems = items?.length ? items : DRAGGABLE_ITEMS;
 
     if (renderPalette) {
-      return renderPalette({ items: paletteItems, onAdd, DraggableItem });
+      return renderPalette({
+        items: paletteItems,
+        onAdd,
+        DraggableItem,
+        isMobile: forMobileDrawer,
+      });
     }
 
     return (
       <Space orientation="vertical" align="start">
         {paletteItems.map(item => (
-          <DefaultDraggableItem key={item.id} item={item} onAdd={onAdd} />
+          <DefaultDraggableItem
+            key={item.id}
+            item={item}
+            onAdd={onAdd}
+            tapToAdd={forMobileDrawer}
+          />
         ))}
       </Space>
     );
@@ -419,7 +439,7 @@ const Dnd = ({
             {renderPaletteItems(item => {
               addItem(item);
               setMobilePaletteOpen(false);
-            })}
+            }, true)}
           </Drawer>
           <Drawer
             open={isMobile && Boolean(selectedId)}

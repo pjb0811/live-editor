@@ -37,7 +37,7 @@ const DndCustomRenderDoc = () => {
               syncStyle: true,
               scripts: ['/js/tailwindcss.js'],
             }}
-            renderPalette={({ items, onAdd, DraggableItem }) => (
+            renderPalette={({ items, onAdd, DraggableItem, isMobile }) => (
               <div className="space-y-2 p-2">
                 {items.map(item => (
                   <DraggableItem key={item.id} item={item}>
@@ -45,6 +45,7 @@ const DndCustomRenderDoc = () => {
                       <div
                         ref={ref}
                         {...dragProps}
+                        onClick={isMobile ? () => onAdd(item) : undefined}
                         onDoubleClick={() => onAdd(item)}
                         className={cn(
                           'cursor-grab rounded-lg',
