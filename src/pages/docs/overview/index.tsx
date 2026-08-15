@@ -64,7 +64,7 @@ const Overview = () => {
           drag-and-drop. Canvas edits sync back to source code via AST
           transforms.
         </Typography.Paragraph>
-        <Space size="middle">
+        <Space size="middle" wrap>
           <Button
             type="primary"
             size="large"
