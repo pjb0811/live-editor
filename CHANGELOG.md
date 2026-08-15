@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.13.0
+
+### Minor Changes
+
+- 2d6dc8f: The Live Editor now features a collapsible navigation menu with a mobile-friendly drawer, allowing users to easily access and manage layout options.
+
 ## 1.12.0
 
 ### Minor Changes
