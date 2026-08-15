@@ -76,7 +76,7 @@ const DocsLayout = () => {
         open={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
         direction="left"
-        size="small"
+        size="75%"
         title="Live Editor"
       >
         {nav}

@@ -39,11 +39,20 @@ const DraggableItem = ({ item, children }: DraggableItemProps) => {
 export interface DefaultDraggableItemProps {
   item: Section;
   onAdd?: (item: Section) => void;
+  // Double-click is the desktop convenience shortcut alongside drag — a
+  // single click there would fire on every aborted/failed drag attempt.
+  // On mobile there's nowhere to drag *to* (the palette lives in a Drawer
+  // stacked over the canvas), so a tap can't be a failed drag, and
+  // double-tap-to-dblclick synthesis from touch is unreliable anyway
+  // (iOS Safari inconsistently fires it, and it can compete with the
+  // browser's native double-tap-to-zoom gesture). Tapping just adds there.
+  tapToAdd?: boolean;
 }
 
 export const DefaultDraggableItem = ({
   item,
   onAdd,
+  tapToAdd = false,
 }: DefaultDraggableItemProps) => (
   <DraggableItem item={item}>
     {({ ref, dragProps, isDragging }) => (
@@ -57,6 +66,7 @@ export const DefaultDraggableItem = ({
           'hover:border-blue-300 hover:shadow-md',
           isDragging && 'opacity-50',
         )}
+        onClick={tapToAdd && onAdd ? () => onAdd(item) : undefined}
         onDoubleClick={onAdd ? () => onAdd(item) : undefined}
       >
         {item.name}

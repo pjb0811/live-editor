@@ -1,10 +1,24 @@
 import { parse } from '@babel/parser';
-import traverse from '@babel/traverse';
+import _traverse from '@babel/traverse';
 import * as t from '@babel/types';
 
 import { CONFIG } from '../../constants';
 import type { Section } from '../../types';
 import { createBoundedCache } from '../cache';
+
+// @babel/traverse's own CJS build re-exports itself as `{ default: traverse,
+// ...everything else }` for ESM interop. Vite's dev-server dependency
+// pre-bundling (esbuild) doesn't unwrap that inner `.default` when it
+// re-exports the CJS module for ESM consumption, so `import traverse from
+// '@babel/traverse'` resolves to that whole object instead of the function
+// in the browser — "traverse is not a function" at runtime, silently
+// breaking every feature that parses a document (add via drag-and-drop,
+// double-click, or the Editor's canvas sync). Vitest's Node-based module
+// resolution doesn't hit this, so this went undetected by the test suite.
+const traverse =
+  typeof _traverse === 'function'
+    ? _traverse
+    : (_traverse as unknown as { default: typeof _traverse }).default;
 
 const APP_CONTAINER_ID = 'app-container';
 const SECTION_TAG = 'section';
