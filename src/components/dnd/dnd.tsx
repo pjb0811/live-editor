@@ -26,9 +26,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
 import {
+  type BindingOption,
+  type BindingType,
   type DataAttrNode,
   extract,
   fillIds,
+  getCurrentValue,
+  parseBinding,
   replaceIds,
   update,
 } from '~/utils/ast';
@@ -46,7 +50,7 @@ import { type FrameProps } from '../frame';
 import DraggableItem, { DefaultDraggableItem } from './draggable';
 import Droppable from './droppable';
 import Overlay from './overlay';
-import Panel, { FieldEditor } from './panel';
+import Panel from './panel';
 import Renderer from './renderer';
 import Sortable from './sortable';
 
@@ -74,16 +78,39 @@ export interface PanelRenderData {
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
-  // `item`'s editable data-binding fields, already extracted and ready to
-  // render — one entry per element carrying a `data-binding` attribute,
-  // filtered down to non-<section> descendants (mirrors what the built-in
-  // Panel shows). Render each with FieldEditor (or your own UI reading
-  // `.bindings`/`.dataAttributes`) and wire its onChange to onFieldChange,
-  // which handles the underlying AST update — including showing an error
-  // Toast on a bad edit — the same way the built-in Panel does.
-  fields: DataAttrNode[];
-  onFieldChange: (params: { id: string; label: string; value: string }) => void;
-  FieldEditor: typeof FieldEditor;
+  // `item`'s editable data-binding fields, already flattened to one entry
+  // per bound property (across every non-<section> descendant carrying a
+  // `data-binding` attribute). Each entry carries the binding's `type` and
+  // current `value` plus an `onChange` wired straight into the same
+  // AST-update pipeline the built-in panel uses — including the error Toast
+  // on a bad edit. Switch on `type` to render your own control (an
+  // `<input>`, `<textarea>`, `<select>`, ...) instead of the built-in one.
+  bindings: PanelBinding[];
+}
+
+// One editable data-binding, flattened out of the selected section for a
+// custom renderPanel. Exposes just what a consumer needs to render its own
+// control — the declared `type`, the current `value`, and an `onChange`
+// that commits through Dnd's AST-update pipeline — so it never has to touch
+// DataAttrNode/parseBinding/getCurrentValue itself.
+export interface PanelBinding {
+  // `data-id` of the owning element — stable across edits.
+  id: string;
+  // Human-readable label from the binding definition.
+  label: string;
+  // The bound prop/attribute name (e.g. `children`, `src`, `color`).
+  property: string;
+  // The declared data-binding type — switch on this to pick a control
+  // (`string`/`url` -> <input>, `jsx`/`richtext` -> <textarea>, `boolean`
+  // -> checkbox, ...). `undefined` means a plain string binding.
+  type?: BindingType;
+  // Present when the binding defines a fixed option set (render a <select>).
+  options?: BindingOption[];
+  // Current serialized value — the same string the built-in field receives.
+  value: string;
+  // Commit a new value through the same AST-update pipeline the built-in
+  // panel uses (including the error Toast on a bad edit).
+  onChange: (value: string) => void;
 }
 
 export interface Props extends Omit<
@@ -400,6 +427,44 @@ const Dnd = ({
     }
   };
 
+  // Flattens the extracted `fields` (one DataAttrNode per element) down to
+  // one PanelBinding per bound property — the same walk the built-in
+  // FieldEditor/Node does internally (data-id + parsed data-binding +
+  // current value), but handed to a custom renderPanel as plain data so it
+  // can render its own controls. Kept in a useMemo keyed on `fields` alone;
+  // `onFieldChange` closes over `updatedCode`/`selectedItem` but is stable
+  // enough per render, and rebuilding on every render would defeat the memo
+  // guarding renderPanel's children.
+  const bindings = useMemo<PanelBinding[]>(() => {
+    return fields.flatMap(node => {
+      const dataId = node.dataAttributes.find(a => a.name === 'data-id')?.value;
+      const bindingAttr = node.dataAttributes.find(
+        a => a.name === 'data-binding',
+      )?.value;
+
+      if (!dataId || !bindingAttr) {
+        return [];
+      }
+
+      const parsed = node.bindings ?? parseBinding(bindingAttr);
+
+      return parsed.map(binding => ({
+        id: dataId,
+        label: binding.label,
+        property: binding.property,
+        type: binding.type,
+        options: binding.options,
+        value: getCurrentValue(node, binding.property),
+        onChange: (value: string) =>
+          onFieldChange({ id: dataId, label: binding.label, value }),
+      }));
+    });
+    // onFieldChange is intentionally omitted — it's recreated every render
+    // but only ever called from a user event, so closing over the latest
+    // one via the render that produced these bindings is fine.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields]);
+
   useEffect(() => {
     if (frame?.scripts?.length) {
       preloadScripts(frame.scripts);
@@ -450,9 +515,7 @@ const Dnd = ({
         onMoveDown: () => moveSection(selectedId, 'down'),
         canMoveUp,
         canMoveDown,
-        fields,
-        onFieldChange,
-        FieldEditor,
+        bindings,
       });
     }
 
