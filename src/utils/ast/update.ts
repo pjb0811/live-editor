@@ -1,10 +1,11 @@
 import { parse } from '@babel/parser';
-import traverse, { NodePath } from '@babel/traverse';
+import type { NodePath } from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
 import { BINDING_PROP, DATA_ATTR, REGEX } from '../../constants';
 import { parseBinding } from './binding';
+import { traverse } from './document';
 import { nodeToJSX } from './extract';
 import { attrValue, generateCode, unwrap, wrap } from './helpers';
 import type { DataAttrNode } from './types';
