@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 
 import { Button, Toast, Typography } from '@jbpark/ui-kit';
-import { Trash } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
 import type { Section } from '~/types';
 import { cn } from '~/utils';
@@ -13,9 +13,25 @@ interface Props {
   item?: Section;
   onChange?: (next: Partial<Section>) => void;
   onDelete?: (id: string) => void;
+  // Reordering by dragging a section on the canvas doesn't work from
+  // inside this panel on mobile — the canvas sits behind the Drawer this
+  // panel renders in, so there's nothing visible to drag onto. These give
+  // an explicit alternative that works regardless of layout.
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }
 
-const Panel = ({ item, onChange, onDelete }: Props) => {
+const Panel = ({
+  item,
+  onChange,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = false,
+  canMoveDown = false,
+}: Props) => {
   const code = item?.code;
 
   // Reads only the extracted `code` local, not `item`, so the compiler can
@@ -78,9 +94,32 @@ const Panel = ({ item, onChange, onDelete }: Props) => {
         <Typography.Title className="text-lg font-semibold">
           {item.name}
         </Typography.Title>
-        {onDelete && (
-          <Button danger icon={<Trash />} onClick={() => onDelete(item.id)} />
-        )}
+        <div className="flex items-center gap-1">
+          {onMoveUp && (
+            <Button
+              icon={<ChevronUp />}
+              disabled={!canMoveUp}
+              onClick={onMoveUp}
+              aria-label="Move section up"
+            />
+          )}
+          {onMoveDown && (
+            <Button
+              icon={<ChevronDown />}
+              disabled={!canMoveDown}
+              onClick={onMoveDown}
+              aria-label="Move section down"
+            />
+          )}
+          {onDelete && (
+            <Button
+              danger
+              icon={<Trash />}
+              onClick={() => onDelete(item.id)}
+              aria-label="Delete section"
+            />
+          )}
+        </div>
       </div>
       {!dataAttrNodes.length && (
         <Typography.Text className="text-xs text-gray-400">
