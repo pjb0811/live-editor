@@ -61,6 +61,13 @@ export interface PanelRenderData {
   item?: Section;
   onChange: (next: Partial<Section>) => void;
   onDelete: (id: string) => void;
+  // Alternative to dragging a section to reorder it — needed since the
+  // canvas sits behind the mobile Drawer this panel renders in, so
+  // there's nothing visible to drag onto there.
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }
 
 export interface Props extends Omit<
@@ -234,6 +241,31 @@ const Dnd = ({
     setCode(nextCode);
   };
 
+  const moveSection = (id: string | null, direction: 'up' | 'down') => {
+    const index = sections.findIndex(s => s.id === id);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+    if (index < 0 || targetIndex < 0 || targetIndex >= sections.length) {
+      return;
+    }
+
+    const nextSections = arrayMove(sections, index, targetIndex);
+
+    const nextCode = replaceSections(
+      value,
+      nextSections.map(s => s.code),
+    );
+
+    _onChange?.(nextCode);
+    setCode(nextCode);
+    // Section ids are just the section's positional index, re-derived from
+    // scratch on every parse (getSections) rather than a stable identity —
+    // so once `sections` recomputes after this reorder, `selectedId`
+    // (unchanged) would silently point at whatever content now sits at its
+    // old position instead of following the section that actually moved.
+    setSelectedId(String(targetIndex));
+  };
+
   const onCopy = (id: string) => {
     const sectionIndex = sections.findIndex(s => s.id === id);
     const sectionToCopy = sections[sectionIndex];
@@ -319,13 +351,33 @@ const Dnd = ({
 
   const renderPanelContent = () => {
     const selectedItem = sections.find(s => s.id === selectedId);
+    const selectedIndex = sections.findIndex(s => s.id === selectedId);
+    const canMoveUp = selectedIndex > 0;
+    const canMoveDown =
+      selectedIndex >= 0 && selectedIndex < sections.length - 1;
 
     if (renderPanel) {
-      return renderPanel({ item: selectedItem, onChange, onDelete });
+      return renderPanel({
+        item: selectedItem,
+        onChange,
+        onDelete,
+        onMoveUp: () => moveSection(selectedId, 'up'),
+        onMoveDown: () => moveSection(selectedId, 'down'),
+        canMoveUp,
+        canMoveDown,
+      });
     }
 
     return (
-      <Panel item={selectedItem} onChange={onChange} onDelete={onDelete} />
+      <Panel
+        item={selectedItem}
+        onChange={onChange}
+        onDelete={onDelete}
+        onMoveUp={() => moveSection(selectedId, 'up')}
+        onMoveDown={() => moveSection(selectedId, 'down')}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+      />
     );
   };
 

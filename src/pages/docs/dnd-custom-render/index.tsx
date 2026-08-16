@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { Button, Typography } from '@jbpark/ui-kit';
-import { Trash } from 'lucide-react';
+import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
 import Live from '~/.';
 import { DEFAULT_TEMPLATE } from '~/constants';
@@ -62,18 +62,42 @@ const DndCustomRenderDoc = () => {
                 ))}
               </div>
             )}
-            renderPanel={({ item, onDelete }) => (
+            renderPanel={({
+              item,
+              onDelete,
+              onMoveUp,
+              onMoveDown,
+              canMoveUp,
+              canMoveDown,
+            }) => (
               <div className="p-4">
                 {item ? (
                   <>
                     <div className="mb-2 flex items-center justify-between">
                       <span className="font-semibold">{item.name}</span>
-                      <Button
-                        danger
-                        size="small"
-                        icon={<Trash />}
-                        onClick={() => onDelete(item.id)}
-                      />
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="small"
+                          icon={<ChevronUp />}
+                          disabled={!canMoveUp}
+                          onClick={onMoveUp}
+                          aria-label="Move section up"
+                        />
+                        <Button
+                          size="small"
+                          icon={<ChevronDown />}
+                          disabled={!canMoveDown}
+                          onClick={onMoveDown}
+                          aria-label="Move section down"
+                        />
+                        <Button
+                          danger
+                          size="small"
+                          icon={<Trash />}
+                          onClick={() => onDelete(item.id)}
+                          aria-label="Delete section"
+                        />
+                      </div>
                     </div>
                     <p className="text-xs text-gray-400">
                       This is a custom panel — swap this for your own field
