@@ -2,12 +2,12 @@ import { type DataAttrNode, getCurrentValue, parseBinding } from '~/utils/ast';
 
 import Field from './field';
 
-interface Props {
+export interface FieldEditorProps {
   data: DataAttrNode;
   onChange?: (params: { id: string; label: string; value: string }) => void;
 }
 
-const Node = ({ data, onChange }: Props) => {
+const Node = ({ data, onChange }: FieldEditorProps) => {
   const idAttr = data.dataAttributes.find(a => a.name === 'data-id');
   const bindingAttr = data.dataAttributes.find(a => a.name === 'data-binding');
 

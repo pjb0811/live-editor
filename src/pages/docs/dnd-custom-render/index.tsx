@@ -18,8 +18,10 @@ const DndCustomRenderDoc = () => {
           <code>Live.Dnd</code> accepts <code>renderPalette</code> and{' '}
           <code>renderPanel</code> to fully replace the built-in layouts.
           Drag-and-drop keeps working through the exported{' '}
-          <code>Live.Dnd.DraggableItem</code>, which owns the drag wiring — only
-          the visual markup below is custom.
+          <code>DraggableItem</code>, which owns the drag wiring, and editing a
+          section&apos;s <code>data-binding</code> fields keeps working through{' '}
+          <code>FieldEditor</code> (both passed into the render props below) —
+          only the surrounding markup is custom.
         </Typography.Paragraph>
       </div>
       <Live>
@@ -69,11 +71,14 @@ const DndCustomRenderDoc = () => {
               onMoveDown,
               canMoveUp,
               canMoveDown,
+              fields,
+              onFieldChange,
+              FieldEditor,
             }) => (
-              <div className="p-4">
+              <div className="space-y-3 p-4">
                 {item ? (
                   <>
-                    <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                       <span className="font-semibold">{item.name}</span>
                       <div className="flex items-center gap-1">
                         <Button
@@ -99,10 +104,24 @@ const DndCustomRenderDoc = () => {
                         />
                       </div>
                     </div>
-                    <p className="text-xs text-gray-400">
-                      This is a custom panel — swap this for your own field
-                      editor UI.
-                    </p>
+                    {fields.length ? (
+                      // FieldEditor owns rendering each data-binding field
+                      // (color pickers, rich text, selects, ...) — the
+                      // "custom" part here is just the surrounding layout;
+                      // swap this container for your own markup while
+                      // still getting the library's field editors for free.
+                      fields.map((field, index) => (
+                        <FieldEditor
+                          key={`${item.id}-${index}`}
+                          data={field}
+                          onChange={onFieldChange}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        No editable elements.
+                      </p>
+                    )}
                   </>
                 ) : (
                   <p className="text-sm text-gray-500">
