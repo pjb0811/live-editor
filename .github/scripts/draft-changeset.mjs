@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Drafts a .changeset/<branch-slug>.md file by asking an LLM to summarize
-// this PR's diff to src/ as a semver bump + one-paragraph description, in
-// changesets' own file format. Runs once per PR (the calling workflow skips
-// this script entirely if a changeset file for this branch already
-// exists), so it never overwrites something a human already wrote or
-// edited.
+// this PR's diff to the published package's source (src/, minus the demo
+// site — see PACKAGE_EXCLUDE_DIRS) as a semver bump + one-paragraph
+// description, in changesets' own file format. Runs once per PR (the
+// calling workflow skips this script entirely if a changeset was already
+// added in this PR), so it never overwrites something a human already
+// wrote or edited.
 //
 // Uses NVIDIA's OpenAI-compatible API Catalog endpoint (not Gemini/GitHub
 // Models — both have hit sustained outages/retirement before this).
@@ -17,6 +18,15 @@ const API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const MAX_DIFF_CHARS = 12000;
 const PACKAGE_NAME = '@jbpark/live-editor';
 const PACKAGE_DIR = 'src';
+
+// The published package builds from src/index.tsx + src/utils/** (see
+// tsdown.config.ts's entry list) — src/pages/** is the docs/demo site's
+// own routes (main.tsx's router), never imported by the library entry
+// points, and has zero effect on what ships (files: ["dist"]). Excluded
+// deterministically rather than relying on the model to recognize
+// "this is demo-only, don't draft" — that judgment call was unreliable
+// in practice (see #142/#144's cleanup).
+const PACKAGE_EXCLUDE_DIRS = ['src/pages', 'src/main.tsx'];
 
 // The API occasionally returns 503/429 for a few minutes at a time — retry
 // those with backoff instead of failing the required "draft" check
@@ -68,7 +78,13 @@ function extractJson(content) {
 function diffBetween(base, head) {
   return execFileSync(
     'git',
-    ['diff', `${base}...${head}`, '--', PACKAGE_DIR],
+    [
+      'diff',
+      `${base}...${head}`,
+      '--',
+      PACKAGE_DIR,
+      ...PACKAGE_EXCLUDE_DIRS.map(dir => `:!${dir}`),
+    ],
     { encoding: 'utf8', maxBuffer: 1024 * 1024 * 20 },
   );
 }
@@ -88,7 +104,9 @@ async function main() {
   }
 
   if (!diff.trim()) {
-    console.log(`No changes under ${PACKAGE_DIR} — skipping changeset draft.`);
+    console.log(
+      `No changes under ${PACKAGE_DIR} (outside the demo site) — skipping changeset draft.`,
+    );
     return;
   }
 
