@@ -6,8 +6,8 @@
   },
   "version": "1.12.0",
   "type": "module",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "description": "Interactive UI editor with real-time preview and drag-and-drop. Syncs canvas edits back to source code via AST transforms and renders the preview in an iframe for DOM/CSS isolation (not a security sandbox).",
   "keywords": [
     "live-editor",
@@ -41,22 +41,22 @@
   "packageManager": "pnpm@10.29.3",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
     },
     "./utils": {
-      "types": "./dist/utils.d.ts",
-      "import": "./dist/utils.js"
+      "types": "./dist/utils/index.d.mts",
+      "import": "./dist/utils/index.mjs"
     },
     "./utils/ast": {
-      "types": "./dist/utils/ast.d.ts",
-      "import": "./dist/utils/ast.js"
+      "types": "./dist/utils/ast/index.d.mts",
+      "import": "./dist/utils/ast/index.mjs"
     },
     "./utils/tailwind": {
-      "types": "./dist/utils/tailwind.d.ts",
-      "import": "./dist/utils/tailwind.js"
+      "types": "./dist/utils/tailwind/index.d.mts",
+      "import": "./dist/utils/tailwind/index.mjs"
     },
-    "./style.css": "./dist/live-editor.css"
+    "./style.css": "./dist/style.css"
   },
   "files": [
     "dist"
