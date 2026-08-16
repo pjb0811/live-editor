@@ -18,14 +18,20 @@ import {
   arrayMove,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Button, Drawer, Space, Typography } from '@jbpark/ui-kit';
+import { Button, Drawer, Space, Toast, Typography } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 import { LayoutGrid } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
-import { replaceIds } from '~/utils/ast';
+import {
+  type DataAttrNode,
+  extract,
+  fillIds,
+  replaceIds,
+  update,
+} from '~/utils/ast';
 
 import { DEFAULT_TEMPLATE } from '../../constants';
 import {
@@ -40,7 +46,7 @@ import { type FrameProps } from '../frame';
 import DraggableItem, { DefaultDraggableItem } from './draggable';
 import Droppable from './droppable';
 import Overlay from './overlay';
-import Panel from './panel';
+import Panel, { FieldEditor } from './panel';
 import Renderer from './renderer';
 import Sortable from './sortable';
 
@@ -68,6 +74,16 @@ export interface PanelRenderData {
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  // `item`'s editable data-binding fields, already extracted and ready to
+  // render — one entry per element carrying a `data-binding` attribute,
+  // filtered down to non-<section> descendants (mirrors what the built-in
+  // Panel shows). Render each with FieldEditor (or your own UI reading
+  // `.bindings`/`.dataAttributes`) and wire its onChange to onFieldChange,
+  // which handles the underlying AST update — including showing an error
+  // Toast on a bad edit — the same way the built-in Panel does.
+  fields: DataAttrNode[];
+  onFieldChange: (params: { id: string; label: string; value: string }) => void;
+  FieldEditor: typeof FieldEditor;
 }
 
 export interface Props extends Omit<
@@ -131,6 +147,10 @@ const Dnd = ({
 
   const value = _value || DEFAULT_TEMPLATE;
   const sections = useMemo(() => extractSections(value), [value]);
+  const selectedItem = useMemo(
+    () => sections.find(s => s.id === selectedId),
+    [sections, selectedId],
+  );
 
   // One cache per Dnd instance (lazy `useState` initializer, never
   // replaced) — see createSectionPreviewCache (#131). It's stateful by
@@ -314,6 +334,72 @@ const Dnd = ({
     setCode(nextCode);
   };
 
+  // Reads only the extracted `code` local, not `selectedItem`, so the
+  // compiler can verify this dependency array actually matches what the
+  // body reads — matches Panel's own former version of this same logic,
+  // now shared here so both the built-in Panel and a custom renderPanel
+  // get the same extraction/update pipeline instead of each needing it.
+  const selectedCode = selectedItem?.code;
+  const { fields, updatedCode, parseError } = useMemo(() => {
+    if (!selectedCode) {
+      return {
+        fields: [] as DataAttrNode[],
+        updatedCode: '',
+        parseError: false,
+      };
+    }
+
+    try {
+      const updated = fillIds(selectedCode);
+      const allNodes = extract(updated);
+      const filtered = allNodes.filter(node => node.tagName !== 'section');
+
+      return {
+        fields: filtered,
+        updatedCode: updated !== selectedCode ? updated : selectedCode,
+        parseError: false,
+      };
+    } catch (e) {
+      console.warn('⚠️ Parsing error', e);
+      return {
+        fields: [] as DataAttrNode[],
+        updatedCode: '',
+        parseError: true,
+      };
+    }
+  }, [selectedCode]);
+
+  useEffect(() => {
+    if (parseError) {
+      Toast.error('Failed to parse this section', {
+        description: 'Check the console for details.',
+      });
+    }
+  }, [parseError]);
+
+  const onFieldChange = ({
+    id,
+    label,
+    value: fieldValue,
+  }: {
+    id: string;
+    label: string;
+    value: string;
+  }) => {
+    const result = update(updatedCode, id, label, fieldValue);
+
+    if (!result.success) {
+      Toast.error('Failed to update this field', {
+        description: 'Check the console for details.',
+      });
+      return;
+    }
+
+    if (selectedItem) {
+      onChange({ ...selectedItem, code: result.code });
+    }
+  };
+
   useEffect(() => {
     if (frame?.scripts?.length) {
       preloadScripts(frame.scripts);
@@ -350,7 +436,6 @@ const Dnd = ({
   };
 
   const renderPanelContent = () => {
-    const selectedItem = sections.find(s => s.id === selectedId);
     const selectedIndex = sections.findIndex(s => s.id === selectedId);
     const canMoveUp = selectedIndex > 0;
     const canMoveDown =
@@ -365,18 +450,22 @@ const Dnd = ({
         onMoveDown: () => moveSection(selectedId, 'down'),
         canMoveUp,
         canMoveDown,
+        fields,
+        onFieldChange,
+        FieldEditor,
       });
     }
 
     return (
       <Panel
         item={selectedItem}
-        onChange={onChange}
         onDelete={onDelete}
         onMoveUp={() => moveSection(selectedId, 'up')}
         onMoveDown={() => moveSection(selectedId, 'down')}
         canMoveUp={canMoveUp}
         canMoveDown={canMoveDown}
+        fields={fields}
+        onFieldChange={onFieldChange}
       />
     );
   };
