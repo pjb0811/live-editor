@@ -32,32 +32,40 @@ jobs:
         with:
           node-version: 24.x
 
-      # Only draft once per PR — if a changeset already exists for *this
-      # branch* (hand-written, or from an earlier run of this workflow on
-      # this PR), leave it alone rather than overwriting a human's edits on
-      # every subsequent push. Keyed off the branch name (slugified: `/`
-      # and other unsafe characters become `-`) rather than PR number so
-      # the check itself doubles as a human-readable filename — matches
-      # ui-kit#197/use-hooks#138, which fixed a false positive elsewhere
-      # from checking "does any changeset file exist at all" instead of
-      # scoping to a specific PR/branch (an older, still-unreleased PR's
-      # changeset would otherwise make every PR merged after it silently
-      # skip drafting its own). This repo's check was already scoped
-      # per-PR (by number) and never had that bug — switching to a branch
-      # slug here is purely for the readable-filename benefit and
-      # consistency with the other two repos, not a bug fix.
+      # Only draft once per PR — if a changeset was already added in this
+      # PR (hand-written under any filename, or from an earlier run of
+      # this workflow on this PR), leave it alone rather than adding a
+      # second, possibly-conflicting one on every subsequent push.
+      #
+      # This checks the PR's actual diff (any new .changeset/*.md file
+      # between base and head) rather than matching a filename pattern.
+      # An earlier version matched only `.changeset/<branch-slug>*.md`,
+      # which missed any hand-written changeset not named after the
+      # branch — e.g. a descriptive name like `fix-foo-bug.md` on a
+      # branch called `fix/unrelated-slug` — so the bot drafted a second,
+      # duplicate changeset alongside it every time (this happened
+      # repeatedly in this repo — see #145, #149). An even earlier
+      # version (before the branch-slug scoping ui-kit#197/use-hooks#138
+      # introduced) checked for *any* changeset file anywhere in
+      # .changeset/, which had the opposite problem: an older, still-
+      # unreleased PR's changeset made every PR merged after it silently
+      # skip drafting its own. Scoping to *this PR's diff* avoids both
+      # failure modes — it only reacts to files this PR itself
+      # introduces, under any name.
       - name: Check for existing changeset
         id: existing
         env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BRANCH_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           slug=$(printf '%s' "$BRANCH_REF" | tr '/' '-' | tr -c 'a-zA-Z0-9._-' '-')
           echo "slug=$slug" >> "$GITHUB_OUTPUT"
-          shopt -s nullglob
-          files=(".changeset/${slug}"*.md)
-          shopt -u nullglob
-          if [ "${#files[@]}" -gt 0 ]; then
+          added=$(git diff --name-only --diff-filter=A "$BASE_SHA...$HEAD_SHA" -- '.changeset/*.md')
+          if [ -n "$added" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Changeset(s) already added in this PR — skipping draft:"
+            echo "$added"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
@@ -81,5 +89,5 @@ jobs:
             git commit -m "📝 docs: draft changeset for PR #${{ github.event.pull_request.number }}"
             git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
           else
-            echo "No changeset produced (nothing under src/, or model found no user-facing change) — skipping commit."
+            echo "No changeset produced (no changes outside the demo app, or model found no user-facing change) — skipping commit."
           fi
