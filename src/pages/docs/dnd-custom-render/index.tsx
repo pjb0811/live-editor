@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Button, Typography } from '@jbpark/ui-kit';
+import { Button, Space, Typography } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
 import Live from '~/.';
@@ -12,7 +12,7 @@ const DndCustomRenderDoc = () => {
 
   return (
     <div className="space-y-4">
-      <div>
+      <Space orientation="vertical" align="start">
         <Typography.Title level={1}>Custom Palette & Panel</Typography.Title>
         <Typography.Paragraph className="text-gray-500">
           <code>Live.Dnd</code> accepts <code>renderPalette</code> and{' '}
@@ -23,11 +23,11 @@ const DndCustomRenderDoc = () => {
           <code>FieldEditor</code> (both passed into the render props below) —
           only the surrounding markup is custom.
         </Typography.Paragraph>
-      </div>
+      </Space>
       <Live>
         <div
           className={cn(
-            'h-[550px] overflow-hidden rounded-lg',
+            'h-[550px] overflow-y-auto rounded-lg',
             'border border-gray-200',
           )}
         >

@@ -1,4 +1,4 @@
-import { Typography } from '@jbpark/ui-kit';
+import { Space, Typography } from '@jbpark/ui-kit';
 
 import Live from '~/.';
 
@@ -20,7 +20,7 @@ export default App;
 const PreviewModesDoc = () => {
   return (
     <div className="space-y-4">
-      <div>
+      <Space orientation="vertical" align="start">
         <Typography.Title level={1}>Preview Modes</Typography.Title>
         <Typography.Paragraph className="text-gray-500">
           <code>frame.mode</code> controls how the preview renders:{' '}
@@ -29,7 +29,7 @@ const PreviewModesDoc = () => {
           realm), while <code>shadow</code> isolates styles via a shadow DOM
           host in the same document, without an iframe boundary.
         </Typography.Paragraph>
-      </div>
+      </Space>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <Typography.Title level={4}>iframe</Typography.Title>

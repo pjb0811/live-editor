@@ -57,45 +57,45 @@ const Overview = () => {
 
   return (
     <Space orientation="vertical" size="large" className="w-full">
-      <div>
+      <Space orientation="vertical" align="start">
         <Typography.Title level={1}>Live Editor</Typography.Title>
         <Typography.Paragraph className="text-lg text-gray-500">
           An interactive editor for building UIs with real-time preview and
           drag-and-drop. Canvas edits sync back to source code via AST
           transforms.
         </Typography.Paragraph>
-        <Space size="middle" wrap>
-          <Button
-            type="primary"
-            size="large"
-            icon={<SquarePlay />}
-            onClick={() => navigate('/editor')}
-          >
-            Open Full Editor
-          </Button>
-          <Button
-            size="large"
-            icon={<GithubIcon size={16} />}
-            onClick={() =>
-              window.open('https://github.com/pjb0811/live-editor', '_blank')
-            }
-          >
-            GitHub
-          </Button>
-          <Button
-            size="large"
-            icon={<ExternalLink />}
-            onClick={() =>
-              window.open(
-                'https://www.npmjs.com/package/@jbpark/live-editor',
-                '_blank',
-              )
-            }
-          >
-            npm
-          </Button>
-        </Space>
-      </div>
+      </Space>
+      <Space align="start" wrap>
+        <Button
+          type="primary"
+          size="large"
+          icon={<SquarePlay />}
+          onClick={() => navigate('/editor')}
+        >
+          Open Full Editor
+        </Button>
+        <Button
+          size="large"
+          icon={<GithubIcon size={16} />}
+          onClick={() =>
+            window.open('https://github.com/pjb0811/live-editor', '_blank')
+          }
+        >
+          GitHub
+        </Button>
+        <Button
+          size="large"
+          icon={<ExternalLink />}
+          onClick={() =>
+            window.open(
+              'https://www.npmjs.com/package/@jbpark/live-editor',
+              '_blank',
+            )
+          }
+        >
+          npm
+        </Button>
+      </Space>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {HIGHLIGHTS.map(item => (
