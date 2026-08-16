@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Typography } from '@jbpark/ui-kit';
+import { Space, Typography } from '@jbpark/ui-kit';
 
 import Live from '~/.';
 import { cn } from '~/utils';
@@ -25,7 +25,7 @@ const EditorCustomRenderDoc = () => {
 
   return (
     <div className="space-y-4">
-      <div>
+      <Space orientation="vertical" align="start">
         <Typography.Title level={1}>Custom Editor</Typography.Title>
         <Typography.Paragraph className="text-gray-500">
           <code>Live.Editor</code> accepts <code>renderEditor</code> to fully
@@ -34,11 +34,11 @@ const EditorCustomRenderDoc = () => {
           still syncs to the shared preview code automatically, same as the
           default.
         </Typography.Paragraph>
-      </div>
+      </Space>
       <Live>
         <div
           className={cn(
-            'grid h-[500px] grid-cols-1 gap-4 overflow-hidden rounded-lg',
+            'grid h-[500px] grid-cols-1 gap-4 overflow-y-auto rounded-lg',
             'border border-gray-200 md:grid-cols-2',
           )}
         >

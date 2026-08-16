@@ -11,18 +11,16 @@ const DndDoc = () => {
 
   return (
     <div className="space-y-4">
-      <div>
-        <Typography.Title level={1}>Drag & Drop</Typography.Title>
-        <Typography.Paragraph className="text-gray-500">
-          Drag a component from the left palette onto the canvas, then edit its
-          properties from the panel on the right. Powered by{' '}
-          <code>@dnd-kit</code>.
-        </Typography.Paragraph>
-      </div>
+      <Typography.Title level={1}>Drag & Drop</Typography.Title>
+      <Typography.Paragraph className="text-gray-500">
+        Drag a component from the left palette onto the canvas, then edit its
+        properties from the panel on the right. Powered by <code>@dnd-kit</code>
+        .
+      </Typography.Paragraph>
       <Live>
         <div
           className={cn(
-            'h-[550px] overflow-hidden rounded-lg',
+            'h-[550px] overflow-auto rounded-lg',
             'border border-gray-200',
           )}
         >

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Typography } from '@jbpark/ui-kit';
+import { Space, Typography } from '@jbpark/ui-kit';
 
 import Live from '~/.';
 import { cn } from '~/utils';
@@ -25,14 +25,14 @@ const EditorModeDoc = () => {
 
   return (
     <div className="space-y-4">
-      <div>
+      <Space orientation="vertical" align="start">
         <Typography.Title level={1}>Editor Mode</Typography.Title>
         <Typography.Paragraph className="text-gray-500">
           <code>Live.Editor</code> and <code>Live.Preview</code> share code
           through <code>Live</code>'s context — edit either side, the other
           updates automatically. No manual wiring between them is needed.
         </Typography.Paragraph>
-      </div>
+      </Space>
       <Live>
         <div
           className={cn(

@@ -31,7 +31,8 @@ const DocsLayout = () => {
 
   const nav = (
     <Menu
-      mode="inline"
+      className="w-full shadow-none"
+      mode="vertical"
       items={NAV_ITEMS}
       selectedKeys={[location.pathname]}
       onSelect={handleSelect}
@@ -49,12 +50,12 @@ const DocsLayout = () => {
         breakpoint="md"
         collapsed={collapsed}
         onBreakpoint={setCollapsed}
-        className="bg-gray-50"
+        className="h-screen bg-gray-50"
       >
         <div className="p-4">
-          <span className="text-lg font-semibold">Live Editor</span>
+          <span className="block pb-4 text-lg font-semibold">Live Editor</span>
+          {nav}
         </div>
-        {nav}
       </Layout.Sider>
       <Layout.Content className="overflow-y-auto p-8">
         {collapsed && (
