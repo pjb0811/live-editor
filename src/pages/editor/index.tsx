@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import {
-  EyeOutlined,
-  RedoOutlined,
-  SaveOutlined,
-  UndoOutlined,
-} from '@ant-design/icons';
+import { Button, Radio, Space, Splitter, Toast } from '@jbpark/ui-kit';
 import {
   useDebounce,
   useHistoryState,
@@ -14,7 +9,7 @@ import {
   useLocalStorage,
   useResponsiveSize,
 } from '@jbpark/use-hooks';
-import { Button, Flex, Radio, Space, Splitter, message } from 'antd';
+import { Eye, Redo2, Save, Undo2 } from 'lucide-react';
 
 import Live from '../../';
 import { DEFAULT_TEMPLATE, STORAGE_KEY } from '../../constants';
@@ -87,8 +82,8 @@ const App = () => {
 
   return (
     <>
-      <Flex gap="middle" vertical className="h-full">
-        <Flex justify="end">
+      <div className="flex h-full flex-col gap-4">
+        <div className="flex justify-end">
           <Space className="p-2">
             <Radio.Group
               size="small"
@@ -96,44 +91,48 @@ const App = () => {
               options={options}
               optionType="button"
               buttonStyle="solid"
-              onChange={e => setType(e.target.value)}
+              onChange={value => setType(value as 'dnd' | 'editor')}
             />
             <Button
-              icon={<UndoOutlined />}
+              icon={<Undo2 size={16} />}
               disabled={!canUndo}
               onClick={undo}
             />
             <Button
-              icon={<RedoOutlined />}
+              icon={<Redo2 size={16} />}
               disabled={!canRedo}
               onClick={redo}
             />
             <Button
-              icon={<SaveOutlined />}
+              icon={<Save size={16} />}
               type="primary"
               disabled={!hasUnsavedChanges}
               onClick={() => setDiffModalOpen(true)}
             />
             <Button
-              icon={<EyeOutlined />}
+              icon={<Eye size={16} />}
               onClick={() => {
                 navigate('/preview');
               }}
             />
           </Space>
-        </Flex>
-        <Flex
+        </div>
+        <div
+          className="flex"
           style={{
             height: 'calc(100vh - 72px)',
           }}
         >
           <Live>
             {editable ? (
-              <Splitter layout={isMobile ? 'vertical' : 'horizontal'}>
+              <Splitter
+                withHandle
+                orientation={isMobile ? 'vertical' : 'horizontal'}
+              >
                 <Splitter.Panel
-                  defaultSize="50%"
-                  min="20%"
-                  max="80%"
+                  defaultSize={50}
+                  minSize={20}
+                  maxSize={80}
                   collapsible
                 >
                   <div className="h-full overflow-auto p-2">
@@ -152,8 +151,8 @@ const App = () => {
               />
             )}
           </Live>
-        </Flex>
-      </Flex>
+        </div>
+      </div>
       <DiffModal
         open={diffModalOpen}
         original={savedValue}
@@ -161,7 +160,7 @@ const App = () => {
         onConfirm={() => {
           setSavedValue(value);
           setDiffModalOpen(false);
-          message.success('Code saved successfully');
+          Toast.success('Code saved successfully');
         }}
         onCancel={() => setDiffModalOpen(false)}
       />
