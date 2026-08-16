@@ -15,7 +15,10 @@ import { createBoundedCache } from '../cache';
 // breaking every feature that parses a document (add via drag-and-drop,
 // double-click, or the Editor's canvas sync). Vitest's Node-based module
 // resolution doesn't hit this, so this went undetected by the test suite.
-const traverse =
+//
+// Exported so extract.ts/update.ts share this same safe binding instead of
+// each re-importing '@babel/traverse' directly and re-triggering the bug.
+export const traverse =
   typeof _traverse === 'function'
     ? _traverse
     : (_traverse as unknown as { default: typeof _traverse }).default;
