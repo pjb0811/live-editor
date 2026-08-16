@@ -282,6 +282,19 @@ const IFrame = ({
   // else about the document.
   const CONTAINER_STYLE_ID = 'autoheight-container';
 
+  // Permanently hides the iframe document's own scrollbar chrome while
+  // autoHeight is sizing the iframe to its content. autoHeight sets the
+  // iframe's height to `Math.ceil(contentHeight)`, so sub-pixel content or
+  // a rounding remainder can leave the inner document a fraction taller
+  // than its viewport — enough for the browser to draw a vertical
+  // scrollbar inside every section's iframe (visual noise once several Dnd
+  // sections stack). Unlike the measurement-only override above (toggled
+  // off after each read), this one stays on: `scrollbar-width`/
+  // `::-webkit-scrollbar` hide only the *chrome*, not scrolling itself, so
+  // content that ever genuinely exceeds the measured height is still
+  // reachable by wheel/keyboard rather than clipped.
+  const HIDE_SCROLLBAR_STYLE_ID = 'autoheight-hide-scrollbar';
+
   // Ties `cqh`/`cqmin`/`cqmax` (what convertViewportUnits rewrote every
   // vh/svh/lvh/dvh/vmin/vmax to) to a *fixed* reference height instead of
   // the iframe's own height — this is what breaks the old approach's
@@ -482,6 +495,35 @@ const IFrame = ({
       ?.getElementById(CONTAINER_STYLE_ID)
       ?.remove();
   }, [shouldAutoHeight]);
+
+  // Keyed on mountNode (not just shouldAutoHeight) so it re-runs once the
+  // iframe's document exists — before load there's no head to inject into.
+  useEffect(() => {
+    const doc = iframeRef.current?.contentDocument;
+
+    if (!doc?.head) {
+      return;
+    }
+
+    const existing = doc.getElementById(HIDE_SCROLLBAR_STYLE_ID);
+
+    if (!shouldAutoHeight) {
+      existing?.remove();
+      return;
+    }
+
+    if (existing) {
+      return;
+    }
+
+    const styleEl = doc.createElement('style');
+    styleEl.id = HIDE_SCROLLBAR_STYLE_ID;
+    styleEl.textContent = [
+      'html, body { scrollbar-width: none !important; }',
+      'html::-webkit-scrollbar, body::-webkit-scrollbar { display: none !important; }',
+    ].join('\n');
+    doc.head.appendChild(styleEl);
+  }, [shouldAutoHeight, mountNode]);
 
   useEffect(() => {
     updateHeight();
