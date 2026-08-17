@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+/*
+ * The library's palette/panel/editor chrome is styled with Tailwind utility
+ * classes that live in the library source, so point Tailwind's content scanner
+ * at it explicitly — the demos' Vite root is `demos/`, which otherwise wouldn't
+ * see `src/`.
+ */
+@source '../src';
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}

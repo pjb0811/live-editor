@@ -3,6 +3,7 @@ sidebar_position: 6
 title: Preview Modes
 ---
 
+import DemoFrame from '@site/src/components/DemoFrame';
 import LiveDemo from '@site/src/components/LiveDemo';
 
 # Preview Modes
@@ -14,6 +15,8 @@ import LiveDemo from '@site/src/components/LiveDemo';
   realm. It exists for DOM/CSS isolation.
 - **`shadow`** — isolates styles via a shadow DOM host in the same document,
   without an iframe boundary.
+
+<DemoFrame src="demos/preview-modes/" title="Live Editor — Preview Modes demo" height={340} />
 
 ```tsx
 import Live from '@jbpark/live-editor';

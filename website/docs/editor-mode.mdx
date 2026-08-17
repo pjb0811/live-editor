@@ -3,6 +3,7 @@ sidebar_position: 2
 title: Editor Mode
 ---
 
+import DemoFrame from '@site/src/components/DemoFrame';
 import LiveDemo from '@site/src/components/LiveDemo';
 
 # Editor Mode
@@ -10,6 +11,8 @@ import LiveDemo from '@site/src/components/LiveDemo';
 `Live.Editor` and `Live.Preview` share code through `Live`'s context — edit
 either side, the other updates automatically. No manual wiring between them is
 needed.
+
+<DemoFrame src="demos/editor-mode/" title="Live Editor — Editor Mode demo" height={620} />
 
 ```tsx
 import { useState } from 'react';

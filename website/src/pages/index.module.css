@@ -10,6 +10,19 @@
   overflow: hidden;
 }
 
+.heroMark {
+  align-items: center;
+  background: color-mix(in srgb, white 18%, transparent);
+  border: 1px solid color-mix(in srgb, white 35%, transparent);
+  border-radius: 1rem;
+  display: inline-flex;
+  font-size: 3rem;
+  height: 5rem;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  width: 5rem;
+}
+
 @media screen and (max-width: 996px) {
   .heroBanner {
     padding: 2rem;
