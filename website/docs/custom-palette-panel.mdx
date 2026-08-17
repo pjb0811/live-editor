@@ -4,7 +4,6 @@ title: Custom Palette & Panel
 ---
 
 import DemoFrame from '@site/src/components/DemoFrame';
-import LiveDemo from '@site/src/components/LiveDemo';
 
 # Custom Palette & Panel
 
@@ -103,5 +102,3 @@ uses. Switch on `binding.type` to render your own control:
 | `options` | `BindingOption[]?` | Present when the binding defines a fixed option set (render a `<select>`). |
 | `value` | `string` | Current serialized value. |
 | `onChange` | `(value: string) => void` | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). |
-
-<LiveDemo to="/editor">▶ Try the editor live</LiveDemo>

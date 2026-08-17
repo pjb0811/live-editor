@@ -4,12 +4,6 @@ import { themes as prismThemes } from 'prism-react-renderer';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
-// Base URL of the deployed interactive Live Editor app that the docs link out
-// to ("Open live demo" buttons). Kept in one place so it can be swapped once
-// the app's final home is decided. Read at runtime via
-// siteConfig.customFields.appUrl (see src/components/LiveDemo.tsx).
-const APP_URL = 'https://pjb0811.github.io/live-editor';
-
 const config: Config = {
   title: 'Live Editor',
   tagline: 'Interactive UI editor with real-time preview and drag-and-drop',
@@ -30,10 +24,6 @@ const config: Config = {
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
-  },
-
-  customFields: {
-    appUrl: APP_URL,
   },
 
   presets: [
@@ -67,11 +57,6 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          href: APP_URL,
-          label: 'Live Demo',
-          position: 'left',
-        },
-        {
           href: 'https://github.com/pjb0811/live-editor',
           label: 'GitHub',
           position: 'right',
@@ -97,7 +82,6 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            { label: 'Live Demo', href: APP_URL },
             {
               label: 'GitHub',
               href: 'https://github.com/pjb0811/live-editor',

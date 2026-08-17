@@ -11,7 +11,6 @@ import styles from './index.module.css';
 
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext();
-  const appUrl = (siteConfig.customFields?.appUrl as string) ?? '/';
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
@@ -28,13 +27,6 @@ function HomepageHeader() {
             to="/docs/intro"
           >
             Get Started →
-          </Link>
-          <Link
-            className="button button--outline button--secondary button--lg"
-            style={{ marginLeft: 12 }}
-            to={appUrl}
-          >
-            ▶ Open Live Editor
           </Link>
         </div>
       </div>
