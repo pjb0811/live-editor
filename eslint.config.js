@@ -6,7 +6,10 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config([
-  globalIgnores(['dist', '.history']),
+  // `website` is a separate Docusaurus app with its own toolchain/conventions
+  // (scaffolded code uses require()-style asset imports); `dist`/`dist-demo`
+  // are build output.
+  globalIgnores(['dist', 'dist-demo', 'website', '.history']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

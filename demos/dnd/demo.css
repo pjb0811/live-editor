@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+/*
+ * The palette/panel chrome around the canvas is styled with Tailwind utility
+ * classes that live in the library's own source, so point Tailwind's content
+ * scanner at it explicitly — the demo's Vite root is `demos/dnd`, which
+ * otherwise wouldn't see `src/`.
+ */
+@source '../../src';
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}

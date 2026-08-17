@@ -1,0 +1,48 @@
+---
+sidebar_position: 4
+title: Drag & Drop
+---
+
+import DemoFrame from '@site/src/components/DemoFrame';
+import LiveDemo from '@site/src/components/LiveDemo';
+
+# Drag & Drop
+
+`Live.Dnd` lets you build UIs visually: drag a component from the left palette
+onto the canvas, then edit its properties from the panel on the right. Powered
+by [`@dnd-kit`](https://dndkit.com/).
+
+<DemoFrame src="demos/dnd/" title="Live Editor — Drag & Drop demo" height={620} />
+
+```tsx
+import { useState } from 'react';
+
+import Live from '@jbpark/live-editor';
+
+export default function DragAndDrop() {
+  const [value, setValue] = useState('');
+
+  return (
+    <Live>
+      <Live.Dnd
+        value={value}
+        onChange={setValue}
+        frame={{ mode: 'iframe', syncStyle: true }}
+      />
+    </Live>
+  );
+}
+```
+
+- `value` / `onChange` hold the generated source — drops and property edits are
+  applied through the same AST pipeline, so the code stays canonical.
+- `frame` configures the preview surface (see [Preview Modes](./preview-modes.mdx)).
+- Use `items` to customize the palette, and `renderPalette` / `renderPanel` to
+  fully replace the built-in UI — see
+  [Custom Palette & Panel](./custom-palette-panel.mdx).
+
+The embedded demo above runs the real `Live.Dnd` component in an isolated
+iframe. For the full workspace (raw-code editor, save/undo, preview modes),
+open it in the standalone app:
+
+<LiveDemo to="/editor">▶ Open the full editor</LiveDemo>

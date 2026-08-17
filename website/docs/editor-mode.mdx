@@ -1,0 +1,53 @@
+---
+sidebar_position: 2
+title: Editor Mode
+---
+
+import LiveDemo from '@site/src/components/LiveDemo';
+
+# Editor Mode
+
+`Live.Editor` and `Live.Preview` share code through `Live`'s context — edit
+either side, the other updates automatically. No manual wiring between them is
+needed.
+
+```tsx
+import { useState } from 'react';
+
+import Live from '@jbpark/live-editor';
+
+const SAMPLE = `
+import * as ui from 'ui-kit';
+
+const App = () => (
+  <div className="p-6 space-y-2">
+    <ui.Typography.Title level={3}>Hello from the editor</ui.Typography.Title>
+    <ui.Button type="primary">Edit me</ui.Button>
+  </div>
+);
+
+export default App;
+`;
+
+export default function EditorMode() {
+  const [value, setValue] = useState(SAMPLE);
+
+  return (
+    <Live>
+      <Live.Preview
+        showError
+        frame={{ mode: 'iframe', syncStyle: true }}
+      />
+      <Live.Editor value={value} onChange={setValue} />
+    </Live>
+  );
+}
+```
+
+- `Live.Editor` is a controlled CodeMirror surface — pass `value` / `onChange`.
+- `Live.Preview` compiles the shared code and renders it; `showError` surfaces
+  compile/runtime errors inline.
+- `frame.syncStyle` copies the host document's stylesheets into the iframe so
+  the preview looks like the rest of your app.
+
+<LiveDemo to="/editor">▶ Try Editor Mode live</LiveDemo>
