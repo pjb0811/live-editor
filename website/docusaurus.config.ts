@@ -58,11 +58,7 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'Live Editor',
-      logo: {
-        alt: 'Live Editor Logo',
-        src: 'img/logo.svg',
-      },
+      title: '⚡ Live Editor',
       items: [
         {
           type: 'docSidebar',
