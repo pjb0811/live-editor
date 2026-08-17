@@ -5,7 +5,7 @@ import '@jbpark/ui-kit/style.css';
 
 import '~/index.css';
 
-import './demo.css';
+import '../shared.css';
 
 import DndDemo from './DndDemo';
 

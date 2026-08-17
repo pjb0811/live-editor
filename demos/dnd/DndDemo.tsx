@@ -24,11 +24,11 @@ const DndDemo = () => {
           frame={{
             mode: 'iframe',
             syncStyle: true,
-            // Fetched relative to this demo's own base (`/demos/dnd/`), so it
-            // resolves to the copy dropped into the bundle's `js/` folder by
-            // Vite's publicDir (the repo's `public/`), independent of where the
-            // docs site is hosted.
-            scripts: ['./js/tailwindcss.js'],
+            // Fetched relative to this demo's own URL (`…/demos/dnd/`); the
+            // shared multi-page build copies `public/` to the output root, so
+            // the Tailwind runtime lives one level up at `…/demos/js/`,
+            // independent of where the docs site is hosted.
+            scripts: ['../js/tailwindcss.js'],
           }}
         />
       </div>
