@@ -8,6 +8,12 @@ export default defineConfig({
     'src/utils/tailwind/index.ts',
   ],
   format: ['esm'],
+  // This is a browser UI library (React components, iframe preview). Without
+  // an explicit browser platform, bundled deps resolve their Node conditions
+  // — e.g. nanoid pulls in `crypto.randomFillSync` and CJS interop injects
+  // `createRequire` from `node:module` — which breaks every browser bundler
+  // that consumes the built package (rspack/webpack throw on `node:` schemes).
+  platform: 'browser',
   dts: { build: true },
   outDir: 'dist',
   clean: true,
