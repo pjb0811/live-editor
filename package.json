@@ -65,6 +65,7 @@
     "dev": "vite",
     "build": "pnpm check-types && tsdown",
     "build:demo": "vite build --outDir dist-demo",
+    "build:demos": "vite build --config demos/vite.config.ts",
     "check-types": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run",

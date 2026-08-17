@@ -1,0 +1,54 @@
+---
+sidebar_position: 6
+title: Preview Modes
+---
+
+import LiveDemo from '@site/src/components/LiveDemo';
+
+# Preview Modes
+
+`frame.mode` controls how the preview renders:
+
+- **`iframe`** — isolates the preview in a real iframe document. Note this is
+  **not a security sandbox**: the code still executes in the host page's JS
+  realm. It exists for DOM/CSS isolation.
+- **`shadow`** — isolates styles via a shadow DOM host in the same document,
+  without an iframe boundary.
+
+```tsx
+import Live from '@jbpark/live-editor';
+
+const SAMPLE = `
+import * as ui from 'ui-kit';
+
+const App = () => (
+  <div className="p-6 space-y-2">
+    <ui.Typography.Title level={4}>Preview Modes</ui.Typography.Title>
+    <ui.Button type="primary">A button</ui.Button>
+  </div>
+);
+
+export default App;
+`;
+
+// iframe isolation
+<Live>
+  <Live.Preview code={SAMPLE} frame={{ mode: 'iframe', syncStyle: true }} />
+</Live>;
+
+// shadow DOM isolation
+<Live>
+  <Live.Preview code={SAMPLE} frame={{ mode: 'shadow' }} />
+</Live>;
+```
+
+## `frame` options
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `mode` | `'iframe' \| 'shadow'` | Isolation strategy for the preview. |
+| `syncStyle` | `boolean` | Copy the host document's stylesheets into the preview. |
+| `scripts` | `string[]` | External scripts to load into the preview (e.g. a Tailwind runtime). |
+| `autoHeight` | `boolean` | Size the iframe to its content instead of a fixed height. |
+
+<LiveDemo to="/preview">▶ Compare modes live</LiveDemo>

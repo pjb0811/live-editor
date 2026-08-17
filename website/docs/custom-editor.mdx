@@ -1,0 +1,46 @@
+---
+sidebar_position: 3
+title: Custom Editor
+---
+
+import LiveDemo from '@site/src/components/LiveDemo';
+
+# Custom Editor
+
+`Live.Editor` accepts `renderEditor` to fully replace the built-in CodeMirror
+editing surface — the example below uses a plain `<textarea>`. It still syncs
+to the shared preview code automatically, exactly like the default editor.
+
+```tsx
+import { useState } from 'react';
+
+import Live from '@jbpark/live-editor';
+
+export default function CustomEditor() {
+  const [value, setValue] = useState('// your code');
+
+  return (
+    <Live>
+      <Live.Preview showError frame={{ mode: 'iframe', syncStyle: true }} />
+      <Live.Editor
+        value={value}
+        onChange={setValue}
+        renderEditor={({ value: text, onChange }) => (
+          <textarea
+            value={text}
+            onChange={e => onChange(e.target.value)}
+            spellCheck={false}
+            style={{ width: '100%', height: '100%', fontFamily: 'monospace' }}
+          />
+        )}
+      />
+    </Live>
+  );
+}
+```
+
+The `renderEditor` render prop receives the current `value` and an `onChange`
+callback. Wire those into any editing surface you like (a `<textarea>`, Monaco,
+your own component) — the shared preview stays in sync through `Live`'s context.
+
+<LiveDemo to="/editor">▶ Try it live</LiveDemo>

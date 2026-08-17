@@ -1,0 +1,104 @@
+---
+sidebar_position: 5
+title: Custom Palette & Panel
+---
+
+import LiveDemo from '@site/src/components/LiveDemo';
+
+# Custom Palette & Panel
+
+`Live.Dnd` accepts `renderPalette` and `renderPanel` to fully replace the
+built-in left palette and right property panel with your own markup, while
+drag-and-drop and field editing keep working exactly as before.
+
+## Custom palette
+
+`renderPalette` receives the palette `items`, an `onAdd` callback, the
+`DraggableItem` component that owns the drag wiring, and `isMobile`:
+
+```tsx
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  renderPalette={({ items, onAdd, DraggableItem, isMobile }) => (
+    <div>
+      {items.map(item => (
+        <DraggableItem key={item.id} item={item}>
+          {({ ref, dragProps, isDragging }) => (
+            <div
+              ref={ref}
+              {...dragProps}
+              onClick={isMobile ? () => onAdd(item) : undefined}
+              onDoubleClick={() => onAdd(item)}
+              style={{ opacity: isDragging ? 0.5 : 1 }}
+            >
+              {item.name}
+            </div>
+          )}
+        </DraggableItem>
+      ))}
+    </div>
+  )}
+/>
+```
+
+## Custom panel
+
+`renderPanel` hands you `bindings` — the selected section's editable
+`data-binding` fields, flattened to one entry per bound property. Each entry
+carries its `type`, current `value`, `options` (when present), and an
+`onChange` wired straight into the same AST-update pipeline the built-in panel
+uses. Switch on `binding.type` to render your own control:
+
+```tsx
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  renderPanel={({ item, bindings, onDelete }) => (
+    <div>
+      <header>{item?.name}</header>
+      {bindings.map(binding => (
+        <label key={`${binding.id}-${binding.property}`}>
+          <span>{binding.label}</span>
+          {binding.options ? (
+            <select
+              value={binding.value}
+              onChange={e => binding.onChange(e.target.value)}
+            >
+              {binding.options.map(o => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          ) : binding.type === 'jsx' || binding.type === 'richtext' ? (
+            <textarea
+              defaultValue={binding.value}
+              onBlur={e => binding.onChange(e.target.value)}
+            />
+          ) : (
+            <input
+              defaultValue={binding.value}
+              onBlur={e => binding.onChange(e.target.value)}
+            />
+          )}
+        </label>
+      ))}
+    </div>
+  )}
+/>
+```
+
+### `PanelBinding`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | `data-id` of the owning element (stable across edits). |
+| `label` | `string` | Human-readable label from the binding definition. |
+| `property` | `string` | The bound prop/attribute name. |
+| `type` | `BindingType?` | `string` / `url` / `jsx` / `richtext` / `boolean` / `color` / `date` / … — switch on this to pick a control. |
+| `options` | `BindingOption[]?` | Present when the binding defines a fixed option set (render a `<select>`). |
+| `value` | `string` | Current serialized value. |
+| `onChange` | `(value: string) => void` | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). |
+
+<LiveDemo to="/editor">▶ Try the editor live</LiveDemo>
