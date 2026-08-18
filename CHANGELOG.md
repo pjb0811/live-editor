@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.14.0
+
+### Minor Changes
+
+- 57d78b5: The live editor now correctly handles viewport units in inline styles and author <style> elements, ensuring they resolve against the fixed probe height rather than the iframe's own height.
+
+### Patch Changes
+
+- 69e7e5c: Tailwind CSS is now imported without its global preflight layer, allowing host pages to maintain their own spacing and typography settings.
+
 ## 1.13.0
 
 ### Minor Changes
