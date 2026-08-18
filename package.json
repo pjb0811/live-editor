@@ -72,7 +72,6 @@
     "test:watch": "vitest",
     "bench": "vitest bench",
     "preview": "vite preview",
-    "sync:draggable-items": "node scripts/sync-draggable-items.mjs",
     "prepublishOnly": "pnpm build",
     "prepare": "husky"
   },
