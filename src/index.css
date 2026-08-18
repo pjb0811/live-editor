@@ -1,4 +1,18 @@
-@import 'tailwindcss';
+/*
+ * Import Tailwind WITHOUT its global preflight (base) layer.
+ *
+ * `@import 'tailwindcss'` also pulls in preflight — a document-wide reset
+ * (`*, ::before, ::after { margin: 0; box-sizing: border-box; border: 0 }`,
+ * bare-tag resets on headings/lists/buttons/etc). Shipping that in
+ * `dist/style.css` flattens the spacing/typography of any host page that
+ * imports it (e.g. a Docusaurus/Infima site), which is a leak, not our job.
+ *
+ * Consumers that run their own Tailwind still get preflight from their own
+ * build, so this library's chrome is unaffected either way.
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 
 @layer utilities {
   /* 편집 모드 기본 설정 */
