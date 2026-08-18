@@ -16,7 +16,7 @@ const config: Config = {
   // Vercel is the live deploy target (see vercel.json); GitHub Pages was
   // retired in bff287d. `url` + `baseUrl` must match it, since canonical
   // <link> tags, sitemap.xml, and Open Graph URLs are all derived from them.
-  url: 'https://live-editor.vercel.app',
+  url: 'https://live-editor-lab.vercel.app',
   baseUrl: '/',
 
   organizationName: 'pjb0811',

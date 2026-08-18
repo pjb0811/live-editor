@@ -4,7 +4,7 @@
 
 An interactive editor for building UIs with real-time preview and drag‑and‑drop. Canvas edits are synced back to source code via AST transforms, and the result renders inside an iframe for DOM/CSS isolation. Built with React 19 and TypeScript. See [Security Notes](#-security-notes) — the iframe is not a security sandbox.
 
-📖 **Documentation & live demos:** https://live-editor.vercel.app
+📖 **Documentation & live demos:** https://live-editor-lab.vercel.app
 
 ## 📁 Project Structure
 
