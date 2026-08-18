@@ -30,5 +30,21 @@ export default function DemoFrame({
     background: 'var(--ifm-background-surface-color)',
   };
 
-  return <iframe src={url} title={title} loading="lazy" style={style} />;
+  // The demos are served from `static/demos/*` on the same origin as the docs
+  // site and run arbitrary reader-authored code (the Editor demo compiles and
+  // runs whatever is typed). Without a sandbox that makes the frame same-origin
+  // *and* unsandboxed, so demo code could reach `window.parent` and script the
+  // docs page. `sandbox="allow-scripts"` drops the frame into an opaque origin,
+  // which removes that parent access while still letting the self-contained
+  // bundles run. `allow-same-origin` is intentionally omitted — combined with
+  // `allow-scripts` it would hand the frame its origin back and defeat this.
+  return (
+    <iframe
+      src={url}
+      title={title}
+      loading="lazy"
+      style={style}
+      sandbox="allow-scripts"
+    />
+  );
 }
