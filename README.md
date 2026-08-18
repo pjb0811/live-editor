@@ -54,23 +54,23 @@ live-editor/
 
 - Peer deps: `react >=19`, `react-dom >=19`
 - Node.js: 20.x or higher
-- **pnpm**: 9.x or higher (managed via [Corepack](https://nodejs.org/api/corepack.html))
+- **pnpm**: 10.x or higher (managed via [Corepack](https://nodejs.org/api/corepack.html))
 
 ## 🚀 Getting Started
 
 ### pnpm Setup (Recommended)
 
-This project uses **pnpm@9** with [Corepack](https://nodejs.org/api/corepack.html) for reproducibility. Enable Corepack and activate the specified pnpm version:
+This project uses **pnpm@10** with [Corepack](https://nodejs.org/api/corepack.html) for reproducibility. Enable Corepack and activate the specified pnpm version:
 
 ```bash
 corepack enable
-corepack prepare pnpm@9.0.0 --activate
+corepack prepare pnpm@10.29.3 --activate
 ```
 
 Or, if you prefer a manual install:
 
 ```bash
-npm install -g pnpm@9
+npm install -g pnpm@10
 ```
 
 ### Install

@@ -54,23 +54,23 @@ live-editor/
 
 - Peer dependencies: `react >=19`, `react-dom >=19`
 - Node.js: 20.x 이상
-- **pnpm**: 9.x 이상 ([Corepack](https://nodejs.org/api/corepack.html)으로 관리)
+- **pnpm**: 10.x 이상 ([Corepack](https://nodejs.org/api/corepack.html)으로 관리)
 
 ## 🚀 시작하기
 
 ### pnpm 설정 (권장)
 
-본 프로젝트는 **pnpm@9**를 [Corepack](https://nodejs.org/api/corepack.html)으로 관리합니다. Corepack을 활성화하고 지정된 버전을 적용하세요:
+본 프로젝트는 **pnpm@10**을 [Corepack](https://nodejs.org/api/corepack.html)으로 관리합니다. Corepack을 활성화하고 지정된 버전을 적용하세요:
 
 ```bash
 corepack enable
-corepack prepare pnpm@9.0.0 --activate
+corepack prepare pnpm@10.29.3 --activate
 ```
 
 또는 수동으로 설치:
 
 ```bash
-npm install -g pnpm@9
+npm install -g pnpm@10
 ```
 
 ### 설치
