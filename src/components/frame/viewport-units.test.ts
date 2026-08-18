@@ -96,3 +96,25 @@ describe('convertViewportUnits (#132 stage 1)', () => {
     expect(convertViewportUnits('content: "100vh"')).toBe('content: "100cqh"');
   });
 });
+
+// #163: the container-context fix only reaches CSS *text* this component
+// injects. `rewriteInlineViewportUnits` extends it to two paths that carry a
+// viewport unit into the preview document directly — inline `style` attributes
+// and in-preview `<style>` tags — both of which convert via this same helper.
+// Applying the rewrite over the live DOM is thin glue (like `updateHeight`
+// itself) and, matching this repo's node test environment, is left untested at
+// that layer; these lock in the string transform each path depends on, using
+// the exact payloads the issue observed shipping unconverted.
+describe('convertViewportUnits — #163 embedded-unit payloads', () => {
+  it('converts an inline style attribute value (panel-edited hero)', () => {
+    expect(convertViewportUnits('height: 100vh; background: salmon;')).toBe(
+      'height: 100cqh; background: salmon;',
+    );
+  });
+
+  it('converts a rule inside an in-preview <style> tag', () => {
+    expect(convertViewportUnits('.hero{height:100vh;background:salmon}')).toBe(
+      '.hero{height:100cqh;background:salmon}',
+    );
+  });
+});
