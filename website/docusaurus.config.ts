@@ -43,7 +43,6 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/docusaurus-social-card.jpg',
     colorMode: {
       respectPrefersColorScheme: true,
     },
@@ -93,7 +92,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} jbpark. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} jbpark · live-editor`,
     },
     prism: {
       theme: prismThemes.github,
