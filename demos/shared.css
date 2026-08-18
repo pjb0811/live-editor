@@ -1,3 +1,10 @@
+/*
+ * Unlike src/index.css, this keeps full `@import 'tailwindcss'` (preflight
+ * included). Each demo is a standalone document rendered inside its own
+ * iframe (see website/src/components/DemoFrame.tsx), so the reset only
+ * applies to that demo's own document — it never leaks onto a host page.
+ * Don't remove preflight here to "match" src/index.css.
+ */
 @import 'tailwindcss';
 
 /*
