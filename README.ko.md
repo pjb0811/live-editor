@@ -4,7 +4,7 @@
 
 실시간 프리뷰와 드래그 앤 드롭을 지원하는 인터랙티브 UI 에디터입니다. 캔버스에서의 편집 내용은 AST 변환을 통해 실제 소스 코드에 정확히 반영되며, 결과는 DOM/CSS 격리를 위해 iframe 안에서 렌더링됩니다. React 19와 TypeScript로 구현되었습니다. iframe은 보안 샌드박스가 아닙니다 — [보안 참고사항](#-보안-참고사항)을 확인하세요.
 
-📖 **문서 & 라이브 데모:** https://live-editor.vercel.app
+📖 **문서 & 라이브 데모:** https://live-editor-lab.vercel.app
 
 ## 📁 프로젝트 구조
 

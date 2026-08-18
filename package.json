@@ -26,7 +26,7 @@
   ],
   "author": "jbpark",
   "license": "MIT",
-  "homepage": "https://live-editor.vercel.app",
+  "homepage": "https://live-editor-lab.vercel.app",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pjb0811/live-editor.git"
