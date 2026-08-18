@@ -75,3 +75,61 @@ export const convertViewportUnits = (css: string): string =>
     (_match, number: string, unit: string) =>
       number + UNIT_MAP[unit.toLowerCase()],
   );
+
+// `convertViewportUnits` only ever runs over CSS *text* that this component
+// controls the injection of — the parent-document `<style>` copies (syncStyle)
+// and the `styles` prop (see iframe.tsx). Two paths carry a viewport unit into
+// the preview document without passing through either, so the container-context
+// fix (#132) never reaches them and their `vh` still resolves against the
+// iframe's own height — re-creating the exact circularity #132 removed:
+//
+//   1. inline `style` attributes — the visual editor's panel edits produce
+//      these, so they're a common path here, not an edge case; and
+//   2. author `<style>` elements rendered *inside* the previewed component by
+//      React, which never pass through `applyStyle`/`styles`.
+//
+// This rewrites both in place, walking only nodes that could carry a match so
+// the pass stays cheap. It's meant to be called from `updateHeight` right after
+// the container style is (re)applied and before any height is read.
+//
+// Idempotent, and specifically non-perturbing once converted: a rewritten value
+// contains `cqh`/`cqmin`/`cqmax`, none of which match the `vh`/`vmin`/`vmax`
+// attribute selectors, so a second pass re-selects nothing; and each node is
+// written back only when its text actually changed, so an already-converted
+// document isn't mutated — which matters because the write itself would
+// otherwise re-trip the MutationObserver in iframe.tsx and loop.
+export const rewriteInlineViewportUnits = (root: HTMLElement): void => {
+  // `vh` as a substring already covers `svh`/`lvh`/`dvh`; `vmin`/`vmax` need
+  // their own terms. Case-insensitive so `100VH` inline is caught too.
+  const inlineTargets = root.querySelectorAll<HTMLElement>(
+    '[style*="vh" i], [style*="vmin" i], [style*="vmax" i]',
+  );
+
+  inlineTargets.forEach(el => {
+    const current = el.getAttribute('style');
+
+    if (current == null) {
+      return;
+    }
+
+    const converted = convertViewportUnits(current);
+
+    if (converted !== current) {
+      el.setAttribute('style', converted);
+    }
+  });
+
+  root.querySelectorAll<HTMLStyleElement>('style').forEach(styleEl => {
+    const current = styleEl.textContent;
+
+    if (!current) {
+      return;
+    }
+
+    const converted = convertViewportUnits(current);
+
+    if (converted !== current) {
+      styleEl.textContent = converted;
+    }
+  });
+};

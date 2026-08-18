@@ -12,7 +12,10 @@ import {
   estimatePositionedElementHeight,
   isVisuallyHidden,
 } from './measure';
-import { convertViewportUnits } from './viewport-units';
+import {
+  convertViewportUnits,
+  rewriteInlineViewportUnits,
+} from './viewport-units';
 
 export interface Props {
   title?: string;
@@ -437,6 +440,14 @@ const IFrame = ({
 
     withMeasurementOverrides(doc, () => {
       ensureContainerStyle(doc, probeHeight);
+
+      // Rewrite vh-family units the container context can't otherwise reach —
+      // inline `style` attributes and in-preview `<style>` tags — so they too
+      // resolve against the fixed probe height rather than the iframe's own
+      // (see rewriteInlineViewportUnits). Must run after ensureContainerStyle
+      // and before the reads below; it's idempotent, so the extra observer
+      // pass its first-render rewrites trigger converges immediately.
+      rewriteInlineViewportUnits(mountNode);
 
       // No 0px fold before measuring (that was the source of problem 1)
       // — with cq*-unit content now sized against the fixed probe height
