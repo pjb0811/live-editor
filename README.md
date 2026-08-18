@@ -4,6 +4,8 @@
 
 An interactive editor for building UIs with real-time preview and drag‑and‑drop. Canvas edits are synced back to source code via AST transforms, and the result renders inside an iframe for DOM/CSS isolation. Built with React 19 and TypeScript. See [Security Notes](#-security-notes) — the iframe is not a security sandbox.
 
+📖 **Documentation & live demos:** https://live-editor.vercel.app
+
 ## 📁 Project Structure
 
 ```text
@@ -44,10 +46,10 @@ live-editor/
 
 ## 🧰 Tech Stack
 
-- **Core**: React 19, TypeScript 5.8, Vite 7
+- **Core**: React 19, TypeScript 6, Vite 8
 - **DnD**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/modifiers`
 - **Editor**: `@uiw/react-codemirror` with VSCode theme
-- **UI/Styling**: Ant Design, Tailwind CSS 4
+- **UI/Styling**: `@jbpark/ui-kit`, `lucide-react`, Tailwind CSS 4
 - **Transform**: Babel (standalone) for in-browser transforms
 
 ## ⚙️ Requirements
