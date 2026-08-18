@@ -17,14 +17,13 @@ live-editor/
 │  │  ├─ Frame/              # iframe/shadow DOM 프리뷰 격리
 │  │  └─ Preview/            # 격리된 프리뷰 런타임
 │  ├─ pages/
-│  │  ├─ Docs/                # 문서 형태 데모 사이트 (개요 + 기능별 페이지)
-│  │  ├─ Editor/              # 전체 에디터 앱 (에디터 + DnD 전환)
-│  │  ├─ Playground/          # 데이터 바인딩 설정 테스트 페이지
-│  │  └─ Preview/             # 전체화면 프리뷰 페이지
+│  │  └─ Editor/              # 로컬 개발용 에디터 (에디터 + DnD 전환)
 │  ├─ utils/ast/             # AST 조작 및 코드 생성
 │  ├─ constants/             # 상수 및 설정
 │  ├─ types/                 # TypeScript 타입 정의
-│  └─ main.tsx                # 앱 진입점 + 라우팅
+│  └─ main.tsx                # 로컬 개발 앱 엔트리
+├─ demos/                     # 문서용 독립 iframe 데모
+├─ website/                   # Docusaurus 문서 사이트
 └─ package.json
 ```
 
@@ -36,7 +35,6 @@ live-editor/
 - **스마트 Items 에디터**: 배열 아이템을 추가/이동/삭제하고, 일반 속성과 중첩된 JSX 컴포넌트를 편집합니다. 순서 변경 시에도 안정적인 컴포넌트 ID를 유지합니다.
 - **프리뷰 런타임**: 컴파일된 결과를 DOM/CSS 격리를 위해 iframe 안에서 렌더링합니다 (보안 샌드박스는 아닙니다 — [보안 참고사항](#-보안-참고사항) 참고).
 - **강력한 드래그 앤 드롭**: `@dnd-kit` 기반으로 부드러운 정렬과 배치를 지원합니다.
-- **저장 & 미리보기**: 작성한 코드를 localStorage에 저장하고 전용 전체화면 미리보기 페이지(`/preview`)에서 확인할 수 있습니다.
 
 ## 🔒 보안 참고사항
 
@@ -47,7 +45,6 @@ live-editor/
 ## 🧰 기술 스택
 
 - **Core**: React 19, TypeScript 5.8, Vite 7
-- **Routing**: `react-router-dom` (SPA 네비게이션)
 - **DnD**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/modifiers`
 - **Editor**: `@uiw/react-codemirror` (VSCode 테마)
 - **UI/스타일**: Ant Design, Tailwind CSS 4
@@ -88,6 +85,8 @@ pnpm install
 pnpm run dev
 ```
 
+루트 경로에서 로컬 에디터가 실행됩니다. 공개 문서와 기능별 데모는 `website/`에 있습니다.
+
 ### 빌드
 
 ```bash
@@ -121,9 +120,7 @@ CI 워크플로우:
 - `version.yml`: changeset이 쌓이면 "Version Packages" PR을 열거나 갱신
 - `publish.yml`: `main` 머지 시 버전이 미태그 상태면 빌드/(공개 패키지면 배포)/태그/GitHub Release 생성
 - `release.yml`: 기존 태그에 대한 GitHub Release를 수동(`workflow_dispatch`)으로 재생성하는 백업 유틸리티
-- `docs-deploy.yml`: 빌드 후 `dist/`를 GitHub Pages에 배포
-
-참고: GitHub Pages 사용 시 저장소 설정에서 Pages Source를 "GitHub Actions"로 지정하세요. 저장소 서브경로로 배포한다면 `vite.config.ts`의 `base` 값을 경로에 맞게 설정해야 합니다.
+- Docusaurus 문서 사이트는 `website/`에서 빌드되며 Vercel로 배포됩니다(`vercel.json` 참고).
 
 ## 📄 라이선스
 

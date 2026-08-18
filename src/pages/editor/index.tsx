@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { Button, Radio, Space, Splitter, Toast } from '@jbpark/ui-kit';
 import {
@@ -9,7 +8,7 @@ import {
   useLocalStorage,
   useResponsiveSize,
 } from '@jbpark/use-hooks';
-import { Eye, Redo2, Save, Undo2 } from 'lucide-react';
+import { Redo2, Save, Undo2 } from 'lucide-react';
 
 import Live from '../../';
 import { DEFAULT_TEMPLATE, STORAGE_KEY } from '../../constants';
@@ -41,8 +40,6 @@ const App = () => {
 
   const { breakpoint } = useResponsiveSize();
   const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
-
-  const navigate = useNavigate();
 
   const editable = type === 'editor';
 
@@ -108,12 +105,6 @@ const App = () => {
               type="primary"
               disabled={!hasUnsavedChanges}
               onClick={() => setDiffModalOpen(true)}
-            />
-            <Button
-              icon={<Eye size={16} />}
-              onClick={() => {
-                navigate('/preview');
-              }}
             />
           </Space>
         </div>

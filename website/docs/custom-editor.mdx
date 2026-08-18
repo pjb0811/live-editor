@@ -4,7 +4,6 @@ title: Custom Editor
 ---
 
 import DemoFrame from '@site/src/components/DemoFrame';
-import LiveDemo from '@site/src/components/LiveDemo';
 
 # Custom Editor
 
@@ -45,5 +44,3 @@ export default function CustomEditor() {
 The `renderEditor` render prop receives the current `value` and an `onChange`
 callback. Wire those into any editing surface you like (a `<textarea>`, Monaco,
 your own component) — the shared preview stays in sync through `Live`'s context.
-
-<LiveDemo to="/editor">▶ Try it live</LiveDemo>

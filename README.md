@@ -17,14 +17,13 @@ live-editor/
 │  │  ├─ Frame/              # iframe/shadow-DOM preview isolation
 │  │  └─ Preview/            # Isolated preview runtime
 │  ├─ pages/
-│  │  ├─ Docs/                # Docs-style demo site (overview + feature pages)
-│  │  ├─ Editor/              # Full editor app (editor + DnD toggle)
-│  │  ├─ Playground/          # Data-binding config test page
-│  │  └─ Preview/             # Full-screen preview page
+│  │  └─ Editor/              # Local development editor (editor + DnD toggle)
 │  ├─ utils/ast/             # AST manipulation & code generation
 │  ├─ constants/             # Constants and configurations
 │  ├─ types/                 # TypeScript type definitions
-│  └─ main.tsx                # App entry + routing
+│  └─ main.tsx                # Local development app entry
+├─ demos/                     # Standalone iframe demos for the documentation
+├─ website/                   # Docusaurus documentation site
 └─ package.json
 ```
 
@@ -36,7 +35,6 @@ live-editor/
 - **Smart Items editor**: Manage array items with add/move/delete operations, edit properties and nested JSX components with stable component identity across reorders.
 - **Preview runtime**: Renders compiled output inside an iframe for DOM/CSS isolation (not a security sandbox — see [Security Notes](#-security-notes)).
 - **Robust drag-and-drop**: Powered by `@dnd-kit` for smooth sorting and positioning.
-- **Save & Preview**: Save your code to localStorage and view it in a dedicated full-screen preview page (`/preview`).
 
 ## 🔒 Security Notes
 
@@ -47,7 +45,6 @@ live-editor/
 ## 🧰 Tech Stack
 
 - **Core**: React 19, TypeScript 5.8, Vite 7
-- **Routing**: `react-router-dom` for SPA navigation
 - **DnD**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/modifiers`
 - **Editor**: `@uiw/react-codemirror` with VSCode theme
 - **UI/Styling**: Ant Design, Tailwind CSS 4
@@ -88,6 +85,9 @@ pnpm install
 pnpm run dev
 ```
 
+This starts the local editor at the root route. The public documentation and
+feature demos live in `website/`.
+
 ### Build
 
 ```bash
@@ -121,9 +121,8 @@ CI workflows:
 - `version.yml`: Opens/updates the "Version Packages" PR once changesets accumulate.
 - `publish.yml`: Builds/(publishes if public)/tags/creates the GitHub Release on merge to `main` when the version is untagged.
 - `release.yml`: Manual `workflow_dispatch` fallback to (re)create a GitHub Release for an existing tag.
-- `docs-deploy.yml`: Builds and deploys `dist/` to GitHub Pages.
-
-Note: For GitHub Pages, set the repository Pages source to “GitHub Actions”. If deploying under a repo subpath, configure `base` in `vite.config.ts` accordingly.
+- The Docusaurus documentation site is built from `website/` and deployed via
+  Vercel (see `vercel.json`).
 
 ## 📄 License
 
