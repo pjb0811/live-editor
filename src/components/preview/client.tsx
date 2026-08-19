@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useError, usePreview } from '~/components/context/states';
 import LiveError from '~/components/error';
 import Frame, { type FrameProps } from '~/components/frame';
 import { baseModules, cn, compile } from '~/utils';
+import { generateTailwindCSS } from '~/utils/tailwind';
 
 import { type Props } from './preview';
 
@@ -16,6 +17,7 @@ const Client = ({
   props = {},
   modules = {},
   frame,
+  dynamicTailwind = false,
   provider,
 }: Props) => {
   const { code } = usePreview();
@@ -26,6 +28,26 @@ const Client = ({
 
   const mergedModules = { ...baseModules, ...modules };
   const effectiveCode = _code || code;
+
+  const [dynamicCSS, setDynamicCSS] = useState('');
+
+  useEffect(() => {
+    if (!effectiveCode || !dynamicTailwind) {
+      return;
+    }
+
+    let cancelled = false;
+
+    generateTailwindCSS(effectiveCode).then(css => {
+      if (!cancelled) {
+        setDynamicCSS(css);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveCode, dynamicTailwind]);
 
   let module = null;
 
@@ -81,6 +103,9 @@ const Client = ({
                 {renderProvider(
                   <LiveError.Guard onError={e => setError(e.message)}>
                     <Component {...componentProps} container={container} />
+                    {dynamicTailwind && dynamicCSS && (
+                      <style>{dynamicCSS}</style>
+                    )}
                   </LiveError.Guard>,
                 )}
               </LiveError.Boundary>
@@ -106,6 +131,7 @@ const Client = ({
             {renderProvider(
               <LiveError.Guard onError={e => setError(e.message)}>
                 <Component {...componentProps} />
+                {dynamicTailwind && dynamicCSS && <style>{dynamicCSS}</style>}
               </LiveError.Guard>,
             )}
           </LiveError.Boundary>

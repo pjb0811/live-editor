@@ -1,8 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import type React from 'react';
 
-import { baseModules, compile } from '../../utils';
-import { generateTailwindCSS } from '../../utils/tailwind';
-import LiveError from '../error';
 import type { FrameProps } from '../frame';
 import Client from './client';
 
@@ -17,6 +14,12 @@ export interface Props extends React.ComponentPropsWithRef<'div'> {
   provider?: (children: React.ReactNode) => React.ReactNode;
 }
 
+// A thin wrapper around Client, which does the actual compiling, error
+// handling, and frame wrapping. This used to have its own duplicate
+// compile-and-render branch for the `code` prop that never wrapped its
+// output in <Frame>, so `frame` was silently ignored whenever `code` was
+// passed — see #187. Client already handles `code` (falling back to
+// context when absent) and `frame`, so there is only one render path now.
 const Preview = ({
   code,
   props = {},
@@ -25,104 +28,12 @@ const Preview = ({
   provider,
   ...restProps
 }: Props) => {
-  const [runtimeError, setRuntimeError] = useState<string | null>(null);
-  const [dynamicCSS, setDynamicCSS] = useState('');
-  // "Adjusting state when a prop changes" pattern (React docs) rather than
-  // a useEffect: resets synchronously within the same render `code`
-  // changes in, before Guard/Component render at all, so there's no
-  // passive-effect-ordering window where a genuinely new runtime error
-  // could get wiped back out right after Guard's onError sets it.
-  const [prevCode, setPrevCode] = useState(code);
-
-  if (code !== prevCode) {
-    setPrevCode(code);
-    setRuntimeError(null);
-  }
-
-  const renderProvider = (component: React.ReactNode) => {
-    return provider ? provider(component) : component;
-  };
-
-  useEffect(() => {
-    if (!code || !dynamicTailwind) {
-      return;
-    }
-
-    let cancelled = false;
-
-    generateTailwindCSS(code).then(css => {
-      if (!cancelled) {
-        setDynamicCSS(css);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [code, dynamicTailwind]);
-
-  if (runtimeError) {
-    return (
-      <LiveError
-        title="Runtime Error"
-        message={runtimeError}
-        className="mx-5 mt-25"
-        onReset={() => setRuntimeError(null)}
-      />
-    );
-  }
-
-  if (code) {
-    let module;
-
-    try {
-      module = compile(code, { ...baseModules, ...modules });
-    } catch (e) {
-      module = {
-        exports: {},
-        error: e instanceof Error ? e.message : 'Module transformation error',
-      };
-    }
-
-    if (module.error) {
-      return (
-        <LiveError
-          title="Compile Error"
-          message={module.error}
-          className="mx-5 mt-25"
-        />
-      );
-    }
-
-    const Component = module.exports.default;
-
-    if (!Component) {
-      return (
-        <LiveError message="Component not found." className="mx-5 mt-25" />
-      );
-    }
-
-    return (
-      <LiveError.Boundary
-        resetKeys={[code]}
-        fallback={message => (
-          <LiveError title="Rendering Error" message={message} />
-        )}
-      >
-        {renderProvider(
-          <LiveError.Guard onError={e => setRuntimeError(e.message)}>
-            <Component {...props} />
-            {dynamicTailwind && dynamicCSS && <style>{dynamicCSS}</style>}
-          </LiveError.Guard>,
-        )}
-      </LiveError.Boundary>
-    );
-  }
-
   return (
     <Client
+      code={code}
       props={props}
       modules={modules}
+      dynamicTailwind={dynamicTailwind}
       provider={provider}
       {...restProps}
     />
