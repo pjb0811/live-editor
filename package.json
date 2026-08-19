@@ -45,6 +45,26 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./provider": {
+      "types": "./dist/provider/index.d.ts",
+      "import": "./dist/provider/index.js"
+    },
+    "./dnd": {
+      "types": "./dist/dnd/index.d.ts",
+      "import": "./dist/dnd/index.js"
+    },
+    "./editor": {
+      "types": "./dist/editor/index.d.ts",
+      "import": "./dist/editor/index.js"
+    },
+    "./preview": {
+      "types": "./dist/preview/index.d.ts",
+      "import": "./dist/preview/index.js"
+    },
+    "./error": {
+      "types": "./dist/error/index.d.ts",
+      "import": "./dist/error/index.js"
+    },
     "./utils": {
       "types": "./dist/utils/index.d.ts",
       "import": "./dist/utils/index.js"

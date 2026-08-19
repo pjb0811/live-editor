@@ -27,6 +27,27 @@ Import the stylesheet once, near your app root:
 import '@jbpark/live-editor/style.css';
 ```
 
+### Smaller bundles with subpath imports
+
+`import Live from '@jbpark/live-editor'` pulls in every feature area (Dnd,
+Editor, Preview) whether you use it or not. If you only need one, import it
+from its own subpath instead:
+
+```ts
+import Dnd from '@jbpark/live-editor/dnd';
+import Editor from '@jbpark/live-editor/editor';
+import LiveError from '@jbpark/live-editor/error';
+import Preview from '@jbpark/live-editor/preview';
+import { ContextProvider } from '@jbpark/live-editor/provider';
+```
+
+`./preview` and `./editor` genuinely shrink what gets bundled (no CodeMirror
+in a preview-only build, no `@dnd-kit` in an editor-only one). `./dnd` is the
+exception: its property panel reuses the editor's own CodeMirror `Core` and
+`prettier`-based formatting internally for `jsx`/`richtext` field editing, so
+CodeMirror/prettier come along with `./dnd` too — that's a real dependency of
+the feature, not something this subpath split was able to remove.
+
 ## Quick start
 
 `Live` is the provider that holds the shared editing context. Everything else

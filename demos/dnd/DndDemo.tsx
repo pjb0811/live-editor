@@ -1,10 +1,13 @@
 import { useState } from 'react';
 
-// Import the DnD pieces directly rather than the package default (`~/.`): the
-// default's namespace statically pulls in the CodeMirror/Prettier/TypeScript
-// editor stack (~3.4 MB of TypeScript alone) that this demo never uses, and
-// that static import defeats tree-shaking. Context + Dnd is all the drag-and-
-// drop canvas needs.
+// Import the DnD pieces directly rather than the package default (`~/.`), so
+// this demo's bundle doesn't statically pull in the standalone Editor
+// component that it never renders. Note @jbpark/live-editor/dnd (#194)
+// wouldn't meaningfully shrink this further: the property panel's jsx/
+// richtext field editing (panel/field.tsx) already reuses the editor's own
+// CodeMirror Core + prettier internally, so CodeMirror/prettier are a real
+// transitive dependency of Dnd itself, not just an artifact of this import
+// path. Context + Dnd is all the drag-and-drop canvas needs.
 import Context from '~/components/context';
 import Dnd from '~/components/dnd';
 import { DEFAULT_TEMPLATE } from '~/constants';
