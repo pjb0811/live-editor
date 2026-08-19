@@ -12,13 +12,14 @@ isolation.
 
 ## Install
 
-`@jbpark/ui-kit` is a regular dependency and gets installed automatically.
-`prettier`, `react`, and `react-dom` are peer dependencies — required, but
-not auto-installed by every package manager (npm 7+ does; pnpm and yarn
-don't by default):
+`@jbpark/ui-kit` and `prettier` (used internally for the editor's Cmd+S
+formatting) are regular dependencies and get installed automatically.
+`react` and `react-dom` are peer dependencies — required, but not
+auto-installed by every package manager (npm 7+ does; pnpm and yarn don't by
+default):
 
 ```bash
-npm install @jbpark/live-editor prettier react react-dom
+npm install @jbpark/live-editor react react-dom
 ```
 
 Import the stylesheet once, near your app root:
