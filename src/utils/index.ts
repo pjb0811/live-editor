@@ -5,7 +5,6 @@ import * as ui from '@jbpark/ui-kit';
 import * as utils from '@jbpark/ui-kit/utils';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type * as TS from 'typescript';
 
 import type { Module, Section } from '~/types';
 
@@ -19,8 +18,6 @@ import {
   replaceDocumentSections,
 } from './ast/document';
 import { createBoundedCache } from './cache';
-
-const ts = await import('typescript');
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -68,33 +65,22 @@ export const clearCompilationCache = () => {
   console.log('🧹 Compilation cache cleared');
 };
 
-const TS_COMPILER_OPTIONS: TS.CompilerOptions = {
-  target: ts.ScriptTarget.ES2020,
-  module: ts.ModuleKind.CommonJS,
-  jsx: ts.JsxEmit.React,
-  strict: false,
-  esModuleInterop: true,
-  skipLibCheck: true,
-  declaration: false,
-};
-
-const compileTypeScript = (code: string): string => {
-  try {
-    const result = ts.transpileModule(code, {
-      compilerOptions: TS_COMPILER_OPTIONS,
-    });
-
-    return result.outputText;
-  } catch (e) {
-    console.error('❌ TypeScript compilation error:', e);
-    return code;
-  }
-};
-
-export const transformCode = (code: string): string => {
+// TypeScript source used to go through `ts.transpileModule` and then this
+// same Babel pass — a double transpile, and one that required an eagerly
+// awaited top-level `import('typescript')` (a 3.4 MB chunk with none of the
+// laziness a dynamic import would normally buy, since it was awaited at
+// module scope). `@babel/standalone` already ships `preset-typescript` and
+// already runs this exact pass for the non-TS case, so folding TS in here
+// removes the `typescript` dependency entirely — see #192. Babel transpiles
+// per-file with no type information, so `const enum` comes out as a real
+// enum object and legacy decorators aren't supported; neither matters for
+// previewing React components, and errors here already fall back to
+// returning the input unchanged, same as compileTypeScript did.
+export const transformCode = (code: string, isTypeScript = false): string => {
   try {
     const result = Babel.transform(code, {
-      presets: ['env', 'react'],
+      filename: isTypeScript ? 'preview.tsx' : 'preview.jsx',
+      presets: isTypeScript ? ['typescript', 'env', 'react'] : ['env', 'react'],
       sourceType: 'module',
       plugins: [
         [Babel.availablePlugins['transform-modules-commonjs']],
@@ -124,7 +110,6 @@ const compileModule = (
   modules: Record<string, unknown>,
 ): Module => {
   const isTypeScript = detectTypeScript(code);
-  const jsCode = isTypeScript ? compileTypeScript(code) : code;
 
   type RenderFunction = (
     exports: Module['exports'],
@@ -143,7 +128,7 @@ const compileModule = (
       'require',
       'module',
       'React',
-      transformCode(jsCode),
+      transformCode(code, isTypeScript),
     ) as RenderFunction;
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Syntax error';
