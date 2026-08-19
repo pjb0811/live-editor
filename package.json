@@ -141,10 +141,5 @@
       "bash -c 'pnpm lint'",
       "bash -c 'tsc -b'"
     ]
-  },
-  "pnpm": {
-    "overrides": {
-      "@codemirror/state": "^6.7.1"
-    }
   }
 }
