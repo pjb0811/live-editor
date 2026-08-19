@@ -14,6 +14,21 @@
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
 
+/*
+ * Pull @jbpark/ui-kit's compiled stylesheet in here (at the CSS level,
+ * resolved at build time into dist/style.css) instead of importing it as a
+ * bare `import '@jbpark/ui-kit/style.css'` from src/index.tsx. That JS-side
+ * import survived into dist/index.js as a literal, unresolved
+ * `import "@jbpark/ui-kit/style.css"` statement — which requires every
+ * consumer's toolchain to resolve and handle a CSS import straight out of
+ * node_modules, breaking plain Node resolution and any non-CSS-aware
+ * bundler (see #190). The single documented `@jbpark/live-editor/style.css`
+ * import now carries both this library's own [data-editor-mode] styles and
+ * ui-kit's, so nothing else needs to change for consumers already following
+ * the docs.
+ */
+@import '@jbpark/ui-kit/style.css';
+
 @layer utilities {
   /* 편집 모드 기본 설정 */
   [data-editor-mode] {
