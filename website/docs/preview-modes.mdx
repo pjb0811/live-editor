@@ -7,13 +7,22 @@ import DemoFrame from '@site/src/components/DemoFrame';
 
 # Preview Modes
 
-`frame.mode` controls how the preview renders:
+`frame.mode` is the switch that gates isolation entirely — every other
+`frame` option below is inert until it's set. Without `mode`, `Live.Preview`
+renders straight into the host document, regardless of any other `frame`
+options passed.
 
 - **`iframe`** — isolates the preview in a real iframe document. Note this is
   **not a security sandbox**: the code still executes in the host page's JS
-  realm. It exists for DOM/CSS isolation.
+  realm (the `sandbox` option below controls the iframe's `sandbox`
+  attribute, which is DOM/CSS isolation, not a security boundary either).
+  Supports every option in the table below.
 - **`shadow`** — isolates styles via a shadow DOM host in the same document,
-  without an iframe boundary.
+  without an iframe boundary. Only `mode` itself applies here — `syncStyle`,
+  `scripts`, `styles`, `stylesheets`, and `autoHeight` are all silently
+  ignored, since there's no separate document to inject them into. The shadow
+  host only gets whatever CSS naturally inherits across the shadow boundary
+  (font, color, and similar inherited properties) — not utility classes.
 
 <DemoFrame src="demos/preview-modes/" title="Live Editor — Preview Modes demo" height={340} />
 
@@ -33,22 +42,38 @@ const App = () => (
 export default App;
 `;
 
-// iframe isolation
-<Live>
-  <Live.Preview code={SAMPLE} frame={{ mode: 'iframe', syncStyle: true }} />
-</Live>;
+export default function PreviewModes() {
+  return (
+    <>
+      {/* iframe isolation */}
+      <Live>
+        <Live.Preview
+          code={SAMPLE}
+          frame={{ mode: 'iframe', syncStyle: true }}
+        />
+      </Live>
 
-// shadow DOM isolation
-<Live>
-  <Live.Preview code={SAMPLE} frame={{ mode: 'shadow' }} />
-</Live>;
+      {/* shadow DOM isolation */}
+      <Live>
+        <Live.Preview code={SAMPLE} frame={{ mode: 'shadow' }} />
+      </Live>
+    </>
+  );
+}
 ```
 
 ## `frame` options
 
-| Option | Type | Description |
-| --- | --- | --- |
-| `mode` | `'iframe' \| 'shadow'` | Isolation strategy for the preview. |
-| `syncStyle` | `boolean` | Copy the host document's stylesheets into the preview. |
-| `scripts` | `string[]` | External scripts to load into the preview (e.g. a Tailwind runtime). |
-| `autoHeight` | `boolean` | Size the iframe to its content instead of a fixed height. |
+`FrameProps` (importable from `@jbpark/live-editor`) is this shape:
+
+| Option | Type | Applies to | Description |
+| --- | --- | --- | --- |
+| `mode` | `'iframe' \| 'shadow'` | both | Isolation strategy. Omit it and nothing else in this table has any effect. |
+| `title` | `string` | iframe | The iframe's `title` attribute (accessibility). |
+| `sandbox` | `string` | iframe | Forwarded to the iframe's `sandbox` attribute, for DOM/CSS isolation only — **not** a security boundary (see the note above). |
+| `syncStyle` | `boolean` | iframe | Copy the host document's *already-compiled* stylesheets into the iframe. Can't include utility classes that only appear in code typed at runtime — see [How Tailwind reaches the preview](./intro.md#how-tailwind-reaches-the-preview). |
+| `scripts` | `string[]` | iframe | External script URLs to load into the iframe document (e.g. a Tailwind runtime). |
+| `styles` | `string[]` | iframe | Raw CSS strings to inject as `<style>` tags into the iframe. |
+| `stylesheets` | `string[]` | iframe | External stylesheet URLs to `<link>` into the iframe. |
+| `autoHeight` | `boolean` | iframe | Size the iframe to its content instead of a fixed height. |
+| `onLoaded` | `() => void` | iframe | Called once the iframe has finished its initial load. |
