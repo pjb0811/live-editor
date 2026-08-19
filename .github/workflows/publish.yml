@@ -22,9 +22,7 @@ jobs:
           fetch-tags: true
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9
+        uses: pnpm/action-setup@v4
 
       # v6+ is required for npm's OIDC "Trusted Publishing" used below.
       # No built-in `cache: 'pnpm'` here on purpose — this job skips

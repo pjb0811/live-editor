@@ -36,7 +36,7 @@
   },
   "engines": {
     "node": ">=20",
-    "pnpm": ">=9"
+    "pnpm": ">=10"
   },
   "packageManager": "pnpm@10.29.3",
   "exports": {
@@ -141,10 +141,5 @@
       "bash -c 'pnpm lint'",
       "bash -c 'tsc -b'"
     ]
-  },
-  "pnpm": {
-    "overrides": {
-      "@codemirror/state": "^6.7.1"
-    }
   }
 }
