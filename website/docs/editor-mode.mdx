@@ -8,8 +8,9 @@ import DemoFrame from '@site/src/components/DemoFrame';
 # Editor Mode
 
 `Live.Editor` and `Live.Preview` share code through `Live`'s context — edit
-either side, the other updates automatically. No manual wiring between them is
-needed.
+in the editor and the preview updates automatically. No manual wiring between
+them is needed. (The preview itself isn't an editing surface — only
+`Live.Editor` writes to the shared code.)
 
 <DemoFrame src="demos/editor-mode/" title="Live Editor — Editor Mode demo" height={620} />
 
@@ -47,7 +48,13 @@ export default function EditorMode() {
 ```
 
 - `Live.Editor` is a controlled CodeMirror surface — pass `value` / `onChange`.
+  It only pushes to the shared preview code `debounce` ms after you stop
+  typing (default `1000`) — a full second of lag is expected, not a bug.
+  Pass `debounce={0}` for immediate updates.
 - `Live.Preview` compiles the shared code and renders it; `showError` surfaces
   compile/runtime errors inline.
 - `frame.syncStyle` copies the host document's stylesheets into the iframe so
   the preview looks like the rest of your app.
+
+See [Overview](./intro.md#props-reference) for the full prop list on both
+components.

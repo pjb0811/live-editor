@@ -49,7 +49,7 @@ function Feature({ title, icon, description }: FeatureItem) {
   return (
     <div className={clsx('col col--4')}>
       <div className="text--center">
-        <div className={styles.featureIcon} role="img" aria-label={title}>
+        <div className={styles.featureIcon} aria-hidden="true">
           {icon}
         </div>
       </div>

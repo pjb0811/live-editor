@@ -41,6 +41,16 @@ export default function CustomEditor() {
 }
 ```
 
-The `renderEditor` render prop receives the current `value` and an `onChange`
-callback. Wire those into any editing surface you like (a `<textarea>`, Monaco,
-your own component) — the shared preview stays in sync through `Live`'s context.
+The `renderEditor` render prop receives an `EditorRenderData` object with
+three fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `value` | `string` | Current code. |
+| `onChange` | `(value: string) => void` | Commit an edit — wire this into your editing surface's own change handler. |
+| `formatCode` | `(code: string) => Promise<string>` | The same prettier-based formatting the built-in editor's Cmd+S uses. Call it to offer format-on-save without reimplementing prettier wiring yourself. |
+
+Wire `value`/`onChange` into any editing surface you like (a `<textarea>`,
+Monaco, your own component) — the shared preview stays in sync through
+`Live`'s context. `formatCode` is entirely optional; the example above skips
+it and just does a raw `<textarea>` with no formatting.
