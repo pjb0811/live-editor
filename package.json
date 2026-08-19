@@ -114,12 +114,12 @@
     "@uiw/codemirror-theme-vscode": "^4.25.11",
     "@uiw/react-codemirror": "^4.25.11",
     "lucide-react": "^1.31.0",
+    "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
     "uuid": "^14.0.1",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "prettier": "^3.8.0",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0"
   },
@@ -141,7 +141,6 @@
     "globals": "^17.11.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
-    "prettier": "^3.9.6",
     "prettier-plugin-classnames": "^0.10.4",
     "prettier-plugin-merge": "^0.10.1",
     "prettier-plugin-tailwindcss": "^0.8.1",
