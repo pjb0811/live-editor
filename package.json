@@ -8,6 +8,7 @@
   "type": "module",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": ["**/*.css"],
   "description": "Interactive UI editor with real-time preview and drag-and-drop. Syncs canvas edits back to source code via AST transforms and renders the preview in an iframe for DOM/CSS isolation (not a security sandbox).",
   "keywords": [
     "live-editor",
