@@ -1,5 +1,3 @@
-import '@jbpark/ui-kit/style.css';
-
 import './index.css';
 
 import Context from './components/context';
