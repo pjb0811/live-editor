@@ -1,5 +1,5 @@
 ---
-'@jbpark/live-editor': minor
+'@jbpark/live-editor': patch
 ---
 
-Dynamic Tailwind CSS is now supported in the preview, allowing for real-time styling updates.
+Fixed `Live.Preview` silently ignoring the `frame` prop whenever a `code` prop was also passed — `code` and `frame` previously took two divergent render paths, and only one of them wrapped its output in `<Frame>`. `dynamicTailwind` also now works together with `frame`, which it couldn't before this fix.
