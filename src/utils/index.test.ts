@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@jbpark/ui-kit', () => ({}));
 vi.mock('@jbpark/ui-kit/utils', () => ({}));
 
-const { detectTypeScript } = await import('./index');
+const { compile, detectTypeScript } = await import('./index');
 
 describe('detectTypeScript', () => {
   it('does not flag the default template as TypeScript', () => {
@@ -96,5 +96,53 @@ const App = () => <div>{x}</div>;
 export default App;
 `;
     expect(detectTypeScript(code)).toBe(true);
+  });
+});
+
+// #192: TypeScript source used to go through ts.transpileModule and then
+// Babel — a double transpile via a peer dependency. It's now a single Babel
+// pass with the `typescript` preset. These assert that path actually
+// produces a working module, not just that it doesn't throw.
+describe('compile (TypeScript source, #192)', () => {
+  it('compiles an interface + typed props into a working default export', () => {
+    const code = `
+interface Props { name: string }
+const App = (props: Props) => props.name;
+export default App;
+`;
+    const module = compile(code, {});
+
+    expect(module.error).toBeUndefined();
+    expect(module.exports.default).toBeTypeOf('function');
+    const App = module.exports.default as unknown as (p: {
+      name: string;
+    }) => string;
+    expect(App({ name: 'hi' })).toBe('hi');
+  });
+
+  it('compiles an enum into a working default export', () => {
+    const code = `
+enum Color { Red, Blue }
+const App = () => Color.Blue;
+export default App;
+`;
+    const module = compile(code, {});
+
+    expect(module.error).toBeUndefined();
+    expect(module.exports.default).toBeTypeOf('function');
+    expect((module.exports.default as unknown as () => number)()).toBe(1);
+  });
+
+  it('compiles a generic arrow function and type assertion', () => {
+    const code = `
+const identity = <T,>(x: T): T => x;
+const App = () => identity(5) as number;
+export default App;
+`;
+    const module = compile(code, {});
+
+    expect(module.error).toBeUndefined();
+    expect(module.exports.default).toBeTypeOf('function');
+    expect((module.exports.default as unknown as () => number)()).toBe(5);
   });
 });
