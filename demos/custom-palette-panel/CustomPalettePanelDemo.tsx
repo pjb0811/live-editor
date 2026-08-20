@@ -22,11 +22,8 @@ const CustomPalettePanelDemo = () => {
         <Dnd
           value={value}
           onChange={setValue}
-          frame={{
-            mode: 'iframe',
-            syncStyle: true,
-            scripts: ['../js/tailwindcss.js'],
-          }}
+          frame={{ mode: 'shadow' }}
+          dynamicTailwind
           renderPalette={({ items, onAdd, DraggableItem, isMobile }) => (
             <div className="space-y-2 p-2">
               {items.map(item => (

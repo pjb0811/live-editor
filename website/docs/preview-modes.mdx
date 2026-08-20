@@ -22,7 +22,10 @@ options passed.
   `scripts`, `styles`, `stylesheets`, and `autoHeight` are all silently
   ignored, since there's no separate document to inject them into. The shadow
   host only gets whatever CSS naturally inherits across the shadow boundary
-  (font, color, and similar inherited properties) — not utility classes.
+  (font, color, and similar inherited properties) — not utility classes on
+  their own. Pass `dynamicTailwind` on `Live.Preview`/`Live.Dnd` to get those
+  working too — see
+  [How Tailwind reaches the preview](./intro.md#how-tailwind-reaches-the-preview).
 
 <DemoFrame src="demos/preview-modes/" title="Live Editor — Preview Modes demo" height={340} />
 

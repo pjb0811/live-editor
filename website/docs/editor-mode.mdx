@@ -37,10 +37,7 @@ export default function EditorMode() {
 
   return (
     <Live>
-      <Live.Preview
-        showError
-        frame={{ mode: 'iframe', syncStyle: true }}
-      />
+      <Live.Preview showError frame={{ mode: 'shadow' }} dynamicTailwind />
       <Live.Editor value={value} onChange={setValue} />
     </Live>
   );
@@ -53,8 +50,10 @@ export default function EditorMode() {
   Pass `debounce={0}` for immediate updates.
 - `Live.Preview` compiles the shared code and renders it; `showError` surfaces
   compile/runtime errors inline.
-- `frame.syncStyle` copies the host document's stylesheets into the iframe so
-  the preview looks like the rest of your app.
+- `dynamicTailwind` compiles Tailwind classes from the rendered preview at
+  runtime and injects them as a `<style>` tag — needed in `shadow` mode,
+  which has no separate document to load a stylesheet into (see
+  [Preview Modes](./preview-modes.mdx)).
 
 See [Overview](./intro.md#props-reference) for the full prop list on both
 components.

@@ -24,15 +24,8 @@ const DndDemo = () => {
         <Dnd
           value={value}
           onChange={setValue}
-          frame={{
-            mode: 'iframe',
-            syncStyle: true,
-            // Fetched relative to this demo's own URL (`…/demos/dnd/`); the
-            // shared multi-page build copies `public/` to the output root, so
-            // the Tailwind runtime lives one level up at `…/demos/js/`,
-            // independent of where the docs site is hosted.
-            scripts: ['../js/tailwindcss.js'],
-          }}
+          frame={{ mode: 'shadow' }}
+          dynamicTailwind
         />
       </div>
     </Context>

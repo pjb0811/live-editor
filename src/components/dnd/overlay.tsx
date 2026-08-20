@@ -14,6 +14,7 @@ interface Props {
     fullCode: string;
     modules: Record<string, unknown>;
     frame?: FrameProps;
+    dynamicTailwind?: boolean;
   };
 }
 
@@ -41,6 +42,7 @@ const Overlay = ({ sections, renderProps }: Props) => {
           preview={preview}
           modules={renderProps.modules}
           frame={renderProps.frame}
+          dynamicTailwind={renderProps.dynamicTailwind}
         />
       </Sortable>
     );
