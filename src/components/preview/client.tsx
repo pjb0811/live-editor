@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useError, usePreview } from '~/components/context/states';
 import LiveError from '~/components/error';
 import Frame, { type FrameProps } from '~/components/frame';
 import { baseModules, cn, compile } from '~/utils';
-import { generateTailwindCSS } from '~/utils/tailwind';
+import { generateTailwindCSSFromDOM } from '~/utils/tailwind';
 
 import { type Props } from './preview';
 
@@ -29,16 +29,34 @@ const Client = ({
   const mergedModules = { ...baseModules, ...modules };
   const effectiveCode = _code || code;
 
+  // Scans the actual rendered DOM (via `contentRef`, attached below) rather
+  // than `effectiveCode`'s source text, so classes contributed by an
+  // imported component (e.g. ui-kit's `Button`) are picked up too — those
+  // never appear as literal text in the previewed source, only in that
+  // component's own compiled output.
+  //
+  // The wrapper below is tracked via a callback ref (`contentEl` state)
+  // rather than a plain `useRef`, because in shadow mode it isn't mounted
+  // on this component's first commit at all — `Shadow` creates its portal
+  // target in its own effect and only re-renders with it afterwards, one
+  // commit later. A plain ref read in an `[effectiveCode, dynamicTailwind]`
+  // -keyed effect would see `null` on that first pass and never retry;
+  // making the element itself a dependency re-runs the scan once it
+  // actually exists.
   const [dynamicCSS, setDynamicCSS] = useState('');
+  const [contentEl, setContentEl] = useState<HTMLDivElement | null>(null);
+  const contentRef = useCallback((el: HTMLDivElement | null) => {
+    setContentEl(el);
+  }, []);
 
   useEffect(() => {
-    if (!effectiveCode || !dynamicTailwind) {
+    if (!effectiveCode || !dynamicTailwind || !contentEl) {
       return;
     }
 
     let cancelled = false;
 
-    generateTailwindCSS(effectiveCode).then(css => {
+    generateTailwindCSSFromDOM(contentEl).then(css => {
       if (!cancelled) {
         setDynamicCSS(css);
       }
@@ -47,7 +65,7 @@ const Client = ({
     return () => {
       cancelled = true;
     };
-  }, [effectiveCode, dynamicTailwind]);
+  }, [effectiveCode, dynamicTailwind, contentEl]);
 
   let module = null;
 
@@ -96,24 +114,27 @@ const Client = ({
         <div className={cn('h-full w-full', classNames)}>
           <Frame {...(frame as FrameProps)}>
             {container => (
-              <LiveError.Boundary
-                resetKeys={[effectiveCode]}
-                onError={(e: Error) => setError(e.message)}
-              >
-                {renderProvider(
-                  <LiveError.Guard onError={e => setError(e.message)}>
-                    <Component {...componentProps} container={container} />
-                    {dynamicTailwind && dynamicCSS && (
-                      <style>{dynamicCSS}</style>
-                    )}
-                  </LiveError.Guard>,
-                )}
-              </LiveError.Boundary>
+              <div ref={contentRef} style={{ display: 'contents' }}>
+                <LiveError.Boundary
+                  resetKeys={[effectiveCode]}
+                  onError={(e: Error) => setError(e.message)}
+                >
+                  {renderProvider(
+                    <LiveError.Guard onError={e => setError(e.message)}>
+                      <Component {...componentProps} container={container} />
+                      {dynamicTailwind && dynamicCSS && (
+                        <style>{dynamicCSS}</style>
+                      )}
+                    </LiveError.Guard>,
+                  )}
+                </LiveError.Boundary>
+              </div>
             )}
           </Frame>
         </div>
       ) : (
         <div
+          ref={contentRef}
           className={cn(
             'relative h-full w-full overflow-x-hidden overflow-y-auto',
             classNames,

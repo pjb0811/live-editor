@@ -23,11 +23,7 @@ export default function DragAndDrop() {
 
   return (
     <Live>
-      <Live.Dnd
-        value={value}
-        onChange={setValue}
-        frame={{ mode: 'iframe', syncStyle: true }}
-      />
+      <Live.Dnd value={value} onChange={setValue} frame={{ mode: 'shadow' }} />
     </Live>
   );
 }
@@ -40,5 +36,6 @@ export default function DragAndDrop() {
   fully replace the built-in UI — see
   [Custom Palette & Panel](./custom-palette-panel.mdx).
 
-The embedded demo above runs the real `Live.Dnd` component in an isolated
-iframe.
+The embedded demo above runs the real `Live.Dnd` component, isolated with
+`shadow` mode inside a sandboxed iframe (see
+[Preview Modes](./preview-modes.mdx)).

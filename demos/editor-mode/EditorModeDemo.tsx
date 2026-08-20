@@ -37,14 +37,7 @@ const EditorModeDemo = () => {
             'md:border-r md:border-b-0',
           )}
         >
-          <Preview
-            showError
-            frame={{
-              mode: 'iframe',
-              syncStyle: true,
-              scripts: ['../js/tailwindcss.js'],
-            }}
-          />
+          <Preview showError frame={{ mode: 'shadow' }} dynamicTailwind />
         </div>
         <div className="overflow-auto">
           <Editor value={value} onChange={setValue} />

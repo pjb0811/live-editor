@@ -122,6 +122,7 @@ export interface Props extends Omit<
   modules?: Record<string, unknown>;
   items?: Section[];
   frame?: FrameProps;
+  dynamicTailwind?: boolean;
   provider?: (children: React.ReactNode) => React.ReactNode;
   onChange?: (value: string) => void;
   // Full replacements for the built-in left palette / right panel — receive
@@ -151,6 +152,7 @@ const Dnd = ({
   className,
   items = [],
   frame,
+  dynamicTailwind = false,
   provider,
   renderPalette,
   renderPanel,
@@ -615,6 +617,7 @@ const Dnd = ({
                         preview={previews[index]!}
                         modules={modules}
                         frame={frame}
+                        dynamicTailwind={dynamicTailwind}
                         provider={provider}
                         {...props}
                       />
@@ -662,6 +665,7 @@ const Dnd = ({
               fullCode: value,
               modules,
               frame,
+              dynamicTailwind,
               ...props,
             }}
           />

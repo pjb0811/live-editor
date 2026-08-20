@@ -93,18 +93,28 @@ reader types is compiled and rendered at runtime, so there's no build step
 that could have generated CSS for classes that don't exist yet when the app
 first loads. There are two ways to make them actually apply:
 
-**`dynamicTailwind` (simplest)** — pass it to `Live.Preview` and it scans the
-current code for `className`/`cn(...)` usages, compiles just those utilities
-with the real `tailwindcss` engine, and injects the result as a `<style>` tag
-next to the rendered output. Works with or without `frame`:
+**`dynamicTailwind` (simplest, and the only option under `shadow` mode)** —
+pass it to `Live.Preview` and it scans the _rendered DOM_ after mount,
+compiles whatever classes actually ended up on the page with the real
+`tailwindcss` engine, and injects the result as a `<style>` tag next to the
+rendered output. Scanning the DOM rather than the source text means it also
+picks up classes contributed by an imported component (e.g. `ui.Button`
+rendering its own `bg-primary`), not just literal `className`/`cn(...)`
+usage in the code the reader typed. Works with or without `frame`, and under
+either `frame.mode`:
 
 ```tsx
-<Live.Preview dynamicTailwind frame={{ mode: 'iframe' }} />
+<Live.Preview dynamicTailwind frame={{ mode: 'shadow' }} />
 ```
 
-**`frame.scripts` + a Tailwind runtime (what this site's own demos use)** —
-load a standalone Tailwind runtime script into the iframe via `frame.scripts`
-so the iframe's own document processes its own classes live:
+One limitation: it only knows Tailwind's own default theme (colors, spacing,
+font sizes, ...), not a consuming app's custom theme extensions — a
+`bg-primary` utility backed by a project-specific `--color-primary` token
+won't resolve, since that token doesn't exist in Tailwind's stock theme.
+
+**`frame.scripts` + a Tailwind runtime (`iframe` mode only)** — load a
+standalone Tailwind runtime script into the iframe via `frame.scripts` so the
+iframe's own document processes its own classes live:
 
 ```tsx
 <Live.Preview
@@ -119,10 +129,9 @@ so the iframe's own document processes its own classes live:
 `frame.syncStyle` alone does **not** do this — it only copies the host page's
 _already-compiled_ stylesheet into the iframe, which by definition can't
 contain utilities that only appear in code the reader types at runtime.
-`scripts`/`dynamicTailwind` are unrelated to and unaffected by `syncStyle`.
-
-Neither approach works under `frame.mode: 'shadow'` — see
-[Preview Modes](./preview-modes.mdx) for what does and doesn't apply there.
+`scripts` doesn't apply under `frame.mode: 'shadow'` at all (there's no
+separate document to load it into) — see [Preview Modes](./preview-modes.mdx)
+for what does and doesn't apply there.
 
 ## Props reference
 
