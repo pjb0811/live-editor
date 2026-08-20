@@ -33,8 +33,8 @@ importers:
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.8)
       '@jbpark/ui-kit':
-        specifier: ^5.3.0
-        version: 5.3.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^5.4.1
+        version: 5.4.1(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@jbpark/use-hooks':
         specifier: ^4.0.1
         version: 4.0.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -621,8 +621,8 @@ packages:
     resolution: {integrity: sha512-WMz71T1JS624nWj2n2fnYAuPovhv7EUhk69R6i9dsVyzxt5eM3bjwvgk9L+APE1TRscGysAVMANkB0jh0LQZrQ==}
     engines: {node: 20 || >=22}
 
-  '@jbpark/ui-kit@5.3.0':
-    resolution: {integrity: sha512-gxEwQZguhCgZ7hVi7vEyoz3JNIlXF4Ufce6ZdZer33w7Pm7j8ZvJmVT7rkv11g47OHPNjteh+QgdGw59E9KVlg==}
+  '@jbpark/ui-kit@5.4.1':
+    resolution: {integrity: sha512-mQVz6tifo+FE8sI6n9+QB8HRcj+PZQX9UQajvPGQD16SbdLG5lnw7Ao7reP7RnDd3vxbf+H8eHymX7m/MM6KLg==}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
@@ -4424,7 +4424,7 @@ snapshots:
       '@isaacs/balanced-match': 4.0.1
     optional: true
 
-  '@jbpark/ui-kit@5.3.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@jbpark/ui-kit@5.4.1(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       '@gsap/react': 2.1.2(gsap@3.15.0)(react@19.2.8)
       '@jbpark/use-hooks': 4.0.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
