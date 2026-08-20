@@ -4,6 +4,14 @@
  * work well for content-centric websites.
  */
 
+/* Only needed by PreviewModesDemo (the one demo embedded directly in this
+   site rather than via a sandboxed iframe — see #206). Safe to load
+   globally: #207 verified this stylesheet no longer ships Tailwind
+   preflight, and its own utilities live in `@layer utilities`, which always
+   loses to Infima's unlayered rules in the cascade — see the #206/#207
+   investigation for the byte-identical computed-style verification. */
+@import '@jbpark/live-editor/style.css';
+
 /* Live Editor's indigo palette replaces Docusaurus' default green theme. */
 :root {
   --ifm-color-primary: #5b5bd6;

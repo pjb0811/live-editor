@@ -45,7 +45,6 @@ export default defineConfig({
         'editor-mode': r('editor-mode/index.html'),
         'custom-editor': r('custom-editor/index.html'),
         'custom-palette-panel': r('custom-palette-panel/index.html'),
-        'preview-modes': r('preview-modes/index.html'),
       },
     },
   },
