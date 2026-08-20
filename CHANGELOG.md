@@ -1,5 +1,50 @@
 # Changelog
 
+## 1.15.0
+
+### Minor Changes
+
+- e8f30a2: New backward-compatible features and exports are added to the UI editor.
+- 401ed3d: TypeScript source can now be compiled directly with Babel, removing the need for a separate TypeScript transpile step and eliminating the peer dependency on `typescript`.
+- ee7ccea: Added per-component subpath exports — `@jbpark/live-editor/dnd`, `/editor`, `/preview`, `/provider`, and `/error` — so a consumer who only needs one feature area doesn't have to bundle every other one. The root `@jbpark/live-editor` import is unchanged.
+
+### Patch Changes
+
+- aa00fea: Moved `prettier` from `peerDependencies` to `dependencies`. It's an internal implementation detail (used for the editor's Cmd+S formatting), not something consumers were meant to supply their own version of — a missing peer previously made the whole package fail to load under package managers that don't auto-install peers (pnpm, yarn).
+- ee7ccea: Declared `sideEffects` in `package.json` (scoped to CSS files) so bundlers can safely tree-shake unused exports from the package entry instead of conservatively retaining everything.
+- 4de89fa: Bumped `@jbpark/ui-kit` from `^5.3.0` to `^5.4.1`, which fixes `@jbpark/ui-kit/style.css` shipping Tailwind's preflight (a document-wide reset that flattened a host page's typography — see #207) and a follow-up regression where some ui-kit components lost their own list/margin reset. Verified with a real build: `dist/style.css` no longer contains any bare-tag rules, and loading it on a host page leaves `h1`/`p`/`body` styling untouched.
+- db13065: Fixed `dynamicTailwind` (on `Live.Preview`/`Live.Dnd`) silently producing no
+  usable CSS under `frame.mode: 'shadow'`, two separate bugs stacked together:
+
+  - `Live.Dnd`'s `Renderer` had no `dynamicTailwind` support at all — only
+    `Live.Preview`'s `Client` did, so a `Dnd` rendered in `shadow` mode had no
+    way to get any utility-class styling into the shadow root.
+  - The Tailwind compile context (`generateTailwindCSS`, used by both) never
+    loaded Tailwind's theme layer, so any utility depending on a theme token —
+    `text-white`, `text-5xl`, `px-5`, essentially anything beyond
+    keyword-only utilities like `text-center` — silently compiled to nothing.
+  - Switched from regex-scanning the previewed source text to scanning the
+    actual rendered DOM after mount (`generateTailwindCSSFromDOM`), so classes
+    contributed by an imported component (e.g. ui-kit's `Button` rendering its
+    own `bg-primary`) are picked up too, not just literal `className`/`cn(...)`
+    usage in the code itself.
+
+  This unblocks the docs site's `dnd`, `custom-palette-panel`, `editor-mode`,
+  and `custom-editor` demos, which were rendering as blank/unstyled content
+  when embedded (see #206) because they run inside a doubly-nested sandboxed
+  iframe, where `iframe` mode's own isolation strategy doesn't work — they now
+  use `frame.mode: 'shadow'` with `dynamicTailwind` instead, which doesn't
+  depend on the sandboxed iframe's own nested-iframe capability at all.
+
+  Known remaining gap, tracked separately: `dynamicTailwind`'s DOM scan only
+  knows Tailwind's own default theme, not a consuming app's custom theme
+  extensions — a `bg-primary` utility backed by a project-specific
+  `--color-primary` token (as ui-kit's `Button` uses) won't resolve.
+
+- ee7ccea: Corrected `peerDependencies.typescript` from `~5.8.3` to `~6.0.3` to match the version this package actually builds and tests with — the old range excluded a TypeScript version that would otherwise satisfy it for any real consumer.
+- 57a210f: Fixed `Live.Preview` silently ignoring the `frame` prop whenever a `code` prop was also passed — `code` and `frame` previously took two divergent render paths, and only one of them wrapped its output in `<Frame>`. `dynamicTailwind` also now works together with `frame`, which it couldn't before this fix.
+- f6f2daa: `@jbpark/ui-kit`'s stylesheet is now pulled in via `@import` at the CSS level (bundled into `dist/style.css`) instead of a JS-side `import '@jbpark/ui-kit/style.css'` that survived unresolved into `dist/index.js`. Consumers following the documented `import '@jbpark/live-editor/style.css'` see no change; consumers whose toolchain couldn't handle a raw CSS import out of `node_modules` (plain Node, non-CSS-aware bundlers) can now import the JS entry without that failing.
+
 ## 1.14.0
 
 ### Minor Changes
