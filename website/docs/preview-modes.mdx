@@ -3,7 +3,7 @@ sidebar_position: 6
 title: Preview Modes
 ---
 
-import DemoFrame from '@site/src/components/DemoFrame';
+import PreviewModesEmbed from '@site/src/components/PreviewModesEmbed';
 
 # Preview Modes
 
@@ -27,7 +27,7 @@ options passed.
   working too — see
   [How Tailwind reaches the preview](./intro.md#how-tailwind-reaches-the-preview).
 
-<DemoFrame src="demos/preview-modes/" title="Live Editor — Preview Modes demo" height={340} />
+<PreviewModesEmbed />
 
 ```tsx
 import Live from '@jbpark/live-editor';
@@ -50,20 +50,21 @@ export default function PreviewModes() {
     <>
       {/* iframe isolation */}
       <Live>
-        <Live.Preview
-          code={SAMPLE}
-          frame={{ mode: 'iframe', syncStyle: true }}
-        />
+        <Live.Preview code={SAMPLE} dynamicTailwind frame={{ mode: 'iframe' }} />
       </Live>
 
       {/* shadow DOM isolation */}
       <Live>
-        <Live.Preview code={SAMPLE} frame={{ mode: 'shadow' }} />
+        <Live.Preview code={SAMPLE} dynamicTailwind frame={{ mode: 'shadow' }} />
       </Live>
     </>
   );
 }
 ```
+
+Unlike the other demos on this site, this one is rendered directly in the
+page — not inside a sandboxed iframe — since it has no reader-authored code
+to isolate (the sample is a fixed string, not wired to an editor).
 
 ## `frame` options
 

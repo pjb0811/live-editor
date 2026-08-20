@@ -1,6 +1,5 @@
-import Context from '~/components/context';
-import Preview from '~/components/preview';
-import { cn } from '~/utils';
+import Preview from '@jbpark/live-editor/preview';
+import Context from '@jbpark/live-editor/provider';
 
 const SAMPLE_CODE = `
 import * as ui from 'ui-kit';
@@ -17,12 +16,13 @@ const App = () => {
 export default App;
 `;
 
-// Preview Modes demo. Mirrors the app's `pages/docs/preview-modes`: the same
-// code rendered through `frame.mode: 'iframe'` (real iframe document) beside
-// `frame.mode: 'shadow'` (shadow-DOM host in the same document).
+// Rendered directly in the docs page (no DemoFrame/iframe wrapper) — safe
+// because this sample has no reader-authored input (it's a fixed string, not
+// wired to an editor), so #164's threat model doesn't apply here the way it
+// does for the editor-mode/custom-editor/dnd demos. See #206.
 const PreviewModesDemo = () => {
   const label = 'mb-1 text-sm font-semibold text-gray-700';
-  const box = cn('h-64 overflow-hidden rounded-lg border border-gray-200');
+  const box = 'h-64 overflow-hidden rounded-lg border border-gray-200';
 
   return (
     <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
@@ -32,11 +32,8 @@ const PreviewModesDemo = () => {
           <Context>
             <Preview
               code={SAMPLE_CODE}
-              frame={{
-                mode: 'iframe',
-                syncStyle: true,
-                scripts: ['../js/tailwindcss.js'],
-              }}
+              dynamicTailwind
+              frame={{ mode: 'iframe' }}
             />
           </Context>
         </div>
@@ -45,7 +42,11 @@ const PreviewModesDemo = () => {
         <div className={label}>shadow</div>
         <div className={box}>
           <Context>
-            <Preview code={SAMPLE_CODE} frame={{ mode: 'shadow' }} />
+            <Preview
+              code={SAMPLE_CODE}
+              dynamicTailwind
+              frame={{ mode: 'shadow' }}
+            />
           </Context>
         </div>
       </div>

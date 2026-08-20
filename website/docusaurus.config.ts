@@ -29,6 +29,17 @@ const config: Config = {
     locales: ['en'],
   },
 
+  // `@jbpark/live-editor` bundles `@babel/types` (see tsdown.config.ts's
+  // `deps.onlyBundle`), which reads `process.env.BABEL_TYPES_8_BREAKING` at
+  // module load time. Neither webpack 5 nor rspack (whichever
+  // `@docusaurus/faster` picks) polyfills `process` for the client bundle,
+  // so without this PreviewModesDemo — the one demo embedded directly
+  // rather than via a sandboxed iframe, see #206 — crashes on load with
+  // "process is not defined". A client module (bundler-agnostic, unlike a
+  // webpack/rspack-specific DefinePlugin) is the simplest fix: it only runs
+  // in the browser, so it doesn't touch Node's real `process` during SSR.
+  clientModules: ['./src/clientModules/processShim.ts'],
+
   presets: [
     [
       'classic',
