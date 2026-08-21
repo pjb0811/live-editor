@@ -17,7 +17,11 @@ const Frame = ({ mode, children, ...restProps }: Props) => {
   }
 
   if (mode === 'shadow') {
-    return <Shadow>{container => children(container || document.body)}</Shadow>;
+    return (
+      <Shadow syncStyle={restProps.syncStyle}>
+        {container => children(container || document.body)}
+      </Shadow>
+    );
   }
 
   return <IFrame {...restProps}>{children}</IFrame>;

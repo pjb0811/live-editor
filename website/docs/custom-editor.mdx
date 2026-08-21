@@ -23,7 +23,11 @@ export default function CustomEditor() {
 
   return (
     <Live>
-      <Live.Preview showError frame={{ mode: 'shadow' }} dynamicTailwind />
+      <Live.Preview
+        showError
+        dynamicTailwind
+        frame={{ mode: 'shadow', syncStyle: true }}
+      />
       <Live.Editor
         value={value}
         onChange={setValue}

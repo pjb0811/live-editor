@@ -18,14 +18,19 @@ options passed.
   attribute, which is DOM/CSS isolation, not a security boundary either).
   Supports every option in the table below.
 - **`shadow`** — isolates styles via a shadow DOM host in the same document,
-  without an iframe boundary. Only `mode` itself applies here — `syncStyle`,
-  `scripts`, `styles`, `stylesheets`, and `autoHeight` are all silently
-  ignored, since there's no separate document to inject them into. The shadow
-  host only gets whatever CSS naturally inherits across the shadow boundary
-  (font, color, and similar inherited properties) — not utility classes on
-  their own. Pass `dynamicTailwind` on `Live.Preview`/`Live.Dnd` to get those
-  working too — see
+  without an iframe boundary. `scripts`, `styles`, `stylesheets`, and
+  `autoHeight` are all silently ignored, since there's no separate document
+  to inject them into. The shadow host only gets whatever CSS naturally
+  inherits across the shadow boundary (font, color, and similar inherited
+  properties) on its own — not utility classes. Two ways to get those
+  working too: `syncStyle` clones the host document's `<link>`/`<style>`
+  tags directly into the shadow root (covers anything already in the host's
+  compiled CSS, including a consuming app's own custom theme tokens), and
+  `dynamicTailwind` recompiles whatever classes it finds in the rendered DOM
+  at runtime (covers anything the host's build never saw, e.g. a class typed
+  at runtime) — see
   [How Tailwind reaches the preview](./intro.md#how-tailwind-reaches-the-preview).
+  The two are complementary and can be used together.
 
 <PreviewModesEmbed />
 
@@ -50,12 +55,20 @@ export default function PreviewModes() {
     <>
       {/* iframe isolation */}
       <Live>
-        <Live.Preview code={SAMPLE} dynamicTailwind frame={{ mode: 'iframe' }} />
+        <Live.Preview
+          code={SAMPLE}
+          dynamicTailwind
+          frame={{ mode: 'iframe', syncStyle: true }}
+        />
       </Live>
 
       {/* shadow DOM isolation */}
       <Live>
-        <Live.Preview code={SAMPLE} dynamicTailwind frame={{ mode: 'shadow' }} />
+        <Live.Preview
+          code={SAMPLE}
+          dynamicTailwind
+          frame={{ mode: 'shadow', syncStyle: true }}
+        />
       </Live>
     </>
   );
@@ -75,7 +88,7 @@ to isolate (the sample is a fixed string, not wired to an editor).
 | `mode` | `'iframe' \| 'shadow'` | both | Isolation strategy. Omit it and nothing else in this table has any effect. |
 | `title` | `string` | iframe | The iframe's `title` attribute (accessibility). |
 | `sandbox` | `string` | iframe | Forwarded to the iframe's `sandbox` attribute, for DOM/CSS isolation only — **not** a security boundary (see the note above). |
-| `syncStyle` | `boolean` | iframe | Copy the host document's *already-compiled* stylesheets into the iframe. Can't include utility classes that only appear in code typed at runtime — see [How Tailwind reaches the preview](./intro.md#how-tailwind-reaches-the-preview). |
+| `syncStyle` | `boolean` | both | Copy the host document's *already-compiled* `<link>`/`<style>` tags in (into the iframe document, or directly into the shadow root). Can't include utility classes that only appear in code typed at runtime — see [How Tailwind reaches the preview](./intro.md#how-tailwind-reaches-the-preview). |
 | `scripts` | `string[]` | iframe | External script URLs to load into the iframe document (e.g. a Tailwind runtime). |
 | `styles` | `string[]` | iframe | Raw CSS strings to inject as `<style>` tags into the iframe. |
 | `stylesheets` | `string[]` | iframe | External stylesheet URLs to `<link>` into the iframe. |

@@ -24,7 +24,7 @@ const DndDemo = () => {
         <Dnd
           value={value}
           onChange={setValue}
-          frame={{ mode: 'shadow' }}
+          frame={{ mode: 'shadow', syncStyle: true }}
           dynamicTailwind
         />
       </div>

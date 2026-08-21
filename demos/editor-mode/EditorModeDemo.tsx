@@ -37,7 +37,11 @@ const EditorModeDemo = () => {
             'md:border-r md:border-b-0',
           )}
         >
-          <Preview showError frame={{ mode: 'shadow' }} dynamicTailwind />
+          <Preview
+            showError
+            frame={{ mode: 'shadow', syncStyle: true }}
+            dynamicTailwind
+          />
         </div>
         <div className="overflow-auto">
           <Editor value={value} onChange={setValue} />

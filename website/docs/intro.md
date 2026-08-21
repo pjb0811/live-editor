@@ -91,26 +91,41 @@ Every sample on this site uses Tailwind utility classes
 (`className="p-6 space-y-2"`), and none of them work for free — the code a
 reader types is compiled and rendered at runtime, so there's no build step
 that could have generated CSS for classes that don't exist yet when the app
-first loads. There are two ways to make them actually apply:
+first loads. There are three ways to make them actually apply, and the first
+two are complementary — use both together to cover each other's gaps.
 
-**`dynamicTailwind` (simplest, and the only option under `shadow` mode)** —
-pass it to `Live.Preview` and it scans the _rendered DOM_ after mount,
-compiles whatever classes actually ended up on the page with the real
-`tailwindcss` engine, and injects the result as a `<style>` tag next to the
-rendered output. Scanning the DOM rather than the source text means it also
-picks up classes contributed by an imported component (e.g. `ui.Button`
-rendering its own `bg-primary`), not just literal `className`/`cn(...)`
-usage in the code the reader typed. Works with or without `frame`, and under
-either `frame.mode`:
+**`syncStyle`** — clones the host document's already-compiled
+`<link>`/`<style>` tags in (into the iframe document, or directly into the
+shadow root — works under both `frame.mode`s):
+
+```tsx
+<Live.Preview frame={{ mode: 'shadow', syncStyle: true }} />
+```
+
+Since it's copying real, already-built CSS, it includes anything a
+consuming app's own build knew about — including custom theme tokens (e.g.
+ui-kit's `Button` rendering `bg-primary`, backed by a project-specific
+`--primary` token that Tailwind's own default theme has no idea exists). Its
+limitation is the mirror image: it can't include a utility class that only
+appears in code typed at runtime, since by definition no build ever saw it
+to compile CSS for it.
+
+**`dynamicTailwind`** — pass it to `Live.Preview` and it scans the
+_rendered DOM_ after mount, compiles whatever classes actually ended up on
+the page with the real `tailwindcss` engine, and injects the result as a
+`<style>` tag next to the rendered output. Scanning the DOM rather than the
+source text means it also picks up classes contributed by an imported
+component, not just literal `className`/`cn(...)` usage in the code the
+reader typed. Works with or without `frame`, and under either `frame.mode`:
 
 ```tsx
 <Live.Preview dynamicTailwind frame={{ mode: 'shadow' }} />
 ```
 
-One limitation: it only knows Tailwind's own default theme (colors, spacing,
-font sizes, ...), not a consuming app's custom theme extensions — a
-`bg-primary` utility backed by a project-specific `--color-primary` token
-won't resolve, since that token doesn't exist in Tailwind's stock theme.
+Its limitation is the mirror image of `syncStyle`'s: it only knows
+Tailwind's own default theme (colors, spacing, font sizes, ...), not a
+consuming app's custom theme extensions, since it recompiles from scratch
+rather than reusing anything the host already built.
 
 **`frame.scripts` + a Tailwind runtime (`iframe` mode only)** — load a
 standalone Tailwind runtime script into the iframe via `frame.scripts` so the
@@ -126,9 +141,6 @@ iframe's own document processes its own classes live:
 />
 ```
 
-`frame.syncStyle` alone does **not** do this — it only copies the host page's
-_already-compiled_ stylesheet into the iframe, which by definition can't
-contain utilities that only appear in code the reader types at runtime.
 `scripts` doesn't apply under `frame.mode: 'shadow'` at all (there's no
 separate document to load it into) — see [Preview Modes](./preview-modes.mdx)
 for what does and doesn't apply there.
