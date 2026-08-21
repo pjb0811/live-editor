@@ -23,7 +23,12 @@ export default function DragAndDrop() {
 
   return (
     <Live>
-      <Live.Dnd value={value} onChange={setValue} frame={{ mode: 'shadow' }} />
+      <Live.Dnd
+        value={value}
+        onChange={setValue}
+        dynamicTailwind
+        frame={{ mode: 'shadow', syncStyle: true }}
+      />
     </Live>
   );
 }
