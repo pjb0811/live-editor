@@ -1,8 +1,37 @@
 import type * as Preset from '@docusaurus/preset-classic';
-import type { Config } from '@docusaurus/types';
+import type { Config, Plugin } from '@docusaurus/types';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { themes as prismThemes } from 'prism-react-renderer';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+
+const dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// `@jbpark/live-editor` resolves to `link:..` (see package.json) so this
+// site always builds against the same source as demos/vite.config.ts's
+// direct `../src` import, rather than whatever was last published to npm —
+// see #216. A symlinked dependency's own `require`/`import` calls resolve
+// relative to the symlink's real path (the repo root) unless told
+// otherwise, which would walk up to the *root* project's node_modules/react
+// instead of this project's — two separate React instances, the classic
+// "Invalid hook call" failure. `resolve.symlinks: false` keeps resolution
+// relative to this project regardless of the symlink, and the explicit
+// aliases are a second, more direct guarantee for react/react-dom
+// specifically. Plain `resolve` config, not a bundler-specific plugin
+// instance — works whether `@docusaurus/faster` picks webpack or rspack.
+const dedupeReactPlugin = (): Plugin => ({
+  name: 'dedupe-react-for-linked-live-editor',
+  configureWebpack: () => ({
+    resolve: {
+      symlinks: false,
+      alias: {
+        react: path.resolve(dirname, 'node_modules/react'),
+        'react-dom': path.resolve(dirname, 'node_modules/react-dom'),
+      },
+    },
+  }),
+});
 
 const config: Config = {
   title: 'Live Editor',
@@ -39,6 +68,8 @@ const config: Config = {
   // webpack/rspack-specific DefinePlugin) is the simplest fix: it only runs
   // in the browser, so it doesn't touch Node's real `process` during SSR.
   clientModules: ['./src/clientModules/processShim.ts'],
+
+  plugins: [dedupeReactPlugin],
 
   presets: [
     [
