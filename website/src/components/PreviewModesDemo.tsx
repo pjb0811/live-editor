@@ -33,7 +33,7 @@ const PreviewModesDemo = () => {
             <Preview
               code={SAMPLE_CODE}
               dynamicTailwind
-              frame={{ mode: 'iframe' }}
+              frame={{ mode: 'iframe', syncStyle: true }}
             />
           </Context>
         </div>
@@ -45,7 +45,7 @@ const PreviewModesDemo = () => {
             <Preview
               code={SAMPLE_CODE}
               dynamicTailwind
-              frame={{ mode: 'shadow' }}
+              frame={{ mode: 'shadow', syncStyle: true }}
             />
           </Context>
         </div>
