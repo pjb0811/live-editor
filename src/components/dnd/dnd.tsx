@@ -594,7 +594,9 @@ const Dnd = ({
                       No sections available
                     </Typography.Paragraph>
                     <Typography.Text>
-                      Drag a component from the left to add it
+                      {isMobile
+                        ? 'Tap a component to add it'
+                        : 'Drag a component from the left to add it'}
                     </Typography.Text>
                   </Space>
                 </div>

@@ -12,12 +12,25 @@ interface Props {
   src: string;
   title: string;
   height?: number | string;
+  // `Live.Dnd` switches its own internal layout at Tailwind's `md` (768px)
+  // breakpoint, evaluated against *this iframe's* width — not the reader's
+  // browser window. Sized to the article column (the default), that
+  // breakpoint only clears above a ~2560px browser viewport (see #215), so
+  // every realistic desktop width shows the mobile drawer layout instead of
+  // the desktop palette the page's copy describes. `breakout` escapes the
+  // iframe past the article column's max-width, right up to the page edges,
+  // which clears `md` from ~1150px up. `box-sizing: border-box` matters
+  // here: without it, the 1px border pushes the content box (and so the
+  // breakpoint check) 2px narrower than the frame's own reported width,
+  // occasionally missing `md` by exactly that margin.
+  breakout?: boolean;
 }
 
 export default function DemoFrame({
   src,
   title,
   height = 560,
+  breakout = false,
 }: Props): ReactNode {
   const url = useBaseUrl(src);
 
@@ -25,9 +38,17 @@ export default function DemoFrame({
     display: 'block',
     width: '100%',
     height,
+    boxSizing: 'border-box',
     border: '1px solid var(--ifm-color-emphasis-300)',
     borderRadius: 'var(--ifm-global-radius)',
     background: 'var(--ifm-background-surface-color)',
+    ...(breakout && {
+      position: 'relative',
+      width: '100vw',
+      maxWidth: '100vw',
+      left: '50%',
+      marginLeft: '-50vw',
+    }),
   };
 
   // The demos are served from `static/demos/*` on the same origin as the docs

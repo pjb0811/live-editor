@@ -1,17 +1,26 @@
 ---
 sidebar_position: 4
 title: Drag & Drop
+hide_table_of_contents: true
 ---
 
 import DemoFrame from '@site/src/components/DemoFrame';
 
 # Drag & Drop
 
-`Live.Dnd` lets you build UIs visually: drag a component from the left palette
-onto the canvas, then edit its properties from the panel on the right. Powered
+`Live.Dnd` lets you build UIs visually. At wider sizes, drag a component from
+the left palette onto the canvas, then edit its properties from the panel on
+the right; below `Live.Dnd`'s own responsive breakpoint, the palette and
+panel move into a drawer instead, and a tap adds the section (there's nothing
+visible to drag onto once the canvas is stacked behind the drawer). Powered
 by [`@dnd-kit`](https://dndkit.com/).
 
-<DemoFrame src="demos/dnd/" title="Live Editor — Drag & Drop demo" height={620} />
+<DemoFrame
+  src="demos/dnd/"
+  title="Live Editor — Drag & Drop demo"
+  height={620}
+  breakout
+/>
 
 ```tsx
 import { useState } from 'react';
