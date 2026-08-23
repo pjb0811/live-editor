@@ -23,6 +23,14 @@ interface Props {
   // here: without it, the 1px border pushes the content box (and so the
   // breakpoint check) 2px narrower than the frame's own reported width,
   // occasionally missing `md` by exactly that margin.
+  //
+  // Uses `--scrollbar-width` (custom.css) rather than bare `100vw`/`-50vw`:
+  // on a non-overlay scrollbar (Windows/Linux desktop), `100vw` includes the
+  // scrollbar's own width, so the naive full-bleed technique overflowed past
+  // the page's actual visible right edge and forced a page-wide horizontal
+  // scrollbar — not caught by the original CDP-based verification, since
+  // headless Chrome's overlay scrollbars don't reserve any width, so `100vw`
+  // and the visible width already agreed there.
   breakout?: boolean;
 }
 
@@ -44,10 +52,10 @@ export default function DemoFrame({
     background: 'var(--ifm-background-surface-color)',
     ...(breakout && {
       position: 'relative',
-      width: '100vw',
-      maxWidth: '100vw',
+      width: 'calc(100vw - var(--scrollbar-width, 0px))',
+      maxWidth: 'calc(100vw - var(--scrollbar-width, 0px))',
       left: '50%',
-      marginLeft: '-50vw',
+      marginLeft: 'calc(-50vw + (var(--scrollbar-width, 0px) / 2))',
     }),
   };
 
