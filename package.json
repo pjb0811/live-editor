@@ -104,7 +104,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@jbpark/ui-kit": "^5.4.1",
+    "@jbpark/ui-kit": "^5.4.4",
     "@jbpark/use-hooks": "^4.0.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tiptap/core": "^3.30.1",
