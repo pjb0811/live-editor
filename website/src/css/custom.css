@@ -12,6 +12,16 @@
    investigation for the byte-identical computed-style verification. */
 @import '@jbpark/live-editor/style.css';
 
+/* Widens the doc's own Infima `.container` whenever it contains a
+   `[data-breakout]` element (DemoFrame's `breakout` prop), instead of
+   trying to escape the container via position/margin full-bleed math —
+   see DemoFrame.tsx's doc comment for why that math broke twice. `:has()`
+   fails safe: if it doesn't match for any reason, `.container` just keeps
+   its normal max-width, never wider than the viewport. */
+.container:has([data-breakout]) {
+  max-width: none;
+}
+
 /* Live Editor's black-and-white palette replaces Docusaurus' default green
    theme — matches ui-kit docs' monochrome tone (and the favicon). A neutral
    scale sidesteps the pastel-on-dark-page problem a hue-based accent runs
