@@ -25,27 +25,35 @@
   --scrollbar-width: calc(100vw - 100%);
 }
 
-/* Live Editor's indigo palette replaces Docusaurus' default green theme. */
+/* Live Editor's black-and-white palette replaces Docusaurus' default green
+   theme — matches ui-kit docs' monochrome tone (and the favicon). A neutral
+   scale sidesteps the pastel-on-dark-page problem a hue-based accent runs
+   into: light mode's primary is near-black, dark mode's is near-white, so
+   `hero--primary` and friends (which reuse this token as a full-bleed
+   surface fill, not just for text/links) land on a deliberately dark or
+   light *neutral* panel in both themes instead of an off-brand pastel. */
 :root {
-  --ifm-color-primary: #5b5bd6;
-  --ifm-color-primary-dark: #4f4fc5;
-  --ifm-color-primary-darker: #4949ba;
-  --ifm-color-primary-darkest: #3d3d99;
-  --ifm-color-primary-light: #7070dd;
-  --ifm-color-primary-lighter: #7b7be0;
-  --ifm-color-primary-lightest: #9898e9;
+  --ifm-color-primary: #171717;
+  --ifm-color-primary-dark: #0a0a0a;
+  --ifm-color-primary-darker: #000000;
+  --ifm-color-primary-darkest: #000000;
+  --ifm-color-primary-light: #404040;
+  --ifm-color-primary-lighter: #525252;
+  --ifm-color-primary-lightest: #737373;
   --ifm-code-font-size: 95%;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
-/* A brighter indigo scale maintains contrast on dark backgrounds. */
+/* Dark mode's primary flips to near-white, mirroring ui-kit's own
+   light-on-dark token swap rather than a mid-tone shade of the light
+   palette. */
 [data-theme='dark'] {
-  --ifm-color-primary: #a5b4fc;
-  --ifm-color-primary-dark: #818cf8;
-  --ifm-color-primary-darker: #7480f6;
-  --ifm-color-primary-darkest: #4f46e5;
-  --ifm-color-primary-light: #c7d2fe;
-  --ifm-color-primary-lighter: #d4dcfe;
-  --ifm-color-primary-lightest: #e0e7ff;
+  --ifm-color-primary: #e5e5e5;
+  --ifm-color-primary-dark: #d4d4d4;
+  --ifm-color-primary-darker: #a3a3a3;
+  --ifm-color-primary-darkest: #737373;
+  --ifm-color-primary-light: #f5f5f5;
+  --ifm-color-primary-lighter: #fafafa;
+  --ifm-color-primary-lightest: #ffffff;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
