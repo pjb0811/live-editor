@@ -12,19 +12,6 @@
    investigation for the byte-identical computed-style verification. */
 @import '@jbpark/live-editor/style.css';
 
-/* `100%` on the root element resolves against the viewport minus the
-   vertical scrollbar's own width (browsers carve the scrollbar out of the
-   root's layout box), while `100vw` includes it — so the difference is
-   exactly the scrollbar's width. DemoFrame's `breakout` full-bleed layout
-   subtracts this to avoid overflowing past the page's actual visible
-   right edge on non-overlay scrollbars (Windows/Linux desktop Chrome/
-   Firefox), which otherwise adds a page-wide horizontal scrollbar. Evaluates
-   to 0px on platforms with overlay scrollbars (macOS, mobile), where
-   `100vw` and `100%` already agree. */
-:root {
-  --scrollbar-width: calc(100vw - 100%);
-}
-
 /* Live Editor's black-and-white palette replaces Docusaurus' default green
    theme — matches ui-kit docs' monochrome tone (and the favicon). A neutral
    scale sidesteps the pastel-on-dark-page problem a hue-based accent runs
