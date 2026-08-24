@@ -21,8 +21,10 @@
     "@docusaurus/faster": "3.10.2",
     "@docusaurus/preset-classic": "3.10.2",
     "@jbpark/live-editor": "link:..",
+    "@jbpark/ui-kit": "^5.4.4",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
+    "lucide-react": "^1.31.0",
     "prism-react-renderer": "^2.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
