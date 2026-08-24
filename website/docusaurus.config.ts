@@ -92,7 +92,7 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: '⚡ Live Editor',
+      title: 'Live Editor',
       items: [
         {
           type: 'docSidebar',
