@@ -28,19 +28,23 @@ interface Props {
   // which clears `md` from ~1150px up.
   //
   // Measured with JS (getBoundingClientRect on the iframe's own, untouched
-  // parent) rather than a pure-CSS `100vw`/`-50vw` full-bleed trick — #224
-  // found two independent ways that trick breaks on this site's actual doc
-  // layout: (1) a `--scrollbar-width: calc(100vw - 100%)` custom property
-  // doesn't resolve once at :root the way a real constant would — CSS
-  // substitutes it as a token stream at each *use* site, re-resolving
-  // `100%` there, which made #221's version a complete no-op (its width
-  // and margin cancelled back to exactly the container's own box); (2)
-  // even the original `100vw`/`-50vw` form (#215) assumes the container is
+  // parent, and on `<main>`) rather than a pure-CSS `100vw`/`-50vw`
+  // full-bleed trick — #224 found two independent ways that trick breaks
+  // on this site's actual doc layout: (1) a
+  // `--scrollbar-width: calc(100vw - 100%)` custom property doesn't
+  // resolve once at :root the way a real constant would — CSS substitutes
+  // it as a token stream at each *use* site, re-resolving `100%` there,
+  // which made #221's version a complete no-op (its width and margin
+  // cancelled back to exactly the container's own box); (2) even the
+  // original `100vw`/`-50vw` form (#215) assumes the container is
   // horizontally centered in the viewport, which doesn't hold on this
   // layout (a left sidebar), so it overflowed the visible viewport on the
-  // right by however far off-center the column actually sits. Measuring
-  // the real DOM position sidesteps both: no constant-folding assumption,
-  // no centering assumption.
+  // right by however far off-center the column actually sits. Bounding
+  // the breakout at `<main>`'s own left edge (a sibling of the doc
+  // sidebar, so never including its width) rather than the viewport's
+  // left edge (x=0) also matters: an earlier version of this fix shifted
+  // all the way to x=0, which visually slid the iframe underneath/over
+  // the sidebar instead of stopping next to it.
   breakout?: boolean;
 }
 
@@ -73,25 +77,40 @@ export default function DemoFrame({
     }
 
     const update = () => {
+      const iframe = iframeRef.current;
       // Measures the iframe's own parent, not the iframe itself: the
       // parent is never given breakout styles, so its rect stays an
       // accurate, stable reference on every recomputation. Measuring the
       // iframe directly here would read back whatever offset a *previous*
       // update already applied, compounding instead of correcting.
-      const parent = iframeRef.current?.parentElement;
+      const parent = iframe?.parentElement;
 
-      if (!parent) {
+      if (!iframe || !parent) {
         return;
       }
 
-      const rect = parent.getBoundingClientRect();
+      const parentRect = parent.getBoundingClientRect();
       const viewportWidth = document.documentElement.clientWidth;
+      // Docusaurus' doc sidebar (`<aside class="theme-doc-sidebar-...">`)
+      // is a sibling of `<main>`, not an ancestor of the iframe — so
+      // `<main>`'s own left edge sits right after it. Bounding the
+      // breakout there (instead of at the viewport's left edge, x=0)
+      // keeps it from sliding underneath/over the sidebar, which is what
+      // shifting all the way to x=0 did.
+      const main = iframe.closest('main');
+      const leftBound = main
+        ? main.getBoundingClientRect().left
+        : parentRect.left;
+      // Clamped so a missing/misplaced `<main>` can only ever shrink the
+      // breakout back toward "no-op", never push it the wrong direction.
+      const marginLeft = Math.min(0, leftBound - parentRect.left);
+      const width = Math.max(parentRect.width, viewportWidth - leftBound);
 
       setBreakoutStyle({
         position: 'relative',
-        width: `${viewportWidth}px`,
-        maxWidth: `${viewportWidth}px`,
-        marginLeft: `${-rect.left}px`,
+        width: `${width}px`,
+        maxWidth: `${width}px`,
+        marginLeft: `${marginLeft}px`,
       });
     };
 
