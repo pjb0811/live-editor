@@ -1,10 +1,4 @@
-import {
-  type CSSProperties,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import useBaseUrl from '@docusaurus/useBaseUrl';
 
@@ -23,28 +17,27 @@ interface Props {
   // browser window. Sized to the article column (the default), that
   // breakpoint only clears above a ~2560px browser viewport (see #215), so
   // every realistic desktop width shows the mobile drawer layout instead of
-  // the desktop palette the page's copy describes. `breakout` escapes the
-  // iframe past the article column's max-width, right up to the page edges,
-  // which clears `md` from ~1150px up.
+  // the desktop palette the page's copy describes.
   //
-  // Measured with JS (getBoundingClientRect on the iframe's own, untouched
-  // parent) rather than a pure-CSS `100vw`/`-50vw` full-bleed trick — #224
-  // found two independent ways that trick breaks on this site's actual doc
-  // layout: (1) a `--scrollbar-width: calc(100vw - 100%)` custom property
-  // doesn't resolve once at :root the way a real constant would — CSS
-  // substitutes it as a token stream at each *use* site, re-resolving
-  // `100%` there, which made #221's version a complete no-op (its width
-  // and margin cancelled back to exactly the container's own box); (2)
-  // even the original `100vw`/`-50vw` form (#215) assumes the container is
-  // horizontally centered in the viewport, which doesn't hold on this
-  // layout (a left sidebar), so it overflowed the visible viewport on the
-  // right by however far off-center the column actually sits. Measuring
-  // the real DOM position sidesteps both: no constant-folding assumption,
-  // no centering assumption.
+  // `breakout` widens the doc's own Infima `.container` (via the
+  // `[data-breakout]` selector in custom.css) instead of trying to escape
+  // it with position/margin full-bleed math. Two earlier approaches both
+  // got that math wrong in ways this environment couldn't visually verify
+  // before shipping: a `--scrollbar-width: calc(100vw - 100%)` custom
+  // property that doesn't fold to a constant the way `:root` suggests
+  // (#224), and a JS-measured version that then slid under the doc
+  // sidebar because it measured to the viewport's edge instead of
+  // `<main>`'s. Widening `.container` in place has a much safer failure
+  // mode: if the `:has()` selector doesn't match for any reason, the page
+  // just keeps its normal column width — never wider than the viewport,
+  // never overlapping the sidebar, because there's no position/width
+  // arithmetic to get wrong in the first place. Tradeoff: this widens the
+  // whole page's prose on these two pages, not just the demo — accepted
+  // for now in exchange for that reliability.
   breakout?: boolean;
 }
 
-const baseStyle: CSSProperties = {
+const style: CSSProperties = {
   display: 'block',
   width: '100%',
   boxSizing: 'border-box',
@@ -60,73 +53,15 @@ export default function DemoFrame({
   breakout = false,
 }: Props): ReactNode {
   const url = useBaseUrl(src);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  // Empty until the first post-mount measurement, so server-rendered and
-  // first-paint markup is the safe non-breakout (100%-width) layout rather
-  // than a guess — avoids ever rendering an overflowing box, at the cost
-  // of a one-time widen once JS measures the real position.
-  const [breakoutStyle, setBreakoutStyle] = useState<CSSProperties>({});
 
-  useEffect(() => {
-    if (!breakout) {
-      return;
-    }
-
-    const update = () => {
-      // Measures the iframe's own parent, not the iframe itself: the
-      // parent is never given breakout styles, so its rect stays an
-      // accurate, stable reference on every recomputation. Measuring the
-      // iframe directly here would read back whatever offset a *previous*
-      // update already applied, compounding instead of correcting.
-      const parent = iframeRef.current?.parentElement;
-
-      if (!parent) {
-        return;
-      }
-
-      const rect = parent.getBoundingClientRect();
-      const viewportWidth = document.documentElement.clientWidth;
-
-      setBreakoutStyle({
-        position: 'relative',
-        width: `${viewportWidth}px`,
-        maxWidth: `${viewportWidth}px`,
-        marginLeft: `${-rect.left}px`,
-      });
-    };
-
-    update();
-
-    const parent = iframeRef.current?.parentElement;
-    const resizeObserver = parent ? new ResizeObserver(update) : undefined;
-    resizeObserver?.observe(parent!);
-    // Belt-and-suspenders alongside the ResizeObserver: a scrollbar
-    // appearing/disappearing (changing document.documentElement.clientWidth)
-    // doesn't necessarily resize the column element the observer watches.
-    window.addEventListener('resize', update);
-
-    return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, [breakout]);
-
-  // The demos are served from `static/demos/*` on the same origin as the docs
-  // site and run arbitrary reader-authored code (the Editor demo compiles and
-  // runs whatever is typed). Without a sandbox that makes the frame same-origin
-  // *and* unsandboxed, so demo code could reach `window.parent` and script the
-  // docs page. `sandbox="allow-scripts"` drops the frame into an opaque origin,
-  // which removes that parent access while still letting the self-contained
-  // bundles run. `allow-same-origin` is intentionally omitted — combined with
-  // `allow-scripts` it would hand the frame its origin back and defeat this.
   return (
     <iframe
-      ref={iframeRef}
       src={url}
       title={title}
       loading="lazy"
-      style={{ ...baseStyle, height, ...breakoutStyle }}
+      style={{ ...style, height }}
       sandbox="allow-scripts"
+      {...(breakout ? { 'data-breakout': true } : {})}
     />
   );
 }
