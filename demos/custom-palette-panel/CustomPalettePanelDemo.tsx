@@ -15,6 +15,12 @@ import {
   validateBindingValue,
 } from '~/utils/ast';
 
+// Above this many leaves, `flattenEditableValue`'s result is more likely a
+// serialized document tree (tag names, ids, individual attributes...) than
+// a form a person would want to fill in field-by-field — see the "Feature
+// Cards" binding below.
+const MAX_EDITABLE_ENTRIES = 20;
+
 const ParsedValueField = ({
   label,
   value,
@@ -212,9 +218,25 @@ const CustomPalettePanelDemo = () => {
                     bindings.map((binding, index) => {
                       const isMultiline =
                         binding.type === 'jsx' || binding.type === 'richtext';
-                      const entries = isMultiline
+                      // Some `children` bindings hold a serialized document
+                      // tree rather than a few simple fields — Features'
+                      // "Feature Cards" flattens to 240 leaves (tag names,
+                      // ids, individual attributes...), which is technically
+                      // correct but useless as a form. Capping the entry
+                      // count treats those as opaque instead of rendering a
+                      // wall of tiny inputs; a value long enough to likely be
+                      // one of these (or just a long plain string) falls
+                      // back to a textarea rather than the single-line
+                      // ValidatedField either way.
+                      const flattened = isMultiline
                         ? null
                         : flattenEditableValue(binding.value);
+                      const entries =
+                        flattened && flattened.length <= MAX_EDITABLE_ENTRIES
+                          ? flattened
+                          : null;
+                      const useTextarea =
+                        isMultiline || (!entries && binding.value.length > 120);
 
                       return (
                         <label
@@ -242,7 +264,7 @@ const CustomPalettePanelDemo = () => {
                                 </option>
                               ))}
                             </select>
-                          ) : isMultiline ? (
+                          ) : useTextarea ? (
                             <textarea
                               className="w-full rounded border border-gray-300
                                 px-2 py-1 text-sm"
