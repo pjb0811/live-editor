@@ -22,7 +22,11 @@ drag-and-drop and field editing keep working exactly as before.
 Drag in the demo's **Hero** item and select it to see its "Background
 Style" field — an object-shaped binding with no declared `type` at all —
 rendered as one input per key instead of an opaque string, by inferring
-structure from the parsed value rather than requiring it upfront.
+structure from the parsed value rather than requiring it upfront. Try
+**Stats** or **FAQ** too: their `items` bindings are arrays of objects
+whose own `children`/`label` fields are further, separately data-bound
+JSX elements — each array entry gets its own group of fields instead of
+one opaque blob for the whole array.
 
 ## Custom palette
 
@@ -156,24 +160,64 @@ the built-in panel uses. Switch on `binding.type` to render your own control:
 `BindingType` is a closed union of 12 values: `array`, `object`, `string`,
 `number`, `boolean`, `color`, `jsx`, `richtext`, `date`, `url`,
 `icon-picker`, `asset-picker`. Switching on it alone is enough for the
-scalar types, but `object`/`array` values are only opaque strings unless
-the binding also declares `render` — check for it before assuming you can
-treat those two types as plain text.
+scalar types; for `object`/`array` values, see `flattenEditableValue`
+below rather than treating them as plain text.
 
 Constraints declared on a binding (`min`/`max`/`pattern`/`required`) aren't
 enforced automatically — call the exported `validateBindingValue(binding,
 value)` yourself before committing an edit, the same way the built-in panel
 does.
 
-`BindingType`, `BindingOption`, `BindingRenderMap`, and `validateBindingValue`
-aren't exported from the package root — import them from the `utils/ast`
-subpath instead:
+### Editing `object`/`array` values
+
+`binding.value` is always a string — for an `object`/`array` binding, that
+string is a serialized structure, not a scalar. A binding's own declared
+`render` map (above) is one way to know how to decompose it, but most
+content doesn't declare one; e.g. the shipped Hero item's "Background
+Style" binding on `style` has no `type` or `render` at all, since `style`
+is just naturally object-shaped.
+
+`flattenEditableValue(value)` recovers editable structure straight from
+the value itself, with no declaration required: it parses the string
+(the same way `parseValue` does) and, if the result is an object or array,
+recursively walks it, returning one `{ path, value }` entry per primitive
+leaf found. `path` is a list of keys/indices you can hand to
+`setEditableValue` to commit an edit to just that leaf, re-serializing the
+whole structure back into a string for `binding.onChange`. A nested
+object/array is walked into further; a string, number, or boolean is
+always a leaf — including one that happens to contain JSX. This is what
+lets it handle the shipped Stats/FAQ sections' `items` arrays of
+`{ key, children }`, where `children` is itself a separately data-bound
+JSX element: `children` comes back as one opaque text leaf rather than
+being decomposed further, exactly like `parseValue` already treats JSX
+elsewhere.
+
+```tsx
+const entries = flattenEditableValue(binding.value);
+// null if the value isn't an object/array, or is empty
+
+entries?.map(({ path, value }) => (
+  <input
+    key={path.join('.')}
+    defaultValue={String(value)}
+    onBlur={e =>
+      binding.onChange(setEditableValue(binding.value, path, e.target.value))
+    }
+  />
+));
+```
+
+`BindingType`, `BindingOption`, `BindingRenderMap`, `validateBindingValue`,
+`flattenEditableValue`, and `setEditableValue` aren't exported from the
+package root — import them from the `utils/ast` subpath instead:
 
 ```ts
 import {
   type BindingOption,
   type BindingRenderMap,
   type BindingType,
+  flattenEditableValue,
+  setEditableValue,
   validateBindingValue,
 } from '@jbpark/live-editor/utils/ast';
 ```

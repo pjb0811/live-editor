@@ -8,8 +8,10 @@ import {
   createNodeFromValue,
   extractNodeValue,
   extractObjectProperties,
+  flattenEditableValue,
   parseArrayExpression,
   parseValue,
+  setEditableValue,
 } from './value';
 
 describe('parseValue', () => {
@@ -252,5 +254,96 @@ describe('arrayExpressionToCode', () => {
     expect(code).toBe(generateCode(t.arrayExpression(elements)));
     expect(code).toContain('a: 1');
     expect(code).toContain('b: 2');
+  });
+});
+
+describe('flattenEditableValue', () => {
+  it('flattens a simple object into one entry per key', () => {
+    expect(flattenEditableValue("{ backgroundColor: '#6366f1' }")).toEqual([
+      { path: ['backgroundColor'], value: '#6366f1' },
+    ]);
+  });
+
+  it('flattens an array of primitives into one entry per index', () => {
+    expect(flattenEditableValue('[1, 2, 3]')).toEqual([
+      { path: [0], value: 1 },
+      { path: [1], value: 2 },
+      { path: [2], value: 3 },
+    ]);
+  });
+
+  it('recurses into an array of objects, treating a JSX-bearing string as a leaf', () => {
+    const value = `[{ key: 'stats-row', children: <div data-id="x">Some JSX</div> }]`;
+
+    expect(flattenEditableValue(value)).toEqual([
+      { path: [0, 'key'], value: 'stats-row' },
+      { path: [0, 'children'], value: '<div data-id="x">Some JSX</div>' },
+    ]);
+  });
+
+  it('recurses into a plain nested object', () => {
+    expect(flattenEditableValue('{a: {b: {c: 1}}}')).toEqual([
+      { path: ['a', 'b', 'c'], value: 1 },
+    ]);
+  });
+
+  it('returns null for a value that is not object/array-shaped', () => {
+    expect(flattenEditableValue('42')).toBeNull();
+    expect(flattenEditableValue('hello')).toBeNull();
+  });
+
+  it('returns null for an empty object or array', () => {
+    expect(flattenEditableValue('{}')).toBeNull();
+    expect(flattenEditableValue('[]')).toBeNull();
+  });
+
+  it('omits null/undefined values rather than representing them as a leaf', () => {
+    expect(flattenEditableValue('{a: 1, b: null, c: undefined}')).toEqual([
+      { path: ['a'], value: 1 },
+    ]);
+  });
+});
+
+describe('setEditableValue', () => {
+  it('replaces a top-level key and re-serializes', () => {
+    const result = setEditableValue("{a: 1, b: 'x'}", ['a'], 2);
+
+    expect(JSON.parse(result)).toEqual({ a: 2, b: 'x' });
+  });
+
+  it('replaces a leaf nested inside an array of objects', () => {
+    const value = `[{ key: 'stats-row', children: <div data-id="x">Some JSX</div> }]`;
+    const result = setEditableValue(value, [0, 'key'], 'new-key');
+
+    expect(JSON.parse(result)).toEqual([
+      { key: 'new-key', children: '<div data-id="x">Some JSX</div>' },
+    ]);
+  });
+
+  it('fails safe (returns the original value) for a missing key', () => {
+    expect(setEditableValue('{a: 1}', ['nonexistent'], 5)).toBe('{a: 1}');
+  });
+
+  it('fails safe (returns the original value) for a path through a non-object', () => {
+    expect(setEditableValue('{a: 1}', ['a', 'b'], 5)).toBe('{a: 1}');
+  });
+
+  it('fails safe (returns the original value) when the value is not object/array-shaped', () => {
+    expect(setEditableValue('42', ['a'], 5)).toBe('42');
+  });
+
+  it('fails safe (returns the original value) for an empty path', () => {
+    expect(setEditableValue('{a: 1}', [], 5)).toBe('{a: 1}');
+  });
+
+  it('round-trips with flattenEditableValue', () => {
+    const value = '[1, 2, 3]';
+    const updated = setEditableValue(value, [1], 99);
+
+    expect(flattenEditableValue(updated)).toEqual([
+      { path: [0], value: 1 },
+      { path: [1], value: 99 },
+      { path: [2], value: 3 },
+    ]);
   });
 });
