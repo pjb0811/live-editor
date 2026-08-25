@@ -19,6 +19,11 @@ drag-and-drop and field editing keep working exactly as before.
   breakout
 />
 
+Drag in the demo's **Hero** item and select it to see its "Background
+Style" field — an object-shaped binding with no declared `type` at all —
+rendered as one input per key instead of an opaque string, by inferring
+structure from the parsed value rather than requiring it upfront.
+
 ## Custom palette
 
 `renderPalette` receives a `PaletteRenderData` object:
