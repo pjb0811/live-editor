@@ -92,6 +92,36 @@ describe('validateBindingValue', () => {
     ).toEqual({ valid: true });
   });
 
+  // PanelBinding.value (what a custom renderPanel receives) is always a
+  // string, even for type: 'number' bindings — see #225. These pin that
+  // min/max apply to the numeric-string form the same way they already do
+  // for an actual number.
+  it('fails when a numeric string is below min', () => {
+    const result = validateBindingValue(makeBinding({ min: 10 }), '5');
+
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('10');
+  });
+
+  it('fails when a numeric string is above max', () => {
+    const result = validateBindingValue(makeBinding({ max: 100 }), '150');
+
+    expect(result.valid).toBe(false);
+    expect(result.message).toContain('100');
+  });
+
+  it('passes when a numeric string is within min/max bounds', () => {
+    expect(validateBindingValue(makeBinding({ min: 0, max: 10 }), '5')).toEqual(
+      { valid: true },
+    );
+  });
+
+  it('does not apply min/max to a whitespace-only string', () => {
+    expect(
+      validateBindingValue(makeBinding({ min: 10, max: 20 }), '   '),
+    ).toEqual({ valid: true });
+  });
+
   it('does not apply pattern to non-string values', () => {
     expect(
       validateBindingValue(makeBinding({ pattern: '^[0-9]+$' }), 42),

@@ -27,6 +27,7 @@ import { DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
 import {
   type BindingOption,
+  type BindingRenderMap,
   type BindingType,
   type DataAttrNode,
   extract,
@@ -106,6 +107,17 @@ export interface PanelBinding {
   type?: BindingType;
   // Present when the binding defines a fixed option set (render a <select>).
   options?: BindingOption[];
+  // Present for `object`/`array` bindings whose nested keys/items declare
+  // their own types — the same map the built-in panel uses to type each
+  // nested field instead of falling back to a plain string input.
+  render?: BindingRenderMap;
+  // Constraints declared on the binding. `min`/`max` apply even though
+  // `value` below is a string (see `validateBindingValue`, which coerces
+  // numeric strings before comparing).
+  min?: number;
+  max?: number;
+  pattern?: string;
+  required?: boolean;
   // Current serialized value — the same string the built-in field receives.
   value: string;
   // Commit a new value through the same AST-update pipeline the built-in
@@ -456,6 +468,11 @@ const Dnd = ({
         property: binding.property,
         type: binding.type,
         options: binding.options,
+        render: binding.render,
+        min: binding.min,
+        max: binding.max,
+        pattern: binding.pattern,
+        required: binding.required,
         value: getCurrentValue(node, binding.property),
         onChange: (value: string) =>
           onFieldChange({ id: dataId, label: binding.label, value }),
