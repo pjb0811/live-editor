@@ -155,11 +155,19 @@ export interface UpdateResult {
   success: boolean;
 }
 
+// `label` is a display string — reworded, duplicated, or translated at
+// authors' whim — so it identifies a binding only as a fallback. `property`
+// (an actual key, unique per element) is the real identity; pass it
+// whenever the caller has it (every internal caller does, via
+// PanelBinding.property). See #240: two bindings sharing a label used to
+// resolve to whichever `.find()` hit first, silently dropping the other's
+// edit while still reporting success.
 export const update = (
   code: string,
   dataId: string,
   label: string,
   value: string,
+  property?: string,
 ): UpdateResult => {
   try {
     const wrapped = wrap(code);
@@ -215,13 +223,22 @@ export const update = (
 
         const bindings = parseBinding(bindingValue);
 
-        const propertyBinding = bindings.find(
-          binding => binding.label === label,
+        // Prefer `property` (an actual key) over `label` (a display
+        // string) — see the module-level comment on `update`. Either way,
+        // more than one match on this element is an authoring ambiguity
+        // (duplicate labels, or a genuine property collision), not a case
+        // to silently resolve by picking the first — see #240.
+        const matches = bindings.filter(binding =>
+          property !== undefined
+            ? binding.property === property
+            : binding.label === label,
         );
 
-        if (!propertyBinding) {
+        if (matches.length !== 1) {
           return;
         }
+
+        const propertyBinding = matches[0]!;
 
         switch (propertyBinding.property) {
           case BINDING_PROP.INNER_TEXT: {
@@ -295,13 +312,24 @@ export const update = (
 
 export const bulkUpdate = (
   raw: string,
-  entries: { dataId: string; label: string; value: string }[],
+  entries: {
+    dataId: string;
+    label: string;
+    value: string;
+    property?: string;
+  }[],
 ): UpdateResult => {
   let current = raw;
   let allSucceeded = true;
 
   for (const entry of entries) {
-    const result = update(current, entry.dataId, entry.label, entry.value);
+    const result = update(
+      current,
+      entry.dataId,
+      entry.label,
+      entry.value,
+      entry.property,
+    );
     current = result.code;
     allSucceeded = allSucceeded && result.success;
   }

@@ -421,13 +421,15 @@ const Dnd = ({
   const onFieldChange = ({
     id,
     label,
+    property,
     value: fieldValue,
   }: {
     id: string;
     label: string;
+    property: string;
     value: string;
   }) => {
-    const result = update(updatedCode, id, label, fieldValue);
+    const result = update(updatedCode, id, label, fieldValue, property);
 
     if (!result.success) {
       Toast.error('Failed to update this field', {
@@ -475,7 +477,12 @@ const Dnd = ({
         required: binding.required,
         value: getCurrentValue(node, binding.property),
         onChange: (value: string) =>
-          onFieldChange({ id: dataId, label: binding.label, value }),
+          onFieldChange({
+            id: dataId,
+            label: binding.label,
+            property: binding.property,
+            value,
+          }),
       }));
     });
     // onFieldChange is intentionally omitted — it's recreated every render

@@ -28,14 +28,12 @@ interface Props {
   binding: BindingItem;
   id: string;
   value: string;
-  onChange?: (params: { id: string; label: string; value: string }) => void;
-}
-
-interface Props {
-  binding: BindingItem;
-  id: string;
-  value: string;
-  onChange?: (params: { id: string; label: string; value: string }) => void;
+  onChange?: (params: {
+    id: string;
+    label: string;
+    property: string;
+    value: string;
+  }) => void;
 }
 
 const isColorProperty = (propertyName: string): boolean => {
@@ -87,13 +85,20 @@ const COLOR_COMMIT_DELAY = 75;
 interface ColorPickerFieldProps {
   id: string;
   label: string;
+  property: string;
   value: string;
-  onChange?: (params: { id: string; label: string; value: string }) => void;
+  onChange?: (params: {
+    id: string;
+    label: string;
+    property: string;
+    value: string;
+  }) => void;
 }
 
 const ColorPickerField = ({
   id,
   label,
+  property,
   value,
   onChange,
 }: ColorPickerFieldProps) => {
@@ -127,7 +132,7 @@ const ColorPickerField = ({
       return;
     }
     lastCommittedRef.current = next;
-    onChange?.({ id, label, value: next });
+    onChange?.({ id, label, property, value: next });
   };
 
   const debouncedCommit = useDebounce(() => commit(liveValue), {
@@ -186,6 +191,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
           onChange?.({
             id,
             label: binding.label,
+            property: binding.property,
             value: next,
           });
         }}
@@ -203,6 +209,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             onChange?.({
               id,
               label: binding.label,
+              property: binding.property,
               value: next,
             });
           }
@@ -225,6 +232,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             onChange?.({
               id,
               label: binding.label,
+              property: binding.property,
               value: next,
             });
           }
@@ -241,6 +249,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
           onChange?.({
             id,
             label: binding.label,
+            property: binding.property,
             value: next,
           });
         }}
@@ -293,6 +302,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
                 onChange?.({
                   id,
                   label: binding.label,
+                  property: binding.property,
                   value: JSON.stringify(updated),
                 });
               }}
@@ -311,6 +321,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
           onChange?.({
             id,
             label: binding.label,
+            property: binding.property,
             value: checked.toString(),
           });
         }}
@@ -330,6 +341,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             onChange?.({
               id,
               label: binding.label,
+              property: binding.property,
               value: next,
             });
           }
@@ -343,6 +355,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
       <ColorPickerField
         id={id}
         label={binding.label}
+        property={binding.property}
         value={normalizeToHex(stringValue)}
         onChange={onChange}
       />
@@ -369,6 +382,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
               onChange?.({
                 id,
                 label: binding.label,
+                property: binding.property,
                 value: next,
               });
             }
@@ -403,6 +417,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
               onChange?.({
                 id,
                 label: binding.label,
+                property: binding.property,
                 value: next,
               });
             }
@@ -428,6 +443,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
               onChange?.({
                 id,
                 label: binding.label,
+                property: binding.property,
                 value: next,
               });
             }
@@ -469,6 +485,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
               onChange?.({
                 id,
                 label: binding.label,
+                property: binding.property,
                 value: next,
               });
             }
@@ -486,6 +503,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
               onChange?.({
                 id,
                 label: binding.label,
+                property: binding.property,
                 value: next,
               });
             }
@@ -520,6 +538,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
               onChange?.({
                 id,
                 label: binding.label,
+                property: binding.property,
                 value: next,
               });
             }
@@ -552,6 +571,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             onChange?.({
               id,
               label: binding.label,
+              property: binding.property,
               value: next,
             });
           }

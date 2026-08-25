@@ -4,7 +4,12 @@ import Field from './field';
 
 export interface FieldEditorProps {
   data: DataAttrNode;
-  onChange?: (params: { id: string; label: string; value: string }) => void;
+  onChange?: (params: {
+    id: string;
+    label: string;
+    property: string;
+    value: string;
+  }) => void;
 }
 
 const Node = ({ data, onChange }: FieldEditorProps) => {

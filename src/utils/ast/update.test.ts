@@ -111,6 +111,65 @@ describe('update', () => {
 
     expect(result).toEqual({ code: CODE, success: false });
   });
+
+  // #240: label is a display string, not an identifier — these pin
+  // `property` as the real identity, with `label` only as a fallback for
+  // callers that don't have `property` on hand.
+  describe('identity: property vs. label (#240)', () => {
+    const DUPLICATE_LABEL_CODE = `
+<div
+  data-id="b"
+  data-binding="[{label:'Same',property:'title'},{label:'Same',property:'alt'}]"
+  title="t"
+  alt="a"
+>x</div>
+`;
+
+    it('matches by property when provided, ignoring which binding the label happens to point at', () => {
+      const result = update(
+        DUPLICATE_LABEL_CODE,
+        'b',
+        'Same',
+        'new alt',
+        'alt',
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('alt="new alt"');
+      expect(result.code).toContain('title="t"');
+    });
+
+    it('resolves a translated label correctly as long as property is unchanged', () => {
+      // Simulates i18n: the panel shows a translated label, but the
+      // authored `property` — the real identity — never changes.
+      const result = update(
+        CODE,
+        'a',
+        '텍스트 (translated)',
+        'new text',
+        'innerText',
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('>new text<');
+    });
+
+    it('fails safe instead of silently writing the first match when property is ambiguous on one element', () => {
+      const ambiguousPropertyCode = `<div data-id="x" data-binding="[{label:'A',property:'dup'},{label:'B',property:'dup'}]" dup="orig">x</div>`;
+
+      const result = update(ambiguousPropertyCode, 'x', 'A', 'next', 'dup');
+
+      expect(result).toEqual({ code: ambiguousPropertyCode, success: false });
+    });
+
+    it('fails safe on the label fallback too when two bindings share a label — the #240 repro', () => {
+      // Previously: `.find()` silently picked the first ("title"),
+      // "alt" was never touched, and the caller still got success: true.
+      const result = update(DUPLICATE_LABEL_CODE, 'b', 'Same', 'zzz');
+
+      expect(result).toEqual({ code: DUPLICATE_LABEL_CODE, success: false });
+    });
+  });
 });
 
 describe('bulkUpdate', () => {
@@ -135,5 +194,17 @@ describe('bulkUpdate', () => {
 
     expect(result.success).toBe(false);
     expect(result.code).toContain('>bulk text<');
+  });
+
+  it("threads an entry's optional property through to update, same as calling it directly (#240)", () => {
+    const duplicateLabelCode = `<div data-id="b" data-binding="[{label:'Same',property:'title'},{label:'Same',property:'alt'}]" title="t" alt="a">x</div>`;
+
+    const result = bulkUpdate(duplicateLabelCode, [
+      { dataId: 'b', label: 'Same', property: 'alt', value: 'bulk alt' },
+    ]);
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain('alt="bulk alt"');
+    expect(result.code).toContain('title="t"');
   });
 });
