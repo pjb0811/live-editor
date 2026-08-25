@@ -7,61 +7,13 @@ import Context from '~/components/context';
 import Dnd, { type PanelBinding } from '~/components/dnd';
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { cn } from '~/utils';
-import { parseValue, validateBindingValue } from '~/utils/ast';
-
-type Primitive = string | number | boolean;
-
-const isPrimitive = (value: unknown): value is Primitive =>
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  typeof value === 'boolean';
-
-// A binding's declared `type`/`render` (see #225) is one way to know a
-// value is structured, but most existing content — e.g. the shipped
-// Hero item's "Background Style" binding on `style` — declares neither;
-// it's just an object-shaped string because that's what `style` actually
-// is. `parseValue` (also exported from utils/ast) recovers the real JS
-// value from that string regardless, so inferring structure from the
-// *parsed value's own shape* works on binding declared today, not just
-// ones authored with a `render` map in mind. Kept intentionally shallow:
-// an object/array is only treated as editable here if every one of its
-// own values is a primitive — a nested object/array falls back to the
-// plain text field below rather than recursing.
-interface EditableShape {
-  isArray: boolean;
-  entries: { key: string; value: Primitive }[];
-}
-
-const parseEditableShape = (value: string): EditableShape | null => {
-  const parsed = parseValue(value);
-
-  if (Array.isArray(parsed)) {
-    return parsed.every(isPrimitive)
-      ? {
-          isArray: true,
-          entries: parsed.map((item, index) => ({
-            key: String(index),
-            value: item,
-          })),
-        }
-      : null;
-  }
-
-  if (typeof parsed === 'object' && parsed !== null) {
-    const entries = Object.entries(parsed);
-    return entries.every(([, v]) => isPrimitive(v))
-      ? {
-          isArray: false,
-          entries: entries.map(([key, value]) => ({
-            key,
-            value: value as Primitive,
-          })),
-        }
-      : null;
-  }
-
-  return null;
-};
+import {
+  type EditablePrimitive,
+  type EditableValueEntry,
+  flattenEditableValue,
+  setEditableValue,
+  validateBindingValue,
+} from '~/utils/ast';
 
 const ParsedValueField = ({
   label,
@@ -69,8 +21,8 @@ const ParsedValueField = ({
   onChange,
 }: {
   label: string;
-  value: Primitive;
-  onChange: (next: Primitive) => void;
+  value: EditablePrimitive;
+  onChange: (next: EditablePrimitive) => void;
 }) => {
   if (typeof value === 'boolean') {
     return (
@@ -111,41 +63,34 @@ const ParsedValueField = ({
   );
 };
 
-// Renders one labeled input per key/index of an object- or array-shaped
-// binding value, reconstructing and re-serializing the whole structure on
-// each field's change. `shape` is recomputed by the caller from the raw
-// string each render, so this always reflects the latest committed value.
+// Renders one labeled input per leaf `flattenEditableValue` (utils/ast)
+// found in the binding's current value — including a leaf nested inside
+// an array of objects, e.g. the shipped Stats/FAQ sections' `items` array
+// of `{ key, children }`, where `children` is itself a further, separately
+// data-bound element and is treated as an opaque text leaf here rather
+// than decomposed. Each field commits through `setEditableValue`, which
+// replaces just that one leaf and re-serializes the whole structure back
+// into the string `binding.onChange` expects.
 const ParsedValueEditor = ({
   binding,
-  shape,
+  entries,
 }: {
   binding: PanelBinding;
-  shape: EditableShape;
-}) => {
-  const onFieldChange = (key: string, next: Primitive) => {
-    const nextEntries = shape.entries.map(entry =>
-      entry.key === key ? { ...entry, value: next } : entry,
-    );
-    const nextValue = shape.isArray
-      ? nextEntries.map(entry => entry.value)
-      : Object.fromEntries(nextEntries.map(entry => [entry.key, entry.value]));
-
-    binding.onChange(JSON.stringify(nextValue));
-  };
-
-  return (
-    <div className="space-y-2 rounded border border-gray-200 p-2">
-      {shape.entries.map(({ key, value }) => (
-        <ParsedValueField
-          key={key}
-          label={shape.isArray ? `[${key}]` : key}
-          value={value}
-          onChange={next => onFieldChange(key, next)}
-        />
-      ))}
-    </div>
-  );
-};
+  entries: EditableValueEntry[];
+}) => (
+  <div className="space-y-2 rounded border border-gray-200 p-2">
+    {entries.map(({ path, value }) => (
+      <ParsedValueField
+        key={path.join('.')}
+        label={path.join('.')}
+        value={value}
+        onChange={next =>
+          binding.onChange(setEditableValue(binding.value, path, next))
+        }
+      />
+    ))}
+  </div>
+);
 
 // The plain-input fallback field, running `binding.min`/`max`/`pattern`/
 // `required` through the exported `validateBindingValue` before
@@ -267,9 +212,9 @@ const CustomPalettePanelDemo = () => {
                     bindings.map((binding, index) => {
                       const isMultiline =
                         binding.type === 'jsx' || binding.type === 'richtext';
-                      const shape = isMultiline
+                      const entries = isMultiline
                         ? null
-                        : parseEditableShape(binding.value);
+                        : flattenEditableValue(binding.value);
 
                       return (
                         <label
@@ -279,10 +224,10 @@ const CustomPalettePanelDemo = () => {
                           <span className="text-xs font-semibold text-gray-700">
                             {binding.label}
                           </span>
-                          {shape ? (
+                          {entries ? (
                             <ParsedValueEditor
                               binding={binding}
-                              shape={shape}
+                              entries={entries}
                             />
                           ) : binding.options ? (
                             <select

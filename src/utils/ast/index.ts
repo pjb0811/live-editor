@@ -11,13 +11,20 @@ export type {
 } from './types';
 
 export { findEditableChildren, getCurrentValue, parseBinding } from './binding';
+export type {
+  EditablePathSegment,
+  EditablePrimitive,
+  EditableValueEntry,
+} from './value';
 export {
   arrayExpressionToCode,
   createNodeFromValue,
   extractNodeValue,
   extractObjectProperties,
+  flattenEditableValue,
   parseArrayExpression,
   parseValue,
+  setEditableValue,
 } from './value';
 export { generateCode } from './helpers';
 export { clearExtractCache, extract } from './extract';

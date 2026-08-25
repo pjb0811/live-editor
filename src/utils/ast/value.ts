@@ -154,6 +154,134 @@ export const parseValue = (value: unknown): unknown => {
   return value;
 };
 
+export type EditablePathSegment = string | number;
+export type EditablePrimitive = string | number | boolean;
+
+export interface EditableValueEntry {
+  path: EditablePathSegment[];
+  value: EditablePrimitive;
+}
+
+const MAX_FLATTEN_DEPTH = 20;
+
+const isEditablePrimitive = (value: unknown): value is EditablePrimitive =>
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean';
+
+// A binding's data-binding declaration is one way to know a value is
+// structured (`type: 'object'` + a `render` map — see #225), but most
+// existing content declares neither; it's just an object/array-shaped
+// string because that's what the bound prop actually is (e.g. `style`).
+// This recovers editable leaves from the *parsed value's own shape*
+// instead, so it works on content authored without a renderPanel in mind
+// — including an array of objects whose own members embed further JSX
+// (Live Editor's shipped Stats/FAQ sections both look like this: an
+// `items` array of `{ key, children }`, where `children` is itself a
+// nested, separately data-bound element). A JSX-bearing string is never
+// parsed further here — `parseValue` already reduced it to plain text
+// (see `evaluateLiteral`'s JSXElement case), and this function only ever
+// recurses into genuine object/array structure, treating every string,
+// number, and boolean as a leaf regardless of what the string contains.
+// Depth is capped defensively (pathological/deeply-recursive input
+// shouldn't be able to blow the stack); anything past that depth is
+// treated as a leaf-less dead end and simply omitted, not thrown.
+export const flattenEditableValue = (
+  value: string,
+): EditableValueEntry[] | null => {
+  const parsed = parseValue(value);
+
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    Object.keys(parsed).length === 0
+  ) {
+    return null;
+  }
+
+  const entries: EditableValueEntry[] = [];
+
+  const walk = (node: unknown, path: EditablePathSegment[], depth: number) => {
+    if (depth > MAX_FLATTEN_DEPTH) {
+      return;
+    }
+
+    if (isEditablePrimitive(node)) {
+      entries.push({ path, value: node });
+      return;
+    }
+
+    if (Array.isArray(node)) {
+      node.forEach((item, index) => walk(item, [...path, index], depth + 1));
+      return;
+    }
+
+    if (typeof node === 'object' && node !== null) {
+      Object.entries(node).forEach(([key, item]) =>
+        walk(item, [...path, key], depth + 1),
+      );
+    }
+
+    // null/undefined/function/symbol values have no editable leaf form —
+    // silently omitted rather than represented as, say, an empty string,
+    // which would misrepresent what's actually stored there.
+  };
+
+  walk(parsed, [], 0);
+
+  return entries.length ? entries : null;
+};
+
+// Companion to `flattenEditableValue`: replaces the single leaf at `path`
+// and re-serializes the whole structure — the result is a plain string
+// suitable for `PanelBinding.onChange`/`Dnd`'s AST-update pipeline, same
+// as any other committed value. Fails safe: an out-of-range index, a
+// missing key, or a `value` that didn't parse to an object/array in the
+// first place returns `value` unchanged rather than throwing or silently
+// writing to the wrong place.
+export const setEditableValue = (
+  value: string,
+  path: EditablePathSegment[],
+  next: EditablePrimitive,
+): string => {
+  if (!path.length) {
+    return value;
+  }
+
+  const parsed = parseValue(value);
+
+  if (typeof parsed !== 'object' || parsed === null) {
+    return value;
+  }
+
+  const root: unknown = Array.isArray(parsed) ? [...parsed] : { ...parsed };
+  let cursor: Record<EditablePathSegment, unknown> | unknown[] = root as
+    Record<EditablePathSegment, unknown> | unknown[];
+
+  for (let i = 0; i < path.length - 1; i++) {
+    const key = path[i]!;
+    const child = (cursor as Record<EditablePathSegment, unknown>)[key];
+
+    if (typeof child !== 'object' || child === null) {
+      return value;
+    }
+
+    const clonedChild = Array.isArray(child) ? [...child] : { ...child };
+    (cursor as Record<EditablePathSegment, unknown>)[key] = clonedChild;
+    cursor = clonedChild as Record<EditablePathSegment, unknown> | unknown[];
+  }
+
+  const lastKey = path[path.length - 1]!;
+
+  if (!(lastKey in (cursor as object))) {
+    return value;
+  }
+
+  (cursor as Record<EditablePathSegment, unknown>)[lastKey] = next;
+
+  return JSON.stringify(root);
+};
+
 export const extractNodeValue = (node: t.Node): ExtractedNodeValue => {
   if (t.isBooleanLiteral(node)) {
     return { type: 'boolean', value: node.value };
