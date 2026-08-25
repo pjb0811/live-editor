@@ -1,5 +1,0 @@
----
-'@jbpark/live-editor': minor
----
-
-Added `flattenEditableValue`/`setEditableValue` (`@jbpark/live-editor/utils/ast`) — a follow-up to #225's `render`/`min`/`max`/`pattern`/`required` passthrough. `flattenEditableValue` recovers editable structure directly from a binding's current value, with no `render` map declaration required: it parses the value and, if it's an object or array, recursively walks it into one `{ path, value }` entry per primitive leaf, treating a JSX-bearing string (e.g. a further, separately data-bound nested element) as an opaque leaf rather than decomposing it further. `setEditableValue(value, path, next)` is the companion setter — it replaces just that one leaf and re-serializes the whole structure back into a string for `PanelBinding.onChange`. Together they let a custom `renderPanel` build a field-by-field editor for structured bindings (including an array of objects, like the shipped Stats/FAQ sections' `items`) without reimplementing the built-in panel's recursive decomposition, and without requiring the binding to declare a `render` map ahead of time.
