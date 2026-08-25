@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.16.1
+
+### Patch Changes
+
+- 58e2171: Fixed `update()`/`bulkUpdate()` (`@jbpark/live-editor/utils/ast`) resolving the target binding by its human-readable `label` instead of its `property` — the real identifier. Two bindings sharing a label on the same element (or a label that's been reworded/translated) used to silently collide: `.find()` picked whichever came first, the other binding's edit was dropped, and the caller still got `success: true`. `update` now accepts an optional 5th `property` argument (and `bulkUpdate`'s entries an optional `property` field) and matches on it when provided, falling back to `label` only when it isn't — and either way, more than one match on an element is now a failure (`success: false`) instead of a silent pick of the first. `Live.Dnd`'s own field-editing pipeline (the built-in panel and `PanelBinding.onChange`, used by both the built-in panel and a custom `renderPanel`) always supplies `property` now, so this collision can no longer happen through the library's own UI — only a direct `update()`/`bulkUpdate()` call that omits `property` still uses the (now safer) label fallback.
+
 ## 1.16.0
 
 ### Minor Changes
