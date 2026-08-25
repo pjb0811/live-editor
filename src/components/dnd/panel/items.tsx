@@ -57,6 +57,7 @@ interface Props {
   onChildChange?: (params: {
     id: string;
     label: string;
+    property: string;
     value: string;
   }) => void;
 }

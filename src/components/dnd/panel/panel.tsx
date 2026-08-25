@@ -22,7 +22,12 @@ interface Props {
   // update + error-toast handling behind onFieldChange) lives in Dnd, so
   // it's shared with a custom renderPanel instead of computed here too.
   fields: DataAttrNode[];
-  onFieldChange: (params: { id: string; label: string; value: string }) => void;
+  onFieldChange: (params: {
+    id: string;
+    label: string;
+    property: string;
+    value: string;
+  }) => void;
 }
 
 const Panel = ({

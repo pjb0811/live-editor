@@ -14,7 +14,12 @@ import { moveSelectedIndices, removeIndices } from './selection';
 interface Props {
   value: DataAttrNode[];
   onChange?: (value: string) => void;
-  onNodeChange?: (params: { id: string; label: string; value: string }) => void;
+  onNodeChange?: (params: {
+    id: string;
+    label: string;
+    property: string;
+    value: string;
+  }) => void;
 }
 
 const Children = ({ value, onChange, onNodeChange }: Props) => {
