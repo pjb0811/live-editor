@@ -507,10 +507,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
           placeholder="Enter a numeric value"
           onBlur={e => {
             const next = e.target.value.trim();
-            const result = validateBindingValue(
-              binding,
-              next ? Number(next) : '',
-            );
+            const result = validateBindingValue(binding, next);
 
             if (!result.valid) {
               setValidationError(result.message ?? 'Invalid value.');

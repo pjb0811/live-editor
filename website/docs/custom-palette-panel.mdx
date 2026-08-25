@@ -140,17 +140,35 @@ the built-in panel uses. Switch on `binding.type` to render your own control:
 | `property` | `string` | The bound prop/attribute name. |
 | `type` | `BindingType?` | The declared data-binding type — switch on this to pick a control. `undefined` means a plain string binding. See the full list below. |
 | `options` | `BindingOption[]?` | Present when the binding defines a fixed option set (render a `<select>`). |
+| `render` | `BindingRenderMap?` | Present on `object`/`array` bindings whose nested keys/items declare their own types — walk it to type each nested field instead of treating the value as an opaque string. |
+| `min` | `number?` | Minimum value for a `number` binding. Applies to `value` below even though it's a string — pass it straight to `validateBindingValue`, which coerces numeric strings. |
+| `max` | `number?` | Maximum value for a `number` binding, same coercion as `min`. |
+| `pattern` | `string?` | A regex source the value must match. |
+| `required` | `boolean?` | Whether an empty value should fail validation. |
 | `value` | `string` | Current serialized value. |
 | `onChange` | `(value: string) => void` | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). |
 
-`BindingType` is a closed union of 12 values, since a `renderPanel` is
-expected to switch on it exhaustively: `array`, `object`, `string`, `number`,
-`boolean`, `color`, `jsx`, `richtext`, `date`, `url`, `icon-picker`,
-`asset-picker`.
+`BindingType` is a closed union of 12 values: `array`, `object`, `string`,
+`number`, `boolean`, `color`, `jsx`, `richtext`, `date`, `url`,
+`icon-picker`, `asset-picker`. Switching on it alone is enough for the
+scalar types, but `object`/`array` values are only opaque strings unless
+the binding also declares `render` — check for it before assuming you can
+treat those two types as plain text.
 
-`BindingType` and `BindingOption` aren't exported from the package root —
-import them from the `utils/ast` subpath instead:
+Constraints declared on a binding (`min`/`max`/`pattern`/`required`) aren't
+enforced automatically — call the exported `validateBindingValue(binding,
+value)` yourself before committing an edit, the same way the built-in panel
+does.
+
+`BindingType`, `BindingOption`, `BindingRenderMap`, and `validateBindingValue`
+aren't exported from the package root — import them from the `utils/ast`
+subpath instead:
 
 ```ts
-import type { BindingOption, BindingType } from '@jbpark/live-editor/utils/ast';
+import {
+  type BindingOption,
+  type BindingRenderMap,
+  type BindingType,
+  validateBindingValue,
+} from '@jbpark/live-editor/utils/ast';
 ```
