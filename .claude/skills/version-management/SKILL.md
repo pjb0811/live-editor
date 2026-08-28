@@ -1,22 +1,46 @@
 ---
 name: version-management
-description: "changesets 기반 버전 관리/릴리스 흐름(Version Packages PR → 태그/GitHub Release, 아직 npm publish는 비활성)과, PR 머지 시 changeset 봇 커밋 때문에 발생하는 GitHub Actions 'action_required' 승인 이슈 대응법. Use when 새 changeset을 추가할 때, 'Version Packages' PR을 머지해야 할 때, PR이 CI는 다 통과한 것 같은데 mergeStateStatus가 BLOCKED로 안 풀릴 때, 또는 '버전 올려줘', 'release 진행' 같은 요청이 있을 때."
+description: "changesets 기반 버전 관리/릴리스 흐름(Version Packages PR 머지 = npm 실제 공개 배포 + 태그/GitHub Release)과, PR 머지 시 changeset 봇 커밋 때문에 발생하는 GitHub Actions 'action_required' 승인 이슈 대응법. Use when 새 changeset을 추가할 때, 'Version Packages' PR을 머지해야 할 때, PR이 CI는 다 통과한 것 같은데 mergeStateStatus가 BLOCKED로 안 풀릴 때, 또는 '버전 올려줘', 'release 진행' 같은 요청이 있을 때."
 ---
 
 # Version Management (live-editor)
 
-`@jbpark/live-editor`는 changesets로 버전을 관리하지만, `package.json`에 **`"private": true`가 설정돼 있어 아직 npm에 공개 배포되지 않는다.** (공개 배포를 시작하려면 이 플래그를 내리고 `publishConfig.access`를 추가해야 한다 — `publish.yml`에 그 전제가 코드/주석으로 이미 반영돼 있다.)
+`@jbpark/live-editor`는 changesets로 버전을 관리하며, **npm에 공개 배포되는 패키지다.** `package.json`에 `"private": false` + `publishConfig.access: "public"`이 설정돼 있고(`930f080`, 2026-07-27에 전환), 레지스트리에 실제로 올라가 있다.
+
+> ⚠️ **가장 중요한 점: `Version Packages` PR을 머지하면 그 즉시 npm에 실제 공개 배포가 일어난다.** 되돌릴 수 없으므로(npm unpublish는 72시간 제한 + 이미 받아간 사용자에게는 무의미) 머지 전에 **반드시 사용자에게 확인받는다.** 다른 일반 PR 머지와 같은 무게로 취급하지 않는다.
+
+## 상태 먼저 확인하기
+
+이 문서는 위 상태를 사실로 적고 있지만, 플래그는 언제든 바뀔 수 있는 값이다. 실제로 이 문서가 한 번 낡았던 적이 있다(전환 시점에 갱신되지 않아, `private: true`라 배포가 비활성이라고 잘못 안내하고 있었다). **문서를 믿지 말고 매번 직접 확인한다:**
+
+```bash
+git show origin/main:package.json | node -p "const p=JSON.parse(require('fs').readFileSync(0));({private:p.private,version:p.version,publishConfig:p.publishConfig})"
+npm view @jbpark/live-editor version    # 레지스트리에 실제로 올라가 있는지
+```
+
+`private`가 `false`면 배포가 살아있는 것이고, 아래 3번이 실제 publish로 이어진다. 확인 결과가 이 문서와 다르면 **문서 쪽을 고친다.**
 
 ## 릴리스 흐름
 
 1. **changeset 추가**: 사용자 대상 변경이 있는 PR에는 `.changeset/*.md`가 필요하다. `pnpm changeset`으로 수동 생성하거나, `changeset-draft.yml`(필수 상태 체크 `draft`)이 PR별로 초안을 자동 생성/갱신해준다.
 2. **Version Packages PR**: main에 push될 때마다 `version.yml`이 돌면서, 누적된 changeset들로 `changeset-release/main` 브랜치에 "🔖 chore: version packages" PR을 열고 유지한다. `package.json` 버전 bump + `CHANGELOG.md` 갱신.
 3. **머지 시 동작 (publish.yml)**: 이 PR을 머지하면 그 자체가 main push이므로 `publish.yml`이 실행된다.
-   - 현재 버전이 이미 `vX.Y.Z` 태그로 있는지 확인 → 없으면 build.
-   - `package.json`의 `private` 플래그를 확인해서 **`private: true`인 동안은 `npm publish` 스텝 자체를 건너뛴다** — 그래도 git 태그 push와 GitHub Release 생성은 그대로 진행된다 (배포와 무관하게 버전 이력은 남긴다는 뜻).
-   - 나중에 `private: false`로 바뀌면 이 저장소도 use-hooks/ui-kit과 동일하게 OIDC Trusted Publishing으로 실제 npm publish가 일어나기 시작한다 — 그 시점부터는 Version Packages PR 머지가 "실제 공개 배포"가 되므로 사용자에게 더 명확히 확인받아야 한다.
+   - `already_tagged` 확인 — 현재 `package.json`의 버전이 이미 `vX.Y.Z` 태그로 있으면 아무것도 안 한다. 대부분의 main push(일반 PR 머지)가 여기서 걸러지고, 버전이 막 올라간 직후에만 통과한다.
+   - install → build
+   - `is_private` 확인 후 **`npm publish`** (OIDC Trusted Publishing — `NPM_TOKEN` 불필요. pnpm이 아직 지원하지 않아 이 스텝만 `npm`으로 나간다)
+   - `v<version>` 태그 push
+   - `CHANGELOG.md`에서 해당 버전 섹션을 뽑아 GitHub Release 생성 (NVIDIA API로 릴리스 노트를 다듬되, 실패하면 원본 changelog로 폴백 — 릴리스를 막지 않는다)
 
-현재 상태에서는 Version Packages PR 머지가 (아직은) npm에 아무것도 공개하지 않으므로 다른 일반 PR 머지와 비슷하게 취급해도 되지만, `private` 플래그가 바뀌었는지는 머지 전에 한 번 확인하는 습관을 들인다.
+   `is_private` 게이트는 지워지지 않았지만 **지금은 안전망일 뿐 publish를 막지 않는다.** `private: false`이므로 조건이 통과한다.
+
+## 배포 후 확인
+
+```bash
+npm view @jbpark/live-editor version        # 새 버전인지
+npm view @jbpark/live-editor dist-tags --json
+gh release list --limit 3                    # 태그 + Release 생성됐는지
+gh run list --branch main --limit 3          # Publish 워크플로 success인지
+```
 
 ## 필수 상태 체크와 "action_required" 함정
 
