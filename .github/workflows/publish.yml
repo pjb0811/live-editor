@@ -75,11 +75,11 @@ jobs:
         if: steps.tag_check.outputs.already_tagged == 'false'
         run: pnpm run build
 
-      # package.json currently has "private": true, so there is nothing to
-      # publish to npm yet — flip that flag (and add publishConfig.access)
-      # when this package is ready to go public. Tagging + the GitHub
-      # Release below still happen either way, since those don't require
-      # an npm registry entry.
+      # The package is public (private: false + publishConfig.access since
+      # 930f080), so the publish step below does run. This gate is kept as
+      # a safety net: setting "private": true again disables publishing
+      # without touching this workflow, and tagging + the GitHub Release
+      # still happen either way since those need no npm registry entry.
       - name: Check if package is publishable
         id: publishable
         if: steps.tag_check.outputs.already_tagged == 'false'
