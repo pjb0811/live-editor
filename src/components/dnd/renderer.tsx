@@ -1,8 +1,10 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo } from 'react';
 
+import ErrorBoundary from '~/components/error/boundary';
+import LiveError from '~/components/error/error';
 import Frame, { type FrameProps } from '~/components/frame';
-import { baseModules, compile } from '~/utils';
-import { generateTailwindCSSFromDOM } from '~/utils/tailwind';
+import { useCompiledModule } from '~/components/preview/use-compiled-module';
+import { useDynamicTailwind } from '~/components/preview/use-dynamic-tailwind';
 
 interface Props {
   preview: string;
@@ -26,74 +28,32 @@ const Renderer = ({
   dynamicTailwind = false,
   provider,
 }: Props) => {
-  const memoizedModules = useMemo(
-    () => ({
-      ...baseModules,
-      ...modules,
-    }),
-    [modules],
-  );
-
-  const module = useMemo(() => {
-    try {
-      return compile(preview, memoizedModules);
-    } catch (e) {
-      return {
-        exports: {},
-        error: e instanceof Error ? e.message : 'Module transformation error',
-      };
-    }
-  }, [preview, memoizedModules]);
+  const module = useCompiledModule(preview, modules);
 
   // In `shadow` mode there's no separate document to load a stylesheet into
   // — the shadow root only gets whatever CSS naturally inherits across the
-  // boundary (see `frame/shadow.tsx`), not utility classes. Mirrors
-  // `preview/client.tsx`'s `dynamicTailwind` handling: compile this
-  // section's own Tailwind classes and portal them in as a `<style>` tag
+  // boundary (see `frame/shadow.tsx`), not utility classes. So this section's
+  // own Tailwind classes are compiled and portalled in as a `<style>` tag
   // alongside the rendered content, which crosses the shadow boundary fine
   // since it lives inside the same portal target.
-  //
-  // Scans the actual rendered DOM (below) rather than the `preview` source
-  // text, so classes contributed by an imported component (e.g. ui-kit's
-  // `Button`) are picked up too — those never appear as literal text in
-  // `preview`, only in the component's own compiled output.
-  //
-  // The wrapper below is tracked via a callback ref (`wrapperEl` state)
-  // rather than a plain `useRef`, because in shadow mode it isn't mounted
-  // on this component's first commit at all — `Shadow` creates its portal
-  // target in its own effect and only re-renders with it afterwards, one
-  // commit later. A plain ref read in a `[preview, dynamicTailwind]`-keyed
-  // effect would see `null` on that first pass and never retry; making the
-  // element itself a dependency re-runs the scan once it actually exists.
-  const [dynamicCSS, setDynamicCSS] = useState('');
-  const [wrapperEl, setWrapperEl] = useState<HTMLDivElement | null>(null);
-  const wrapperRef = useCallback((el: HTMLDivElement | null) => {
-    setWrapperEl(el);
-  }, []);
-
-  useEffect(() => {
-    if (!preview || !dynamicTailwind || !wrapperEl) {
-      return;
-    }
-
-    let cancelled = false;
-
-    generateTailwindCSSFromDOM(wrapperEl).then(css => {
-      if (!cancelled) {
-        setDynamicCSS(css);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [preview, dynamicTailwind, wrapperEl]);
+  const { ref: wrapperRef, css: dynamicCSS } = useDynamicTailwind(
+    preview,
+    dynamicTailwind,
+  );
 
   const renderProvider = (component: React.ReactNode) => {
     return provider ? provider(component) : component;
   };
 
-  const Component = module.exports.default;
+  // Rendered in place of the frame rather than inside it: there is nothing to
+  // portal into an iframe for code that never produced a component, and a
+  // silent blank slot (the previous behaviour) gives the author no clue why
+  // their section vanished. Mirrors preview/client.tsx's compile-error branch.
+  if (module?.error) {
+    return <LiveError message={module.error} title="Compile Error" />;
+  }
+
+  const Component = module?.exports?.default;
 
   if (!Component) {
     return null;
@@ -107,16 +67,43 @@ const Renderer = ({
           className="w-full overflow-x-hidden"
           data-editor-mode
         >
-          {renderProvider(
-            <>
-              <Component
-                headers={headers}
-                container={container}
-                //
-              />
-              {dynamicTailwind && dynamicCSS && <style>{dynamicCSS}</style>}
-            </>,
-          )}
+          {/*
+            Without this, a render error in any single canvas section
+            propagated past Dnd and unmounted the whole editor — palette,
+            canvas and panel — while the same error in <Preview> was caught
+            and displayed (see #246). Kept inside the frame so the failure is
+            reported in the slot the broken section occupies, and so a
+            transient error while the author is mid-edit doesn't tear down and
+            rebuild the iframe (script loading, style sync, resize observers)
+            on every keystroke. `Error` is inline-styled, so it stays readable
+            even in a frame that never received the host's CSS.
+
+            resetKeys={[preview]} makes the fix itself the recovery signal: the
+            next edit to this section produces a new preview string, which
+            clears the caught error without needing a remount.
+
+            No `Error.Guard` here, unlike client.tsx: it listens on `window`,
+            not on its subtree, so one per section would mean N global
+            listeners all tripping on any single error — every section would
+            show a runtime error regardless of which one actually threw.
+
+            Errors also stay local rather than going to ErrorContext, whose
+            `error` is a single string shared by the whole tree: N sections
+            reporting into it would overwrite each other with no way to tell
+            which section failed.
+          */}
+          <ErrorBoundary resetKeys={[preview]}>
+            {renderProvider(
+              <>
+                <Component
+                  headers={headers}
+                  container={container}
+                  //
+                />
+                {dynamicTailwind && dynamicCSS && <style>{dynamicCSS}</style>}
+              </>,
+            )}
+          </ErrorBoundary>
         </div>
       )}
     </Frame>
