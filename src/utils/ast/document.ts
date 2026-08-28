@@ -1,8 +1,9 @@
 import { parse } from '@babel/parser';
 import _traverse from '@babel/traverse';
 import * as t from '@babel/types';
+import { nanoid } from 'nanoid';
 
-import { CONFIG } from '../../constants';
+import { CONFIG, DATA_ATTR } from '../../constants';
 import type { Section } from '../../types';
 import { createBoundedCache } from '../cache';
 
@@ -38,16 +39,22 @@ const getTagName = (element: t.JSXElement): string => {
   return t.isJSXIdentifier(name) ? name.name : '';
 };
 
-const getAttrValue = (
+const getAttr = (
   element: t.JSXElement,
   attrName: string,
-): string | undefined => {
-  const attr = element.openingElement.attributes.find(
+): t.JSXAttribute | undefined =>
+  element.openingElement.attributes.find(
     (a): a is t.JSXAttribute =>
       t.isJSXAttribute(a) &&
       t.isJSXIdentifier(a.name) &&
       a.name.name === attrName,
   );
+
+const getAttrValue = (
+  element: t.JSXElement,
+  attrName: string,
+): string | undefined => {
+  const attr = getAttr(element, attrName);
 
   return attr && t.isStringLiteral(attr.value) ? attr.value.value : undefined;
 };
@@ -151,12 +158,102 @@ export const clearDocumentParseCache = () => {
   documentCache.clear();
 };
 
+// `id` prefers the section's own `data-id`, falling back to its position.
+//
+// A positional id is not an identity: it is re-derived from scratch on every
+// parse, so any insert, delete, copy or move silently re-points every id at
+// or after the edit. A caller holding one across a mutation — which the DnD
+// canvas does, via `selectedId` — ends up pointing at whatever content moved
+// into that slot. See #245.
+//
+// The fallback stays for documents authored before sections carried
+// `data-id` (localStorage, existing user code, hand-written JSX). Those keep
+// exactly the old behaviour until `fillSectionIds` gives them real ids, so
+// this is additive rather than a breaking change to the document format.
 export const getSections = (doc: DocumentTree): Section[] =>
   findOutermostSections(doc.container.children).map((node, index) => ({
-    id: `${index}`,
+    id: getAttrValue(node, DATA_ATTR.ID) || `${index}`,
     name: getAttrValue(node, DATA_NAME_ATTR) || `${index + 1}번째 컴포넌트`,
     code: doc.code.slice(node.start!, node.end!),
   }));
+
+// Gives every top-level <section> a `data-id` that is present *and* unique
+// within the document, so `getSections` can return a real identity instead of
+// a position (#245). Sections ship with `data-name` only, which is a display
+// string — two "Hero" sections collide, exactly the way duplicate binding
+// labels did in #240.
+//
+// Uniqueness is enforced, not just presence. A positional id was unique by
+// construction; `data-id` is authored text, and the Editor/DnD modes share one
+// document, so copy-pasting a `<section data-id="abc">` block in the code
+// editor is an ordinary way to end up with two. Callers key destructive
+// operations off this id, so a duplicate would let one delete take both
+// sections with it. A repeat is therefore re-minted, keeping the first
+// occurrence.
+//
+// Splices into the original source rather than regenerating the tree, matching
+// how the rest of this module edits (see parseDocument's note): the author's
+// formatting everywhere else is left byte-identical.
+//
+// Callers should treat the result the way dnd.tsx treats fillIds' output —
+// derive from it, but only let it reach the document when a real edit
+// commits, so merely opening a file doesn't rewrite it.
+export const fillSectionIds = (
+  code: string,
+  generateId: () => string = () => nanoid(6),
+): string => {
+  const doc = parseDocument(code);
+
+  if (!doc) {
+    return code;
+  }
+
+  const seen = new Set<string>();
+  const edits: { start: number; end: number; text: string }[] = [];
+
+  findOutermostSections(doc.container.children).forEach(node => {
+    const attr = getAttr(node, DATA_ATTR.ID);
+    const id =
+      attr && t.isStringLiteral(attr.value) ? attr.value.value : undefined;
+
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      return;
+    }
+
+    const nextId = generateId();
+    seen.add(nextId);
+
+    // Replace the whole attribute when one is already there — including a
+    // non-string form like `data-id={x}`, which would otherwise get a second
+    // `data-id` spliced in beside it.
+    edits.push(
+      attr
+        ? {
+            start: attr.start!,
+            end: attr.end!,
+            text: `${DATA_ATTR.ID}="${nextId}"`,
+          }
+        : {
+            start: node.openingElement.name.end!,
+            end: node.openingElement.name.end!,
+            text: ` ${DATA_ATTR.ID}="${nextId}"`,
+          },
+    );
+  });
+
+  if (!edits.length) {
+    return code;
+  }
+
+  // Ids are drawn in document order, but applied right-to-left so each edit
+  // leaves the offsets of the ones before it untouched.
+  return edits.reduceRight(
+    (acc, edit) =>
+      `${acc.slice(0, edit.start)}${edit.text}${acc.slice(edit.end)}`,
+    code,
+  );
+};
 
 export const generateDocumentCode = (doc: DocumentTree): string => doc.code;
 

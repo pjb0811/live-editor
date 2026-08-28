@@ -15,13 +15,11 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   SortableContext,
-  arrayMove,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Button, Drawer, Space, Toast, Typography } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 import { LayoutGrid } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
 
 import { DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
@@ -34,19 +32,11 @@ import {
   fillIds,
   getCurrentValue,
   parseBinding,
-  replaceIds,
   update,
 } from '~/utils/ast';
 
 import { DEFAULT_TEMPLATE } from '../../constants';
-import {
-  cn,
-  createSectionPreviewCache,
-  extractSections,
-  preloadScripts,
-  replaceSections,
-} from '../../utils';
-import { usePreview } from '../context/states';
+import { cn, preloadScripts } from '../../utils';
 import { type FrameProps } from '../frame';
 import DraggableItem, { DefaultDraggableItem } from './draggable';
 import Droppable from './droppable';
@@ -54,6 +44,7 @@ import Overlay from './overlay';
 import Panel from './panel';
 import Renderer from './renderer';
 import Sortable from './sortable';
+import { useSectionDocument } from './use-section-document';
 
 export interface PaletteRenderData {
   items: Section[];
@@ -170,13 +161,10 @@ const Dnd = ({
   renderPanel,
   ...restProps
 }: Props) => {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false);
 
   const { breakpoint } = useResponsiveSize();
   const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
-
-  const { setCode } = usePreview();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -187,24 +175,22 @@ const Dnd = ({
   );
 
   const value = _value || DEFAULT_TEMPLATE;
-  const sections = useMemo(() => extractSections(value), [value]);
-  const selectedItem = useMemo(
-    () => sections.find(s => s.id === selectedId),
-    [sections, selectedId],
-  );
 
-  // One cache per Dnd instance (lazy `useState` initializer, never
-  // replaced) — see createSectionPreviewCache (#131). It's stateful by
-  // design (remembers the previous render's previews to reuse the ones
-  // that didn't change), which a `useMemo`/`useRef` can't do without
-  // touching a ref during render; a cache object stored via `useState`
-  // and only ever mutated through its own method isn't subject to that
-  // restriction the way `ref.current` is.
-  const [previewCache] = useState(() => createSectionPreviewCache());
-  const previews = useMemo(
-    () => previewCache.compute(value, sections),
-    [previewCache, sections, value],
-  );
+  const {
+    sections,
+    previews,
+    selectedId,
+    selectedItem,
+    selectedIndex,
+    select,
+    clearSelection,
+    add: addItem,
+    remove: onDelete,
+    copy: onCopy,
+    move: moveSection,
+    reorder,
+    patch,
+  } = useSectionDocument(value, _onChange);
 
   const onDragStart = (_: DragStartEvent) => {};
 
@@ -218,161 +204,30 @@ const Dnd = ({
     }
 
     if (active.data.current?.type === 'new-item') {
-      const newItem = active.data.current.item;
-      const newSection = {
-        id: uuidv4(),
-        name: newItem.name,
-        code: newItem.code,
-      };
+      const item = active.data.current.item as Section;
+      const atBottom =
+        over.id === 'sortable-area' || over.id === 'sortable-area-bottom';
 
-      let nextSections: typeof sections;
-
-      if (over.id === 'sortable-area' || over.id === 'sortable-area-bottom') {
-        nextSections = [...sections, newSection];
-      } else {
-        const overIndex = sections.findIndex(s => s.id === over.id);
-        if (overIndex >= 0) {
-          nextSections = [
-            ...sections.slice(0, overIndex),
-            newSection,
-            ...sections.slice(overIndex),
-          ];
-        } else {
-          nextSections = [...sections, newSection];
-        }
-      }
-
-      const nextCode = replaceSections(
-        value,
-        nextSections.map(s => s.code),
+      addItem(
+        item,
+        atBottom ? undefined : sections.findIndex(s => s.id === over.id),
       );
-
-      _onChange?.(nextCode);
-      setCode(nextCode);
       return;
     }
 
     if (active.id !== over.id && sections.some(s => s.id === active.id)) {
-      const prevIndex = sections.findIndex(s => s.id === active.id);
-      const nextIndex = sections.findIndex(s => s.id === over.id);
-
-      if (prevIndex >= 0 && nextIndex >= 0) {
-        const nextSections = arrayMove(sections, prevIndex, nextIndex);
-
-        const nextCode = replaceSections(
-          value,
-          nextSections.map(s => s.code),
-        );
-
-        _onChange?.(nextCode);
-        setCode(nextCode);
-      }
+      reorder(String(active.id), String(over.id));
     }
   };
 
-  const addItem = (item: (typeof DRAGGABLE_ITEMS)[0]) => {
-    const newSection = {
-      id: uuidv4(),
-      name: item.name,
-      code: item.code,
-    };
+  const onSelect = (id: string) => select(id);
 
-    const nextSections = [...sections, newSection];
-
-    const nextCode = replaceSections(
-      value,
-      nextSections.map(s => s.code),
-    );
-
-    _onChange?.(nextCode);
-    setCode(nextCode);
-  };
-
-  const onDelete = (id: string) => {
-    const nextSections = sections.filter(s => s.id !== id);
-
-    setSelectedId(null);
-
-    const nextCode = replaceSections(
-      value,
-      nextSections.map(s => s.code),
-    );
-
-    _onChange?.(nextCode);
-    setCode(nextCode);
-  };
-
-  const moveSection = (id: string | null, direction: 'up' | 'down') => {
-    const index = sections.findIndex(s => s.id === id);
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-
-    if (index < 0 || targetIndex < 0 || targetIndex >= sections.length) {
+  const onChange = (next: Partial<Section>) => {
+    if (!next.id) {
       return;
     }
 
-    const nextSections = arrayMove(sections, index, targetIndex);
-
-    const nextCode = replaceSections(
-      value,
-      nextSections.map(s => s.code),
-    );
-
-    _onChange?.(nextCode);
-    setCode(nextCode);
-    // Section ids are just the section's positional index, re-derived from
-    // scratch on every parse (getSections) rather than a stable identity —
-    // so once `sections` recomputes after this reorder, `selectedId`
-    // (unchanged) would silently point at whatever content now sits at its
-    // old position instead of following the section that actually moved.
-    setSelectedId(String(targetIndex));
-  };
-
-  const onCopy = (id: string) => {
-    const sectionIndex = sections.findIndex(s => s.id === id);
-    const sectionToCopy = sections[sectionIndex];
-
-    if (sectionToCopy) {
-      const nextId = uuidv4();
-      const nextSection = {
-        id: nextId,
-        code: replaceIds(sectionToCopy.code),
-        name: sectionToCopy.name,
-      };
-
-      const nextSections = [
-        ...sections.slice(0, sectionIndex + 1),
-        nextSection,
-        ...sections.slice(sectionIndex + 1),
-      ];
-
-      setSelectedId(nextId);
-
-      const nextCode = replaceSections(
-        value,
-        nextSections.map(s => s.code),
-      );
-
-      _onChange?.(nextCode);
-      setCode(nextCode);
-    }
-  };
-
-  const onSelect = (id: string) => {
-    setSelectedId(prev => (prev === id ? null : id));
-  };
-
-  const onChange = (next: Partial<Section>) => {
-    const nextSections = sections.map(s =>
-      s.id === next.id ? { ...s, ...next } : s,
-    );
-
-    const nextCode = replaceSections(
-      value,
-      nextSections.map(s => s.code),
-    );
-
-    _onChange?.(nextCode);
-    setCode(nextCode);
+    patch(next as Partial<Section> & { id: string });
   };
 
   // Reads only the extracted `code` local, not `selectedItem`, so the
@@ -527,7 +382,6 @@ const Dnd = ({
   };
 
   const renderPanelContent = () => {
-    const selectedIndex = sections.findIndex(s => s.id === selectedId);
     const canMoveUp = selectedIndex > 0;
     const canMoveDown =
       selectedIndex >= 0 && selectedIndex < sections.length - 1;
@@ -676,7 +530,7 @@ const Dnd = ({
           </Drawer>
           <Drawer
             open={isMobile && Boolean(selectedId)}
-            onClose={() => setSelectedId(null)}
+            onClose={clearSelection}
             direction="bottom"
             size="large"
             title="Properties"

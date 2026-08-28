@@ -32,6 +32,7 @@ export type { DocumentTree, SectionPreviewCache } from './document';
 export {
   clearDocumentParseCache,
   createSectionPreviewCache,
+  fillSectionIds,
   generateDocumentCode,
   generateSectionPreview,
   generateSectionPreviews,

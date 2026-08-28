@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CONFIG } from '../../constants';
 import {
   clearDocumentParseCache,
   createSectionPreviewCache,
+  fillSectionIds,
   generateDocumentCode,
   generateSectionPreview,
   generateSectionPreviews,
@@ -634,5 +635,197 @@ describe('parseDocument caching', () => {
     const second = parseDocument(FULL_CODE)!;
 
     expect(second.ast).not.toBe(first.ast);
+  });
+});
+
+describe('fillSectionIds', () => {
+  const LEGACY = `
+const App = () => {
+  return (
+    <main id="app-container">
+      <section data-name="Hero"><h1>Hero</h1></section>
+      <section data-name="Features"><p>Features</p></section>
+    </main>
+  )
+}
+`;
+
+  let counter = 0;
+  const ids = () => `id${++counter}`;
+
+  beforeEach(() => {
+    counter = 0;
+    clearDocumentParseCache();
+  });
+
+  it('adds data-id to every top-level section that lacks one', () => {
+    const filled = fillSectionIds(LEGACY, ids);
+
+    expect(filled).toContain('<section data-id="id1" data-name="Hero">');
+    expect(filled).toContain('<section data-id="id2" data-name="Features">');
+  });
+
+  it('leaves the rest of the source byte-identical', () => {
+    const filled = fillSectionIds(LEGACY, ids);
+
+    expect(
+      filled.replace(' data-id="id1"', '').replace(' data-id="id2"', ''),
+    ).toBe(LEGACY);
+  });
+
+  it('is a no-op when every section already has an id', () => {
+    const filled = fillSectionIds(LEGACY, ids);
+
+    expect(fillSectionIds(filled, ids)).toBe(filled);
+  });
+
+  it('only fills the sections that are missing an id', () => {
+    const partial = `
+const App = () => {
+  return (
+    <main id="app-container">
+      <section data-id="kept" data-name="Hero"><h1>Hero</h1></section>
+      <section data-name="Features"><p>Features</p></section>
+    </main>
+  )
+}
+`;
+
+    const filled = fillSectionIds(partial, ids);
+
+    expect(filled).toContain('data-id="kept"');
+    expect(filled).toContain('<section data-id="id1" data-name="Features">');
+  });
+
+  it('returns the input unchanged when the document cannot be parsed', () => {
+    expect(fillSectionIds('<main id="app-container">', ids)).toBe(
+      '<main id="app-container">',
+    );
+  });
+});
+
+describe('getSections identity (#245)', () => {
+  beforeEach(() => clearDocumentParseCache());
+
+  const sectionsOf = (code: string) => {
+    const doc = parseDocument(code);
+    return doc ? getSections(doc) : [];
+  };
+
+  const WITH_IDS = `
+const App = () => {
+  return (
+    <main id="app-container">
+      <section data-id="hero" data-name="Hero"><h1>Hero</h1></section>
+      <section data-id="feat" data-name="Features"><p>Features</p></section>
+    </main>
+  )
+}
+`;
+
+  it('uses the section data-id as the id when present', () => {
+    expect(sectionsOf(WITH_IDS).map(s => s.id)).toEqual(['hero', 'feat']);
+  });
+
+  it('keeps an id pointing at the same section after a reorder', () => {
+    const before = sectionsOf(WITH_IDS);
+    const reordered = replaceDocumentSections(
+      WITH_IDS,
+      [before[1]!, before[0]!].map(s => s.code),
+    );
+
+    const heroBefore = before.find(s => s.id === 'hero')!;
+    const heroAfter = sectionsOf(reordered).find(s => s.id === 'hero')!;
+
+    expect(heroAfter.name).toBe(heroBefore.name);
+    expect(heroAfter.code).toBe(heroBefore.code);
+  });
+
+  it('falls back to the positional id for documents without section ids', () => {
+    const legacy = `
+const App = () => {
+  return (
+    <main id="app-container">
+      <section data-name="Hero"><h1>Hero</h1></section>
+      <section data-name="Features"><p>Features</p></section>
+    </main>
+  )
+}
+`;
+
+    expect(sectionsOf(legacy).map(s => s.id)).toEqual(['0', '1']);
+  });
+});
+
+describe('fillSectionIds uniqueness', () => {
+  let counter = 0;
+  const ids = () => `gen${++counter}`;
+
+  beforeEach(() => {
+    counter = 0;
+    clearDocumentParseCache();
+  });
+
+  const sectionsOf = (code: string) => {
+    const doc = parseDocument(code);
+    return doc ? getSections(doc) : [];
+  };
+
+  // Reachable by copy-pasting a section in Editor mode: both modes share one
+  // document, so a duplicated `data-id` is ordinary authored text.
+  it('re-mints a duplicate id, keeping the first occurrence', () => {
+    const dup = `
+const App = () => {
+  return (
+    <main id="app-container">
+      <section data-id="same" data-name="A"><h1>A</h1></section>
+      <section data-id="same" data-name="B"><h1>B</h1></section>
+    </main>
+  )
+}
+`;
+
+    const filled = fillSectionIds(dup, ids);
+
+    expect(filled).toContain('<section data-id="same" data-name="A">');
+    expect(filled).toContain('<section data-id="gen1" data-name="B">');
+    expect(sectionsOf(filled).map(s => s.id)).toEqual(['same', 'gen1']);
+  });
+
+  it('leaves every section with a distinct id', () => {
+    const dup = `
+const App = () => {
+  return (
+    <main id="app-container">
+      <section data-id="x" data-name="A"><h1>A</h1></section>
+      <section data-id="x" data-name="B"><h1>B</h1></section>
+      <section data-name="C"><h1>C</h1></section>
+    </main>
+  )
+}
+`;
+
+    const idList = sectionsOf(fillSectionIds(dup, ids)).map(s => s.id);
+
+    expect(new Set(idList).size).toBe(idList.length);
+  });
+
+  // A non-string `data-id` yields no readable value, so a naive "is it
+  // missing?" check would splice a second data-id in beside it.
+  it('replaces a non-string data-id instead of adding a second one', () => {
+    const expr = `
+const App = () => {
+  return (
+    <main id="app-container">
+      <section data-id={dynamic} data-name="A"><h1>A</h1></section>
+    </main>
+  )
+}
+`;
+
+    const filled = fillSectionIds(expr, ids);
+
+    expect(filled).toContain('<section data-id="gen1" data-name="A">');
+    expect(filled.match(/data-id/g)).toHaveLength(1);
   });
 });
