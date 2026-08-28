@@ -21,7 +21,7 @@
     "@docusaurus/faster": "3.10.2",
     "@docusaurus/preset-classic": "3.10.2",
     "@jbpark/live-editor": "link:..",
-    "@jbpark/ui-kit": "^5.4.4",
+    "@jbpark/ui-kit": "^6.0.0",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
     "lucide-react": "^1.31.0",
