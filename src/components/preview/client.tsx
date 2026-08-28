@@ -1,14 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import { useError, usePreview } from '~/components/context/states';
 import LiveError from '~/components/error';
 import Frame, { type FrameProps } from '~/components/frame';
-import { baseModules, cn, compile } from '~/utils';
-import { generateTailwindCSSFromDOM } from '~/utils/tailwind';
+import { cn } from '~/utils';
 
 import { type Props } from './preview';
+import { useCompiledModule } from './use-compiled-module';
+import { useDynamicTailwind } from './use-dynamic-tailwind';
 
 const Client = ({
   code: _code = '',
@@ -26,59 +27,16 @@ const Client = ({
 
   const classNames = cn(isError && 'hidden', className);
 
-  const mergedModules = { ...baseModules, ...modules };
   const effectiveCode = _code || code;
 
-  // Scans the actual rendered DOM (via `contentRef`, attached below) rather
-  // than `effectiveCode`'s source text, so classes contributed by an
-  // imported component (e.g. ui-kit's `Button`) are picked up too — those
-  // never appear as literal text in the previewed source, only in that
-  // component's own compiled output.
-  //
-  // The wrapper below is tracked via a callback ref (`contentEl` state)
-  // rather than a plain `useRef`, because in shadow mode it isn't mounted
-  // on this component's first commit at all — `Shadow` creates its portal
-  // target in its own effect and only re-renders with it afterwards, one
-  // commit later. A plain ref read in an `[effectiveCode, dynamicTailwind]`
-  // -keyed effect would see `null` on that first pass and never retry;
-  // making the element itself a dependency re-runs the scan once it
-  // actually exists.
-  const [dynamicCSS, setDynamicCSS] = useState('');
-  const [contentEl, setContentEl] = useState<HTMLDivElement | null>(null);
-  const contentRef = useCallback((el: HTMLDivElement | null) => {
-    setContentEl(el);
-  }, []);
+  const module = useCompiledModule(effectiveCode, modules);
 
-  useEffect(() => {
-    if (!effectiveCode || !dynamicTailwind || !contentEl) {
-      return;
-    }
-
-    let cancelled = false;
-
-    generateTailwindCSSFromDOM(contentEl).then(css => {
-      if (!cancelled) {
-        setDynamicCSS(css);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [effectiveCode, dynamicTailwind, contentEl]);
-
-  let module = null;
-
-  if (effectiveCode) {
-    try {
-      module = compile(effectiveCode, mergedModules);
-    } catch (e) {
-      module = {
-        exports: {},
-        error: e instanceof Error ? e.message : 'Module transformation error',
-      };
-    }
-  }
+  // Attached to the wrapper below; scans the rendered DOM so classes coming
+  // from an imported component are picked up too. See the hook for details.
+  const { ref: contentRef, css: dynamicCSS } = useDynamicTailwind(
+    effectiveCode,
+    dynamicTailwind,
+  );
 
   const componentProps = useMemo(
     () => ({
