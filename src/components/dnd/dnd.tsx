@@ -37,6 +37,7 @@ import {
 
 import { DEFAULT_TEMPLATE } from '../../constants';
 import { cn, preloadScripts } from '../../utils';
+import { usePreview } from '../context/states';
 import { type FrameProps } from '../frame';
 import DraggableItem, { DefaultDraggableItem } from './draggable';
 import Droppable from './droppable';
@@ -166,6 +167,13 @@ const Dnd = ({
   const { breakpoint } = useResponsiveSize();
   const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
 
+  // Read-only here — `useSectionDocument` below owns `setCode` (the commit
+  // side). `code` is still needed locally: it feeds `value`'s fallback
+  // chain just below, and `value` itself is read again further down for
+  // the drag overlay's `fullCode` — not something `useSectionDocument`
+  // exposes back out.
+  const { code } = usePreview();
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -174,7 +182,15 @@ const Dnd = ({
     }),
   );
 
-  const value = _value || DEFAULT_TEMPLATE;
+  // Uncontrolled usage (`<Live.Dnd />` with no `value`) used to read
+  // nothing but DEFAULT_TEMPLATE forever: every edit committed through
+  // useSectionDocument writes into PreviewContext, but this component
+  // never read `code` back — so the section a reader just dragged in
+  // vanished on the very next render. `Client` (preview/client.tsx)
+  // already resolves the same dual-source situation with `_code || code`;
+  // mirrored here, with DEFAULT_TEMPLATE kept only as the final fallback
+  // for the case neither is set (fresh, empty context) — see #244.
+  const value = _value || code || DEFAULT_TEMPLATE;
 
   const {
     sections,
