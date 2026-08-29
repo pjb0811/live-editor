@@ -176,7 +176,7 @@ const Dnd = ({
   const { breakpoint } = useResponsiveSize();
   const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
 
-  const { setCode } = usePreview();
+  const { code, setCode } = usePreview();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -186,7 +186,15 @@ const Dnd = ({
     }),
   );
 
-  const value = _value || DEFAULT_TEMPLATE;
+  // Uncontrolled usage (`<Live.Dnd />` with no `value`) used to read
+  // nothing but DEFAULT_TEMPLATE forever: every edit below writes through
+  // `setCode` into PreviewContext, but the canvas itself never read
+  // `code` back — so the section a reader just dragged in vanished on the
+  // very next render. `Client` (preview/client.tsx) already resolves the
+  // same dual-source situation with `_code || code`; mirrored here, with
+  // DEFAULT_TEMPLATE kept only as the final fallback for the case neither
+  // is set (fresh, empty context) — see #244.
+  const value = _value || code || DEFAULT_TEMPLATE;
   const sections = useMemo(() => extractSections(value), [value]);
   const selectedItem = useMemo(
     () => sections.find(s => s.id === selectedId),
