@@ -430,8 +430,8 @@ const Dnd = ({
         onMoveDown={() => moveSection(selectedId, 'down')}
         canMoveUp={canMoveUp}
         canMoveDown={canMoveDown}
-        fields={fields}
-        onFieldChange={onFieldChange}
+        bindings={bindings}
+        onNodeChange={onFieldChange}
       />
     );
   };

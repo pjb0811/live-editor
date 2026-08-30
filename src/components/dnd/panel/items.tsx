@@ -614,12 +614,13 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
             </div>
             <Field
               binding={{
+                id: `primitive-${item.id}`,
                 label: `item-${i}`,
                 property: item.type,
+                value: String(item.value ?? ''),
+                onChange: next => updatePrimitive(item.index, next),
               }}
-              id={`primitive-${item.id}`}
-              value={String(item.value ?? '')}
-              onChange={({ value: next }) => updatePrimitive(item.index, next)}
+              onNodeChange={onChildChange}
             />
           </div>
         ))}
@@ -703,6 +704,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
                   </label>
                   <Field
                     binding={{
+                      id: `item-${item.id}-${key}`,
                       label: key,
                       property:
                         render?.[key] && 'type' in render[key]
@@ -719,12 +721,11 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
                           : render?.[key] && !('type' in render[key])
                             ? (render[key] as BindingRenderMap)
                             : undefined,
+                      value: String(prop.value),
+                      onChange: next =>
+                        updateProperty(item.index, key, parseValue(next)),
                     }}
-                    id={`item-${item.id}-${key}`}
-                    value={String(prop.value)}
-                    onChange={({ value: next }) =>
-                      updateProperty(item.index, key, parseValue(next))
-                    }
+                    onNodeChange={onChildChange}
                   />
                 </div>
                 <span className="text-right text-xs text-gray-500">
