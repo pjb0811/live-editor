@@ -84,12 +84,20 @@ export const DRAGGABLE_ITEMS: Section[] = [
               label: 'Background Style',
               property: 'style',
             },
+            {
+              label: 'Content Spacing',
+              property: 'size',
+              type: 'number',
+              widget: 'slider',
+              min: 0,
+              max: 40,
+            },
           ]}
           style={{
             backgroundColor: '#6366f1',
           }}
           orientation="vertical"
-          size="large"
+          size={16}
           align="center"
           className={cn(
             'px-5 py-15',

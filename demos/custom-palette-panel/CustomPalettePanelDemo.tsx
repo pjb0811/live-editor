@@ -98,6 +98,26 @@ const ParsedValueEditor = ({
   </div>
 );
 
+// `binding.widget` is an open string (#236) — a custom renderPanel switches
+// on it to render whatever control it wants; the built-in panel only knows
+// `icon-picker`/`asset-picker`, so anything else (like `'slider'` here) is
+// exclusively this demo's own choice, not a value the library defines.
+const SliderField = ({ binding }: { binding: PanelBinding }) => (
+  <div className="flex items-center gap-2">
+    <input
+      type="range"
+      min={binding.min ?? 0}
+      max={binding.max ?? 100}
+      defaultValue={Number(binding.value) || 0}
+      className="w-full"
+      onChange={e => binding.onChange(e.target.value)}
+    />
+    <span className="w-8 text-right text-xs text-gray-500">
+      {binding.value}
+    </span>
+  </div>
+);
+
 // The plain-input fallback field, running `binding.min`/`max`/`pattern`/
 // `required` through the exported `validateBindingValue` before
 // committing — those constraints reach here as of #225, but nothing
@@ -251,6 +271,8 @@ const CustomPalettePanelDemo = () => {
                               binding={binding}
                               entries={entries}
                             />
+                          ) : binding.widget === 'slider' ? (
+                            <SliderField binding={binding} />
                           ) : binding.options ? (
                             <select
                               className="w-full rounded border border-gray-300

@@ -147,7 +147,8 @@ the built-in panel uses. Switch on `binding.type` to render your own control:
 | `id` | `string` | `data-id` of the owning element (stable across edits). |
 | `label` | `string` | Human-readable label from the binding definition. |
 | `property` | `string` | The bound prop/attribute name. |
-| `type` | `BindingType?` | The declared data-binding type — switch on this to pick a control. `undefined` means a plain string binding. See the full list below. |
+| `type` | `BindingType?` | The declared data kind — what the value *is* (`string`, `number`, `boolean`, ...). `undefined` means a plain string binding. See the full list below. |
+| `widget` | `string?` | The declared presentation — how to *render* it. An open string, not `BindingType`: the library can't enumerate controls it doesn't implement, so a custom `renderPanel` is free to declare and switch on any value it wants (e.g. `'slider'`). The built-in panel only recognizes `'icon-picker'`/`'asset-picker'`. |
 | `options` | `BindingOption[]?` | Present when the binding defines a fixed option set (render a `<select>`). |
 | `render` | `BindingRenderMap?` | Present on `object`/`array` bindings whose nested keys/items declare their own types — walk it to type each nested field instead of treating the value as an opaque string. |
 | `min` | `number?` | Minimum value for a `number` binding. Applies to `value` below even though it's a string — pass it straight to `validateBindingValue`, which coerces numeric strings. |
@@ -162,6 +163,43 @@ the built-in panel uses. Switch on `binding.type` to render your own control:
 `icon-picker`, `asset-picker`. Switching on it alone is enough for the
 scalar types; for `object`/`array` values, see `flattenEditableValue`
 below rather than treating them as plain text.
+
+`icon-picker` and `asset-picker` are kept in `BindingType` only so
+existing authored content (`data-binding={[{ type: 'icon-picker', ... }]}`)
+keeps parsing — they describe a control, not a data kind, so `parseBinding`
+normalizes them into `{ type: 'string', widget: 'icon-picker' }` /
+`{ type: 'string', widget: 'asset-picker' }` rather than passing them
+through as-is. A custom `renderPanel` should switch on `binding.widget`
+for these, not `binding.type`. The built-in panel's icon set is exported
+as `ICON_MAP` (`name -> lucide-react component`) if you want to reuse it
+instead of building your own:
+
+```ts
+import { ICON_MAP } from '@jbpark/live-editor';
+```
+
+Author a brand-new field with any other widget the same way — `type`
+still describes the data kind (so validation/coercion keeps working),
+`widget` is free text your own `renderPanel` switches on:
+
+```tsx
+// data-binding={[{ label: 'Spacing', property: 'size', type: 'number', widget: 'slider', min: 0, max: 40 }]}
+
+bindings.map(binding =>
+  binding.widget === 'slider' ? (
+    <input
+      type="range"
+      min={binding.min}
+      max={binding.max}
+      defaultValue={binding.value}
+      onChange={e => binding.onChange(e.target.value)}
+    />
+  ) : (
+    // ...fall back to type-based defaults
+    <input defaultValue={binding.value} onBlur={e => binding.onChange(e.target.value)} />
+  ),
+);
+```
 
 Constraints declared on a binding (`min`/`max`/`pattern`/`required`) aren't
 enforced automatically — call the exported `validateBindingValue(binding,

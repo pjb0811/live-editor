@@ -24,16 +24,26 @@ const bindingRenderLeafSchema = z.object({
   property: z.string().optional(),
 });
 
+// `widget` is deliberately just `z.string()`, not an enum — see #236. An
+// unrecognized widget is expected (a renderPanel consumer's own value, not
+// this library's), so unlike `type` there is no "drop it" failure mode to
+// design for.
 const rawBindingItemSchema = z.object({
   label: z.string(),
   property: z.string().optional(),
   type: bindingTypeSchema.optional(),
+  widget: z.string().optional(),
   options: z.array(bindingOptionSchema).optional(),
   min: z.number().optional(),
   max: z.number().optional(),
   pattern: z.string().optional(),
   required: z.boolean().optional(),
 });
+
+// The two BINDING_TYPES entries that describe a control, not a data kind —
+// see the type/widget split in #236. Normalized below into `widget` instead
+// of being passed through as `type` directly.
+const WIDGET_TYPE_ALIASES = new Set(['icon-picker', 'asset-picker']);
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -103,6 +113,19 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
     // untyped field rather than disappearing entirely.
     const sanitizedType = bindingTypeSchema.safeParse(rawItem.type);
 
+    // `icon-picker`/`asset-picker` describe a widget, not a data kind
+    // (#236) — normalize them into `widget` instead of passing them
+    // through as `type`. An explicitly authored `widget` (checked below,
+    // once the schema has validated it) wins if both are somehow present.
+    const isWidgetAlias =
+      sanitizedType.success && WIDGET_TYPE_ALIASES.has(sanitizedType.data);
+    const normalizedType = isWidgetAlias
+      ? 'string'
+      : sanitizedType.success
+        ? sanitizedType.data
+        : undefined;
+    const derivedWidget = isWidgetAlias ? sanitizedType.data : undefined;
+
     // Drop individually malformed options instead of rejecting the whole
     // item — a select field with 3 valid options and 1 malformed one should
     // still work with the 3 valid ones.
@@ -117,7 +140,7 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
 
     const parsed = rawBindingItemSchema.safeParse({
       ...rawItem,
-      type: sanitizedType.success ? sanitizedType.data : undefined,
+      type: normalizedType,
       options: sanitizedOptions?.length ? sanitizedOptions : undefined,
     });
 
@@ -125,8 +148,18 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
       continue;
     }
 
-    const { label, property, type, options, min, max, pattern, required } =
-      parsed.data;
+    const {
+      label,
+      property,
+      type,
+      widget: explicitWidget,
+      options,
+      min,
+      max,
+      pattern,
+      required,
+    } = parsed.data;
+    const widget = explicitWidget ?? derivedWidget;
 
     if (property === undefined && type !== 'richtext') {
       continue;
@@ -138,6 +171,7 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
       label,
       property: property ?? BINDING_PROP.INNER_HTML,
       ...(type !== undefined && { type }),
+      ...(widget !== undefined && { widget }),
       ...(options?.length && { options }),
       ...(render && { render }),
       ...(min !== undefined && { min }),

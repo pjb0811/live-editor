@@ -430,7 +430,12 @@ const Field = ({ binding, id, value, onChange }: Props) => {
     );
   }
 
-  if (binding.type === 'icon-picker') {
+  // Checks `type` too, not just `widget`: a `type: 'icon-picker'` binding
+  // parsed by `parseBinding` is already normalized to `widget: 'icon-picker'`
+  // (see #236), but a hand-constructed BindingItem — e.g. the nested
+  // render-leaf case just above, which doesn't carry `widget` — can still
+  // arrive with the alias directly in `type`.
+  if (binding.widget === 'icon-picker' || binding.type === 'icon-picker') {
     const SelectedIcon = ICON_MAP[stringValue];
 
     return (
@@ -454,7 +459,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
     );
   }
 
-  if (binding.type === 'asset-picker') {
+  if (binding.widget === 'asset-picker' || binding.type === 'asset-picker') {
     const defaultUploadValue: UploadFile[] = stringValue
       ? [
           {

@@ -53,17 +53,46 @@ describe('parseBinding', () => {
     expect(result[0]).not.toHaveProperty('type');
   });
 
-  it.each(['date', 'url', 'icon-picker', 'asset-picker'])(
-    'accepts %s as a valid type value',
+  it.each(['date', 'url'])('accepts %s as a valid type value', typeValue => {
+    const result = parseBinding(
+      `[{label: 'X', property: 'y', type: '${typeValue}'}]`,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty('type', typeValue);
+  });
+
+  it.each(['icon-picker', 'asset-picker'])(
+    'normalizes %s from a legacy type value into type: string + widget',
     typeValue => {
       const result = parseBinding(
         `[{label: 'X', property: 'y', type: '${typeValue}'}]`,
       );
 
       expect(result).toHaveLength(1);
-      expect(result[0]).toHaveProperty('type', typeValue);
+      expect(result[0]).toHaveProperty('type', 'string');
+      expect(result[0]).toHaveProperty('widget', typeValue);
     },
   );
+
+  it('passes through an arbitrary widget string alongside a real type', () => {
+    const result = parseBinding(
+      "[{label: 'X', property: 'y', type: 'number', widget: 'slider'}]",
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty('type', 'number');
+    expect(result[0]).toHaveProperty('widget', 'slider');
+  });
+
+  it('keeps an unrecognized widget value instead of dropping the item', () => {
+    const result = parseBinding(
+      "[{label: 'X', property: 'y', type: 'string', widget: 'not-a-real-widget'}]",
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty('widget', 'not-a-real-widget');
+  });
 
   it('extracts both type and property on nested render leaves', () => {
     const result = parseBinding(`
