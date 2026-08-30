@@ -140,6 +140,44 @@ the built-in panel uses. Switch on `binding.type` to render your own control:
 />
 ```
 
+### Wrapping the built-in panel instead of starting from zero
+
+`renderPanel` doesn't have to replace the panel entirely — the built-in one
+is exported as `Live.Dnd.DefaultPanel`, so you can keep it and just add your
+own chrome around it (or swap it in for only some sections):
+
+```tsx
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  renderPanel={data => (
+    <div>
+      <MyCustomHeader item={data.item} />
+      <Live.Dnd.DefaultPanel
+        item={data.item}
+        bindings={data.bindings}
+        onDelete={data.onDelete}
+        onMoveUp={data.onMoveUp}
+        onMoveDown={data.onMoveDown}
+        canMoveUp={data.canMoveUp}
+        canMoveDown={data.canMoveDown}
+      />
+    </div>
+  )}
+/>
+```
+
+`DefaultPanel`'s props line up 1:1 with `PanelRenderData` (drop `onChange`,
+which it never needed). One thing it takes that `PanelRenderData` doesn't
+have: an internal, optional `onNodeChange` prop that array/children fields
+use to commit an edit to a *different*, dynamically-discovered element than
+the one being rendered — not expressible through a single binding's own
+`onChange`. It's not part of the public data because of that, so a
+`DefaultPanel` re-embedded this way (without `Dnd` wiring it in for you)
+renders everything correctly but nested array/children edits inside it
+won't commit. Rendering `DefaultPanel` un-wrapped, or letting `Dnd` render
+it by not passing `renderPanel` at all, doesn't have this limitation.
+
 ### `PanelBinding`
 
 | Field | Type | Description |
@@ -171,11 +209,12 @@ normalizes them into `{ type: 'string', widget: 'icon-picker' }` /
 `{ type: 'string', widget: 'asset-picker' }` rather than passing them
 through as-is. A custom `renderPanel` should switch on `binding.widget`
 for these, not `binding.type`. The built-in panel's icon set is exported
-as `ICON_MAP` (`name -> lucide-react component`) if you want to reuse it
-instead of building your own:
+as `ICON_MAP` (`name -> lucide-react component`), and the same
+label/value pairs it feeds its own `<select>` as `ICON_OPTIONS`, if you
+want to reuse either instead of building your own:
 
 ```ts
-import { ICON_MAP } from '@jbpark/live-editor';
+import { ICON_MAP, ICON_OPTIONS } from '@jbpark/live-editor';
 ```
 
 Author a brand-new field with any other widget the same way — `type`

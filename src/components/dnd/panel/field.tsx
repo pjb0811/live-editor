@@ -18,7 +18,7 @@ import { parseValue, validateBindingValue } from '~/utils/ast';
 
 import type { PanelBinding } from '../dnd';
 import Children from './children';
-import { ICON_MAP } from './icon-map';
+import { ICON_MAP, ICON_OPTIONS } from './icon-map';
 import Items from './items';
 
 interface Props {
@@ -147,16 +147,6 @@ const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
     />
   );
 };
-
-const ICON_OPTIONS = Object.entries(ICON_MAP).map(([name, Icon]) => ({
-  label: (
-    <span className="flex items-center gap-2">
-      <Icon size={14} />
-      {name}
-    </span>
-  ),
-  value: name,
-}));
 
 const Field = ({ binding, onNodeChange }: Props) => {
   const { id, value, onChange } = binding;
