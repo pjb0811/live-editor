@@ -51,7 +51,10 @@ export const BINDING_TYPES = [
 export type BindingType = (typeof BINDING_TYPES)[number];
 
 export interface BindingRenderLeaf {
-  type: BindingType;
+  // Optional, matching the top-level BindingItem.type — an unrecognized
+  // leaf type degrades to untyped instead of dropping the entry (see
+  // sanitizeRenderMap in binding.ts and #234).
+  type?: BindingType;
   property?: string;
   render?: BindingRenderMap;
 }

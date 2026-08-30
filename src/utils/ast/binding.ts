@@ -19,8 +19,10 @@ const bindingOptionSchema = z.object({
   value: z.string(),
 });
 
+// `type` is validated separately in sanitizeRenderMap (like the top-level
+// item's own type) so an unrecognized value degrades the leaf to untyped
+// instead of failing this whole schema — see #234.
 const bindingRenderLeafSchema = z.object({
-  type: bindingTypeSchema,
   property: z.string().optional(),
 });
 
@@ -90,11 +92,24 @@ const sanitizeRenderMap = (value: unknown): BindingRenderMap | undefined => {
     }
 
     if ('type' in raw) {
+      // Drop an unrecognized `type` down to untyped instead of dropping the
+      // whole entry — matches the top-level item's own behavior at
+      // `bindingTypeSchema.safeParse(rawItem.type)` above. Keeping the
+      // entry (rather than deleting the key) is what #234 asked for: a
+      // typo'd/future leaf type still shows up as a plain field instead of
+      // vanishing, and `'type' in leaf` stays true either way since `type`
+      // is always set below, even to `undefined`.
+      const sanitizedType = bindingTypeSchema.safeParse(raw.type);
       const leaf = bindingRenderLeafSchema.safeParse(raw);
 
       if (leaf.success) {
         const render = sanitizeRenderMap(raw.render);
-        map[key] = render ? { ...leaf.data, render } : leaf.data;
+        const typedLeaf = {
+          ...leaf.data,
+          type: sanitizedType.success ? sanitizedType.data : undefined,
+        };
+
+        map[key] = render ? { ...typedLeaf, render } : typedLeaf;
       }
       continue;
     }

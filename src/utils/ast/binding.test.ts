@@ -111,7 +111,7 @@ describe('parseBinding', () => {
     });
   });
 
-  it('drops a nested render leaf with an unrecognized type instead of keeping it as-is', () => {
+  it('degrades a nested render leaf with an unrecognized type to untyped instead of dropping the key', () => {
     const result = parseBinding(`
       [{
         label: 'Items',
@@ -125,6 +125,7 @@ describe('parseBinding', () => {
 
     expect(result[0]!.render).toEqual({
       icon: { type: 'string', property: 'innerText' },
+      bogus: { type: undefined, property: 'innerText' },
     });
   });
 
