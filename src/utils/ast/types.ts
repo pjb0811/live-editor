@@ -25,6 +25,14 @@ export interface BindingOption {
   value: string;
 }
 
+// `icon-picker`/`asset-picker` are kept here as deprecated aliases, not
+// removed — see #236. They describe a *control*, not a data kind, and
+// conflating that with the rest of this list (which does describe what a
+// value actually is) left a consumer with nowhere to express their own
+// widget choice. `parseBinding` normalizes an authored `type: 'icon-picker'`
+// into `{ type: 'string', widget: 'icon-picker' }` rather than passing it
+// through as-is, so existing authored content keeps working unchanged while
+// `BindingItem.widget` becomes the real, open-ended home for this axis.
 export const BINDING_TYPES = [
   'array',
   'object',
@@ -55,7 +63,17 @@ export interface BindingRenderMap {
 export interface BindingItem {
   label: string;
   property: string;
+  // Data kind — what the value *is*. Closed, since the library's own
+  // validation/coercion (validateBindingValue, parseValue) has to be able
+  // to switch on it exhaustively.
   type?: BindingType;
+  // Presentation — how to *render* it. Deliberately an open string, not a
+  // closed enum: the library cannot enumerate controls it doesn't
+  // implement, and a renderPanel consumer owns presentation once they use
+  // it (see #234/#236). `'icon-picker'`/`'asset-picker'` are the built-in
+  // panel's own two widgets; anything else (e.g. `'slider'`) is free for a
+  // custom renderPanel to switch on.
+  widget?: string;
   options?: BindingOption[];
   render?: BindingRenderMap;
   min?: number;
@@ -65,13 +83,7 @@ export interface BindingItem {
 }
 
 export type NodeValueType =
-  | 'boolean'
-  | 'number'
-  | 'string'
-  | 'null'
-  | 'array'
-  | 'object'
-  | 'unknown';
+  'boolean' | 'number' | 'string' | 'null' | 'array' | 'object' | 'unknown';
 
 export type EditableNodeValueType = 'boolean' | 'number' | 'string' | 'null';
 

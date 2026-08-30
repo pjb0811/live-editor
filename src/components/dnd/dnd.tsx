@@ -97,6 +97,12 @@ export interface PanelBinding {
   // (`string`/`url` -> <input>, `jsx`/`richtext` -> <textarea>, `boolean`
   // -> checkbox, ...). `undefined` means a plain string binding.
   type?: BindingType;
+  // Presentation, as opposed to `type`'s data kind — an open string, not a
+  // closed enum, since a custom renderPanel can declare any widget it
+  // wants (e.g. `'slider'`) and switch on it itself. The built-in panel
+  // only recognizes `'icon-picker'`/`'asset-picker'`; anything else falls
+  // back to the `type`-appropriate default control. See #236.
+  widget?: string;
   // Present when the binding defines a fixed option set (render a <select>).
   options?: BindingOption[];
   // Present for `object`/`array` bindings whose nested keys/items declare
@@ -340,6 +346,7 @@ const Dnd = ({
         label: binding.label,
         property: binding.property,
         type: binding.type,
+        widget: binding.widget,
         options: binding.options,
         render: binding.render,
         min: binding.min,
