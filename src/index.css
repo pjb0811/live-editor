@@ -10,7 +10,7 @@
  * Consumers that run their own Tailwind still get preflight from their own
  * build, so this library's chrome is unaffected either way.
  */
-@layer theme, base, components, utilities;
+@layer theme, base, components, ui-kit, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
 
@@ -26,8 +26,24 @@
  * import now carries both this library's own [data-editor-mode] styles and
  * ui-kit's, so nothing else needs to change for consumers already following
  * the docs.
+ *
+ * Imported into its own `ui-kit` layer rather than left unlayered — ui-kit's
+ * stylesheet declares its own `theme`/`base`/`components`/`utilities` layers
+ * internally, and an unlayered `@import` merges those straight into this
+ * file's SAME-NAMED layers, appended after this file's own content. Any
+ * class both sheets emit (Tailwind's own utility classes, since ui-kit is
+ * built with the same Tailwind) then resolves by import order instead of by
+ * the responsive variant actually intended to win — e.g. `hidden md:block`
+ * silently stayed hidden at any width, because ui-kit's own unconditional
+ * `.hidden` landed after this file's `.md\:block` in the merged utilities
+ * layer (see #259). `layer(ui-kit)` nests ui-kit's internal layers under
+ * this one instead (`ui-kit.utilities`, etc. — see the CSS Cascading and
+ * Layering spec's import-with-layer-name behavior), and declaring `ui-kit`
+ * before `utilities` above keeps this file's own utilities the tie-breaker
+ * regardless of import order, without discarding ui-kit's own internal
+ * layer structure.
  */
-@import '@jbpark/ui-kit/style.css';
+@import '@jbpark/ui-kit/style.css' layer(ui-kit);
 
 @layer utilities {
   /* 편집 모드 기본 설정 */
