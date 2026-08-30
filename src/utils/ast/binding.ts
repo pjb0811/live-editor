@@ -28,17 +28,42 @@ const bindingRenderLeafSchema = z.object({
 // unrecognized widget is expected (a renderPanel consumer's own value, not
 // this library's), so unlike `type` there is no "drop it" failure mode to
 // design for.
-const rawBindingItemSchema = z.object({
-  label: z.string(),
-  property: z.string().optional(),
-  type: bindingTypeSchema.optional(),
-  widget: z.string().optional(),
-  options: z.array(bindingOptionSchema).optional(),
-  min: z.number().optional(),
-  max: z.number().optional(),
-  pattern: z.string().optional(),
-  required: z.boolean().optional(),
-});
+//
+// `.passthrough()` (rather than the default `.strip()`) keeps any key this
+// schema doesn't know about instead of silently discarding it — see #234.
+// A consumer's own metadata (`step`, `unit`, a widget hint, ...) survives
+// parsing and is surfaced separately as `meta` below, namespaced instead of
+// spread onto the item, so it can't collide with a future first-class field.
+const rawBindingItemSchema = z
+  .object({
+    label: z.string(),
+    property: z.string().optional(),
+    type: bindingTypeSchema.optional(),
+    widget: z.string().optional(),
+    options: z.array(bindingOptionSchema).optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    pattern: z.string().optional(),
+    required: z.boolean().optional(),
+  })
+  .passthrough();
+
+// Every key `rawBindingItemSchema` declares, plus `render` (handled by
+// `sanitizeRenderMap` separately, never through this schema) — anything
+// else surviving `.passthrough()` is consumer-defined and belongs in `meta`,
+// not treated as one of this library's own fields.
+const KNOWN_BINDING_KEYS = new Set([
+  'label',
+  'property',
+  'type',
+  'widget',
+  'options',
+  'render',
+  'min',
+  'max',
+  'pattern',
+  'required',
+]);
 
 // The two BINDING_TYPES entries that describe a control, not a data kind —
 // see the type/widget split in #236. Normalized below into `widget` instead
@@ -167,6 +192,12 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
 
     const render = sanitizeRenderMap(rawItem.render);
 
+    const metaEntries = Object.entries(parsed.data).filter(
+      ([key]) => !KNOWN_BINDING_KEYS.has(key),
+    );
+    const meta =
+      metaEntries.length > 0 ? Object.fromEntries(metaEntries) : undefined;
+
     items.push({
       label,
       property: property ?? BINDING_PROP.INNER_HTML,
@@ -178,6 +209,7 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
       ...(max !== undefined && { max }),
       ...(pattern !== undefined && { pattern }),
       ...(required !== undefined && { required }),
+      ...(meta && { meta }),
     });
   }
 

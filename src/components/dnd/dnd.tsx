@@ -116,6 +116,11 @@ export interface PanelBinding {
   max?: number;
   pattern?: string;
   required?: boolean;
+  // Consumer-defined keys carried straight through from the authored
+  // data-binding — namespaced instead of spread onto PanelBinding so they
+  // can't collide with a future first-class field. Absent when nothing
+  // extra was authored. See #234.
+  meta?: Record<string, unknown>;
   // Current serialized value — the same string the built-in field receives.
   value: string;
   // Commit a new value through the same AST-update pipeline the built-in
@@ -353,6 +358,7 @@ const Dnd = ({
         max: binding.max,
         pattern: binding.pattern,
         required: binding.required,
+        meta: binding.meta,
         value: getCurrentValue(node, binding.property),
         onChange: (value: string) =>
           onFieldChange({
