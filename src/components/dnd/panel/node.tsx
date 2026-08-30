@@ -40,10 +40,28 @@ const Node = ({ data, onChange }: FieldEditorProps) => {
                 <span className="ml-1 text-gray-400">({binding.property})</span>
               </label>
               <Field
-                id={dataId}
-                binding={binding}
-                value={currentValue}
-                onChange={onChange}
+                binding={{
+                  id: dataId,
+                  label: binding.label,
+                  property: binding.property,
+                  type: binding.type,
+                  widget: binding.widget,
+                  options: binding.options,
+                  render: binding.render,
+                  min: binding.min,
+                  max: binding.max,
+                  pattern: binding.pattern,
+                  required: binding.required,
+                  value: currentValue,
+                  onChange: next =>
+                    onChange?.({
+                      id: dataId,
+                      label: binding.label,
+                      property: binding.property,
+                      value: next,
+                    }),
+                }}
+                onNodeChange={onChange}
               />
             </div>
           );

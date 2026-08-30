@@ -14,21 +14,22 @@ import { useDebounce } from '@jbpark/use-hooks';
 import CoreEditor from '~/components/editor/core';
 import TiptapEditor from '~/components/editor/tiptap';
 import { BINDING_PROP } from '~/constants';
-import {
-  type BindingItem,
-  parseValue,
-  validateBindingValue,
-} from '~/utils/ast';
+import { parseValue, validateBindingValue } from '~/utils/ast';
 
+import type { PanelBinding } from '../dnd';
 import Children from './children';
 import { ICON_MAP } from './icon-map';
 import Items from './items';
 
 interface Props {
-  binding: BindingItem;
-  id: string;
-  value: string;
-  onChange?: (params: {
+  binding: PanelBinding;
+  // `Items`/`Children` edit a *different* element than `binding` itself —
+  // an array item or a sibling child, each with its own id/label/property —
+  // which `binding.onChange`'s single-value shape can't express. This is
+  // the internal, node-level escape hatch those two still need (see #237's
+  // documented items/children boundary); it isn't part of the public
+  // `PanelBinding` surface a custom `renderPanel` sees.
+  onNodeChange?: (params: {
     id: string;
     label: string;
     property: string;
@@ -83,25 +84,11 @@ const formatDateValue = (date: Date): string => {
 const COLOR_COMMIT_DELAY = 75;
 
 interface ColorPickerFieldProps {
-  id: string;
-  label: string;
-  property: string;
   value: string;
-  onChange?: (params: {
-    id: string;
-    label: string;
-    property: string;
-    value: string;
-  }) => void;
+  onChange: (value: string) => void;
 }
 
-const ColorPickerField = ({
-  id,
-  label,
-  property,
-  value,
-  onChange,
-}: ColorPickerFieldProps) => {
+const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
   const [liveValue, setLiveValue] = useState(value);
   // Tracks `value` purely to detect an external change during render (see
   // below) — refs can't be read/written during render, so this has to be
@@ -132,7 +119,7 @@ const ColorPickerField = ({
       return;
     }
     lastCommittedRef.current = next;
-    onChange?.({ id, label, property, value: next });
+    onChange(next);
   };
 
   const debouncedCommit = useDebounce(() => commit(liveValue), {
@@ -171,7 +158,9 @@ const ICON_OPTIONS = Object.entries(ICON_MAP).map(([name, Icon]) => ({
   value: name,
 }));
 
-const Field = ({ binding, id, value, onChange }: Props) => {
+const Field = ({ binding, onNodeChange }: Props) => {
+  const { id, value, onChange } = binding;
+
   const parsedValue = useMemo(() => {
     return parseValue(value);
   }, [value]);
@@ -187,15 +176,8 @@ const Field = ({ binding, id, value, onChange }: Props) => {
       <Items
         value={value}
         render={binding.render}
-        onChange={next => {
-          onChange?.({
-            id,
-            label: binding.label,
-            property: binding.property,
-            value: next,
-          });
-        }}
-        onChildChange={onChange}
+        onChange={onChange}
+        onChildChange={onNodeChange}
       />
     );
   }
@@ -206,12 +188,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
         value={value}
         onChange={next => {
           if (next !== value) {
-            onChange?.({
-              id,
-              label: binding.label,
-              property: binding.property,
-              value: next,
-            });
+            onChange(next);
           }
         }}
       />
@@ -229,12 +206,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
         raw={isHTML}
         onSave={next => {
           if (next !== value) {
-            onChange?.({
-              id,
-              label: binding.label,
-              property: binding.property,
-              value: next,
-            });
+            onChange(next);
           }
         }}
       />
@@ -245,15 +217,8 @@ const Field = ({ binding, id, value, onChange }: Props) => {
     return (
       <Children
         value={parsedValue}
-        onChange={next => {
-          onChange?.({
-            id,
-            label: binding.label,
-            property: binding.property,
-            value: next,
-          });
-        }}
-        onNodeChange={onChange}
+        onChange={onChange}
+        onNodeChange={onNodeChange}
       />
     );
   }
@@ -272,6 +237,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             </label>
             <Field
               binding={{
+                id,
                 label: key,
                 property:
                   binding.render?.[key] && 'type' in binding.render[key]
@@ -279,33 +245,27 @@ const Field = ({ binding, id, value, onChange }: Props) => {
                     : key,
                 type:
                   binding.render?.[key] && 'type' in binding.render[key]
-                    ? (binding.render[key] as { type: BindingItem['type'] })
+                    ? (binding.render[key] as { type: PanelBinding['type'] })
                         .type
                     : undefined,
                 render:
                   binding.render?.[key] && !('type' in binding.render[key])
-                    ? (binding.render[key] as BindingItem['render'])
+                    ? (binding.render[key] as PanelBinding['render'])
                     : undefined,
-              }}
-              id={id}
-              value={
-                typeof val === 'object' ? JSON.stringify(val) : String(val)
-              }
-              onChange={({ value: next }) => {
-                const convertedValue = parseValue(next);
+                value:
+                  typeof val === 'object' ? JSON.stringify(val) : String(val),
+                onChange: next => {
+                  const convertedValue = parseValue(next);
 
-                const updated = {
-                  ...parsedValue,
-                  [key]: convertedValue,
-                };
+                  const updated = {
+                    ...parsedValue,
+                    [key]: convertedValue,
+                  };
 
-                onChange?.({
-                  id,
-                  label: binding.label,
-                  property: binding.property,
-                  value: JSON.stringify(updated),
-                });
+                  onChange(JSON.stringify(updated));
+                },
               }}
+              onNodeChange={onNodeChange}
             />
           </div>
         ))}
@@ -318,12 +278,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
       <Checkbox
         checked={parsedValue === true || parsedValue === 'true'}
         onChange={checked => {
-          onChange?.({
-            id,
-            label: binding.label,
-            property: binding.property,
-            value: checked.toString(),
-          });
+          onChange(checked.toString());
         }}
       />
     );
@@ -338,12 +293,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
         options={binding.options}
         onChange={next => {
           if (next !== value) {
-            onChange?.({
-              id,
-              label: binding.label,
-              property: binding.property,
-              value: next,
-            });
+            onChange(next);
           }
         }}
       />
@@ -353,9 +303,6 @@ const Field = ({ binding, id, value, onChange }: Props) => {
   if (binding.type === 'color' || isColorProperty(binding.property)) {
     return (
       <ColorPickerField
-        id={id}
-        label={binding.label}
-        property={binding.property}
         value={normalizeToHex(stringValue)}
         onChange={onChange}
       />
@@ -379,12 +326,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             setValidationError(null);
 
             if (next !== value) {
-              onChange?.({
-                id,
-                label: binding.label,
-                property: binding.property,
-                value: next,
-              });
+              onChange(next);
             }
           }}
         />
@@ -414,12 +356,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             setValidationError(null);
 
             if (next !== value) {
-              onChange?.({
-                id,
-                label: binding.label,
-                property: binding.property,
-                value: next,
-              });
+              onChange(next);
             }
           }}
         />
@@ -445,12 +382,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
           options={ICON_OPTIONS}
           onChange={next => {
             if (next !== value) {
-              onChange?.({
-                id,
-                label: binding.label,
-                property: binding.property,
-                value: next,
-              });
+              onChange(next);
             }
           }}
         />
@@ -487,12 +419,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             setValidationError(null);
 
             if (next !== value) {
-              onChange?.({
-                id,
-                label: binding.label,
-                property: binding.property,
-                value: next,
-              });
+              onChange(next);
             }
           }}
         />
@@ -505,12 +432,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             const next = files[0]?.url ?? '';
 
             if (next !== value) {
-              onChange?.({
-                id,
-                label: binding.label,
-                property: binding.property,
-                value: next,
-              });
+              onChange(next);
             }
           }}
         />
@@ -540,12 +462,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
             setValidationError(null);
 
             if (next !== value) {
-              onChange?.({
-                id,
-                label: binding.label,
-                property: binding.property,
-                value: next,
-              });
+              onChange(next);
             }
           }}
         />
@@ -573,12 +490,7 @@ const Field = ({ binding, id, value, onChange }: Props) => {
           setValidationError(null);
 
           if (next !== value) {
-            onChange?.({
-              id,
-              label: binding.label,
-              property: binding.property,
-              value: next,
-            });
+            onChange(next);
           }
         }}
       />
