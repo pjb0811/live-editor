@@ -20,27 +20,15 @@ export const validateBindingValue = (
     return VALID;
   }
 
-  // `PanelBinding.value` (the value a custom renderPanel gets) is always a
-  // string, even for `type: 'number'` bindings — coerce a numeric string
-  // the same way the built-in field does today (see field.tsx's ad-hoc
-  // `Number(next)`), so min/max apply to both callers instead of silently
-  // no-op'ing on the string form. A non-numeric string (`NaN`) or
-  // whitespace-only string is left alone; `isEmpty` above already handles
-  // the plain empty-string case.
-  const numericValue =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string' &&
-          value.trim() !== '' &&
-          !Number.isNaN(Number(value))
-        ? Number(value)
-        : undefined;
-
-  if (numericValue !== undefined) {
-    if (binding.min !== undefined && numericValue < binding.min) {
+  // `min`/`max` compare against a real number. Since #238, a `type:
+  // 'number'` binding delivers an actual number across the panel boundary,
+  // so callers pass one here directly — no string coercion to re-derive the
+  // type. A non-number value simply isn't range-checked.
+  if (typeof value === 'number') {
+    if (binding.min !== undefined && value < binding.min) {
       return { valid: false, message: `Must be at least ${binding.min}.` };
     }
-    if (binding.max !== undefined && numericValue > binding.max) {
+    if (binding.max !== undefined && value > binding.max) {
       return { valid: false, message: `Must be at most ${binding.max}.` };
     }
   }

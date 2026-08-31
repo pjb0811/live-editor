@@ -1,4 +1,9 @@
-import { type DataAttrNode, getCurrentValue, parseBinding } from '~/utils/ast';
+import {
+  type DataAttrNode,
+  getCurrentValue,
+  getStructuredValue,
+  parseBinding,
+} from '~/utils/ast';
 
 import Field from './field';
 
@@ -8,7 +13,7 @@ export interface FieldEditorProps {
     id: string;
     label: string;
     property: string;
-    value: string;
+    value: unknown;
   }) => void;
 }
 
@@ -32,6 +37,11 @@ const Node = ({ data, onChange }: FieldEditorProps) => {
       <div className="space-y-1">
         {bindings.map(binding => {
           const currentValue = getCurrentValue(data, binding.property);
+          const structuredValue = getStructuredValue(
+            data,
+            binding.property,
+            binding.type,
+          );
 
           return (
             <div key={binding.label} className="space-y-1">
@@ -53,7 +63,8 @@ const Node = ({ data, onChange }: FieldEditorProps) => {
                   pattern: binding.pattern,
                   required: binding.required,
                   meta: binding.meta,
-                  value: currentValue,
+                  value: structuredValue,
+                  rawValue: currentValue,
                   onChange: next =>
                     onChange?.({
                       id: dataId,

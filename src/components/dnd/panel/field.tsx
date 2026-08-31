@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   Checkbox,
@@ -33,7 +33,7 @@ interface Props {
     id: string;
     label: string;
     property: string;
-    value: string;
+    value: unknown;
   }) => void;
 }
 
@@ -149,11 +149,10 @@ const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
 };
 
 const Field = ({ binding, onNodeChange }: Props) => {
-  const { id, value, onChange } = binding;
-
-  const parsedValue = useMemo(() => {
-    return parseValue(value);
-  }, [value]);
+  // `value` is already structured (its real JS type); `rawValue` is the exact
+  // source text used for the raw editors (Items/code/textarea) and as the
+  // <input> defaultValue. See #238.
+  const { id, value, rawValue, onChange } = binding;
 
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -164,7 +163,7 @@ const Field = ({ binding, onNodeChange }: Props) => {
   ) {
     return (
       <Items
-        value={value}
+        value={rawValue}
         render={binding.render}
         onChange={onChange}
         onChildChange={onNodeChange}
@@ -175,9 +174,9 @@ const Field = ({ binding, onNodeChange }: Props) => {
   if (binding.type === 'richtext') {
     return (
       <TiptapEditor
-        value={value}
+        value={rawValue}
         onChange={next => {
-          if (next !== value) {
+          if (next !== rawValue) {
             onChange(next);
           }
         }}
@@ -190,12 +189,12 @@ const Field = ({ binding, onNodeChange }: Props) => {
 
     return (
       <CoreEditor
-        value={value}
+        value={rawValue}
         height="150px"
         fragment={!isHTML}
         raw={isHTML}
         onSave={next => {
-          if (next !== value) {
+          if (next !== rawValue) {
             onChange(next);
           }
         }}
@@ -203,24 +202,18 @@ const Field = ({ binding, onNodeChange }: Props) => {
     );
   }
 
-  if (binding.property === 'children' && Array.isArray(parsedValue)) {
+  if (binding.property === 'children' && Array.isArray(value)) {
     return (
-      <Children
-        value={parsedValue}
-        onChange={onChange}
-        onNodeChange={onNodeChange}
-      />
+      <Children value={value} onChange={onChange} onNodeChange={onNodeChange} />
     );
   }
 
-  if (
-    typeof parsedValue === 'object' &&
-    parsedValue !== null &&
-    !Array.isArray(parsedValue)
-  ) {
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    const objectValue = value as Record<string, unknown>;
+
     return (
       <div className="space-y-2 rounded border border-gray-200 bg-gray-50 p-2">
-        {Object.entries(parsedValue).map(([key, val]) => (
+        {Object.entries(objectValue).map(([key, val]) => (
           <div key={key} className="space-y-1">
             <label className="block text-xs font-medium text-gray-600">
               {key}
@@ -242,17 +235,13 @@ const Field = ({ binding, onNodeChange }: Props) => {
                   binding.render?.[key] && !('type' in binding.render[key])
                     ? (binding.render[key] as PanelBinding['render'])
                     : undefined,
-                value:
-                  typeof val === 'object' ? JSON.stringify(val) : String(val),
+                value: val,
+                rawValue:
+                  typeof val === 'object' && val !== null
+                    ? JSON.stringify(val)
+                    : String(val),
                 onChange: next => {
-                  const convertedValue = parseValue(next);
-
-                  const updated = {
-                    ...parsedValue,
-                    [key]: convertedValue,
-                  };
-
-                  onChange(JSON.stringify(updated));
+                  onChange({ ...objectValue, [key]: next });
                 },
               }}
               onNodeChange={onNodeChange}
@@ -263,18 +252,18 @@ const Field = ({ binding, onNodeChange }: Props) => {
     );
   }
 
-  if (binding.type === 'boolean' || typeof parsedValue === 'boolean') {
+  if (binding.type === 'boolean' || typeof value === 'boolean') {
     return (
       <Checkbox
-        checked={parsedValue === true || parsedValue === 'true'}
+        checked={value === true || value === 'true'}
         onChange={checked => {
-          onChange(checked.toString());
+          onChange(checked);
         }}
       />
     );
   }
 
-  const stringValue = String(value);
+  const stringValue = rawValue;
 
   if (binding.options && Array.isArray(binding.options)) {
     return (
@@ -433,7 +422,7 @@ const Field = ({ binding, onNodeChange }: Props) => {
     );
   }
 
-  if (typeof parsedValue === 'number') {
+  if (binding.type === 'number' || typeof value === 'number') {
     return (
       <div>
         <Input
@@ -441,7 +430,14 @@ const Field = ({ binding, onNodeChange }: Props) => {
           defaultValue={stringValue}
           placeholder="Enter a numeric value"
           onBlur={e => {
-            const next = e.target.value.trim();
+            const raw = e.target.value.trim();
+            // Commit a real number, not a numeric string — the AST boundary
+            // and `validateBindingValue` (its `min`/`max`) both expect the
+            // value as its declared type now. An unparseable entry falls
+            // back to the raw text so a genuine mistake still round-trips
+            // rather than becoming `NaN`.
+            const next: unknown =
+              raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : raw;
             const result = validateBindingValue(binding, next);
 
             if (!result.valid) {
@@ -466,10 +462,16 @@ const Field = ({ binding, onNodeChange }: Props) => {
   return (
     <div>
       <Input.TextArea
-        defaultValue={value}
+        defaultValue={rawValue}
         placeholder="Enter a value"
         onBlur={e => {
-          const next = e.target.value.trim();
+          const raw = e.target.value.trim();
+          // Untyped field: infer the value's type from the text the user
+          // entered (so `42` commits as a number), the way the old boundary
+          // did — but here, in the presentation layer, not by re-guessing in
+          // the AST pipeline. A declared string-family type keeps the text
+          // verbatim, so `"{x}"` stays a string.
+          const next: unknown = binding.type ? raw : parseValue(raw);
           const result = validateBindingValue(binding, next);
 
           if (!result.valid) {
@@ -479,7 +481,7 @@ const Field = ({ binding, onNodeChange }: Props) => {
 
           setValidationError(null);
 
-          if (next !== value) {
+          if (next !== rawValue) {
             onChange(next);
           }
         }}

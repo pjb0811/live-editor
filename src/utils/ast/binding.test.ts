@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { BINDING_PROP, DATA_ATTR } from '../../constants';
-import { findEditableChildren, getCurrentValue, parseBinding } from './binding';
+import {
+  findEditableChildren,
+  getCurrentValue,
+  getStructuredValue,
+  parseBinding,
+} from './binding';
 import type { Attribute, DataAttrNode } from './types';
 
 const makeNode = (overrides: Partial<DataAttrNode> = {}): DataAttrNode => ({
@@ -304,6 +309,48 @@ describe('getCurrentValue', () => {
     });
 
     expect(getCurrentValue(node, BINDING_PROP.INNER_HTML)).toBe('hi there');
+  });
+});
+
+// #238: the structured counterpart delivers the value as its real JS type.
+describe('getStructuredValue', () => {
+  it('recovers a numeric expression attribute as a number', () => {
+    const node = makeNode({
+      attributes: [{ name: 'count', value: '3', isStringLiteral: false }],
+    });
+
+    expect(getStructuredValue(node, 'count')).toBe(3);
+  });
+
+  it('recovers an object expression attribute as an object', () => {
+    const node = makeNode({
+      attributes: [
+        { name: 'style', value: '{ padding: 4 }', isStringLiteral: false },
+      ],
+    });
+
+    expect(getStructuredValue(node, 'style')).toEqual({ padding: 4 });
+  });
+
+  it('keeps a string-literal attribute as a string even when it looks like an expression', () => {
+    const node = makeNode({
+      attributes: [
+        { name: 'title', value: '{not an expression}', isStringLiteral: true },
+      ],
+    });
+
+    expect(getStructuredValue(node, 'title')).toBe('{not an expression}');
+  });
+
+  it('keeps a declared string-family type as text, without re-parsing', () => {
+    const node = makeNode({
+      attributes: [{ name: 'label', value: '42', isStringLiteral: false }],
+    });
+
+    // No declared type: inferred to a number.
+    expect(getStructuredValue(node, 'label')).toBe(42);
+    // Declared `string`: stays the literal text.
+    expect(getStructuredValue(node, 'label', 'string')).toBe('42');
   });
 });
 

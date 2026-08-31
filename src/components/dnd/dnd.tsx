@@ -31,6 +31,7 @@ import {
   extract,
   fillIds,
   getCurrentValue,
+  getStructuredValue,
   parseBinding,
   update,
 } from '~/utils/ast';
@@ -109,9 +110,9 @@ export interface PanelBinding {
   // their own types — the same map the built-in panel uses to type each
   // nested field instead of falling back to a plain string input.
   render?: BindingRenderMap;
-  // Constraints declared on the binding. `min`/`max` apply even though
-  // `value` below is a string (see `validateBindingValue`, which coerces
-  // numeric strings before comparing).
+  // Constraints declared on the binding. `min`/`max` compare against the
+  // real number `value` delivers for `type: 'number'` bindings (see
+  // `validateBindingValue`).
   min?: number;
   max?: number;
   pattern?: string;
@@ -121,11 +122,19 @@ export interface PanelBinding {
   // can't collide with a future first-class field. Absent when nothing
   // extra was authored. See #234.
   meta?: Record<string, unknown>;
-  // Current serialized value — the same string the built-in field receives.
-  value: string;
+  // Current value as its real JS type — a number for `type: 'number'`, a
+  // boolean for `type: 'boolean'`, an object/array for `object`/`array`,
+  // a string otherwise. Switch on this without re-parsing. See #238.
+  value: unknown;
+  // The exact source text behind `value`, for cases that can't round-trip
+  // through a JS value — `jsx`/`richtext` bindings, or an attribute whose
+  // source is an expression you want to edit as text.
+  rawValue: string;
   // Commit a new value through the same AST-update pipeline the built-in
-  // panel uses (including the error Toast on a bad edit).
-  onChange: (value: string) => void;
+  // panel uses (including the error Toast on a bad edit). Pass the value as
+  // its real type; it's serialized once, at the AST boundary, where the
+  // declared `type` is known — so no string quoting/guessing on your side.
+  onChange: (value: unknown) => void;
 }
 
 export interface Props extends Omit<
@@ -309,7 +318,7 @@ const Dnd = ({
     id: string;
     label: string;
     property: string;
-    value: string;
+    value: unknown;
   }) => {
     const result = update(updatedCode, id, label, fieldValue, property);
 
@@ -359,8 +368,9 @@ const Dnd = ({
         pattern: binding.pattern,
         required: binding.required,
         meta: binding.meta,
-        value: getCurrentValue(node, binding.property),
-        onChange: (value: string) =>
+        value: getStructuredValue(node, binding.property, binding.type),
+        rawValue: getCurrentValue(node, binding.property),
+        onChange: (value: unknown) =>
           onFieldChange({
             id: dataId,
             label: binding.label,

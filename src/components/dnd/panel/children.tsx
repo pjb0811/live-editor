@@ -18,7 +18,7 @@ interface Props {
     id: string;
     label: string;
     property: string;
-    value: string;
+    value: unknown;
   }) => void;
 }
 
