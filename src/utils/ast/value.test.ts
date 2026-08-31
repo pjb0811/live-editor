@@ -12,6 +12,7 @@ import {
   parseArrayExpression,
   parseValue,
   setEditableValue,
+  valueToExpression,
 } from './value';
 
 describe('parseValue', () => {
@@ -345,5 +346,39 @@ describe('setEditableValue', () => {
       { path: [1], value: 99 },
       { path: [2], value: 3 },
     ]);
+  });
+});
+
+// #238: the single serialization point. Each JS type maps to exactly one
+// literal kind — the inverse of evaluateLiteral, with no guessing.
+describe('valueToExpression', () => {
+  const gen = (value: unknown) => {
+    const expr = valueToExpression(value);
+    return expr ? generateCode(expr) : null;
+  };
+
+  it('maps a string to a string literal, whatever it contains', () => {
+    expect(gen('hello')).toBe('"hello"');
+    // A string that looks like an expression is still just a string.
+    expect(gen('{not an expression}')).toBe('"{not an expression}"');
+  });
+
+  it('maps numbers (including negatives), booleans, and null', () => {
+    expect(gen(42)).toBe('42');
+    expect(gen(-7)).toBe('-7');
+    expect(gen(true)).toBe('true');
+    expect(gen(null)).toBe('null');
+  });
+
+  it('rebuilds nested arrays and objects', () => {
+    expect(gen([1, 'a', true])).toBe('[1, "a", true]');
+    expect(gen({ padding: 4, color: 'red' })).toBe(
+      '{\n  "padding": 4,\n  "color": "red"\n}',
+    );
+  });
+
+  it('omits object properties whose value has no literal form', () => {
+    expect(gen({ a: 1, b: undefined })).toBe('{\n  "a": 1\n}');
+    expect(valueToExpression(undefined)).toBeNull();
   });
 });

@@ -10,7 +10,12 @@ export type {
   NodeValueType,
 } from './types';
 
-export { findEditableChildren, getCurrentValue, parseBinding } from './binding';
+export {
+  findEditableChildren,
+  getCurrentValue,
+  getStructuredValue,
+  parseBinding,
+} from './binding';
 export type {
   EditablePathSegment,
   EditablePrimitive,

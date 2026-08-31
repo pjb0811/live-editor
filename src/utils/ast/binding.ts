@@ -8,9 +8,10 @@ import {
   type BindingItem,
   type BindingOption,
   type BindingRenderMap,
+  type BindingType,
   type DataAttrNode,
 } from './types';
-import { evaluateLiteral, parseArrayExpression } from './value';
+import { evaluateLiteral, parseArrayExpression, parseValue } from './value';
 
 const bindingTypeSchema = z.enum(BINDING_TYPES);
 
@@ -289,6 +290,61 @@ export const getCurrentValue = (
       const value = customAttr?.value || '';
 
       return value;
+    }
+  }
+};
+
+// Declared types whose value is genuinely text — never re-parsed into a
+// number/object/array even when the text happens to look like one. `jsx`
+// and `richtext` carry source that is an expression, not a literal, so they
+// stay as their exact source string too (the update pipeline re-inserts
+// them as expressions, not string literals).
+const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
+  'string',
+  'url',
+  'date',
+  'color',
+  'jsx',
+  'richtext',
+  'icon-picker',
+  'asset-picker',
+]);
+
+// Structured counterpart to `getCurrentValue`: returns the value as its real
+// JS type (number/boolean/object/array/string) rather than always as a
+// string, so both the built-in panel and a custom `renderPanel` receive
+// `PanelBinding.value` already typed. `getCurrentValue` still supplies the
+// exact source text (`PanelBinding.rawValue`). See #238.
+//
+// The string-vs-structure decision is made *here*, from information the AST
+// still has — an attribute that was a string literal in source is a genuine
+// string whatever its contents, so `"{not an expression}"` stays a string
+// instead of being re-parsed into an object. Only genuine expressions
+// (`count={3}`, `data={[...]}`) are recovered into their real shape.
+export const getStructuredValue = (
+  node: DataAttrNode,
+  property: string,
+  type?: BindingType,
+): unknown => {
+  switch (property) {
+    case BINDING_PROP.INNER_TEXT:
+    case BINDING_PROP.INNER_HTML: {
+      return getCurrentValue(node, property);
+    }
+
+    case BINDING_PROP.CHILDREN: {
+      return node.children ?? [];
+    }
+
+    default: {
+      const raw = getCurrentValue(node, property);
+      const attr = node.attributes.find(a => a.name === property);
+
+      if (attr?.isStringLiteral || (type && STRING_VALUED_TYPES.has(type))) {
+        return raw;
+      }
+
+      return parseValue(raw);
     }
   }
 };

@@ -58,7 +58,7 @@ interface Props {
     id: string;
     label: string;
     property: string;
-    value: string;
+    value: unknown;
   }) => void;
 }
 
@@ -233,7 +233,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     isPrimitive ? primitiveItems.length : objectItems.length,
   );
 
-  const updatePrimitive = (index: number, next: string) => {
+  const updatePrimitive = (index: number, next: unknown) => {
     const ast = parseArrayExpression(value);
 
     if (!ast) {
@@ -617,7 +617,8 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
                 id: `primitive-${item.id}`,
                 label: `item-${i}`,
                 property: item.type,
-                value: String(item.value ?? ''),
+                value: item.value ?? '',
+                rawValue: String(item.value ?? ''),
                 onChange: next => updatePrimitive(item.index, next),
               }}
               onNodeChange={onChildChange}
@@ -721,7 +722,8 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
                           : render?.[key] && !('type' in render[key])
                             ? (render[key] as BindingRenderMap)
                             : undefined,
-                      value: String(prop.value),
+                      value: parseValue(String(prop.value)),
+                      rawValue: String(prop.value),
                       onChange: next =>
                         updateProperty(item.index, key, parseValue(next)),
                     }}

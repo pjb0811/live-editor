@@ -93,11 +93,39 @@ describe('update', () => {
     expect(result.code).toContain('placeholder="new placeholder"');
   });
 
-  it('updates a plain attribute with a numeric expression value', () => {
-    const result = update(CODE, 'g', 'Count', '42');
+  // #238: the value crosses the boundary as its real JS type and is
+  // serialized once, here, by that type — no first-character guessing.
+  it('serializes a real number as a numeric expression', () => {
+    const result = update(CODE, 'g', 'Count', 42);
 
     expect(result.success).toBe(true);
     expect(result.code).toContain('count={42}');
+  });
+
+  it('serializes a real boolean as a boolean expression', () => {
+    const result = update(CODE, 'g', 'Count', false);
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain('count={false}');
+  });
+
+  // The bug #238 fixes: a genuine string whose text begins with `{` used to
+  // be misclassified as a JS expression by the `startsWith('{')` heuristic.
+  // A string is now always a string literal, whatever it contains.
+  it('keeps a string that looks like an expression as a string literal', () => {
+    const result = update(CODE, 'f', 'Placeholder', '{not an expression}');
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain('placeholder="{not an expression}"');
+    expect(result.code).not.toContain('placeholder={');
+  });
+
+  it('serializes a structured object/array binding as an expression', () => {
+    const code = `<Chart data-id="h" data-binding="[{label:'Data',property:'data',type:'array'}]" data={[1]} />`;
+    const result = update(code, 'h', 'Data', [1, 2, 3], 'data');
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain('data={[1, 2, 3]}');
   });
 
   it('returns success: false and the original code when the data-id is not found', () => {

@@ -113,7 +113,7 @@ the built-in panel uses. Switch on `binding.type` to render your own control:
           <span>{binding.label}</span>
           {binding.options ? (
             <select
-              value={binding.value}
+              value={binding.rawValue}
               onChange={e => binding.onChange(e.target.value)}
             >
               {binding.options.map(o => (
@@ -124,12 +124,12 @@ the built-in panel uses. Switch on `binding.type` to render your own control:
             </select>
           ) : binding.type === 'jsx' || binding.type === 'richtext' ? (
             <textarea
-              defaultValue={binding.value}
+              defaultValue={binding.rawValue}
               onBlur={e => binding.onChange(e.target.value)}
             />
           ) : (
             <input
-              defaultValue={binding.value}
+              defaultValue={binding.rawValue}
               onBlur={e => binding.onChange(e.target.value)}
             />
           )}
@@ -189,13 +189,14 @@ it by not passing `renderPanel` at all, doesn't have this limitation.
 | `widget` | `string?` | The declared presentation — how to *render* it. An open string, not `BindingType`: the library can't enumerate controls it doesn't implement, so a custom `renderPanel` is free to declare and switch on any value it wants (e.g. `'slider'`). The built-in panel only recognizes `'icon-picker'`/`'asset-picker'`. |
 | `options` | `BindingOption[]?` | Present when the binding defines a fixed option set (render a `<select>`). |
 | `render` | `BindingRenderMap?` | Present on `object`/`array` bindings whose nested keys/items declare their own types — walk it to type each nested field instead of treating the value as an opaque string. |
-| `min` | `number?` | Minimum value for a `number` binding. Applies to `value` below even though it's a string — pass it straight to `validateBindingValue`, which coerces numeric strings. |
-| `max` | `number?` | Maximum value for a `number` binding, same coercion as `min`. |
+| `min` | `number?` | Minimum value for a `number` binding. Compared against the real number `value` delivers — pass it straight to `validateBindingValue`. |
+| `max` | `number?` | Maximum value for a `number` binding. |
 | `pattern` | `string?` | A regex source the value must match. |
 | `required` | `boolean?` | Whether an empty value should fail validation. |
 | `meta` | `Record<string, unknown>?` | Any authored key that isn't one of the fields above (a step increment, a unit suffix, a group name, ...) — see below. `undefined` when nothing extra was authored, not an empty object. |
-| `value` | `string` | Current serialized value. |
-| `onChange` | `(value: string) => void` | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). |
+| `value` | `unknown` | Current value as its real JS type — a `number` for a `number` binding, a `boolean`, an `object`/`array`, a `string` otherwise. Switch on it without re-parsing. |
+| `rawValue` | `string` | The exact source text behind `value`, for cases that can't round-trip through a JS value (`jsx`/`richtext`, or an expression attribute you want to edit as text). Use it for an `<input>` `defaultValue` and for `flattenEditableValue`/`setEditableValue`. |
+| `onChange` | `(value: unknown) => void` | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). Pass the value as its real type — it's serialized once, at the AST boundary, where the declared `type` is known, so no string quoting on your side. |
 
 `BindingType` is a closed union of 12 values: `array`, `object`, `string`,
 `number`, `boolean`, `color`, `jsx`, `richtext`, `date`, `url`,
@@ -229,7 +230,7 @@ bindings.map(binding => {
       min={binding.min}
       max={binding.max}
       step={step}
-      defaultValue={binding.value}
+      defaultValue={binding.rawValue}
       onChange={e => binding.onChange(e.target.value)}
     />
   ) : (
@@ -272,12 +273,12 @@ bindings.map(binding =>
       type="range"
       min={binding.min}
       max={binding.max}
-      defaultValue={binding.value}
+      defaultValue={binding.rawValue}
       onChange={e => binding.onChange(e.target.value)}
     />
   ) : (
     // ...fall back to type-based defaults
-    <input defaultValue={binding.value} onBlur={e => binding.onChange(e.target.value)} />
+    <input defaultValue={binding.rawValue} onBlur={e => binding.onChange(e.target.value)} />
   ),
 );
 ```
@@ -325,15 +326,15 @@ mechanism Editor mode itself commits through.
 
 ### Editing `object`/`array` values
 
-`binding.value` is always a string — for an `object`/`array` binding, that
-string is a serialized structure, not a scalar. A binding's own declared
-`render` map (above) is one way to know how to decompose it, but most
-content doesn't declare one; e.g. the shipped Hero item's "Background
-Style" binding on `style` has no `type` or `render` at all, since `style`
-is just naturally object-shaped.
+For an `object`/`array` binding, `binding.value` is already the parsed
+object or array, and `binding.rawValue` is its serialized source text. A
+binding's own declared `render` map (above) is one way to know how to
+decompose it, but most content doesn't declare one; e.g. the shipped Hero
+item's "Background Style" binding on `style` has no `type` or `render` at
+all, since `style` is just naturally object-shaped.
 
-`flattenEditableValue(value)` recovers editable structure straight from
-the value itself, with no declaration required: it parses the string
+`flattenEditableValue(rawValue)` recovers editable structure straight from
+the source text, with no declaration required: it parses the string
 (the same way `parseValue` does) and, if the result is an object or array,
 recursively walks it, returning one `{ path, value }` entry per primitive
 leaf found. `path` is a list of keys/indices you can hand to
@@ -348,7 +349,7 @@ being decomposed further, exactly like `parseValue` already treats JSX
 elsewhere.
 
 ```tsx
-const entries = flattenEditableValue(binding.value);
+const entries = flattenEditableValue(binding.rawValue);
 // null if the value isn't an object/array, or is empty
 
 entries?.map(({ path, value }) => (
@@ -356,7 +357,7 @@ entries?.map(({ path, value }) => (
     key={path.join('.')}
     defaultValue={String(value)}
     onBlur={e =>
-      binding.onChange(setEditableValue(binding.value, path, e.target.value))
+      binding.onChange(setEditableValue(binding.rawValue, path, e.target.value))
     }
   />
 ));

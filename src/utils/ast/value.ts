@@ -362,6 +362,57 @@ export const createNodeFromValue = (
   }
 };
 
+// Faithfully rebuilds a JS value into an AST expression node — the inverse
+// of `evaluateLiteral`, and the single serialization point #238 moves the
+// panel's value contract onto. Because the caller already knows what the
+// value *is* (a real number/boolean/object/array, not a string that has to
+// be re-guessed), there is no string-vs-expression heuristic here: each JS
+// type maps to exactly one literal kind. Values with no literal form
+// (`undefined`, functions, symbols) are dropped — an object property whose
+// value is `undefined` is omitted rather than emitted as `undefined`,
+// mirroring `flattenEditableValue`, which also treats them as absent.
+export const valueToExpression = (value: unknown): t.Expression | null => {
+  if (typeof value === 'string') {
+    return t.stringLiteral(value);
+  }
+
+  if (typeof value === 'number') {
+    return value < 0
+      ? t.unaryExpression('-', t.numericLiteral(-value))
+      : t.numericLiteral(value);
+  }
+
+  if (typeof value === 'boolean') {
+    return t.booleanLiteral(value);
+  }
+
+  if (value === null) {
+    return t.nullLiteral();
+  }
+
+  if (Array.isArray(value)) {
+    return t.arrayExpression(
+      value.map(item => valueToExpression(item) ?? t.nullLiteral()),
+    );
+  }
+
+  if (typeof value === 'object') {
+    const properties: t.ObjectProperty[] = [];
+
+    for (const [key, item] of Object.entries(value)) {
+      const expr = valueToExpression(item);
+      if (expr === null) {
+        continue;
+      }
+      properties.push(t.objectProperty(t.stringLiteral(key), expr));
+    }
+
+    return t.objectExpression(properties);
+  }
+
+  return null;
+};
+
 export const parseArrayExpression = (value: string) => {
   try {
     const ast = parseExpression(value, {

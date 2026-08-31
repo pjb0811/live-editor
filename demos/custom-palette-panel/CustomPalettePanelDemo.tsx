@@ -91,7 +91,7 @@ const ParsedValueEditor = ({
         label={path.join('.')}
         value={value}
         onChange={next =>
-          binding.onChange(setEditableValue(binding.value, path, next))
+          binding.onChange(setEditableValue(binding.rawValue, path, next))
         }
       />
     ))}
@@ -124,10 +124,12 @@ const SliderField = ({ binding }: { binding: PanelBinding }) => {
         step={step}
         defaultValue={Number(binding.value) || 0}
         className="w-full"
-        onChange={e => binding.onChange(e.target.value)}
+        // A number binding takes a real number now (#238) — commit one
+        // directly instead of the numeric string the input event carries.
+        onChange={e => binding.onChange(Number(e.target.value))}
       />
       <span className="w-12 text-right text-xs text-gray-500">
-        {binding.value}
+        {String(binding.value)}
         {unit}
       </span>
     </div>
@@ -149,7 +151,7 @@ const ValidatedField = ({ binding }: { binding: PanelBinding }) => {
           'w-full rounded border px-2 py-1 text-sm',
           error ? 'border-red-400' : 'border-gray-300',
         )}
-        defaultValue={binding.value}
+        defaultValue={binding.rawValue}
         onBlur={e => {
           const next = e.target.value;
           const result = validateBindingValue(binding, next);
@@ -266,13 +268,14 @@ const CustomPalettePanelDemo = () => {
                       // ValidatedField either way.
                       const flattened = isMultiline
                         ? null
-                        : flattenEditableValue(binding.value);
+                        : flattenEditableValue(binding.rawValue);
                       const entries =
                         flattened && flattened.length <= MAX_EDITABLE_ENTRIES
                           ? flattened
                           : null;
                       const useTextarea =
-                        isMultiline || (!entries && binding.value.length > 120);
+                        isMultiline ||
+                        (!entries && binding.rawValue.length > 120);
 
                       return (
                         <label
@@ -293,7 +296,7 @@ const CustomPalettePanelDemo = () => {
                             <select
                               className="w-full rounded border border-gray-300
                                 px-2 py-1 text-sm"
-                              value={binding.value}
+                              value={binding.rawValue}
                               onChange={e => binding.onChange(e.target.value)}
                             >
                               {binding.options.map(option => (
@@ -307,7 +310,7 @@ const CustomPalettePanelDemo = () => {
                               className="w-full rounded border border-gray-300
                                 px-2 py-1 text-sm"
                               rows={3}
-                              defaultValue={binding.value}
+                              defaultValue={binding.rawValue}
                               onBlur={e => binding.onChange(e.target.value)}
                             />
                           ) : (

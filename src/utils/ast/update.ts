@@ -1,14 +1,15 @@
-import { parse } from '@babel/parser';
+import { parse, parseExpression } from '@babel/parser';
 import type { NodePath } from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
-import { BINDING_PROP, DATA_ATTR, REGEX } from '../../constants';
+import { BINDING_PROP, DATA_ATTR } from '../../constants';
 import { parseBinding } from './binding';
 import { traverse } from './document';
 import { nodeToJSX } from './extract';
-import { attrValue, generateCode, unwrap, wrap } from './helpers';
-import type { DataAttrNode } from './types';
+import { generateCode, unwrap, wrap } from './helpers';
+import type { BindingType, DataAttrNode } from './types';
+import { valueToExpression } from './value';
 
 const updateInnerText = (
   path: NodePath<t.JSXElement>,
@@ -65,10 +66,12 @@ const updateInnerHTML = (
 
 const updateChildren = (
   path: NodePath<t.JSXElement>,
-  value: string,
+  value: unknown,
 ): boolean => {
   try {
-    const childrenData = JSON.parse(value) as DataAttrNode[];
+    const childrenData = (
+      typeof value === 'string' ? JSON.parse(value) : value
+    ) as DataAttrNode[];
 
     path.node.children.length = 0;
 
@@ -118,10 +121,49 @@ const updateRichtext = (
   return true;
 };
 
+// Serialize a structured value into a JSX attribute value, once, at the AST
+// boundary — the single point where the declared `type` is known. Replaces
+// the old first-character heuristic (`startsWith('{')` ...) that guessed
+// string-vs-expression and then let `attrValue` guess again. See #238.
+const buildAttributeValue = (
+  value: unknown,
+  type?: BindingType,
+): t.JSXAttribute['value'] => {
+  // Declared object/array bindings: an expression container. A string here
+  // is already-serialized source text (from the built-in Items/flatten
+  // editor, which re-emits the whole array/object as code) — parse it back
+  // to an expression rather than quoting it as a literal.
+  if (type === 'array' || type === 'object') {
+    if (typeof value === 'string') {
+      try {
+        return t.jsxExpressionContainer(
+          parseExpression(value.trim(), { plugins: ['jsx', 'typescript'] }),
+        );
+      } catch {
+        return t.stringLiteral(value);
+      }
+    }
+
+    const expr = valueToExpression(value);
+    return expr ? t.jsxExpressionContainer(expr) : t.stringLiteral('');
+  }
+
+  // Everything else maps one JS type to one literal kind — no guessing. A
+  // string stays a string literal whatever it contains, so a genuine
+  // `"{not an expression}"` no longer becomes a JSX expression container.
+  if (typeof value === 'string') {
+    return t.stringLiteral(value);
+  }
+
+  const expr = valueToExpression(value);
+  return expr ? t.jsxExpressionContainer(expr) : t.stringLiteral(String(value));
+};
+
 const updateAttribute = (
   opening: t.JSXOpeningElement,
   propertyName: string,
-  value: string,
+  value: unknown,
+  type?: BindingType,
 ): boolean => {
   const customAttr = opening.attributes.find(
     attr =>
@@ -131,19 +173,7 @@ const updateAttribute = (
   );
 
   if (customAttr && t.isJSXAttribute(customAttr)) {
-    const trimmed = value.trim();
-    const isExpression =
-      trimmed.startsWith('[') ||
-      trimmed.startsWith('{') ||
-      REGEX.NUMBER.test(trimmed) ||
-      REGEX.BOOLEAN_OR_NULL.test(trimmed);
-
-    customAttr.value = attrValue({
-      name: propertyName,
-      value,
-      isStringLiteral: !isExpression,
-    });
-
+    customAttr.value = buildAttributeValue(value, type);
     return true;
   }
 
@@ -166,7 +196,7 @@ export const update = (
   code: string,
   dataId: string,
   label: string,
-  value: string,
+  value: unknown,
   property?: string,
 ): UpdateResult => {
   try {
@@ -242,15 +272,15 @@ export const update = (
 
         switch (propertyBinding.property) {
           case BINDING_PROP.INNER_TEXT: {
-            changed = updateInnerText(path, value);
+            changed = updateInnerText(path, String(value));
             break;
           }
 
           case BINDING_PROP.INNER_HTML: {
             if (propertyBinding.type === 'richtext') {
-              changed = updateRichtext(path, value);
+              changed = updateRichtext(path, String(value));
             } else {
-              changed = updateInnerHTML(path, value, jsxPlaceholders);
+              changed = updateInnerHTML(path, String(value), jsxPlaceholders);
             }
             break;
           }
@@ -272,7 +302,7 @@ export const update = (
               if (attr && t.isJSXAttribute(attr)) {
                 attr.value = injectPlaceholder(
                   'JSX',
-                  value.trim(),
+                  String(value).trim(),
                   jsxPlaceholders,
                 );
                 changed = true;
@@ -282,6 +312,7 @@ export const update = (
                 opening,
                 propertyBinding.property,
                 value,
+                propertyBinding.type,
               );
             }
 
@@ -315,7 +346,7 @@ export const bulkUpdate = (
   entries: {
     dataId: string;
     label: string;
-    value: string;
+    value: unknown;
     property?: string;
   }[],
 ): UpdateResult => {
