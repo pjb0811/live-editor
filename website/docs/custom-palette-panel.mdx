@@ -193,6 +193,7 @@ it by not passing `renderPanel` at all, doesn't have this limitation.
 | `max` | `number?` | Maximum value for a `number` binding, same coercion as `min`. |
 | `pattern` | `string?` | A regex source the value must match. |
 | `required` | `boolean?` | Whether an empty value should fail validation. |
+| `meta` | `Record<string, unknown>?` | Any authored key that isn't one of the fields above (a step increment, a unit suffix, a group name, ...) — see below. `undefined` when nothing extra was authored, not an empty object. |
 | `value` | `string` | Current serialized value. |
 | `onChange` | `(value: string) => void` | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). |
 
@@ -201,6 +202,47 @@ it by not passing `renderPanel` at all, doesn't have this limitation.
 `icon-picker`, `asset-picker`. Switching on it alone is enough for the
 scalar types; for `object`/`array` values, see `flattenEditableValue`
 below rather than treating them as plain text.
+
+An authored `type` this library doesn't recognize (a typo, or a future
+value) doesn't reject the binding — it's dropped, so `binding.type` is
+simply `undefined` rather than the string you wrote. The same degrade,
+not delete, behavior applies one level down: an unrecognized `type`
+inside a `render` map leaves that leaf's own `type` `undefined` instead
+of removing the leaf entirely.
+
+Any other key you author on a binding beyond the ones in the table
+above — one this library doesn't declare at all, like a step increment or
+a unit suffix — isn't dropped either; it survives under `binding.meta`,
+namespaced there instead of spread onto the binding itself so it can't
+collide with a future first-class field:
+
+```tsx
+// data-binding={[{ label: 'Spacing', property: 'size', type: 'number', widget: 'slider', min: 0, max: 40, step: 4, unit: 'px' }]}
+
+bindings.map(binding => {
+  const step = typeof binding.meta?.step === 'number' ? binding.meta.step : 1;
+  const unit = typeof binding.meta?.unit === 'string' ? binding.meta.unit : '';
+
+  return binding.widget === 'slider' ? (
+    <input
+      type="range"
+      min={binding.min}
+      max={binding.max}
+      step={step}
+      defaultValue={binding.value}
+      onChange={e => binding.onChange(e.target.value)}
+    />
+  ) : (
+    // ...
+    null
+  );
+});
+```
+
+`meta`'s values are typed `unknown` — the library can't know what shape a
+consumer's own metadata takes — so narrow them, as above, before use.
+The shipped Custom Palette & Panel demo's "Content Spacing" field does
+exactly this; drag it in the embedded demo above to see it live.
 
 `icon-picker` and `asset-picker` are kept in `BindingType` only so
 existing authored content (`data-binding={[{ type: 'icon-picker', ... }]}`)
@@ -244,6 +286,42 @@ Constraints declared on a binding (`min`/`max`/`pattern`/`required`) aren't
 enforced automatically — call the exported `validateBindingValue(binding,
 value)` yourself before committing an edit, the same way the built-in panel
 does.
+
+### Authoring constraints
+
+Two things a `data-binding` entry has to satisfy for its edits to actually
+commit, neither enforced at parse time:
+
+- **`property` must already exist as an attribute on the element.** `binding.onChange` writes through the same AST-update pipeline the built-in panel uses, which updates an existing JSX attribute — it doesn't add a new one. A binding whose `property` names something not already present in the markup (as a prop, or as the element's own `innerText`/`children`/etc.) parses fine and shows up in `bindings`, but every `onChange` call fails silently on the built-in panel's side (a "Failed to update this field" toast) or returns `success: false` if you're calling `update()` yourself.
+- **`label` must be unique per element.** `label` is a display string, not an identifier, but where a binding doesn't declare `property` it's still how the built-in AST utilities resolve *which* binding you mean. Two bindings on the same element sharing a label is an authoring mistake `update()` refuses to silently guess at — it returns `success: false` instead of writing whichever one happened to match first.
+
+### Escaping the binding system entirely
+
+`data-binding` covers declared, per-property edits. For anything else —
+restructuring markup, adding a whole new element, editing something with no
+binding declared at all — `PanelRenderData.item.code` is the section's full
+current source, and the exported `extract()` walks it into the same
+`DataAttrNode` tree the built-in panel reads (including custom, entirely
+undeclared `data-*` attributes, which `extract()` passes through intact).
+Commit any string back with `onChange({ code })`:
+
+```tsx
+import { extract } from '@jbpark/live-editor/utils/ast';
+
+renderPanel={({ item, onChange }) => {
+  if (!item) return null;
+
+  const nodes = extract(item.code); // read whatever you need
+  return (
+    <button onClick={() => onChange({ code: item.code.replace(/foo/, 'bar') })}>
+      Edit raw source
+    </button>
+  );
+}}
+```
+
+This is a full escape hatch, not a fallback of last resort — it's the same
+mechanism Editor mode itself commits through.
 
 ### Editing `object`/`array` values
 
