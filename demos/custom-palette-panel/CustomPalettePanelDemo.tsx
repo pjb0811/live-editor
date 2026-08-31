@@ -102,21 +102,37 @@ const ParsedValueEditor = ({
 // on it to render whatever control it wants; the built-in panel only knows
 // `icon-picker`/`asset-picker`, so anything else (like `'slider'` here) is
 // exclusively this demo's own choice, not a value the library defines.
-const SliderField = ({ binding }: { binding: PanelBinding }) => (
-  <div className="flex items-center gap-2">
-    <input
-      type="range"
-      min={binding.min ?? 0}
-      max={binding.max ?? 100}
-      defaultValue={Number(binding.value) || 0}
-      className="w-full"
-      onChange={e => binding.onChange(e.target.value)}
-    />
-    <span className="w-8 text-right text-xs text-gray-500">
-      {binding.value}
-    </span>
-  </div>
-);
+//
+// `step`/`unit` aren't fields PanelBinding declares either — they're
+// whatever this demo's own binding happened to author (see the Hero
+// section's "Content Spacing" field), carried through under `binding.meta`
+// instead of being stripped during parsing (#234). `meta`'s values are
+// `unknown` on purpose (the library can't know what shape a consumer's own
+// metadata takes), so narrow them before use rather than trusting the type.
+const SliderField = ({ binding }: { binding: PanelBinding }) => {
+  const metaStep = binding.meta?.step;
+  const step = typeof metaStep === 'number' ? metaStep : 1;
+  const metaUnit = binding.meta?.unit;
+  const unit = typeof metaUnit === 'string' ? metaUnit : '';
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="range"
+        min={binding.min ?? 0}
+        max={binding.max ?? 100}
+        step={step}
+        defaultValue={Number(binding.value) || 0}
+        className="w-full"
+        onChange={e => binding.onChange(e.target.value)}
+      />
+      <span className="w-12 text-right text-xs text-gray-500">
+        {binding.value}
+        {unit}
+      </span>
+    </div>
+  );
+};
 
 // The plain-input fallback field, running `binding.min`/`max`/`pattern`/
 // `required` through the exported `validateBindingValue` before

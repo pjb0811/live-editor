@@ -91,6 +91,12 @@ export const DRAGGABLE_ITEMS: Section[] = [
               widget: 'slider',
               min: 0,
               max: 40,
+              // step/unit aren't fields this library knows about — they
+              // survive parsing under binding.meta instead of being
+              // stripped, so a custom renderPanel can read its own
+              // per-field configuration back out. See #234.
+              step: 4,
+              unit: 'px',
             },
           ]}
           style={{

@@ -52,6 +52,7 @@ const Node = ({ data, onChange }: FieldEditorProps) => {
                   max: binding.max,
                   pattern: binding.pattern,
                   required: binding.required,
+                  meta: binding.meta,
                   value: currentValue,
                   onChange: next =>
                     onChange?.({

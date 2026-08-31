@@ -51,7 +51,10 @@ export const BINDING_TYPES = [
 export type BindingType = (typeof BINDING_TYPES)[number];
 
 export interface BindingRenderLeaf {
-  type: BindingType;
+  // Optional, matching the top-level BindingItem.type — an unrecognized
+  // leaf type degrades to untyped instead of dropping the entry (see
+  // sanitizeRenderMap in binding.ts and #234).
+  type?: BindingType;
   property?: string;
   render?: BindingRenderMap;
 }
@@ -80,6 +83,12 @@ export interface BindingItem {
   max?: number;
   pattern?: string;
   required?: boolean;
+  // Consumer-defined keys that aren't one of the fields above (`step`,
+  // `unit`, a widget hint, ...) — namespaced here rather than spread onto
+  // the item itself so they can't collide with a future first-class field.
+  // Undefined when nothing extra was authored, not an empty object. See
+  // #234: `parseBinding` used to silently strip these.
+  meta?: Record<string, unknown>;
 }
 
 export type NodeValueType =

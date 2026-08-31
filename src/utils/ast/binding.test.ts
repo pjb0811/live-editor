@@ -111,7 +111,7 @@ describe('parseBinding', () => {
     });
   });
 
-  it('drops a nested render leaf with an unrecognized type instead of keeping it as-is', () => {
+  it('degrades a nested render leaf with an unrecognized type to untyped instead of dropping the key', () => {
     const result = parseBinding(`
       [{
         label: 'Items',
@@ -125,7 +125,47 @@ describe('parseBinding', () => {
 
     expect(result[0]!.render).toEqual({
       icon: { type: 'string', property: 'innerText' },
+      bogus: { type: undefined, property: 'innerText' },
     });
+  });
+
+  it('keeps `type` as a real key on a degraded render leaf, not just an equal-to-undefined value', () => {
+    // `toEqual` above treats a missing key the same as one set to
+    // `undefined`, so it can't catch a regression back to "delete the key
+    // entirely" — items.tsx's own leaf-vs-nested-map check depends on `in`,
+    // not just the value, since sanitizeRenderMap uses the same `'type' in
+    // raw` test to decide a value is a leaf at all.
+    const result = parseBinding(`
+      [{
+        label: 'Items',
+        property: 'items',
+        render: {
+          bogus: { type: 'not-a-real-type' }
+        }
+      }]
+    `);
+
+    expect('type' in result[0]!.render!.bogus!).toBe(true);
+  });
+
+  it('carries unrecognized keys under a namespaced meta object instead of dropping them', () => {
+    const result = parseBinding(
+      `[{ label: 'Size', property: 'size', type: 'number', step: 5, unit: 'px', group: 'layout' }]`,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty('meta', {
+      step: 5,
+      unit: 'px',
+      group: 'layout',
+    });
+  });
+
+  it('does not add a meta field when no extra keys are authored', () => {
+    const result = parseBinding("[{label: 'Title', property: 'innerText'}]");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).not.toHaveProperty('meta');
   });
 
   it('extracts min/max/pattern/required constraints when present', () => {
