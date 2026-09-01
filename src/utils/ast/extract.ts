@@ -4,10 +4,11 @@ import { nanoid } from 'nanoid';
 
 import { BINDING_PROP, CONFIG, DATA_ATTR } from '../../constants';
 import { createBoundedCache } from '../cache';
-import { parseBinding } from './binding';
+import { parseBinding, parseBindingExpression } from './binding';
 import { traverse } from './document';
 import { attrValue, generateCode, wrap } from './helpers';
 import type { Attribute, BindingItem, DataAttrNode } from './types';
+import { unwrapExpression } from './value';
 
 const collectText = (
   children: (
@@ -349,13 +350,48 @@ interface NodeBindingInfo {
 // all — traverse() only records elements with data-* attributes, while
 // extractFromNode always records the children it's asked to (see each call
 // site for details).
+// `data-binding` is authored as a JSX object-array expression, so the
+// original `ArrayExpression` node is still on hand here. Return it so
+// `readNodeBindingInfo` can evaluate bindings straight off the AST instead
+// of re-parsing the stringified form. Null when the attribute is absent or
+// written as a plain string literal (bench/tests) — those still go through
+// `parseBinding(string)`.
+const getBindingExpression = (
+  opening: t.JSXOpeningElement,
+): t.ArrayExpression | null => {
+  for (const attr of opening.attributes) {
+    if (
+      t.isJSXAttribute(attr) &&
+      t.isJSXIdentifier(attr.name) &&
+      attr.name.name === DATA_ATTR.BINDING &&
+      attr.value &&
+      t.isJSXExpressionContainer(attr.value)
+    ) {
+      // Unwrap `satisfies BindingItem[]`/`as const`/parentheses so the array
+      // is still recognized when authored with an editor type annotation.
+      const expression = unwrapExpression(attr.value.expression);
+
+      if (t.isArrayExpression(expression)) {
+        return expression;
+      }
+    }
+  }
+
+  return null;
+};
+
 const readNodeBindingInfo = (node: t.JSXElement): NodeBindingInfo => {
   const opening = node.openingElement;
   const tagName = getTagName(opening);
   const { allAttrs, dataAttrs } = extractAttributes(opening.attributes);
 
   const bindingAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING);
-  const bindings = bindingAttr?.value ? parseBinding(bindingAttr.value) : [];
+  const bindingExpr = getBindingExpression(opening);
+  const bindings = bindingExpr
+    ? parseBindingExpression(bindingExpr)
+    : bindingAttr?.value
+      ? parseBinding(bindingAttr.value)
+      : [];
 
   const childrenBinding = bindings.find(
     b => b.property === BINDING_PROP.CHILDREN,

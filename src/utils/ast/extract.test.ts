@@ -58,6 +58,14 @@ describe('extract', () => {
     expect(node!.tagName).toBe('ui.Button');
   });
 
+  it('extracts a data-binding annotated with `satisfies BindingItem[]`', () => {
+    const [node] = extract(
+      `<div data-id="a" data-binding={[{ label: 'Text', property: 'innerText' }] satisfies BindingItem[]}>Hello</div>`,
+    );
+
+    expect(node!.bindings).toEqual([{ label: 'Text', property: 'innerText' }]);
+  });
+
   it('records rawChildren from generated child code when an innerHTML binding is present', () => {
     const [node] = extract(
       `<span data-id="a" data-binding="[{label:'Html',property:'innerHTML'}]"><b>bold</b> text</span>`,
