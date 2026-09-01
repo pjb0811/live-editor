@@ -125,19 +125,11 @@ const sanitizeRenderMap = (value: unknown): BindingRenderMap | undefined => {
   return Object.keys(map).length > 0 ? map : undefined;
 };
 
-export const parseBinding = (bindingValue: string | null): BindingItem[] => {
-  if (!bindingValue) {
-    return [];
-  }
-
-  const ast = parseArrayExpression(bindingValue);
-
-  if (!ast) {
-    return [];
-  }
-
-  const raw = evaluateLiteral(ast);
-
+// Shared tail of `parseBinding`/`parseBindingExpression`: turn the raw,
+// already-evaluated array literal into validated `BindingItem[]`. The two
+// callers differ only in how they reach this array — from a source string
+// (public API) or straight off an expression AST (extract's hot path).
+const buildBindingItems = (raw: unknown): BindingItem[] => {
   if (!Array.isArray(raw)) {
     return [];
   }
@@ -231,6 +223,29 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
 
   return items;
 };
+
+export const parseBinding = (bindingValue: string | null): BindingItem[] => {
+  if (!bindingValue) {
+    return [];
+  }
+
+  const ast = parseArrayExpression(bindingValue);
+
+  if (!ast) {
+    return [];
+  }
+
+  return buildBindingItems(evaluateLiteral(ast));
+};
+
+// Same result as `parseBinding`, but fed the array-literal expression the
+// parser already produced instead of a source string. `extract` authors
+// `data-binding` as a real JSX object-array expression, so re-serializing it
+// to a string only to `parseExpression` it straight back was a wasted Babel
+// round-trip (#241's "two parsers"); evaluate that AST in place.
+export const parseBindingExpression = (
+  expression: t.ArrayExpression,
+): BindingItem[] => buildBindingItems(evaluateLiteral(expression));
 
 export const getCurrentValue = (
   node: DataAttrNode,

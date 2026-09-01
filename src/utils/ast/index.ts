@@ -15,6 +15,7 @@ export {
   getCurrentValue,
   getStructuredValue,
   parseBinding,
+  parseBindingExpression,
 } from './binding';
 export type {
   EditablePathSegment,

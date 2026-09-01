@@ -1,3 +1,5 @@
+import { parseExpression } from '@babel/parser';
+import * as t from '@babel/types';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BINDING_PROP, DATA_ATTR } from '../../constants';
@@ -6,8 +8,17 @@ import {
   getCurrentValue,
   getStructuredValue,
   parseBinding,
+  parseBindingExpression,
 } from './binding';
 import type { Attribute, DataAttrNode } from './types';
+
+const arrayExpr = (source: string): t.ArrayExpression => {
+  const ast = parseExpression(source, { plugins: ['jsx', 'typescript'] });
+  if (!t.isArrayExpression(ast)) {
+    throw new Error('expected an array expression');
+  }
+  return ast;
+};
 
 const makeNode = (overrides: Partial<DataAttrNode> = {}): DataAttrNode => ({
   tagName: 'div',
@@ -260,6 +271,32 @@ describe('parseBinding', () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe('parseBindingExpression', () => {
+  it('produces the same items as parseBinding on the equivalent source', () => {
+    const source =
+      "[{ label: 'Title', property: 'innerText' }," +
+      " { label: 'Count', property: 'count', type: 'number' }]";
+
+    expect(parseBindingExpression(arrayExpr(source))).toEqual(
+      parseBinding(source),
+    );
+  });
+
+  it('evaluates the array expression without a string round-trip', () => {
+    const result = parseBindingExpression(
+      arrayExpr("[{ label: 'Title', property: 'innerText' }]"),
+    );
+
+    expect(result).toEqual([{ label: 'Title', property: 'innerText' }]);
+  });
+
+  it('applies the same validation (drops an item with no label)', () => {
+    expect(
+      parseBindingExpression(arrayExpr("[{ property: 'innerText' }]")),
+    ).toEqual([]);
   });
 });
 
