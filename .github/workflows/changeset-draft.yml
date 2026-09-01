@@ -12,13 +12,14 @@ permissions:
 
 jobs:
   draft:
-    # Skip PRs from forks (bot token can't push back to them) and skip the
-    # changesets bot's own Version Packages PR (nothing to draft a
-    # changeset for — and drafting one would just describe its own version
-    # bump).
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      !startsWith(github.event.pull_request.head.ref, 'changeset-release/')
+    # Skip PRs from forks (the bot token can't push back to them). The
+    # changesets bot's own Version Packages PR (`changeset-release/*`) is NOT
+    # excluded at the job level on purpose: `draft` is a required status
+    # check on main, so the job has to still run and report success on those
+    # PRs or they can never merge. The actual drafting is skipped for them
+    # further down (there's nothing to draft — it would just describe its own
+    # version bump).
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
 
     steps:
@@ -61,6 +62,18 @@ jobs:
         run: |
           slug=$(printf '%s' "$BRANCH_REF" | tr '/' '-' | tr -c 'a-zA-Z0-9._-' '-')
           echo "slug=$slug" >> "$GITHUB_OUTPUT"
+          # The changesets bot's own Version Packages PR has nothing to draft
+          # (drafting would just describe its own version bump). Report
+          # exists=true so the Draft/Commit steps below no-op; the job still
+          # succeeds, which is all the required `draft` check needs to let the
+          # release PR merge.
+          case "$BRANCH_REF" in
+            changeset-release/*)
+              echo "exists=true" >> "$GITHUB_OUTPUT"
+              echo "Version Packages PR — nothing to draft; reporting success."
+              exit 0
+              ;;
+          esac
           added=$(git diff --name-only --diff-filter=A "$BASE_SHA...$HEAD_SHA" -- '.changeset/*.md')
           if [ -n "$added" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
