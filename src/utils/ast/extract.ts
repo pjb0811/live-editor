@@ -8,6 +8,7 @@ import { parseBinding, parseBindingExpression } from './binding';
 import { traverse } from './document';
 import { attrValue, generateCode, wrap } from './helpers';
 import type { Attribute, BindingItem, DataAttrNode } from './types';
+import { unwrapExpression } from './value';
 
 const collectText = (
   children: (
@@ -364,10 +365,15 @@ const getBindingExpression = (
       t.isJSXIdentifier(attr.name) &&
       attr.name.name === DATA_ATTR.BINDING &&
       attr.value &&
-      t.isJSXExpressionContainer(attr.value) &&
-      t.isArrayExpression(attr.value.expression)
+      t.isJSXExpressionContainer(attr.value)
     ) {
-      return attr.value.expression;
+      // Unwrap `satisfies BindingItem[]`/`as const`/parentheses so the array
+      // is still recognized when authored with an editor type annotation.
+      const expression = unwrapExpression(attr.value.expression);
+
+      if (t.isArrayExpression(expression)) {
+        return expression;
+      }
     }
   }
 

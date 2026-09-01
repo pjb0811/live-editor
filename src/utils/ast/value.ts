@@ -24,11 +24,35 @@ const dedent = (str: string): string => {
     : lines.map(line => line.slice(indent)).join('\n');
 };
 
+// Peel type-only wrappers and parentheses off an expression so the literal
+// underneath can be read. Authored bindings may carry `satisfies BindingItem[]`
+// (or `as const`, a type assertion, ...) for editor type-safety; those are
+// erased at build time and mean nothing to this literal evaluator, so without
+// unwrapping them the value — or the whole binding array — would be silently
+// dropped as "not a literal".
+export const unwrapExpression = (node: t.Node): t.Node => {
+  let current = node;
+
+  while (
+    t.isTSAsExpression(current) ||
+    t.isTSSatisfiesExpression(current) ||
+    t.isTSNonNullExpression(current) ||
+    t.isTSTypeAssertion(current) ||
+    t.isParenthesizedExpression(current)
+  ) {
+    current = current.expression;
+  }
+
+  return current;
+};
+
 // AST 노드를 코드 실행(new Function/eval) 없이 순수 리터럴 구조만 재귀적으로
 // 실제 JS 값으로 변환한다. 함수 호출, 변수 참조 등 리터럴이 아닌 표현식은
 // 평가하지 않고 undefined를 반환한다 — 사용자 코드는 iframe 안에서만 실행한다는
 // 이 저장소의 원칙(AGENTS.md)을 이 패널 UI(메인 문서에서 렌더링됨)에서도 지키기 위함.
-export const evaluateLiteral = (node: t.Node): unknown => {
+export const evaluateLiteral = (rawNode: t.Node): unknown => {
+  const node = unwrapExpression(rawNode);
+
   if (t.isStringLiteral(node)) {
     return node.value;
   }
@@ -415,9 +439,11 @@ export const valueToExpression = (value: unknown): t.Expression | null => {
 
 export const parseArrayExpression = (value: string) => {
   try {
-    const ast = parseExpression(value, {
-      plugins: ['jsx', 'typescript'],
-    });
+    const ast = unwrapExpression(
+      parseExpression(value, {
+        plugins: ['jsx', 'typescript'],
+      }),
+    );
 
     if (!t.isArrayExpression(ast)) {
       return null;

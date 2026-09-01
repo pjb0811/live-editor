@@ -262,6 +262,22 @@ describe('parseBinding', () => {
     expect(result).toEqual([]);
   });
 
+  it('unwraps a `satisfies BindingItem[]` annotation on the array', () => {
+    const result = parseBinding(
+      "[{ label: 'Title', property: 'innerText' }] satisfies BindingItem[]",
+    );
+
+    expect(result).toEqual([{ label: 'Title', property: 'innerText' }]);
+  });
+
+  it('unwraps an `as const` assertion on the array', () => {
+    const result = parseBinding(
+      "[{ label: 'Title', property: 'innerText' }] as const",
+    );
+
+    expect(result).toEqual([{ label: 'Title', property: 'innerText' }]);
+  });
+
   it('returns an empty array without throwing for malformed binding syntax', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
