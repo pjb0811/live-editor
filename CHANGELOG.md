@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.0.0
+
+### Major Changes
+
+- e9afcbe: Deliver `PanelBinding` values as their real JS type and serialize once at the AST boundary
+
+  `PanelBinding.value` is now `unknown` — a real `number`/`boolean`/`object`/`array`/`string` rather than always a string — and a new `PanelBinding.rawValue: string` carries the exact source text. `onChange` now takes `unknown` and serializes the value a single time, at the AST boundary where the declared `type` is known, so there is no string-vs-expression guessing on either side. This fixes a string whose text begins with `{` or `[` being misclassified as a JS expression, and lets `validateBindingValue`'s `min`/`max` compare against an actual number instead of coercing a numeric string.
+
+  Breaking change for custom `renderPanel` consumers:
+
+  - `binding.value` is no longer a string. Use `binding.rawValue` for an `<input>` `defaultValue`, a `<select>` value, and for `flattenEditableValue`/`setEditableValue`; switch on `binding.value` for its real type.
+  - `binding.onChange` accepts the value as its real type (`onChange(42)`, not `onChange('42')`).
+
+### Minor Changes
+
+- 820f5ba: Honor `satisfies`/`as` type annotations on authored `data-binding` arrays
+
+  An authored `data-binding={[...] satisfies BindingItem[]}` (or `as const`, a type assertion, or extra parentheses) previously made the top-level node a `TSSatisfiesExpression`, so the array was not recognized and the whole binding was silently dropped. These build-time-erased wrappers are now unwrapped, so the inline type-safety pattern works end to end.
+
+  Internally, `extract` now evaluates `data-binding` straight off the parsed `ArrayExpression` instead of re-serializing it and re-parsing the string — removing the redundant parse round-trip with no change to the parsed result or the value contract.
+
 ## 1.19.0
 
 ### Minor Changes
