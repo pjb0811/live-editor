@@ -1,124 +1,261 @@
 import { parse, parseExpression } from '@babel/parser';
-import type { NodePath } from '@babel/traverse';
 import * as t from '@babel/types';
-import { nanoid } from 'nanoid';
 
 import { BINDING_PROP, DATA_ATTR } from '../../constants';
 import { parseBinding } from './binding';
 import { traverse } from './document';
 import { nodeToJSX } from './extract';
 import { generateCode, unwrap, wrap } from './helpers';
+import { type SourceEdit, applyEdits } from './patch';
 import type { BindingType, DataAttrNode } from './types';
 import { valueToExpression } from './value';
 
-const updateInnerText = (
-  path: NodePath<t.JSXElement>,
-  value: string,
-): boolean => {
-  const jsxChildren = path.node.children;
+// Every editor below returns the source spans it wants to change rather
+// than mutating the tree, so `update` can patch the original text and leave
+// untouched bytes byte-identical. An empty array means "nothing to write,
+// but this counts as handled"; `null` means the edit failed. See #239.
+type EditResult = SourceEdit[] | null;
 
-  for (let i = jsxChildren.length - 1; i >= 0; i--) {
-    if (t.isJSXText(jsxChildren[i])) {
-      jsxChildren.splice(i, 1);
+// The span between `>` and `</`, i.e. everything the element encloses.
+// `null` for a self-closing element, which has nowhere to put children.
+const childrenRange = (
+  element: t.JSXElement,
+): { start: number; end: number } | null => {
+  const { openingElement, closingElement } = element;
+
+  if (
+    !closingElement ||
+    openingElement.end == null ||
+    closingElement.start == null
+  ) {
+    return null;
+  }
+
+  return { start: openingElement.end, end: closingElement.start };
+};
+
+const findAttribute = (
+  opening: t.JSXOpeningElement,
+  propertyName: string,
+): t.JSXAttribute | undefined => {
+  return opening.attributes.find(
+    (attr): attr is t.JSXAttribute =>
+      t.isJSXAttribute(attr) &&
+      t.isJSXIdentifier(attr.name) &&
+      attr.name.name === propertyName,
+  );
+};
+
+// Where a brand-new attribute should be inserted: after the last existing
+// attribute, or straight after the element name when there are none.
+const attributeInsertPoint = (opening: t.JSXOpeningElement): number | null => {
+  const last = opening.attributes[opening.attributes.length - 1];
+
+  return last?.end ?? opening.name.end ?? null;
+};
+
+// Drops the element's JSXText children and writes `value` just before the
+// closing tag — the positional equivalent of the previous "splice out every
+// JSXText, then push a new one" mutation, including its handling of mixed
+// children (a nested element stays, the text around it doesn't).
+//
+// The common case — a single text child — is narrowed further: only the
+// text's *trimmed* span is replaced, so the author's line breaks and
+// indentation around it survive. Rewriting the whole children region would
+// collapse
+//
+//   >
+//     Old Title
+//   </h1>
+//
+// down to `>New Title</h1>`, which is exactly the formatting loss #239 is
+// about, just at a smaller scale.
+//
+// A self-closing element yields no edits: there is no children region to
+// write into. That matches the old behaviour, which pushed onto a `children`
+// array the generator then ignored — a silent no-op still reported as
+// success. Left as-is here deliberately; it is a reporting bug, tracked
+// with the rest of that class in #270.
+const editInnerText = (
+  source: string,
+  element: t.JSXElement,
+  value: string,
+): EditResult => {
+  const range = childrenRange(element);
+
+  if (!range) {
+    return [];
+  }
+
+  const [only] = element.children;
+
+  if (
+    element.children.length === 1 &&
+    t.isJSXText(only) &&
+    only.start != null &&
+    only.end != null
+  ) {
+    // Measured on the raw source slice, never on `only.value`: the latter is
+    // Babel's *cooked* text, with HTML entities decoded and CRLF collapsed
+    // to LF, so its character counts don't line up with the raw offsets the
+    // span is built from. `&nbsp;Old&nbsp;` would put the span six bytes
+    // inside the entity (yielding `&New;`), and a CRLF file would lose a
+    // byte off each end of every innerText edit.
+    const raw = source.slice(only.start, only.end);
+
+    if (raw.trim() !== '') {
+      const leading = raw.length - raw.trimStart().length;
+      const trailing = raw.length - raw.trimEnd().length;
+
+      return [
+        {
+          start: only.start + leading,
+          end: only.end - trailing,
+          content: value,
+        },
+      ];
     }
   }
 
-  jsxChildren.push(t.jsxText(value));
-  return true;
+  const edits: SourceEdit[] = [];
+
+  for (const child of element.children) {
+    if (t.isJSXText(child) && child.start != null && child.end != null) {
+      edits.push({ start: child.start, end: child.end, content: '' });
+    }
+  }
+
+  edits.push({ start: range.end, end: range.end, content: value });
+
+  return edits;
 };
 
-// Injects a `{__PREFIX_<id>__}` JSX expression container as a placeholder,
-// then records how the placeholder's *generated source text* should be
-// string-replaced with the real value once generateCode() has run — used
-// for values (raw HTML, arbitrary JSX/expressions) that can't be
-// represented as AST literals, so we can't just build the real node here.
-//
-// `asRawContent: true` replaces the placeholder *including* its enclosing
-// braces, so the raw value lands as literal children content instead of a
-// JS expression (used for innerHTML). Leaving it false replaces only the
-// identifier inside the braces, so the value is inserted as the expression
-// itself (used for a `type: 'jsx'` attribute value).
-const injectPlaceholder = (
-  prefix: string,
-  value: string,
-  placeholders: Map<string, string>,
-  { asRawContent = false }: { asRawContent?: boolean } = {},
-): t.JSXExpressionContainer => {
-  const name = `__${prefix}_${nanoid(6)}__`;
-  const container = t.jsxExpressionContainer(t.identifier(name));
+// Raw HTML replaces the children region verbatim. This is what the old
+// `__HTML_<id>__` placeholder existed to achieve: the value can't be
+// represented as an AST literal, so it had to be smuggled past the
+// generator and string-substituted back in afterwards. Writing directly
+// into the source removes that round-trip — and with it the `$&`/`$$`
+// substitution hazard that the replacement step had to guard against.
+const editInnerHTML = (element: t.JSXElement, value: string): EditResult => {
+  const range = childrenRange(element);
 
-  placeholders.set(asRawContent ? `{${name}}` : name, value);
+  if (!range) {
+    return [];
+  }
 
-  return container;
+  return [{ start: range.start, end: range.end, content: value }];
 };
 
-const updateInnerHTML = (
-  path: NodePath<t.JSXElement>,
-  value: string,
-  placeholders: Map<string, string>,
-): boolean => {
-  path.node.children = [
-    injectPlaceholder('HTML', value, placeholders, { asRawContent: true }),
-  ];
-
-  return true;
-};
-
-const updateChildren = (
-  path: NodePath<t.JSXElement>,
-  value: unknown,
-): boolean => {
+const editChildren = (element: t.JSXElement, value: unknown): EditResult => {
   try {
     const childrenData = (
       typeof value === 'string' ? JSON.parse(value) : value
     ) as DataAttrNode[];
 
-    path.node.children.length = 0;
+    const range = childrenRange(element);
 
-    childrenData.forEach(childData => {
-      const jsxElement = nodeToJSX(childData);
-      if (jsxElement) {
-        path.node.children.push(jsxElement);
-      }
-    });
+    if (!range) {
+      return [];
+    }
 
-    return true;
+    // These children are new, so there is no source text to preserve —
+    // generating the fragment is correct here. The point of #239 is to
+    // generate *only* the fragment, never the enclosing tree.
+    const content = childrenData
+      .map(childData => nodeToJSX(childData))
+      .filter((node): node is t.JSXElement | t.JSXFragment => node !== null)
+      .map(node => generateCode(node))
+      .join('');
+
+    return [{ start: range.start, end: range.end, content, indent: true }];
   } catch (error) {
     console.error('❌ Children update error:', error);
-    return false;
+    return null;
   }
 };
 
-const updateRichtext = (
-  path: NodePath<t.JSXElement>,
-  value: string,
-): boolean => {
-  path.node.children = [];
+const editRichtext = (element: t.JSXElement, value: string): EditResult => {
+  const edits: SourceEdit[] = [];
+  const range = childrenRange(element);
 
-  const opening = path.node.openingElement;
-  const htmlObject = t.objectExpression([
-    t.objectProperty(t.identifier('__html'), t.stringLiteral(value)),
-  ]);
-
-  const existingAttr = opening.attributes.find(
-    a =>
-      t.isJSXAttribute(a) &&
-      t.isJSXIdentifier(a.name) &&
-      a.name.name === 'dangerouslySetInnerHTML',
-  );
-
-  if (existingAttr && t.isJSXAttribute(existingAttr)) {
-    existingAttr.value = t.jsxExpressionContainer(htmlObject);
-  } else {
-    opening.attributes.push(
-      t.jsxAttribute(
-        t.jsxIdentifier('dangerouslySetInnerHTML'),
-        t.jsxExpressionContainer(htmlObject),
-      ),
-    );
+  // richtext owns the element's content, so any prior markup goes.
+  if (range && range.start !== range.end) {
+    edits.push({ start: range.start, end: range.end, content: '' });
   }
 
-  return true;
+  const opening = element.openingElement;
+  const attribute = t.jsxAttribute(
+    t.jsxIdentifier('dangerouslySetInnerHTML'),
+    t.jsxExpressionContainer(
+      t.objectExpression([
+        t.objectProperty(t.identifier('__html'), t.stringLiteral(value)),
+      ]),
+    ),
+  );
+  const content = generateCode(attribute);
+  const existing = findAttribute(opening, 'dangerouslySetInnerHTML');
+
+  if (existing && existing.start != null && existing.end != null) {
+    edits.push({
+      start: existing.start,
+      end: existing.end,
+      content,
+      indent: true,
+    });
+
+    return edits;
+  }
+
+  const insertAt = attributeInsertPoint(opening);
+
+  if (insertAt == null) {
+    return null;
+  }
+
+  edits.push({
+    start: insertAt,
+    end: insertAt,
+    content: ` ${content}`,
+    indent: true,
+  });
+
+  return edits;
+};
+
+// A `type: 'jsx'` value is arbitrary user-authored JSX, so it goes in as
+// written rather than being parsed into nodes and printed back out.
+const editJsxAttribute = (
+  opening: t.JSXOpeningElement,
+  propertyName: string,
+  value: unknown,
+): EditResult => {
+  const attribute = findAttribute(opening, propertyName);
+
+  if (!attribute) {
+    return null;
+  }
+
+  const content = `{${String(value).trim()}}`;
+
+  if (attribute.value?.start != null && attribute.value.end != null) {
+    return [
+      {
+        start: attribute.value.start,
+        end: attribute.value.end,
+        content,
+      },
+    ];
+  }
+
+  // Valueless shorthand (`<Icon icon />`): there is no value span to
+  // overwrite, so append one after the attribute name.
+  const insertAt = attribute.name.end;
+
+  if (insertAt == null) {
+    return null;
+  }
+
+  return [{ start: insertAt, end: insertAt, content: `=${content}` }];
 };
 
 // Serialize a structured value into a JSX attribute value, once, at the AST
@@ -159,25 +296,30 @@ const buildAttributeValue = (
   return expr ? t.jsxExpressionContainer(expr) : t.stringLiteral(String(value));
 };
 
-const updateAttribute = (
+const editAttribute = (
   opening: t.JSXOpeningElement,
   propertyName: string,
   value: unknown,
   type?: BindingType,
-): boolean => {
-  const customAttr = opening.attributes.find(
-    attr =>
-      t.isJSXAttribute(attr) &&
-      t.isJSXIdentifier(attr.name) &&
-      attr.name.name === propertyName,
-  );
+): EditResult => {
+  const attribute = findAttribute(opening, propertyName);
 
-  if (customAttr && t.isJSXAttribute(customAttr)) {
-    customAttr.value = buildAttributeValue(value, type);
-    return true;
+  if (!attribute || attribute.start == null || attribute.end == null) {
+    return null;
   }
 
-  return false;
+  // Generate the whole attribute rather than just its value, so Babel's
+  // JSX-attribute printing path decides the quoting and escaping — the same
+  // path that produced this text before, when the enclosing tree was
+  // regenerated. Reuses the parsed name node instead of building a fresh
+  // identifier so namespaced/dashed names survive untouched.
+  const content = generateCode(
+    t.jsxAttribute(attribute.name, buildAttributeValue(value, type)),
+  );
+
+  return [
+    { start: attribute.start, end: attribute.end, content, indent: true },
+  ];
 };
 
 export interface UpdateResult {
@@ -207,7 +349,19 @@ export const update = (
     });
 
     let changed = false;
-    const jsxPlaceholders = new Map<string, string>();
+    const edits: SourceEdit[] = [];
+
+    // Records an editor's outcome. `null` is a failure (leave `changed`
+    // alone so the caller sees success: false); anything else counts as
+    // handled, even when it produces no edits.
+    const collect = (result: EditResult) => {
+      if (!result) {
+        return;
+      }
+
+      edits.push(...result);
+      changed = true;
+    };
 
     traverse(ast, {
       JSXElement(path) {
@@ -272,50 +426,35 @@ export const update = (
 
         switch (propertyBinding.property) {
           case BINDING_PROP.INNER_TEXT: {
-            changed = updateInnerText(path, String(value));
+            collect(editInnerText(wrapped, path.node, String(value)));
             break;
           }
 
           case BINDING_PROP.INNER_HTML: {
-            if (propertyBinding.type === 'richtext') {
-              changed = updateRichtext(path, String(value));
-            } else {
-              changed = updateInnerHTML(path, String(value), jsxPlaceholders);
-            }
+            collect(
+              propertyBinding.type === 'richtext'
+                ? editRichtext(path.node, String(value))
+                : editInnerHTML(path.node, String(value)),
+            );
             break;
           }
 
           case BINDING_PROP.CHILDREN: {
-            changed = updateChildren(path, value);
+            collect(editChildren(path.node, value));
             break;
           }
 
           default: {
-            if (propertyBinding.type === 'jsx') {
-              const attr = opening.attributes.find(
-                a =>
-                  t.isJSXAttribute(a) &&
-                  t.isJSXIdentifier(a.name) &&
-                  a.name.name === propertyBinding.property,
-              );
-
-              if (attr && t.isJSXAttribute(attr)) {
-                attr.value = injectPlaceholder(
-                  'JSX',
-                  String(value).trim(),
-                  jsxPlaceholders,
-                );
-                changed = true;
-              }
-            } else {
-              changed = updateAttribute(
-                opening,
-                propertyBinding.property,
-                value,
-                propertyBinding.type,
-              );
-            }
-
+            collect(
+              propertyBinding.type === 'jsx'
+                ? editJsxAttribute(opening, propertyBinding.property, value)
+                : editAttribute(
+                    opening,
+                    propertyBinding.property,
+                    value,
+                    propertyBinding.type,
+                  ),
+            );
             break;
           }
         }
@@ -326,15 +465,12 @@ export const update = (
       return { code, success: false };
     }
 
-    let result = unwrap(generateCode(ast));
-
-    for (const [placeholder, original] of jsxPlaceholders) {
-      // 두 번째 인자가 문자열이면 $&, $$ 같은 특수 치환 패턴으로 해석되어
-      // original 안에 그런 문자가 있으면 결과가 깨진다 — 함수형 치환자로 방지.
-      result = result.replace(placeholder, () => original);
-    }
-
-    return { code: result, success: true };
+    // Patch the original source instead of re-emitting the tree: every byte
+    // outside a recorded span is copied through unchanged, so an edit to
+    // one field can no longer reflow the author's formatting elsewhere in
+    // the section — including the `data-binding` array itself, which is now
+    // authored as a JSX expression. See #239.
+    return { code: unwrap(applyEdits(wrapped, edits)), success: true };
   } catch (error) {
     console.error('❌ Code update error:', error);
     return { code, success: false };
