@@ -16,13 +16,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       # v6+ is required for npm's OIDC "Trusted Publishing" used below.
       # No built-in `cache: 'pnpm'` here on purpose — this job skips
@@ -33,7 +33,7 @@ jobs:
       # step below is scoped to the same already_tagged condition as
       # Install dependencies.
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24.x
           registry-url: 'https://registry.npmjs.org'
@@ -60,7 +60,7 @@ jobs:
 
       - name: Setup pnpm cache
         if: steps.tag_check.outputs.already_tagged == 'false'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -160,7 +160,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.tag_check.outputs.already_tagged == 'false'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.tag_check.outputs.version }}
           body: ${{ steps.changelog.outputs.body || format('Release {0}', steps.tag_check.outputs.version) }}
