@@ -198,6 +198,220 @@ describe('update', () => {
       expect(result).toEqual({ code: DUPLICATE_LABEL_CODE, success: false });
     });
   });
+
+  // #239: `update` patches the original source at the parsed node's offsets
+  // instead of re-emitting the section, so anything it didn't explicitly
+  // target comes through byte for byte.
+  describe('formatting preservation (#239)', () => {
+    const FORMATTED = `<section data-name="Hero">
+  {/* keep this comment */}
+  <h1
+    data-id="a"
+    data-binding='[{"label":"Title","property":"innerText"}]'
+    className={cn(
+      'text-4xl',
+      // trailing comment inside cn
+      'font-bold',
+    )}
+  >
+    Old Title
+  </h1>
+</section>`;
+
+    it('changes only the edited value and leaves every other byte identical', () => {
+      const result = update(FORMATTED, 'a', 'Title', 'New Title');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toBe(FORMATTED.replace('Old Title', 'New Title'));
+    });
+
+    it('preserves the indentation surrounding a replaced text node', () => {
+      const result = update(FORMATTED, 'a', 'Title', 'New Title');
+
+      expect(result.code).toContain('\n  >\n    New Title\n  </h1>');
+    });
+
+    // Bindings are authored as JSX expressions now, so whole-node
+    // regeneration used to reformat the declaration that drives the edit.
+    it('leaves a multi-line data-binding declaration untouched', () => {
+      const code = `<div
+  data-id="a"
+  data-binding={[
+    { label: 'Title', property: 'title' },
+    { label: 'Alt', property: 'alt' },
+  ]}
+  title="old"
+  alt="keep"
+>x</div>`;
+
+      const result = update(code, 'a', 'Title', 'new', 'title');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toBe(code.replace('title="old"', 'title="new"'));
+    });
+
+    it('re-indents a generated multi-line fragment to the column it lands on', () => {
+      const code = `<section>
+    <div
+      data-id="a"
+      data-binding={[{ label: 'Style', property: 'style', type: 'object' }]}
+      style={{ color: 'red' }}
+    >x</div>
+</section>`;
+
+      const result = update(code, 'a', 'Style', { color: 'blue' }, 'style');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain(
+        '      style={{\n        "color": "blue"\n      }}',
+      );
+    });
+
+    // The old implementation smuggled raw values past the generator as
+    // `__HTML_<id>__` placeholders and string-replaced them afterwards,
+    // where `$&`/`$$` are special. Source patching inserts them literally.
+    it('writes a raw innerHTML value containing $& and $$ verbatim', () => {
+      const code = `<div data-id="a" data-binding="[{label:'H',property:'innerHTML'}]">old</div>`;
+      const result = update(code, 'a', 'H', '<b>$& and $$</b>');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('<b>$& and $$</b>');
+    });
+
+    // Patching an attribute reuses the parsed name node rather than building
+    // a fresh JSXIdentifier, so dashed and namespaced names survive.
+    it('keeps a dashed attribute name intact', () => {
+      const code = `<div data-id="a" data-binding="[{label:'L',property:'aria-label'}]" aria-label="old">x</div>`;
+      const result = update(code, 'a', 'L', 'new', 'aria-label');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('aria-label="new"');
+    });
+
+    // Replacing innerText targets the text nodes only — same as the old
+    // "splice out every JSXText" mutation, which left other children alone.
+    it('replaces text without disturbing sibling non-text children', () => {
+      const code = `<div data-id="a" data-binding="[{label:'T',property:'innerText'}]">old{/* keep */}</div>`;
+      const result = update(code, 'a', 'T', 'new', 'innerText');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('{/* keep */}');
+      expect(result.code).not.toContain('old');
+    });
+
+    // The text span is measured on the raw source, not on Babel's cooked
+    // JSXText value: the cooked value decodes entities and collapses CRLF,
+    // so its character counts don't match the raw offsets the span uses.
+    it('keeps CRLF line endings and surrounding indentation intact', () => {
+      const code =
+        '<h1\r\n  data-id="a"\r\n  data-binding="[{label:\'T\',property:\'innerText\'}]"\r\n>\r\n  Old Title\r\n</h1>';
+
+      const result = update(code, 'a', 'T', 'New Title');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toBe(code.replace('Old Title', 'New Title'));
+    });
+
+    it('replaces text bounded by HTML entities without cutting into them', () => {
+      const code = `<div data-id="a" data-binding="[{label:'T',property:'innerText'}]">&nbsp;Old&nbsp;</div>`;
+
+      const result = update(code, 'a', 'T', 'New');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('>New<');
+      expect(result.code).not.toContain('&New;');
+    });
+
+    // A generated fragment is re-indented to the column it lands on, but
+    // only when every newline in it is layout. A newline inside a template
+    // literal or JSX text belongs to the value, and indenting it would
+    // rewrite that value — repeatedly, since the built-in array editor
+    // feeds its own serialized output back through `update`.
+    it('leaves newlines inside a template literal value alone across repeated edits', () => {
+      const items = '[{ id: 1, html: `<p>A</p>\n<p>B</p>` }]';
+      const code = `<div
+      data-id="a"
+      data-binding={[{ label: 'I', property: 'items', type: 'array' }]}
+      items={${items}}
+    >x</div>`;
+
+      let current = code;
+
+      for (let pass = 0; pass < 3; pass++) {
+        const serialized = /items=\{(\[[\s\S]*?\])\}/.exec(current)?.[1];
+        current = update(current, 'a', 'I', serialized, 'items').code;
+
+        expect(current).toContain('`<p>A</p>\n<p>B</p>`');
+      }
+    });
+
+    // Babel re-emits comments it parsed out of the authored value, so an
+    // apostrophe in an English comment must not make the indent-safety scan
+    // lose track of the backtick that follows it.
+    it.each([
+      ['a line comment', "[\n  // don't\n  { html: `A\nB` }\n]"],
+      ['a block comment', "[{ /* don't */ html: `A\nB` }]"],
+      ['a regex literal', '[{ re: /"/, html: `A\nB` }]'],
+    ])(
+      'leaves a template literal alone when the value also contains %s',
+      (_name, items) => {
+        const code = `<div
+      data-id="a"
+      data-binding={[{ label: 'I', property: 'items', type: 'array' }]}
+      items={[]}
+    >x</div>`;
+
+        const result = update(code, 'a', 'I', items, 'items');
+
+        expect(result.success).toBe(true);
+        expect(result.code).toContain('`A\nB`');
+      },
+    );
+
+    // A backslash before a newline is a line continuation: the newline is
+    // part of the string's raw text, even though there is no backtick or
+    // `<` anywhere to flag it.
+    it('leaves a line-continued string literal byte-identical', () => {
+      const code = `<div
+      data-id="a"
+      data-binding={[{ label: 'I', property: 'items', type: 'array' }]}
+      items={[]}
+    >x</div>`;
+
+      const result = update(
+        code,
+        'a',
+        'I',
+        '[{ id: 1, html: "<p>A</p>\\\n<p>B</p>" }]',
+        'items',
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('"<p>A</p>\\\n<p>B</p>"');
+    });
+
+    it('leaves newlines inside generated JSX text alone', () => {
+      const code = `<section>
+      <ul data-id="a" data-binding={[{ label: 'K', property: 'children' }]}>
+        <li>x</li>
+      </ul>
+</section>`;
+
+      const value = JSON.stringify([
+        {
+          tagName: 'pre',
+          attributes: [],
+          dataAttributes: [],
+          textContent: 'a\nb',
+        },
+      ]);
+
+      const result = update(code, 'a', 'K', value);
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('<pre>a\nb</pre>');
+    });
+  });
 });
 
 describe('bulkUpdate', () => {
@@ -234,5 +448,35 @@ describe('bulkUpdate', () => {
     expect(result.success).toBe(true);
     expect(result.code).toContain('alt="bulk alt"');
     expect(result.code).toContain('title="t"');
+  });
+
+  // #239: each entry re-parses the already-patched source, so offsets are
+  // always fresh — batching must stay equivalent to applying one at a time.
+  it('produces the same result as applying each entry sequentially', () => {
+    const code = `<div
+  data-id="a"
+  data-binding={[{ label: 'T', property: 'title' }, { label: 'A', property: 'alt' }]}
+  title="t"
+  alt="a"
+>x</div>`;
+
+    const batched = bulkUpdate(code, [
+      { dataId: 'a', label: 'T', value: 't2', property: 'title' },
+      { dataId: 'a', label: 'A', value: 'a2', property: 'alt' },
+    ]);
+
+    const sequential = update(
+      update(code, 'a', 'T', 't2', 'title').code,
+      'a',
+      'A',
+      'a2',
+      'alt',
+    );
+
+    expect(batched.success).toBe(true);
+    expect(batched.code).toBe(sequential.code);
+    expect(batched.code).toBe(
+      code.replace('title="t"', 'title="t2"').replace('alt="a"', 'alt="a2"'),
+    );
   });
 });
