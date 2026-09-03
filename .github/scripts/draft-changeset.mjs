@@ -7,14 +7,13 @@
 // added in this PR), so it never overwrites something a human already
 // wrote or edited.
 //
-// Uses NVIDIA's OpenAI-compatible API Catalog endpoint (not Gemini/GitHub
-// Models — both have hit sustained outages/retirement before this).
+// Uses NVIDIA's OpenAI-compatible API Catalog endpoint. Model selection,
+// fallback logic, and <think>-block stripping live in nvidia-chat.mjs.
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import { nvidiaChat, requireEnv } from './nvidia-chat.mjs';
 
-const MODEL = process.env.NVIDIA_MODEL || 'meta/llama-3.1-8b-instruct';
-const API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const MAX_DIFF_CHARS = 12000;
 const PACKAGE_NAME = '@jbpark/live-editor';
 const PACKAGE_DIR = 'src';
@@ -27,44 +26,6 @@ const PACKAGE_DIR = 'src';
 // "this is demo-only, don't draft" — that judgment call was unreliable
 // in practice (see #142/#144's cleanup).
 const PACKAGE_EXCLUDE_DIRS = ['src/pages', 'src/main.tsx'];
-
-// The API occasionally returns 503/429 for a few minutes at a time — retry
-// those with backoff instead of failing the required "draft" check
-// outright. Non-retryable statuses (bad key, bad request, etc.) still fail
-// on the first attempt.
-const MAX_ATTEMPTS = 4;
-const RETRY_BASE_DELAY_MS = 2000;
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function fetchWithRetry(url, options) {
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const response = await fetch(url, options);
-
-    if (
-      response.ok ||
-      !RETRYABLE_STATUSES.has(response.status) ||
-      attempt === MAX_ATTEMPTS
-    ) {
-      return response;
-    }
-
-    const delayMs = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
-    console.log(
-      `NVIDIA API returned ${response.status}, retrying in ${delayMs}ms (attempt ${attempt}/${MAX_ATTEMPTS})...`,
-    );
-    await sleep(delayMs);
-  }
-}
-
-function requireEnv(name) {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing required env var: ${name}`);
-  return value;
-}
 
 // The model isn't guaranteed to honor a strict JSON-only instruction, so
 // pull the object out of a ```json fenced block if present and fall back to
@@ -136,40 +97,18 @@ async function main() {
   ].join(' ');
 
   // A drafted changeset is a nice-to-have, not something worth failing the
-  // required "draft" check over — if the API is unavailable even after
-  // retries, skip drafting (exit 0) instead of blocking the PR. A human can
-  // always add a changeset by hand.
+  // required "draft" check over — if the API is unavailable even after all
+  // candidates are exhausted, skip drafting (exit 0) instead of blocking the
+  // PR. A human can always add a changeset by hand.
   let result;
   try {
-    const response = await fetchWithRetry(API_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `\`\`\`diff\n${truncatedDiff}\n\`\`\`` },
-        ],
-      }),
+    const content = await nvidiaChat(apiKey, {
+      temperature: 0,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `\`\`\`diff\n${truncatedDiff}\n\`\`\`` },
+      ],
     });
-
-    if (!response.ok) {
-      throw new Error(
-        `NVIDIA API request failed: ${response.status} ${response.statusText} — ${await response.text()}`,
-      );
-    }
-
-    const body = await response.json();
-    const content = body.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error(
-        'NVIDIA API response missing choices[0].message.content',
-      );
-    }
 
     result = extractJson(content);
     if (!result || typeof result !== 'object') {
