@@ -33,6 +33,17 @@ export {
   setEditableValue,
 } from './value';
 export { generateCode } from './helpers';
+export type { ArrayItem, ItemKind } from './items';
+export {
+  appendArrayItem,
+  duplicateArrayItems,
+  moveArrayItem,
+  moveArrayItems,
+  parseItems,
+  removeArrayItems,
+  updateArrayItemProperty,
+  updateArrayItemValue,
+} from './items';
 export { clearExtractCache, extract } from './extract';
 export type { DocumentTree, SectionPreviewCache } from './document';
 export {
