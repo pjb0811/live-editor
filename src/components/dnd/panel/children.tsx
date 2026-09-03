@@ -6,10 +6,10 @@ import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
 import { type DataAttrNode, findEditableChildren } from '~/utils/ast';
+import { moveSelectedIndices, removeIndices } from '~/utils/selection';
 
 import { BulkActionsBar } from './items';
 import Node from './node';
-import { moveSelectedIndices, removeIndices } from './selection';
 
 interface Props {
   value: DataAttrNode[];
