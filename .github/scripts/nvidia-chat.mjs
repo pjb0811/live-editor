@@ -61,7 +61,7 @@ async function fetchModel(model, apiKey, body) {
     if (attempt === MAX_ATTEMPTS) return response;
 
     const delayMs = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
-    console.log(
+    console.error(
       `NVIDIA API [${model}] returned ${response.status}, retrying in ${delayMs}ms` +
       ` (attempt ${attempt}/${MAX_ATTEMPTS})...`,
     );
@@ -86,13 +86,13 @@ export async function nvidiaChat(apiKey, body) {
       response = await fetchModel(model, apiKey, body);
     } catch (err) {
       lastError = err;
-      console.log(`NVIDIA API [${model}] network error: ${err.message} — trying next candidate`);
+      console.error(`NVIDIA API [${model}] network error: ${err.message} — trying next candidate`);
       continue;
     }
 
     if (GONE_STATUSES.has(response.status)) {
       const detail = await response.text().catch(() => '');
-      console.log(
+      console.error(
         `NVIDIA API [${model}] returned ${response.status} (model gone) — trying next candidate.\n  ${detail}`,
       );
       lastError = new Error(`Model gone: ${response.status} — ${detail}`);
@@ -115,7 +115,7 @@ export async function nvidiaChat(apiKey, body) {
     }
 
     const content = stripThinkBlock(raw);
-    console.log(`NVIDIA API: used model ${model}`);
+    console.error(`NVIDIA API: used model ${model}`);
     return content;
   }
 
