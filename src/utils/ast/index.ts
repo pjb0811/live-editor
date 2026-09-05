@@ -58,6 +58,7 @@ export {
   replaceDocumentSections,
 } from './document';
 export { bulkUpdate, update } from './update';
+export type { UpdateFailure, UpdateResult } from './update';
 export { clone, fillIds, replaceIds } from './tree';
 export type { ValidationResult } from './validate';
 export { validateBindingValue } from './validate';
