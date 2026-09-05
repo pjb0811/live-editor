@@ -25,6 +25,20 @@ export default defineConfig({
   // `createRequire` from `node:module` — which breaks every browser bundler
   // that consumes the built package (rspack/webpack throw on `node:` schemes).
   platform: 'browser',
+  // `platform: 'browser'` only controls export-condition resolution, not
+  // `process.env` substitution. Bundled deps (notably @babel/types) read
+  // `process.env.BABEL_TYPES_8_BREAKING` at module-init time via bare,
+  // unguarded reads that survive verbatim into the bundle — so a consumer
+  // whose bundler doesn't define `process` crashes on import with
+  // "process is not defined". Substitute the flags at build time so `dist`
+  // is self-contained (no consumer-side shim needed) and the dead branches
+  // tree-shake away. `false` matches prior behaviour: with `process.env`
+  // previously stubbed to `{}` by every in-repo consumer, the value was
+  // already undefined (falsy). See #278.
+  define: {
+    'process.env.BABEL_TYPES_8_BREAKING': 'false',
+    'process.env.NODE_ENV': '"production"',
+  },
   dts: { build: true },
   outDir: 'dist',
   clean: true,
