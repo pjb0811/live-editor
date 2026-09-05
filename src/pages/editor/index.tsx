@@ -121,9 +121,9 @@ const App = () => {
                 orientation={isMobile ? 'vertical' : 'horizontal'}
               >
                 <Splitter.Panel
-                  defaultSize={50}
-                  minSize={20}
-                  maxSize={80}
+                  defaultSize="50%"
+                  minSize="20%"
+                  maxSize="80%"
                   collapsible
                 >
                   <div className="h-full overflow-auto p-2">
