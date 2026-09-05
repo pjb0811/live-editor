@@ -131,13 +131,25 @@ describe('update', () => {
   it('returns success: false and the original code when the data-id is not found', () => {
     const result = update(CODE, 'does-not-exist', 'Text', 'nope');
 
-    expect(result).toEqual({ code: CODE, success: false });
+    expect(result).toEqual({
+      code: CODE,
+      success: false,
+      failure: { reason: 'element-not-found', dataId: 'does-not-exist' },
+    });
   });
 
   it('returns success: false and the original code when the label does not match any binding', () => {
     const result = update(CODE, 'a', 'NoSuchLabel', 'nope');
 
-    expect(result).toEqual({ code: CODE, success: false });
+    expect(result).toEqual({
+      code: CODE,
+      success: false,
+      failure: {
+        reason: 'binding-not-declared',
+        dataId: 'a',
+        label: 'NoSuchLabel',
+      },
+    });
   });
 
   // #240: label is a display string, not an identifier — these pin
@@ -187,7 +199,17 @@ describe('update', () => {
 
       const result = update(ambiguousPropertyCode, 'x', 'A', 'next', 'dup');
 
-      expect(result).toEqual({ code: ambiguousPropertyCode, success: false });
+      expect(result).toEqual({
+        code: ambiguousPropertyCode,
+        success: false,
+        failure: {
+          reason: 'duplicate-binding',
+          dataId: 'x',
+          label: 'A',
+          property: 'dup',
+          count: 2,
+        },
+      });
     });
 
     it('fails safe on the label fallback too when two bindings share a label — the #240 repro', () => {
@@ -195,7 +217,82 @@ describe('update', () => {
       // "alt" was never touched, and the caller still got success: true.
       const result = update(DUPLICATE_LABEL_CODE, 'b', 'Same', 'zzz');
 
-      expect(result).toEqual({ code: DUPLICATE_LABEL_CODE, success: false });
+      expect(result).toEqual({
+        code: DUPLICATE_LABEL_CODE,
+        success: false,
+        failure: {
+          reason: 'duplicate-binding',
+          dataId: 'b',
+          label: 'Same',
+          count: 2,
+        },
+      });
+    });
+  });
+
+  // #270: every failure used to collapse into a bare `success: false` with an
+  // empty console. Each path now reports a distinct, structured reason.
+  describe('failure reasons (#270)', () => {
+    it('A: attribute-not-found when the declared property has no matching attribute', () => {
+      const code = `<div data-id="a" data-binding="[{label:'Title',property:'nonexistent'}]" title="hi">x</div>`;
+      const result = update(code, 'a', 'Title', 'new', 'nonexistent');
+
+      expect(result.success).toBe(false);
+      expect(result.code).toBe(code);
+      expect(result.failure).toEqual({
+        reason: 'attribute-not-found',
+        dataId: 'a',
+        property: 'nonexistent',
+      });
+    });
+
+    it('B: binding-not-declared when the requested binding is not on the element', () => {
+      const code = `<div data-id="a" data-binding="[{label:'Title',property:'title'}]" title="hi">x</div>`;
+      const result = update(code, 'a', 'Other', 'new', 'other');
+
+      expect(result.failure).toEqual({
+        reason: 'binding-not-declared',
+        dataId: 'a',
+        label: 'Other',
+        property: 'other',
+      });
+    });
+
+    it('C: element-not-found when no element carries the data-id', () => {
+      const code = `<div data-id="a" data-binding="[{label:'Title',property:'title'}]" title="hi">x</div>`;
+      const result = update(code, 'zzz', 'Title', 'new', 'title');
+
+      expect(result.failure).toEqual({
+        reason: 'element-not-found',
+        dataId: 'zzz',
+      });
+    });
+
+    it('D: duplicate-binding when one element declares the property twice', () => {
+      const code = `<div data-id="a" data-binding="[{label:'T1',property:'title'},{label:'T2',property:'title'}]" title="hi">x</div>`;
+      const result = update(code, 'a', 'T1', 'new', 'title');
+
+      expect(result.failure).toEqual({
+        reason: 'duplicate-binding',
+        dataId: 'a',
+        label: 'T1',
+        property: 'title',
+        count: 2,
+      });
+    });
+
+    it('E: no-binding when the element has no data-binding attribute', () => {
+      const code = `<div data-id="a" title="hi">x</div>`;
+      const result = update(code, 'a', 'Title', 'new', 'title');
+
+      expect(result.failure).toEqual({ reason: 'no-binding', dataId: 'a' });
+    });
+
+    it('control: a successful update carries no failure', () => {
+      const result = update(CODE, 'a', 'Text', 'new text', 'innerText');
+
+      expect(result.success).toBe(true);
+      expect(result.failure).toBeUndefined();
     });
   });
 
@@ -436,6 +533,9 @@ describe('bulkUpdate', () => {
 
     expect(result.success).toBe(false);
     expect(result.code).toContain('>bulk text<');
+    expect(result.failures).toEqual([
+      { reason: 'element-not-found', dataId: 'missing' },
+    ]);
   });
 
   it("threads an entry's optional property through to update, same as calling it directly (#240)", () => {

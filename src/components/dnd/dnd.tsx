@@ -35,6 +35,7 @@ import {
   parseBinding,
   update,
 } from '~/utils/ast';
+import type { UpdateFailure } from '~/utils/ast';
 
 import { DEFAULT_TEMPLATE } from '../../constants';
 import { cn, preloadScripts } from '../../utils';
@@ -47,6 +48,61 @@ import Panel from './panel';
 import Renderer from './renderer';
 import Sortable from './sortable';
 import { useSectionDocument } from './use-section-document';
+
+// Turn a structured `update` failure into a toast that names the actual
+// fault. Before #270 every failure showed "Failed to update this field /
+// Check the console for details" — but nothing was logged, so the console
+// was empty. Most of these are a wrong `property`/`label` in the element's
+// `data-binding`, not the value the author just typed, so the message points
+// there. `description` is only set for paths that genuinely log (parse
+// errors), so "check the console" is never a dead end again.
+const describeUpdateFailure = (
+  failure: UpdateFailure | undefined,
+  label: string,
+): { title: string; description?: string } => {
+  switch (failure?.reason) {
+    case 'attribute-not-found':
+      return {
+        title: `Failed to update "${label}"`,
+        description: `This element has no "${failure.property}" attribute — check the property in its data-binding.`,
+      };
+    case 'binding-not-declared':
+      return {
+        title: `Failed to update "${label}"`,
+        description: `No binding for ${
+          failure.property
+            ? `property "${failure.property}"`
+            : `label "${label}"`
+        } is declared on this element's data-binding.`,
+      };
+    case 'duplicate-binding':
+      return {
+        title: `Failed to update "${label}"`,
+        description: `${failure.count} bindings share ${
+          failure.property
+            ? `property "${failure.property}"`
+            : `label "${label}"`
+        } on this element — remove the duplicate in its data-binding.`,
+      };
+    case 'no-binding':
+      return {
+        title: `Failed to update "${label}"`,
+        description: 'This element has no data-binding declaration.',
+      };
+    case 'element-not-found':
+      return {
+        title: `Failed to update "${label}"`,
+        description: 'The target element could not be found in this section.',
+      };
+    case 'parse-error':
+      return {
+        title: `Failed to update "${label}"`,
+        description: 'Check the console for details.',
+      };
+    default:
+      return { title: `Failed to update "${label}"` };
+  }
+};
 
 export interface PaletteRenderData {
   items: Section[];
@@ -323,9 +379,11 @@ const Dnd = ({
     const result = update(updatedCode, id, label, fieldValue, property);
 
     if (!result.success) {
-      Toast.error('Failed to update this field', {
-        description: 'Check the console for details.',
-      });
+      const { title, description } = describeUpdateFailure(
+        result.failure,
+        label,
+      );
+      Toast.error(title, description ? { description } : undefined);
       return;
     }
 

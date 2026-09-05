@@ -322,9 +322,40 @@ const editAttribute = (
   ];
 };
 
+// Why an edit failed. Before #270 every one of these collapsed into a bare
+// `success: false`, so the panel showed one generic "Failed to update this
+// field / check the console" toast for structurally different problems — and
+// nothing was ever logged, so the console it pointed at was empty. Each
+// variant carries the identifiers a caller needs to name the real fault
+// (usually a wrong `property`/`label` in the element's `data-binding`, not
+// the value the author just typed).
+export type UpdateFailure =
+  | { reason: 'element-not-found'; dataId: string }
+  | { reason: 'no-binding'; dataId: string }
+  | {
+      reason: 'binding-not-declared';
+      dataId: string;
+      label: string;
+      property?: string;
+    }
+  | {
+      reason: 'duplicate-binding';
+      dataId: string;
+      label: string;
+      property?: string;
+      count: number;
+    }
+  | { reason: 'attribute-not-found'; dataId: string; property: string }
+  | { reason: 'parse-error'; error: unknown };
+
 export interface UpdateResult {
   code: string;
   success: boolean;
+  // Present iff `success === false`. `bulkUpdate` reports per-entry failures
+  // via `failures` instead, since one boolean can't say how many of several
+  // entries failed or which ones.
+  failure?: UpdateFailure;
+  failures?: UpdateFailure[];
 }
 
 // `label` is a display string — reworded, duplicated, or translated at
@@ -349,13 +380,15 @@ export const update = (
     });
 
     let changed = false;
+    let failure: UpdateFailure | undefined;
     const edits: SourceEdit[] = [];
 
-    // Records an editor's outcome. `null` is a failure (leave `changed`
-    // alone so the caller sees success: false); anything else counts as
-    // handled, even when it produces no edits.
-    const collect = (result: EditResult) => {
+    // Records an editor's outcome. `null` is a failure — the caller passes
+    // the reason so it isn't discarded; anything else counts as handled,
+    // even when it produces no edits.
+    const collect = (result: EditResult, onNull: () => UpdateFailure) => {
       if (!result) {
+        failure = onNull();
         return;
       }
 
@@ -390,6 +423,7 @@ export const update = (
         );
 
         if (!bindingAttr?.value) {
+          failure = { reason: 'no-binding', dataId };
           return;
         }
 
@@ -400,7 +434,8 @@ export const update = (
         } else if (t.isJSXExpressionContainer(bindingAttr.value)) {
           try {
             bindingValue = generateCode(bindingAttr.value.expression);
-          } catch {
+          } catch (error) {
+            failure = { reason: 'parse-error', error };
             return;
           }
         }
@@ -418,15 +453,31 @@ export const update = (
             : binding.label === label,
         );
 
-        if (matches.length !== 1) {
+        if (matches.length === 0) {
+          failure = { reason: 'binding-not-declared', dataId, label, property };
+          return;
+        }
+
+        if (matches.length > 1) {
+          failure = {
+            reason: 'duplicate-binding',
+            dataId,
+            label,
+            property,
+            count: matches.length,
+          };
           return;
         }
 
         const propertyBinding = matches[0]!;
+        const prop = propertyBinding.property;
 
-        switch (propertyBinding.property) {
+        switch (prop) {
           case BINDING_PROP.INNER_TEXT: {
-            collect(editInnerText(wrapped, path.node, String(value)));
+            collect(editInnerText(wrapped, path.node, String(value)), () => ({
+              reason: 'parse-error',
+              error: new Error(`could not update "${prop}"`),
+            }));
             break;
           }
 
@@ -435,25 +486,32 @@ export const update = (
               propertyBinding.type === 'richtext'
                 ? editRichtext(path.node, String(value))
                 : editInnerHTML(path.node, String(value)),
+              () => ({
+                reason: 'parse-error',
+                error: new Error(`could not update "${prop}"`),
+              }),
             );
             break;
           }
 
           case BINDING_PROP.CHILDREN: {
-            collect(editChildren(path.node, value));
+            // editChildren logs the underlying JSON/AST error itself, so the
+            // console genuinely has details for this path.
+            collect(editChildren(path.node, value), () => ({
+              reason: 'parse-error',
+              error: new Error(`could not update "${prop}"`),
+            }));
             break;
           }
 
           default: {
+            // The declared `property` names a JSX attribute that isn't on
+            // this element — the binding declaration is wrong, not the value.
             collect(
               propertyBinding.type === 'jsx'
-                ? editJsxAttribute(opening, propertyBinding.property, value)
-                : editAttribute(
-                    opening,
-                    propertyBinding.property,
-                    value,
-                    propertyBinding.type,
-                  ),
+                ? editJsxAttribute(opening, prop, value)
+                : editAttribute(opening, prop, value, propertyBinding.type),
+              () => ({ reason: 'attribute-not-found', dataId, property: prop }),
             );
             break;
           }
@@ -462,7 +520,13 @@ export const update = (
     });
 
     if (!changed) {
-      return { code, success: false };
+      return {
+        code,
+        success: false,
+        // No specific reason recorded means the traversal never reached the
+        // target element at all.
+        failure: failure ?? { reason: 'element-not-found', dataId },
+      };
     }
 
     // Patch the original source instead of re-emitting the tree: every byte
@@ -473,7 +537,7 @@ export const update = (
     return { code: unwrap(applyEdits(wrapped, edits)), success: true };
   } catch (error) {
     console.error('❌ Code update error:', error);
-    return { code, success: false };
+    return { code, success: false, failure: { reason: 'parse-error', error } };
   }
 };
 
@@ -487,7 +551,7 @@ export const bulkUpdate = (
   }[],
 ): UpdateResult => {
   let current = raw;
-  let allSucceeded = true;
+  const failures: UpdateFailure[] = [];
 
   for (const entry of entries) {
     const result = update(
@@ -498,8 +562,12 @@ export const bulkUpdate = (
       entry.property,
     );
     current = result.code;
-    allSucceeded = allSucceeded && result.success;
+    if (!result.success && result.failure) {
+      failures.push(result.failure);
+    }
   }
 
-  return { code: current, success: allSucceeded };
+  return failures.length > 0
+    ? { code: current, success: false, failures }
+    : { code: current, success: true };
 };
