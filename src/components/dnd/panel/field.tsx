@@ -156,6 +156,23 @@ const Field = ({ binding, onNodeChange }: Props) => {
 
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // The text-like inputs below (url/asset/number/textarea) commit on blur, so
+  // they need local live state to hold what the user is typing. Left
+  // uncontrolled (`defaultValue`), they ignored later changes to the canonical
+  // value — an undo/redo or another field touching the same binding — because
+  // `Field` reconciles rather than remounts (stable `key={binding.label}`).
+  // The stale text then got re-committed on blur, clobbering the undo. Track
+  // the canonical `rawValue` with a render-phase reset, the same pattern
+  // `ColorPickerField` uses above. See #284. (The date picker commits on
+  // change, not blur, so it can bind the prop directly with no local state.)
+  const [text, setText] = useState(rawValue);
+  const [prevRawValue, setPrevRawValue] = useState(rawValue);
+
+  if (rawValue !== prevRawValue) {
+    setPrevRawValue(rawValue);
+    setText(rawValue);
+  }
+
   if (
     binding.property === 'items' ||
     binding.property === 'data' ||
@@ -292,7 +309,7 @@ const Field = ({ binding, onNodeChange }: Props) => {
     return (
       <div>
         <DatePicker
-          defaultValue={parseDateValue(stringValue)}
+          value={parseDateValue(stringValue)}
           onChange={date => {
             const next = date ? formatDateValue(date) : '';
             const result = validateBindingValue(binding, next);
@@ -321,7 +338,8 @@ const Field = ({ binding, onNodeChange }: Props) => {
       <div>
         <Input
           type="url"
-          defaultValue={stringValue}
+          value={text}
+          onChange={e => setText(e.target.value)}
           placeholder="https://example.com"
           onBlur={e => {
             const next = e.target.value.trim();
@@ -384,7 +402,8 @@ const Field = ({ binding, onNodeChange }: Props) => {
     return (
       <div className="space-y-2">
         <Input
-          defaultValue={stringValue}
+          value={text}
+          onChange={e => setText(e.target.value)}
           placeholder="Enter an image URL"
           onBlur={e => {
             const next = e.target.value.trim();
@@ -427,7 +446,8 @@ const Field = ({ binding, onNodeChange }: Props) => {
       <div>
         <Input
           type="number"
-          defaultValue={stringValue}
+          value={text}
+          onChange={e => setText(e.target.value)}
           placeholder="Enter a numeric value"
           onBlur={e => {
             const raw = e.target.value.trim();
@@ -462,7 +482,8 @@ const Field = ({ binding, onNodeChange }: Props) => {
   return (
     <div>
       <Input.TextArea
-        defaultValue={rawValue}
+        value={text}
+        onChange={e => setText(e.target.value)}
         placeholder="Enter a value"
         onBlur={e => {
           const raw = e.target.value.trim();
