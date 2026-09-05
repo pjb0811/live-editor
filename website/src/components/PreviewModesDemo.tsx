@@ -1,6 +1,8 @@
 import Preview from '@jbpark/live-editor/preview';
 import Context from '@jbpark/live-editor/provider';
 
+import styles from './PreviewModesDemo.module.css';
+
 const SAMPLE_CODE = `
 import * as ui from 'ui-kit';
 
@@ -21,14 +23,11 @@ export default App;
 // wired to an editor), so #164's threat model doesn't apply here the way it
 // does for the editor-mode/custom-editor/dnd demos. See #206.
 const PreviewModesDemo = () => {
-  const label = 'mb-1 text-sm font-semibold text-gray-700';
-  const box = 'h-64 overflow-hidden rounded-lg border border-gray-200';
-
   return (
-    <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+    <div className={styles.grid}>
       <div>
-        <div className={label}>iframe</div>
-        <div className={box}>
+        <div className={styles.label}>iframe</div>
+        <div className={styles.box}>
           <Context>
             <Preview
               code={SAMPLE_CODE}
@@ -39,8 +38,8 @@ const PreviewModesDemo = () => {
         </div>
       </div>
       <div>
-        <div className={label}>shadow</div>
-        <div className={box}>
+        <div className={styles.label}>shadow</div>
+        <div className={styles.box}>
           <Context>
             <Preview
               code={SAMPLE_CODE}

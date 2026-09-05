@@ -1,0 +1,33 @@
+/**
+ * Plain hand-written CSS rather than Tailwind utility classes: this site
+ * doesn't run its own Tailwind build (see src/pages/index.module.css), so
+ * utility classes used here would only render if live-editor's own compiled
+ * style.css happened to include them too.
+ */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+@media screen and (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.label {
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.box {
+  height: 16rem;
+  overflow: hidden;
+  border-radius: var(--radius, var(--ifm-global-radius));
+  border: 1px solid var(--border, var(--ifm-color-emphasis-300));
+}
