@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.0.4
+
+### Patch Changes
+
+- c433b4b: Type-check `demos/` and the remaining build configs. `tsconfig.app.json` now
+  includes `demos` and `tsconfig.node.json` includes `vitest.config.ts`,
+  `tsdown.config.ts`, and `demos/vite.config.ts`, so `tsc -b` (and CI's type
+  check) covers them instead of silently skipping ~1k LOC of demo code and three
+  of the four config files.
+- 0523754: Run the test suite in CI and unblock component-layer tests. `pnpm test` now
+  gates both `ci.yml` and `publish.yml`, the vitest `include` glob matches
+  `.test.tsx` so component tests can no longer be silently skipped, and a jsdom
+  env (opt-in per file) plus Testing Library are available. Backfills tests for
+  `utils/ast/tree` and `utils/ast/helpers`, and the `usePreview`/`useError`
+  context guards.
+
 ## 2.0.3
 
 ### Patch Changes
