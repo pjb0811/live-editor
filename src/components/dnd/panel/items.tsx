@@ -276,6 +276,10 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     }
 
     commit(moveArrayItem(value, from, target.elementIndex));
+    // Positions shift after a move, but count is unchanged so useMultiSelect
+    // never reconciles the set — clear it so a later bulk action can't target
+    // the wrong elements. See #285.
+    selection.clear();
   };
 
   const deleteSelectedPrimitives = (indices: Set<number>) => {
@@ -290,6 +294,9 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
   const deletePrimitive = (elementIndex: number) => {
     commit(removeArrayItems(value, new Set([elementIndex]), 'primitive'));
+    // Removing an item shifts every position after it; clear the selection so
+    // a later bulk action can't target the wrong elements. See #285.
+    selection.clear();
   };
 
   const addPrimitive = () => {
@@ -331,6 +338,10 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     }
 
     commit(moveArrayItem(value, from, target.elementIndex));
+    // Positions shift after a move, but count is unchanged so useMultiSelect
+    // never reconciles the set — clear it so a later bulk action can't target
+    // the wrong elements. See #285.
+    selection.clear();
   };
 
   const updateProperty = (
@@ -351,6 +362,9 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
   const deleteItem = (elementIndex: number) => {
     commit(removeArrayItems(value, new Set([elementIndex]), 'object'));
+    // Removing an item shifts every position after it; clear the selection so
+    // a later bulk action can't target the wrong elements. See #285.
+    selection.clear();
   };
 
   const addItem = () => {
