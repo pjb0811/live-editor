@@ -1,5 +1,42 @@
 # Changelog
 
+## 2.0.3
+
+### Patch Changes
+
+- 96d2c64: Fix per-item delete/move in the array editor leaving a stale multi-select set
+
+  The multi-select set holds positional indices. Bulk operations re-synced it after
+  mutating the array, but the per-item delete/move buttons did not — and removing or
+  moving an item shifts the positions of the items after it. An active selection
+  silently ended up pointing at different items than the user picked, so a later bulk
+  action targeted the wrong elements. The four single-item handlers (`deletePrimitive`,
+  `deleteItem`, `movePrimitive`, `moveItem`) now clear the selection after they mutate,
+  matching what the bulk delete already does.
+
+- d8ed605: Fix panel text/number/date/url/asset inputs ignoring external value changes
+
+  The panel's text-like inputs were uncontrolled (`defaultValue`), so once mounted
+  they ignored later changes to their incoming value. When the source changed under
+  a still-selected element — an undo/redo, or another field touching the same binding
+  — the input kept showing the pre-change text, and blurring re-committed that stale
+  text back into the source, clobbering the undo. The url/asset/number/textarea inputs
+  now hold local live state with a render-phase reset when the canonical value changes
+  (the pattern `ColorPickerField` already used), and the date picker binds the value
+  directly, so the displayed value always tracks the source of truth.
+
+- c69cc3b: Fix "process is not defined" crash when importing the published package in browsers
+
+  `@babel/types` (bundled into the `document-*` chunk shared by the root entry and
+  `@jbpark/live-editor/utils/ast`) reads `process.env.BABEL_TYPES_8_BREAKING` with
+  bare, unguarded reads at module-init time. `process` doesn't exist in browsers,
+  so any consumer whose bundler doesn't define it crashed on import with
+  `ReferenceError: process is not defined`. `tsdown` now substitutes
+  `process.env.BABEL_TYPES_8_BREAKING` (`false`) and `process.env.NODE_ENV`
+  (`"production"`) at build time, so `dist` is self-contained and no consumer-side
+  `process` shim is needed. Behaviour is unchanged (the flag was already falsy),
+  and the dead branches tree-shake away.
+
 ## 2.0.2
 
 ### Patch Changes
