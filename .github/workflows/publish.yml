@@ -71,6 +71,10 @@ jobs:
         if: steps.tag_check.outputs.already_tagged == 'false'
         run: pnpm install
 
+      - name: Test
+        if: steps.tag_check.outputs.already_tagged == 'false'
+        run: pnpm test
+
       - name: Build
         if: steps.tag_check.outputs.already_tagged == 'false'
         run: pnpm run build
