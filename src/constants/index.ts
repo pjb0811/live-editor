@@ -413,7 +413,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
           data-binding={[
             {
               label: 'Description 1',
-              property: 'innerText',
+              type: 'richtext',
             },
           ]}
           className={cn(
@@ -431,7 +431,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
           data-binding={[
             {
               label: 'Description 2',
-              property: 'innerText',
+              type: 'richtext',
             },
           ]}
           className={cn(
@@ -1151,7 +1151,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     data-binding={[
                       {
                         label: 'Answer 1',
-                        property: 'innerText',
+                        type: 'richtext',
                       },
                     ]}
                     className={cn('text-gray-600')}
@@ -1184,7 +1184,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     data-binding={[
                       {
                         label: 'Answer 2',
-                        property: 'innerText',
+                        type: 'richtext',
                       },
                     ]}
                     className={cn('text-gray-600')}
@@ -1217,7 +1217,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     data-binding={[
                       {
                         label: 'Answer 3',
-                        property: 'innerText',
+                        type: 'richtext',
                       },
                     ]}
                     className={cn('text-gray-600')}
@@ -1250,7 +1250,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     data-binding={[
                       {
                         label: 'Answer 4',
-                        property: 'innerText',
+                        type: 'richtext',
                       },
                     ]}
                     className={cn('text-gray-600')}
