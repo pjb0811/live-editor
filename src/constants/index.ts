@@ -130,7 +130,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
             data-binding={[
               {
                 label: 'Description',
-                property: 'innerText',
+                type: 'richtext',
               },
             ]}
             className={cn(
@@ -138,7 +138,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
               //
             )}
           >
-            Build dynamic components with drag & drop
+            Build <strong>dynamic components</strong> with drag & drop
           </p>
           <ui.Button
             data-id=""
