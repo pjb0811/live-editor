@@ -1,2 +1,9 @@
 overrides:
   '@codemirror/state': ^6.7.1
+  # @tiptap/extension-text-style (pulled in by @jbpark/ui-kit's RichTextEditor)
+  # declares an exact peer on @tiptap/core matching its own version, and
+  # @tiptap/core in turn pins an exact peer on @tiptap/pm — without this,
+  # pnpm can leave older @tiptap/* packages hoisted instead, which breaks
+  # module resolution for the mismatched instance in some bundler
+  # environments (reproduced on Vercel's docusaurus/webpack build).
+  '@tiptap/*': 3.31.3

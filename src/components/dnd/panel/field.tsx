@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentProps, useEffect, useRef, useState } from 'react';
 
 import {
   Checkbox,
   ColorPicker,
   DatePicker,
   Input,
+  RichTextEditor,
   Select,
   Upload,
   type UploadFile,
@@ -12,7 +13,6 @@ import {
 import { useDebounce } from '@jbpark/use-hooks';
 
 import CoreEditor from '~/components/editor/core';
-import TiptapEditor from '~/components/editor/tiptap';
 import { BINDING_PROP } from '~/constants';
 import { parseValue, validateBindingValue } from '~/utils/ast';
 
@@ -82,6 +82,18 @@ const formatDateValue = (date: Date): string => {
 // with `value` always set here), so without this it would visually snap
 // back to the last committed color between debounced commits.
 const COLOR_COMMIT_DELAY = 75;
+
+// A curated subset rather than `toolbar` (every preset): the panel is a
+// small sidebar field, not a full document editor, so this keeps to the
+// formatting controls most binding content actually needs.
+const RICHTEXT_TOOLBAR: ComponentProps<typeof RichTextEditor>['toolbar'] = [
+  'bold',
+  'italic',
+  'underline',
+  'bulletList',
+  'orderedList',
+  'link',
+];
 
 interface ColorPickerFieldProps {
   value: string;
@@ -190,8 +202,9 @@ const Field = ({ binding, onNodeChange }: Props) => {
 
   if (binding.type === 'richtext') {
     return (
-      <TiptapEditor
+      <RichTextEditor
         value={rawValue}
+        toolbar={RICHTEXT_TOOLBAR}
         onChange={next => {
           if (next !== rawValue) {
             onChange(next);
