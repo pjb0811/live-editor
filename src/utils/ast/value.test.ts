@@ -241,6 +241,20 @@ describe('extractObjectProperties', () => {
     expect(properties.a).toMatchObject({ type: 'number', value: 1 });
     expect(properties.b).toMatchObject({ type: 'string', value: 'x' });
   });
+
+  // See #298: a JSX-valued property (e.g. `label`) used to fall through to
+  // `extractNodeValue`, which stringifies the whole subtree into a raw-source
+  // textarea that duplicated `items.tsx`'s own jsxBindings/fallback editor.
+  it('skips any JSX- or fragment-valued property, not just children', () => {
+    const ast = parseExpression(
+      '{a: 1, label: <span>hi</span>, note: <>hi</>, b: "x"}',
+      { plugins: ['jsx'] },
+    ) as t.ObjectExpression;
+
+    const properties = extractObjectProperties(ast);
+
+    expect(Object.keys(properties).sort()).toEqual(['a', 'b']);
+  });
 });
 
 describe('arrayExpressionToCode', () => {

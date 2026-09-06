@@ -825,6 +825,8 @@ export const DRAGGABLE_ITEMS: Section[] = [
           )}
         >
           <h2
+            data-id=""
+            data-binding={[{ label: 'Title', property: 'innerText' }]}
             className={cn(
               'mb-12 text-center text-4xl font-bold text-gray-800',
               //

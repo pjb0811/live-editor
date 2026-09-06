@@ -88,6 +88,16 @@ describe('updateArrayItemProperty', () => {
     ).toContain('icon: <New a={1 > 0} />');
   });
 
+  // The items panel's fallback editor (see #298) edits a JSX-valued
+  // property's raw source with no `render` declaration for it — the current
+  // AST value being JSX has to be enough to route the commit through the
+  // jsx parse path instead of the scalar-string one.
+  it('parses a jsx value with no render declaration, from its current JSX value', () => {
+    expect(
+      updateArrayItemProperty(WITH_JSX, 0, 'icon', '<New a={1 > 0} />'),
+    ).toContain('icon: <New a={1 > 0} />');
+  });
+
   it('treats a non-markup jsx value as a plain string', () => {
     expect(
       updateArrayItemProperty(WITH_JSX, 0, 'icon', 'plain text', jsxRender),

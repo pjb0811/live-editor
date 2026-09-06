@@ -44,6 +44,11 @@ interface ItemData {
   elementIndex: number;
   editableProperties: Record<string, ItemProperty>;
   jsxBindings: Record<string, DataAttrNode[]>;
+  // JSX-valued properties (e.g. `label`) whose `jsxBindings` extraction came
+  // back empty — no editable binding found inside them at all. Rather than
+  // silently dropping them, the panel falls back to a raw CodeMirror editor
+  // for the property's source, keyed by property name here. See #298.
+  jsxFallbacks: Record<string, string>;
 }
 
 interface PrimitiveItem {
@@ -160,12 +165,13 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
       }
 
       const jsxBindings: Record<string, DataAttrNode[]> = {};
+      const jsxFallbacks: Record<string, string> = {};
 
       element.properties.forEach(prop => {
         if (
           !t.isObjectProperty(prop) ||
           !t.isIdentifier(prop.key) ||
-          !t.isJSXElement(prop.value)
+          !(t.isJSXElement(prop.value) || t.isJSXFragment(prop.value))
         ) {
           return;
         }
@@ -199,6 +205,8 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
           if (bindings.length > 0) {
             jsxBindings[propertyName] = bindings;
+          } else {
+            jsxFallbacks[propertyName] = jsxCode;
           }
         } catch (error) {
           console.error(
@@ -214,6 +222,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
         elementIndex,
         editableProperties: extractObjectProperties(element),
         jsxBindings,
+        jsxFallbacks,
       });
     });
 
@@ -590,34 +599,63 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
             ))}
           </div>
           <div className="space-y-3 border-t pt-2">
-            {Object.entries(item.jsxBindings).length > 0 ? (
-              Object.entries(item.jsxBindings).map(
-                ([propertyName, bindings]) => (
-                  <div key={propertyName} className="space-y-2">
-                    <div className="text-xs font-medium text-blue-700">
-                      {propertyName} Bindings ({bindings.length}):
-                    </div>
-                    {bindings.map((bindingNode, idx) => {
-                      const nodeId = bindingNode.dataAttributes.find(
-                        a => a.name === 'data-id',
-                      )?.value;
+            {Object.entries(item.jsxBindings).length > 0 ||
+            Object.entries(item.jsxFallbacks).length > 0 ? (
+              <>
+                {Object.entries(item.jsxBindings).map(
+                  ([propertyName, bindings]) => (
+                    <div key={propertyName} className="space-y-2">
+                      <div className="text-xs font-medium text-blue-700">
+                        {propertyName} Bindings ({bindings.length}):
+                      </div>
+                      {bindings.map((bindingNode, idx) => {
+                        const nodeId = bindingNode.dataAttributes.find(
+                          a => a.name === 'data-id',
+                        )?.value;
 
-                      return (
-                        <div
-                          key={`binding-${item.id}-${propertyName}-${nodeId || idx}`}
-                          className="rounded border border-blue-100 bg-blue-50
-                            p-2"
-                        >
-                          <div className="mb-1 text-xs text-blue-600">
-                            &lt;{bindingNode.tagName || 'element'}&gt;
+                        return (
+                          <div
+                            key={`binding-${item.id}-${propertyName}-${nodeId || idx}`}
+                            className="rounded border border-blue-100 bg-blue-50
+                              p-2"
+                          >
+                            <div className="mb-1 text-xs text-blue-600">
+                              &lt;{bindingNode.tagName || 'element'}&gt;
+                            </div>
+                            <Node data={bindingNode} onChange={onChildChange} />
                           </div>
-                          <Node data={bindingNode} onChange={onChildChange} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                ),
-              )
+                        );
+                      })}
+                    </div>
+                  ),
+                )}
+                {Object.entries(item.jsxFallbacks).map(
+                  ([propertyName, code]) => (
+                    <div key={propertyName} className="space-y-2">
+                      <div className="text-xs font-medium text-blue-700">
+                        {propertyName}
+                      </div>
+                      <Field
+                        binding={{
+                          id: `item-${item.id}-${propertyName}-jsx`,
+                          label: propertyName,
+                          property: propertyName,
+                          type: 'jsx',
+                          value: code,
+                          rawValue: code,
+                          onChange: next =>
+                            updateProperty(
+                              item.elementIndex,
+                              propertyName,
+                              next,
+                            ),
+                        }}
+                        onNodeChange={onChildChange}
+                      />
+                    </div>
+                  ),
+                )}
+              </>
             ) : (
               <div className="text-xs text-gray-500">
                 ✓ No JSX bindings found
