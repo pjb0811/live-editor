@@ -5,6 +5,7 @@ import {
   ColorPicker,
   DatePicker,
   Input,
+  RichTextEditor,
   Select,
   Upload,
   type UploadFile,
@@ -12,7 +13,6 @@ import {
 import { useDebounce } from '@jbpark/use-hooks';
 
 import CoreEditor from '~/components/editor/core';
-import TiptapEditor from '~/components/editor/tiptap';
 import { BINDING_PROP } from '~/constants';
 import { parseValue, validateBindingValue } from '~/utils/ast';
 
@@ -190,7 +190,7 @@ const Field = ({ binding, onNodeChange }: Props) => {
 
   if (binding.type === 'richtext') {
     return (
-      <TiptapEditor
+      <RichTextEditor
         value={rawValue}
         onChange={next => {
           if (next !== rawValue) {

@@ -22,7 +22,7 @@ live-editor/
 │  │  │  ├─ droppable.tsx   # 드롭 영역
 │  │  │  ├─ sortable.tsx    # 정렬 가능한 리스트
 │  │  │  └─ overlay.tsx     # 드래그 인디케이터
-│  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, tiptap.tsx)
+│  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx)
 │  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx)
@@ -86,7 +86,7 @@ live-editor/
 - 디렉토리명은 kebab-case (`error/`, `dnd/panel/` 등)
 - "그룹화된" 컴포넌트(하위 컴포넌트를 가진 부모, 예: `error/`, `editor/`, `frame/`, `dnd/panel/`)는 각 하위 컴포넌트를 서브 디렉토리가 아니라 **같은 폴더 내 named file**로 둔다 (예: `error/boundary.tsx`, `editor/core.tsx`) — `ui-kit`의 `input/` 컴포넌트와 동일한 패턴
 - `index.ts`는 그 파일들을 import해서 조합/재수출만 하는 얇은 **barrel**. 정적 프로퍼티로 합성되는 경우(`Editor.Core`, `Error.Boundary` 등)는 barrel에서 조합하고, 구현 파일(`error.tsx` 등)은 원래 export 식별자명을 그대로 유지 — barrel에서만 `import ErrorImpl from './error'`처럼 import 시점에 별칭을 준다
-- 정적으로 합성되지 않고 내부적으로만 쓰이거나 직접 subpath import되는 하위 파일(예: `editor/tiptap.tsx`, `context/states.ts`)은 barrel을 거치지 않고 그대로 둔다
+- 정적으로 합성되지 않고 내부적으로만 쓰이거나 직접 subpath import되는 하위 파일(예: `editor/core.tsx`, `context/states.ts`)은 barrel을 거치지 않고 그대로 둔다
 
 ### 재사용 가능한 UI/훅은 공유 라이브러리에 먼저
 
