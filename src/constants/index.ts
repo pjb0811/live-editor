@@ -130,7 +130,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
             data-binding={[
               {
                 label: 'Description',
-                property: 'innerText',
+                type: 'richtext',
               },
             ]}
             className={cn(
@@ -138,7 +138,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
               //
             )}
           >
-            Build dynamic components with drag & drop
+            Build <strong>dynamic components</strong> with drag & drop
           </p>
           <ui.Button
             data-id=""
@@ -413,7 +413,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
           data-binding={[
             {
               label: 'Description 1',
-              property: 'innerText',
+              type: 'richtext',
             },
           ]}
           className={cn(
@@ -431,7 +431,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
           data-binding={[
             {
               label: 'Description 2',
-              property: 'innerText',
+              type: 'richtext',
             },
           ]}
           className={cn(
@@ -825,6 +825,8 @@ export const DRAGGABLE_ITEMS: Section[] = [
           )}
         >
           <h2
+            data-id=""
+            data-binding={[{ label: 'Title', property: 'innerText' }]}
             className={cn(
               'mb-12 text-center text-4xl font-bold text-gray-800',
               //
@@ -1151,7 +1153,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     data-binding={[
                       {
                         label: 'Answer 1',
-                        property: 'innerText',
+                        type: 'richtext',
                       },
                     ]}
                     className={cn('text-gray-600')}
@@ -1184,7 +1186,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     data-binding={[
                       {
                         label: 'Answer 2',
-                        property: 'innerText',
+                        type: 'richtext',
                       },
                     ]}
                     className={cn('text-gray-600')}
@@ -1217,7 +1219,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     data-binding={[
                       {
                         label: 'Answer 3',
-                        property: 'innerText',
+                        type: 'richtext',
                       },
                     ]}
                     className={cn('text-gray-600')}
@@ -1250,7 +1252,7 @@ export const DRAGGABLE_ITEMS: Section[] = [
                     data-binding={[
                       {
                         label: 'Answer 4',
-                        property: 'innerText',
+                        type: 'richtext',
                       },
                     ]}
                     className={cn('text-gray-600')}

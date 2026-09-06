@@ -466,7 +466,15 @@ export const extractObjectProperties = (
     if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) {
       const key = prop.key.name;
 
-      if (key === 'children') {
+      // `children` and any other JSX-valued property (e.g. `label`) are
+      // handled separately, via `items.tsx`'s `jsxBindings`/fallback
+      // extraction, which parses the JSX subtree properly instead of
+      // stringifying it into a raw-source textarea. See #298.
+      if (
+        key === 'children' ||
+        t.isJSXElement(prop.value) ||
+        t.isJSXFragment(prop.value)
+      ) {
         return;
       }
 

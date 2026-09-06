@@ -177,7 +177,16 @@ const buildPropertyValue = (
     );
   }
 
-  if (renderLeaf?.type === 'jsx') {
+  // A declared `render[key].type === 'jsx'` covers a schema-declared JSX
+  // property; a property whose *current* value is already JSX (e.g. the
+  // items panel's fallback editor for a JSX-valued property with no
+  // extractable bindings, see #298) needs the same treatment even without
+  // that declaration, so it round-trips as JSX rather than as a string.
+  if (
+    renderLeaf?.type === 'jsx' ||
+    t.isJSXElement(current) ||
+    t.isJSXFragment(current)
+  ) {
     const trimmed = String(value).trim();
 
     // Anything that isn't markup is a plain string for this property.
