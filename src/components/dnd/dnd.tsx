@@ -17,7 +17,14 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Button, Drawer, Space, Toast, Typography } from '@jbpark/ui-kit';
+import {
+  Button,
+  Drawer,
+  Space,
+  Splitter,
+  Toast,
+  Typography,
+} from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 import { LayoutGrid } from 'lucide-react';
 
@@ -510,6 +517,73 @@ const Dnd = ({
     );
   };
 
+  // Shared between the mobile (full-width) and desktop (Splitter middle
+  // panel) layouts below, so the drop target/sortable-list markup isn't
+  // duplicated per branch.
+  const canvas = (
+    <div
+      className="relative h-full w-full overflow-y-auto"
+      data-frame-container
+      style={{
+        isolation: 'isolate',
+        contain: 'layout style',
+        transform: 'translateZ(0)',
+      }}
+    >
+      <Droppable
+        className={cn(
+          !sections.length && 'h-full',
+          //
+        )}
+      >
+        {!sections.length ? (
+          <div
+            className={cn(
+              'flex items-center justify-center',
+              'h-full',
+              'text-gray-500',
+            )}
+          >
+            <Space orientation="vertical" align="center">
+              <Typography.Paragraph>No sections available</Typography.Paragraph>
+              <Typography.Text>
+                {isMobile
+                  ? 'Tap a component to add it'
+                  : 'Drag a component from the left to add it'}
+              </Typography.Text>
+            </Space>
+          </div>
+        ) : (
+          <SortableContext
+            items={sections.map(s => s.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {sections.map((section, index) => (
+              <Sortable
+                key={section.id}
+                id={section.id}
+                name={section.name}
+                selected={selectedId === section.id}
+                onClick={() => onSelect(section.id)}
+                onDelete={onDelete}
+                onCopy={onCopy}
+              >
+                <Renderer
+                  preview={previews[index]!}
+                  modules={modules}
+                  frame={frame}
+                  dynamicTailwind={dynamicTailwind}
+                  provider={provider}
+                  {...props}
+                />
+              </Sortable>
+            ))}
+          </SortableContext>
+        )}
+      </Droppable>
+    </div>
+  );
+
   return (
     <>
       <DndContext
@@ -525,86 +599,37 @@ const Dnd = ({
       >
         <div
           className={cn(
-            'relative flex w-full',
+            'relative flex h-full w-full',
             className,
             //
           )}
           {...restProps}
         >
-          <div className="hidden w-1/5 overflow-y-auto md:block">
-            <div className="h-full bg-gray-50 p-4">
-              {renderPaletteItems(addItem)}
-            </div>
-          </div>
-          <div
-            className={cn(
-              'relative',
-              'h-full w-full md:w-3/5',
-              'overflow-y-auto',
-              //
-            )}
-            data-frame-container
-            style={{
-              isolation: 'isolate',
-              contain: 'layout style',
-              transform: 'translateZ(0)',
-            }}
-          >
-            <Droppable
-              className={cn(
-                !sections.length && 'h-full',
-                //
-              )}
-            >
-              {!sections.length ? (
-                <div
-                  className={cn(
-                    'flex items-center justify-center',
-                    'h-full',
-                    'text-gray-500',
-                  )}
-                >
-                  <Space orientation="vertical" align="center">
-                    <Typography.Paragraph>
-                      No sections available
-                    </Typography.Paragraph>
-                    <Typography.Text>
-                      {isMobile
-                        ? 'Tap a component to add it'
-                        : 'Drag a component from the left to add it'}
-                    </Typography.Text>
-                  </Space>
+          {isMobile ? (
+            canvas
+          ) : (
+            <Splitter withHandle orientation="horizontal">
+              <Splitter.Panel
+                defaultSize="20%"
+                minSize="15%"
+                maxSize="35%"
+                collapsible
+              >
+                <div className="h-full overflow-y-auto bg-gray-50 p-4">
+                  {renderPaletteItems(addItem)}
                 </div>
-              ) : (
-                <SortableContext
-                  items={sections.map(s => s.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {sections.map((section, index) => (
-                    <Sortable
-                      key={section.id}
-                      id={section.id}
-                      name={section.name}
-                      selected={selectedId === section.id}
-                      onClick={() => onSelect(section.id)}
-                      onDelete={onDelete}
-                      onCopy={onCopy}
-                    >
-                      <Renderer
-                        preview={previews[index]!}
-                        modules={modules}
-                        frame={frame}
-                        dynamicTailwind={dynamicTailwind}
-                        provider={provider}
-                        {...props}
-                      />
-                    </Sortable>
-                  ))}
-                </SortableContext>
-              )}
-            </Droppable>
-          </div>
-          <div className="hidden w-1/5 md:block">{renderPanelContent()}</div>
+              </Splitter.Panel>
+              <Splitter.Panel defaultSize="60%">{canvas}</Splitter.Panel>
+              <Splitter.Panel
+                defaultSize="20%"
+                minSize="15%"
+                maxSize="35%"
+                collapsible
+              >
+                {renderPanelContent()}
+              </Splitter.Panel>
+            </Splitter>
+          )}
           <Button
             type="primary"
             shape="circle"
