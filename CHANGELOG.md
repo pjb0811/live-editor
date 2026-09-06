@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.0
+
+### Minor Changes
+
+- 6c85d11: Add splitter layout for desktop view, separating palette, canvas, and panel content into resizable panels.
+- c92484f: Add fallback editor for JSX-valued properties without bindings, enabling raw source editing.
+- f95c347: Add curated toolbar to rich text editor, enabling bold, italic, underline, bullet list, ordered list, and link controls.
+
+### Patch Changes
+
+- b1372a4: Report why an `update()` failed instead of collapsing every cause into one
+  `success: false`. `UpdateResult` now carries a structured `failure`
+  (`element-not-found`, `no-binding`, `binding-not-declared`,
+  `duplicate-binding`, `attribute-not-found`, `parse-error`), and `bulkUpdate`
+  returns per-entry `failures`. The panel's error toast now names the actual
+  problem — usually a wrong `property`/`label` in the element's `data-binding` —
+  and only says "check the console" on paths that actually log there.
+
 ## 2.0.4
 
 ### Patch Changes
