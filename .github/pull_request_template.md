@@ -47,7 +47,7 @@
 
 ## Checklist
 
-- [ ] Commit messages follow gitmoji + conventional-commit style
+- [ ] Commit messages follow conventional-commit style (no gitmoji)
 - [ ] Updated docs when behavior/API changed
 - [ ] Added or updated tests when needed
 - [ ] No unrelated changes included
