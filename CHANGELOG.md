@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.1.0
+
+### Minor Changes
+
+- 6c85d11: Add splitter layout for desktop view, separating palette, canvas, and panel content into resizable panels.
+- c92484f: Add fallback editor for JSX-valued properties without bindings, enabling raw source editing.
+- f95c347: Add curated toolbar to rich text editor, enabling bold, italic, underline, bullet list, ordered list, and link controls.
+- 3bea9f4: Make `prettier` an optional peer dependency. Only the `editor` subpath uses it
+  (for format-on-save), so consumers who don't need formatting no longer install
+  ~9.6 MB. `useFormatCode` now loads prettier lazily and, when it's absent,
+  returns the code unformatted instead of throwing. Install `prettier` (>=3)
+  alongside `@jbpark/live-editor` to keep format-on-save.
+
+### Patch Changes
+
+- b8b130f: Declare `codemirror` as a direct dependency instead of relying on it being
+  hoisted from another package, and stop masking this class of mistake: the six
+  packages imported from `src` but never declared (`codemirror`, `nanoid`, and
+  `@babel/parser|types|traverse|generator`) are now listed explicitly, and CI
+  runs `depcheck` so an undeclared or unused dependency fails the build.
+- bdc00bf: Trim published dependencies: drop the unused `uuid` runtime dependency and move
+  the build-time `@tailwindcss/vite` plugin to devDependencies. Neither is
+  imported from `src/`, so consumers no longer install them.
+- b1372a4: Report why an `update()` failed instead of collapsing every cause into one
+  `success: false`. `UpdateResult` now carries a structured `failure`
+  (`element-not-found`, `no-binding`, `binding-not-declared`,
+  `duplicate-binding`, `attribute-not-found`, `parse-error`), and `bulkUpdate`
+  returns per-entry `failures`. The panel's error toast now names the actual
+  problem — usually a wrong `property`/`label` in the element's `data-binding` —
+  and only says "check the console" on paths that actually log there.
+
 ## 2.0.4
 
 ### Patch Changes
