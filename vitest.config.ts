@@ -17,5 +17,14 @@ export default defineConfig({
     // collected nothing for `.test.tsx`, so a component test would report
     // "0 failures" while never actually running (#277).
     include: ['src/**/*.test.{ts,tsx}'],
+    // @jbpark/ui-kit ships CSS side-effect imports (e.g. swiper.css). Left
+    // externalized, Node's ESM loader throws "Unknown file extension .css";
+    // inlining routes it through Vite so the CSS resolves to an empty module.
+    // Needed by any hook/component test that reaches ui-kit via ~/utils.
+    server: {
+      deps: {
+        inline: [/@jbpark\/ui-kit/],
+      },
+    },
   },
 });
