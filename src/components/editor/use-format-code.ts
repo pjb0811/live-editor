@@ -1,11 +1,24 @@
 import { useCallback, useMemo } from 'react';
 
-import * as prettier from 'prettier';
-import prettierPluginBabel from 'prettier/plugins/babel';
-import prettierPluginEstree from 'prettier/plugins/estree';
-import prettierPluginTypeScript from 'prettier/plugins/typescript';
-
 import { detectTypeScript } from '~/utils';
+
+// prettier is an optional peer dependency (#282): the editor subpath is the
+// only thing that needs it, so consumers who don't use format-on-save
+// shouldn't have to install ~9.6 MB. It's loaded lazily below and its absence
+// degrades gracefully (the code is returned unformatted) instead of throwing.
+const loadPrettier = async () => {
+  const [prettier, babel, estree, typescript] = await Promise.all([
+    import('prettier'),
+    import('prettier/plugins/babel'),
+    import('prettier/plugins/estree'),
+    import('prettier/plugins/typescript'),
+  ]);
+
+  return {
+    format: prettier.format,
+    plugins: [babel.default, estree.default, typescript.default],
+  };
+};
 
 const DEFAULT_PRETTIER_OPTIONS: Record<string, unknown> = {
   tabWidth: 2,
@@ -40,13 +53,20 @@ export const useFormatCode = ({
     async (code: string) => {
       const isTypeScript = detectTypeScript(code);
       const source = fragment ? `<>${code}</>` : code;
+
+      // Only a missing prettier is swallowed here; a genuine format error
+      // (prettier present, but the code is unparseable) still propagates so
+      // the editor's Cmd+S path can surface it via onError.
+      let prettier: Awaited<ReturnType<typeof loadPrettier>>;
+      try {
+        prettier = await loadPrettier();
+      } catch {
+        return code;
+      }
+
       const formatted = await prettier.format(source, {
         parser: isTypeScript ? 'typescript' : 'babel',
-        plugins: [
-          prettierPluginBabel,
-          prettierPluginEstree,
-          prettierPluginTypeScript,
-        ],
+        plugins: prettier.plugins,
         ...prettierConfig,
       });
 
