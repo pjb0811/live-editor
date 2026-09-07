@@ -12,20 +12,25 @@ An interactive editor for building UIs with real-time preview and drag‑and‑d
 live-editor/
 ├─ src/
 │  ├─ components/
-│  │  ├─ Context/           # Global state management
-│  │  ├─ Dnd/               # Drag-and-drop system with editing panels
-│  │  ├─ Editor/             # Code editor
-│  │  ├─ Error/              # Error boundary
-│  │  ├─ Frame/              # iframe/shadow-DOM preview isolation
-│  │  └─ Preview/            # Isolated preview runtime
+│  │  ├─ context/            # Global state management
+│  │  ├─ dnd/                # Drag-and-drop system with editing panels
+│  │  │  └─ panel/           # Property panel field editors
+│  │  ├─ editor/             # CodeMirror code editor
+│  │  ├─ error/             # Error boundary
+│  │  ├─ frame/             # iframe/shadow-DOM preview isolation
+│  │  └─ preview/           # Isolated preview runtime
 │  ├─ pages/
-│  │  └─ Editor/              # Local development editor (editor + DnD toggle)
-│  ├─ utils/ast/             # AST manipulation & code generation
-│  ├─ constants/             # Constants and configurations
-│  ├─ types/                 # TypeScript type definitions
-│  └─ main.tsx                # Local development app entry
-├─ demos/                     # Standalone iframe demos for the documentation
-├─ website/                   # Docusaurus documentation site
+│  │  └─ editor/            # Local development editor (editor + DnD toggle)
+│  ├─ utils/
+│  │  ├─ ast/               # AST manipulation & code generation
+│  │  ├─ tailwind/          # Tailwind theme helpers
+│  │  ├─ cache.ts           # Bounded LRU cache
+│  │  └─ selection.ts       # Multi-select helpers
+│  ├─ constants/            # Constants and configurations
+│  ├─ types/                # TypeScript type definitions
+│  └─ main.tsx              # Local development app entry
+├─ demos/                   # Standalone iframe demos for the documentation
+├─ website/                 # Docusaurus documentation site
 └─ package.json
 ```
 
@@ -37,6 +42,76 @@ live-editor/
 - **Smart Items editor**: Manage array items with add/move/delete operations, edit properties and nested JSX components with stable component identity across reorders.
 - **Preview runtime**: Renders compiled output inside an iframe for DOM/CSS isolation (not a security sandbox — see [Security Notes](#-security-notes)).
 - **Robust drag-and-drop**: Powered by `@dnd-kit` for smooth sorting and positioning.
+
+## 📦 Installation
+
+```bash
+pnpm add @jbpark/live-editor react react-dom
+```
+
+`react` and `react-dom` (>= 19) are peer dependencies. `prettier` (>= 3) is an
+optional peer — install it too if you want the editor's format-on-save; without
+it the editor still works and simply skips formatting.
+
+## 🧑‍💻 Usage
+
+Import the stylesheet once near your app root — it is **required** and is not
+imported by the JS entry:
+
+```tsx
+import { useState } from 'react';
+
+import Live from '@jbpark/live-editor';
+import '@jbpark/live-editor/style.css';
+
+// required — not imported by the JS entry
+
+const SAMPLE = `
+import * as ui from 'ui-kit';
+
+const App = () => (
+  <div className="p-6 space-y-2">
+    <ui.Typography.Title level={3}>Hello</ui.Typography.Title>
+    <ui.Button type="primary">Edit me</ui.Button>
+  </div>
+);
+
+export default App;
+`;
+
+export default function Example() {
+  const [code, setCode] = useState(SAMPLE);
+
+  return (
+    <Live>
+      <Live.Editor value={code} onChange={setCode} />
+      <Live.Preview showError frame={{ mode: 'iframe', syncStyle: true }} />
+    </Live>
+  );
+}
+```
+
+See the [documentation site](https://live-editor-lab.vercel.app) for the full
+guide (how Tailwind reaches the preview, custom panels, and more).
+
+## 🧩 Entry points
+
+The package ships subpath exports so a consumer who needs only one feature area
+can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — see
+[#194](https://github.com/pjb0811/live-editor/issues/194):
+
+| Import                               | Contains                                    |
+| ------------------------------------ | ------------------------------------------- |
+| `@jbpark/live-editor`                | Everything (`Live` provider + all surfaces) |
+| `@jbpark/live-editor/provider`       | The shared editing context provider only    |
+| `@jbpark/live-editor/dnd`            | Drag-and-drop canvas + property panel       |
+| `@jbpark/live-editor/editor`         | CodeMirror code editor                      |
+| `@jbpark/live-editor/preview`        | Isolated preview runtime                    |
+| `@jbpark/live-editor/error`          | Error boundary                              |
+| `@jbpark/live-editor/utils`          | Compile/section helpers                     |
+| `@jbpark/live-editor/utils/ast`      | AST manipulation & code generation          |
+| `@jbpark/live-editor/utils/tailwind` | Tailwind theme helpers                      |
+| `@jbpark/live-editor/style.css`      | Compiled stylesheet (required)              |
 
 ## 🔒 Security Notes
 
@@ -58,7 +133,10 @@ live-editor/
 - Node.js: 20.x or higher
 - **pnpm**: 10.x or higher (managed via [Corepack](https://nodejs.org/api/corepack.html))
 
-## 🚀 Getting Started
+## 🚀 Development (this repo)
+
+> Working on Live Editor itself. To _use_ the package in your app, see
+> [Installation](#-installation) above.
 
 ### pnpm Setup (Recommended)
 
@@ -96,6 +174,12 @@ feature demos live in `website/`.
 pnpm run build
 ```
 
+### Test
+
+```bash
+pnpm test
+```
+
 ### Lint & Type Check
 
 ```bash
@@ -115,17 +199,17 @@ Releases are fully automated via [changesets](https://github.com/changesets/chan
 
 - Each PR against `main` gets an AI-drafted changeset file describing its change.
 - Once changesets accumulate on `main`, a "Version Packages" PR bumps `package.json`'s version and consolidates `CHANGELOG.md`.
-- Merging that PR builds, tags the release, and (once this package is made public) publishes to npm.
+- Merging that PR builds, tags the release, and publishes to npm.
 
 CI workflows:
 
 - `changeset-draft.yml`: Drafts an AI-generated changeset on PR open/sync against `main`.
 - `version.yml`: Opens/updates the "Version Packages" PR once changesets accumulate.
-- `publish.yml`: Builds/(publishes if public)/tags/creates the GitHub Release on merge to `main` when the version is untagged.
+- `publish.yml`: Builds/publishes/tags/creates the GitHub Release on merge to `main` when the version is untagged.
 - `release.yml`: Manual `workflow_dispatch` fallback to (re)create a GitHub Release for an existing tag.
 - The Docusaurus documentation site is built from `website/` and deployed via
   Vercel (see `vercel.json`).
 
 ## 📄 License
 
-MIT License
+[MIT License](./LICENSE) — Copyright (c) 2026 jbpark

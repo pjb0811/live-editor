@@ -10,8 +10,12 @@ Canvas의 DnD 편집 결과를 Babel AST 변환으로 소스 코드에 역으로
 ```text
 live-editor/
 ├─ .github/
-│  ├─ skills/               # AI 스킬 파일 (component, ast, review, refactor, doc, pr-summary)
-│  └─ copilot-instructions.md  # GitHub Copilot 프로젝트 지침
+│  ├─ skills/ast/           # Babel AST 변환 스킬 (SKILL.md)
+│  ├─ scripts/              # changeset/릴리즈 노트 자동화 스크립트 (*.mjs)
+│  └─ workflows/            # CI, changeset-draft, version, publish, release
+├─ .claude/
+│  ├─ skills/               # 코딩 컨벤션/설계 스킬 (아래 "관련 스킬 파일" 참고)
+│  └─ commands/             # publish-check.md
 ├─ src/
 │  ├─ components/
 │  │  ├─ context/           # 전역 상태 (PreviewContext, ErrorContext)
@@ -21,31 +25,40 @@ live-editor/
 │  │  │  ├─ draggable.tsx   # 드래그 가능한 섹션 아이템
 │  │  │  ├─ droppable.tsx   # 드롭 영역
 │  │  │  ├─ sortable.tsx    # 정렬 가능한 리스트
-│  │  │  └─ overlay.tsx     # 드래그 인디케이터
-│  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx)
+│  │  │  ├─ overlay.tsx     # 드래그 인디케이터
+│  │  │  └─ use-section-document.ts  # 섹션 문서 상태 훅
+│  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
-│  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx)
-│  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx)
+│  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx, measure.ts, viewport-units.ts)
+│  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, use-dynamic-tailwind.ts)
 │  ├─ pages/
-│  │  ├─ playground/        # 메인 에디터 페이지
-│  │  └─ preview/           # 풀스크린 미리보기 페이지
+│  │  └─ editor/            # 로컬 개발용 에디터 페이지 (index.tsx = 앱 레이아웃, Editor/DnD 토글)
 │  ├─ utils/
 │  │  ├─ index.ts           # compile(), cn(), baseModules 등 핵심 유틸
+│  │  ├─ cache.ts           # 바운디드 LRU 캐시
+│  │  ├─ selection.ts       # 다중 선택 헬퍼
 │  │  ├─ ast/               # Babel AST 조작 유틸 (파이프라인 단계별 분리, index.ts는 재수출 배럴)
 │  │  │  ├─ types.ts        # DataAttrNode, BindingItem 등 타입 정의
 │  │  │  ├─ helpers.ts      # wrap/unwrap/attrValue/generateCode (여러 단계 공용)
 │  │  │  ├─ binding.ts      # parseBinding(), getCurrentValue(), findEditableChildren()
 │  │  │  ├─ value.ts        # JS 값 ↔ AST 리터럴 변환 (extractNodeValue 등)
 │  │  │  ├─ extract.ts      # raw JSX 문자열 → DataAttrNode 트리 (extract())
+│  │  │  ├─ document.ts     # 문서 파싱/섹션 분리/미리보기 생성 (traverse)
+│  │  │  ├─ items.ts        # 배열 아이템 편집 (추가/이동/삭제)
+│  │  │  ├─ patch.ts        # 소스 스팬 기반 부분 편집 적용 (applyEdits)
 │  │  │  ├─ update.ts       # 값 → AST 반영 (update(), bulkUpdate())
+│  │  │  ├─ validate.ts     # 바인딩 값 검증
 │  │  │  └─ tree.ts         # replaceIds()/fillIds()/clone()
 │  │  └─ tailwind/          # Tailwind 관련 유틸
 │  ├─ constants/index.ts    # 상수, 정규식, 기본 템플릿
 │  ├─ types/index.ts        # TypeScript 타입 정의
-│  ├─ App.tsx               # 앱 레이아웃 (Editor/DnD 모드 토글)
 │  └─ main.tsx              # 진입점
+├─ demos/                   # 문서용 독립 iframe 데모
+├─ website/                 # Docusaurus 문서 사이트
+├─ .changeset/              # changesets (버전/체인지로그)
 ├─ package.json
 ├─ vite.config.ts
+├─ vitest.config.ts         # 테스트 설정
 ├─ tsdown.config.ts         # 라이브러리 빌드 설정
 └─ tsconfig.app.json
 ```
@@ -124,8 +137,12 @@ live-editor/
 ```bash
 pnpm dev           # Vite 개발 서버 (HMR)
 pnpm build         # 타입 체크 + 라이브러리 빌드 (tsdown)
+pnpm build:demos   # 문서용 iframe 데모 빌드
 pnpm check-types   # tsc -b 타입 체크만
 pnpm lint          # ESLint
+pnpm test          # Vitest 1회 실행
+pnpm test:watch    # Vitest watch 모드
+pnpm bench         # Vitest 벤치마크
 pnpm preview       # 빌드 결과 미리보기
 ```
 
@@ -157,12 +174,14 @@ pnpm preview       # 빌드 결과 미리보기
 
 ## 🔗 관련 스킬 파일
 
-| 스킬       | 경로                                 | 설명                     |
-| ---------- | ------------------------------------ | ------------------------ |
-| commit     | `.github/skills/commit/SKILL.md`     | 커밋 메시지 생성         |
-| component  | `.github/skills/component/SKILL.md`  | React 컴포넌트 추가      |
-| ast        | `.github/skills/ast/SKILL.md`        | Babel AST 변환 코드 작성 |
-| review     | `.github/skills/review/SKILL.md`     | 코드 리뷰                |
-| refactor   | `.github/skills/refactor/SKILL.md`   | 코드 리팩토링            |
-| doc        | `.github/skills/doc/SKILL.md`        | JSDoc/문서 생성          |
-| pr-summary | `.github/skills/pr-summary/SKILL.md` | PR Summary/Changes 생성  |
+| 스킬                  | 경로                                            | 설명                        |
+| --------------------- | ----------------------------------------------- | --------------------------- |
+| ast                   | `.github/skills/ast/SKILL.md`                   | Babel AST 변환 코드 작성    |
+| coding-style          | `.claude/skills/coding-style/SKILL.md`          | 코딩 스타일/컨벤션          |
+| component-naming      | `.claude/skills/component-naming/SKILL.md`      | 컴포넌트/파일 네이밍        |
+| composition-patterns  | `.claude/skills/composition-patterns/SKILL.md`  | 컴포넌트 합성 패턴          |
+| react-best-practices  | `.claude/skills/react-best-practices/SKILL.md`  | React 베스트 프랙티스       |
+| version-management    | `.claude/skills/version-management/SKILL.md`    | 버전/changeset 관리         |
+| web-design-guidelines | `.claude/skills/web-design-guidelines/SKILL.md` | 웹 디자인 가이드라인        |
+| writing-guidelines    | `.claude/skills/writing-guidelines/SKILL.md`    | 문서/텍스트 작성 가이드라인 |
+| publish-check         | `.claude/commands/publish-check.md`             | 배포 전 점검 커맨드         |

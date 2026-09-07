@@ -12,20 +12,25 @@
 live-editor/
 ├─ src/
 │  ├─ components/
-│  │  ├─ Context/           # 전역 상태 관리
-│  │  ├─ Dnd/               # 드래그 앤 드롭 시스템 및 편집 패널
-│  │  ├─ Editor/             # 코드 에디터
-│  │  ├─ Error/              # 에러 바운더리
-│  │  ├─ Frame/              # iframe/shadow DOM 프리뷰 격리
-│  │  └─ Preview/            # 격리된 프리뷰 런타임
+│  │  ├─ context/            # 전역 상태 관리
+│  │  ├─ dnd/                # 드래그 앤 드롭 시스템 및 편집 패널
+│  │  │  └─ panel/           # 속성 패널 필드 에디터
+│  │  ├─ editor/             # CodeMirror 코드 에디터
+│  │  ├─ error/             # 에러 바운더리
+│  │  ├─ frame/             # iframe/shadow DOM 프리뷰 격리
+│  │  └─ preview/           # 격리된 프리뷰 런타임
 │  ├─ pages/
-│  │  └─ Editor/              # 로컬 개발용 에디터 (에디터 + DnD 전환)
-│  ├─ utils/ast/             # AST 조작 및 코드 생성
-│  ├─ constants/             # 상수 및 설정
-│  ├─ types/                 # TypeScript 타입 정의
-│  └─ main.tsx                # 로컬 개발 앱 엔트리
-├─ demos/                     # 문서용 독립 iframe 데모
-├─ website/                   # Docusaurus 문서 사이트
+│  │  └─ editor/            # 로컬 개발용 에디터 (에디터 + DnD 전환)
+│  ├─ utils/
+│  │  ├─ ast/               # AST 조작 및 코드 생성
+│  │  ├─ tailwind/          # Tailwind 테마 헬퍼
+│  │  ├─ cache.ts           # 바운디드 LRU 캐시
+│  │  └─ selection.ts       # 다중 선택 헬퍼
+│  ├─ constants/            # 상수 및 설정
+│  ├─ types/                # TypeScript 타입 정의
+│  └─ main.tsx              # 로컬 개발 앱 엔트리
+├─ demos/                   # 문서용 독립 iframe 데모
+├─ website/                 # Docusaurus 문서 사이트
 └─ package.json
 ```
 
@@ -37,6 +42,76 @@ live-editor/
 - **스마트 Items 에디터**: 배열 아이템을 추가/이동/삭제하고, 일반 속성과 중첩된 JSX 컴포넌트를 편집합니다. 순서 변경 시에도 안정적인 컴포넌트 ID를 유지합니다.
 - **프리뷰 런타임**: 컴파일된 결과를 DOM/CSS 격리를 위해 iframe 안에서 렌더링합니다 (보안 샌드박스는 아닙니다 — [보안 참고사항](#-보안-참고사항) 참고).
 - **강력한 드래그 앤 드롭**: `@dnd-kit` 기반으로 부드러운 정렬과 배치를 지원합니다.
+
+## 📦 설치
+
+```bash
+pnpm add @jbpark/live-editor react react-dom
+```
+
+`react`와 `react-dom`(>= 19)은 peer dependency입니다. `prettier`(>= 3)는 선택적
+peer로, 에디터의 저장 시 포맷(format-on-save)을 쓰려면 함께 설치하세요. 없어도
+에디터는 정상 동작하며 포맷만 건너뜁니다.
+
+## 🧑‍💻 사용법
+
+스타일시트를 앱 루트 근처에서 한 번 import하세요 — **필수**이며 JS 엔트리가
+자동으로 불러오지 않습니다:
+
+```tsx
+import { useState } from 'react';
+
+import Live from '@jbpark/live-editor';
+import '@jbpark/live-editor/style.css';
+
+// 필수 — JS 엔트리가 import하지 않음
+
+const SAMPLE = `
+import * as ui from 'ui-kit';
+
+const App = () => (
+  <div className="p-6 space-y-2">
+    <ui.Typography.Title level={3}>Hello</ui.Typography.Title>
+    <ui.Button type="primary">Edit me</ui.Button>
+  </div>
+);
+
+export default App;
+`;
+
+export default function Example() {
+  const [code, setCode] = useState(SAMPLE);
+
+  return (
+    <Live>
+      <Live.Editor value={code} onChange={setCode} />
+      <Live.Preview showError frame={{ mode: 'iframe', syncStyle: true }} />
+    </Live>
+  );
+}
+```
+
+전체 가이드(Tailwind가 프리뷰에 반영되는 방식, 커스텀 패널 등)는
+[문서 사이트](https://live-editor-lab.vercel.app)를 참고하세요.
+
+## 🧩 엔트리 포인트
+
+패키지는 서브패스 export를 제공해, 한 기능 영역만 필요한 소비자가 나머지를
+번들에 포함하지 않도록 합니다(예: 프리뷰 전용 빌드에는 CodeMirror 미포함) —
+[#194](https://github.com/pjb0811/live-editor/issues/194) 참고:
+
+| Import                               | 내용                                   |
+| ------------------------------------ | -------------------------------------- |
+| `@jbpark/live-editor`                | 전체 (`Live` 프로바이더 + 모든 서피스) |
+| `@jbpark/live-editor/provider`       | 공유 편집 컨텍스트 프로바이더만        |
+| `@jbpark/live-editor/dnd`            | 드래그 앤 드롭 캔버스 + 속성 패널      |
+| `@jbpark/live-editor/editor`         | CodeMirror 코드 에디터                 |
+| `@jbpark/live-editor/preview`        | 격리된 프리뷰 런타임                   |
+| `@jbpark/live-editor/error`          | 에러 바운더리                          |
+| `@jbpark/live-editor/utils`          | 컴파일/섹션 헬퍼                       |
+| `@jbpark/live-editor/utils/ast`      | AST 조작 및 코드 생성                  |
+| `@jbpark/live-editor/utils/tailwind` | Tailwind 테마 헬퍼                     |
+| `@jbpark/live-editor/style.css`      | 컴파일된 스타일시트 (필수)             |
 
 ## 🔒 보안 참고사항
 
@@ -58,7 +133,10 @@ live-editor/
 - Node.js: 20.x 이상
 - **pnpm**: 10.x 이상 ([Corepack](https://nodejs.org/api/corepack.html)으로 관리)
 
-## 🚀 시작하기
+## 🚀 개발 (이 저장소)
+
+> Live Editor 자체를 개발할 때 참고하세요. 패키지를 앱에서 _사용_ 하려면
+> 위의 [설치](#-설치)를 보세요.
 
 ### pnpm 설정 (권장)
 
@@ -95,6 +173,12 @@ pnpm run dev
 pnpm run build
 ```
 
+### 테스트
+
+```bash
+pnpm test
+```
+
 ### 린트 & 타입 체크
 
 ```bash
@@ -114,16 +198,16 @@ pnpm run preview
 
 - `main`으로 향하는 PR마다 AI가 변경 내용을 요약한 changeset 파일을 초안으로 작성합니다.
 - `main`에 changeset들이 쌓이면 "Version Packages" PR이 `package.json`의 버전을 승격시키고 `CHANGELOG.md`를 정리합니다.
-- 이 PR을 머지하면 빌드, 태그 생성, (이 패키지가 공개로 전환되면) npm 배포가 실행됩니다.
+- 이 PR을 머지하면 빌드, 태그 생성, npm 배포가 실행됩니다.
 
 CI 워크플로우:
 
 - `changeset-draft.yml`: `main` 대상 PR이 열리거나 갱신될 때 AI가 changeset 초안을 작성
 - `version.yml`: changeset이 쌓이면 "Version Packages" PR을 열거나 갱신
-- `publish.yml`: `main` 머지 시 버전이 미태그 상태면 빌드/(공개 패키지면 배포)/태그/GitHub Release 생성
+- `publish.yml`: `main` 머지 시 버전이 미태그 상태면 빌드/배포/태그/GitHub Release 생성
 - `release.yml`: 기존 태그에 대한 GitHub Release를 수동(`workflow_dispatch`)으로 재생성하는 백업 유틸리티
 - Docusaurus 문서 사이트는 `website/`에서 빌드되며 Vercel로 배포됩니다(`vercel.json` 참고).
 
 ## 📄 라이선스
 
-MIT License
+[MIT License](./LICENSE) — Copyright (c) 2026 jbpark
