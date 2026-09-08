@@ -12,14 +12,14 @@
 
 <!-- Check all that apply. -->
 
-- [ ] ✨ feat — new feature
-- [ ] 🐛 fix — bug fix
-- [ ] ♻️ refactor — code structure improvement
-- [ ] 💄 style — UI/style-only change
-- [ ] 📝 docs — documentation update
-- [ ] ⚡️ perf — performance improvement
-- [ ] 👷 ci — CI/CD workflow change
-- [ ] 🔧 chore/build — tooling or build/config change
+- [ ] feat — new feature
+- [ ] fix — bug fix
+- [ ] refactor — code structure improvement
+- [ ] style — UI/style-only change
+- [ ] docs — documentation update
+- [ ] perf — performance improvement
+- [ ] ci — CI/CD workflow change
+- [ ] chore/build — tooling or build/config change
 
 ## Scope
 
