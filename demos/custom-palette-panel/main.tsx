@@ -9,7 +9,7 @@ import '~/index.css';
 
 import '../shared.css';
 
-import CustomPalettePanelDemo from './CustomPalettePanelDemo';
+import CustomPalettePanelDemo from './custom-palette-panel-demo';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

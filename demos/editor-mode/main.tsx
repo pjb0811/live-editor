@@ -9,7 +9,7 @@ import '~/index.css';
 
 import '../shared.css';
 
-import EditorModeDemo from './EditorModeDemo';
+import EditorModeDemo from './editor-mode-demo';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
