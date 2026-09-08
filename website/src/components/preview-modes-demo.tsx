@@ -1,7 +1,7 @@
 import Preview from '@jbpark/live-editor/preview';
 import Context from '@jbpark/live-editor/provider';
 
-import styles from './PreviewModesDemo.module.css';
+import styles from './preview-modes-demo.module.css';
 
 const SAMPLE_CODE = `
 import * as ui from 'ui-kit';

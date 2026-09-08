@@ -15,7 +15,7 @@
 /* Widens the doc's own Infima `.container` whenever it contains a
    `[data-breakout]` element (DemoFrame's `breakout` prop), instead of
    trying to escape the container via position/margin full-bleed math —
-   see DemoFrame.tsx's doc comment for why that math broke twice. `:has()`
+   see demo-frame.tsx's doc comment for why that math broke twice. `:has()`
    fails safe: if it doesn't match for any reason, `.container` just keeps
    its normal max-width, never wider than the viewport. */
 .container:has([data-breakout]) {

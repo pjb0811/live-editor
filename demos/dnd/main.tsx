@@ -9,7 +9,7 @@ import '~/index.css';
 
 import '../shared.css';
 
-import DndDemo from './DndDemo';
+import DndDemo from './dnd-demo';
 
 // Entry for the self-contained Drag & Drop demo, built into the docs site's
 // `static/demos/dnd/` and embedded there via an <iframe>. Keeping it in its own

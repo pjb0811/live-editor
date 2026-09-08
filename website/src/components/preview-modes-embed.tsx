@@ -5,7 +5,7 @@ import BrowserOnly from '@docusaurus/BrowserOnly';
 // Code-split via React.lazy (Frame/core pull in ~1.7MB gzipped — see #206)
 // and gated behind BrowserOnly, since Frame touches `document.body` during
 // render and would crash Docusaurus' Node-side static build otherwise.
-const PreviewModesDemo = lazy(() => import('./PreviewModesDemo'));
+const PreviewModesDemo = lazy(() => import('./preview-modes-demo'));
 
 const fallback = <div style={{ height: 340 }} />;
 
