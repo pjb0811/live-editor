@@ -1,64 +1,14 @@
-import { useEffect, useMemo } from 'react';
-
-import * as t from '@babel/types';
-import { Button, Checkbox, Toast } from '@jbpark/ui-kit';
-import { useMultiSelect } from '@jbpark/use-hooks';
+import { Button, Checkbox } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Copy, Plus, X } from 'lucide-react';
-import { nanoid } from 'nanoid';
 
-import {
-  type BindingRenderLeaf,
-  type BindingRenderMap,
-  type DataAttrNode,
-  type ExtractedNodeValue,
-  type NodeValueType,
-  appendArrayItem,
-  duplicateArrayItems,
-  extract,
-  extractNodeValue,
-  extractObjectProperties,
-  findEditableChildren,
-  generateCode,
-  moveArrayItem,
-  moveArrayItems,
-  parseArrayExpression,
-  parseValue,
-  removeArrayItems,
-  updateArrayItemProperty,
-  updateArrayItemValue,
-} from '~/utils/ast';
+import type { BindingRenderMap } from '~/utils/ast';
 
 import type { PanelNodeChange } from '../dnd';
 import Field from './field';
-import Node from './node';
-
-interface ItemProperty extends ExtractedNodeValue {
-  astNode: t.Node;
-}
-
-interface ItemData {
-  id: string;
-  index: number;
-  // Position in the array's elements, which is what `~/utils/ast`'s item
-  // functions address. Only differs from `index` when the array mixes
-  // objects and primitives.
-  elementIndex: number;
-  editableProperties: Record<string, ItemProperty>;
-  jsxBindings: Record<string, DataAttrNode[]>;
-  // JSX-valued properties (e.g. `label`) whose `jsxBindings` extraction came
-  // back empty — no editable binding found inside them at all. Rather than
-  // silently dropping them, the panel falls back to a raw CodeMirror editor
-  // for the property's source, keyed by property name here. See #298.
-  jsxFallbacks: Record<string, string>;
-}
-
-interface PrimitiveItem {
-  id: string;
-  index: number;
-  elementIndex: number;
-  value: string | number | boolean | null;
-  type: NodeValueType;
-}
+import {
+  type ItemsEditorNestedGroup,
+  useItemsEditor,
+} from './use-items-editor';
 
 interface Props {
   value: string;
@@ -128,308 +78,124 @@ const BulkActionsBar = ({
   );
 };
 
-const Items = ({ value, render, onChange, onChildChange }: Props) => {
-  const { objectItems, primitiveItems, parseError } = useMemo(() => {
-    const ast = parseArrayExpression(value);
-
-    if (!ast) {
-      return {
-        objectItems: [],
-        primitiveItems: [],
-        parseError: true,
-      };
-    }
-
-    const objectItems: ItemData[] = [];
-    const primitiveItems: PrimitiveItem[] = [];
-    const elements = ast.elements.filter((element): element is t.Expression =>
-      Boolean(element),
+// The data-bound elements found inside one JSX-valued property, or the
+// raw-source fallback when that property declared no binding at all (#298).
+const NestedGroup = ({
+  group,
+  onNodeChange,
+}: {
+  group: ItemsEditorNestedGroup;
+  onNodeChange?: PanelNodeChange;
+}) => {
+  if (group.fallback) {
+    return (
+      <div className="space-y-2">
+        <div className="text-xs font-medium text-blue-700">
+          {group.property}
+        </div>
+        <Field binding={group.fallback} onNodeChange={onNodeChange} />
+      </div>
     );
+  }
 
-    elements.forEach((element, elementIndex) => {
-      if (!t.isObjectExpression(element)) {
-        const extracted = extractNodeValue(element);
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-medium text-blue-700">
+        {group.property} Bindings ({group.elements.length}):
+      </div>
+      {group.elements.map(element => (
+        <div
+          key={`${group.property}-${element.id}`}
+          className="rounded border border-blue-100 bg-blue-50 p-2"
+        >
+          <div className="mb-1 text-xs text-blue-600">
+            &lt;{element.tagName}&gt;
+          </div>
+          <div className="space-y-2 rounded">
+            <div className="space-y-1">
+              {element.bindings.map(binding => (
+                <div key={binding.label} className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    {binding.label}
+                    <span className="ml-1 text-gray-400">
+                      ({binding.property})
+                    </span>
+                  </label>
+                  <Field binding={binding} onNodeChange={onNodeChange} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
-        primitiveItems.push({
-          id: nanoid(6),
-          index: primitiveItems.length,
-          elementIndex,
-          value: extracted.value,
-          type: extracted.type,
-        });
-        return;
-      }
+// Presentation for `useItemsEditor`. Everything that reads or writes the
+// array source lives in that hook, which is exported so a consumer can put
+// their own markup over the same engine — see its doc comment (#237/#308).
+const Items = ({ value, render, onChange, onChildChange }: Props) => {
+  const { kind, items, selection, actions } = useItemsEditor(value, {
+    render,
+    onChange,
+    onNodeChange: onChildChange,
+  });
 
-      const jsxBindings: Record<string, DataAttrNode[]> = {};
-      const jsxFallbacks: Record<string, string> = {};
-
-      element.properties.forEach(prop => {
-        if (
-          !t.isObjectProperty(prop) ||
-          !t.isIdentifier(prop.key) ||
-          !(t.isJSXElement(prop.value) || t.isJSXFragment(prop.value))
-        ) {
-          return;
-        }
-
-        const propertyName = prop.key.name;
-
-        try {
-          const jsxCode = generateCode(prop.value);
-          const nodes = extract(jsxCode);
-          const bindings: DataAttrNode[] = [];
-
-          const bindingContainer = nodes.find(node =>
-            node.bindings?.some(b => b.property === 'children'),
-          );
-
-          if (bindingContainer) {
-            bindings.push(bindingContainer);
-          } else {
-            nodes.forEach(node => {
-              if (
-                node.bindings &&
-                node.bindings.length > 0 &&
-                node.dataAttributes.some(a => a.name === 'data-id')
-              ) {
-                bindings.push(node);
-              }
-              const editableChildren = findEditableChildren(node);
-              bindings.push(...editableChildren);
-            });
-          }
-
-          if (bindings.length > 0) {
-            jsxBindings[propertyName] = bindings;
-          } else {
-            jsxFallbacks[propertyName] = jsxCode;
-          }
-        } catch (error) {
-          console.error(
-            `Failed to parse JSX in property '${propertyName}':`,
-            error,
-          );
-        }
-      });
-
-      objectItems.push({
-        id: nanoid(6),
-        index: objectItems.length,
-        elementIndex,
-        editableProperties: extractObjectProperties(element),
-        jsxBindings,
-        jsxFallbacks,
-      });
-    });
-
-    return { objectItems, primitiveItems, parseError: false };
-  }, [value]);
-
-  useEffect(() => {
-    if (parseError) {
-      Toast.error('Failed to parse items', {
-        description: 'Check the console for details.',
-      });
-    }
-  }, [parseError]);
-
-  const isPrimitive = primitiveItems.length > 0 && objectItems.length === 0;
-
-  const selection = useMultiSelect(
-    isPrimitive ? primitiveItems.length : objectItems.length,
+  const bulkBar = (
+    <BulkActionsBar
+      count={selection.selected.size}
+      onDuplicate={actions.duplicateSelected}
+      onMoveUp={() => actions.moveSelected('up')}
+      onMoveDown={() => actions.moveSelected('down')}
+      onDelete={actions.removeSelected}
+      onClear={selection.clear}
+    />
   );
 
-  // Every mutation goes through `~/utils/ast`'s item functions: the array
-  // source is re-parsed there and a new string comes back, so nothing here
-  // holds or edits AST nodes across renders. `null` means the edit could
-  // not be applied.
-  const commit = (next: string | null) => {
-    if (next === null) {
-      Toast.error('Failed to update this item', {
-        description: 'Check the console for details.',
-      });
-      return;
-    }
+  const itemControls = (item: { index: number; elementIndex: number }) => (
+    <div className="flex space-x-1">
+      <Button
+        size="small"
+        icon={<ArrowUp />}
+        disabled={item.index === 0}
+        onClick={() => actions.move(item.elementIndex, item.index - 1)}
+      />
+      <Button
+        size="small"
+        icon={<ArrowDown />}
+        disabled={item.index === items.length - 1}
+        onClick={() => actions.move(item.elementIndex, item.index + 1)}
+      />
+      <Button
+        danger
+        size="small"
+        icon={<X />}
+        disabled={items.length <= 1}
+        onClick={() => actions.remove(item.elementIndex)}
+      />
+    </div>
+  );
 
-    onChange?.(next);
-  };
-
-  // The panel shows one kind at a time, but the array can hold both, so
-  // selection indices (positions among the visible items) are translated to
-  // element positions before any edit. Keeping the two apart is what stops
-  // an edit from dropping the items that aren't on screen.
-  const elementIndicesOf = (
-    items: { index: number; elementIndex: number }[],
-    indices: Set<number>,
-  ) => {
-    return new Set(
-      items
-        .filter(item => indices.has(item.index))
-        .map(item => item.elementIndex),
-    );
-  };
-
-  const updatePrimitive = (elementIndex: number, next: unknown) => {
-    commit(updateArrayItemValue(value, elementIndex, next));
-  };
-
-  const movePrimitive = (from: number, to: number) => {
-    const target = primitiveItems.find(item => item.index === to);
-
-    if (!target) {
-      return;
-    }
-
-    commit(moveArrayItem(value, from, target.elementIndex));
-    // Positions shift after a move, but count is unchanged so useMultiSelect
-    // never reconciles the set — clear it so a later bulk action can't target
-    // the wrong elements. See #285.
-    selection.clear();
-  };
-
-  const deleteSelectedPrimitives = (indices: Set<number>) => {
-    commit(
-      removeArrayItems(
-        value,
-        elementIndicesOf(primitiveItems, indices),
-        'primitive',
-      ),
-    );
-  };
-
-  const deletePrimitive = (elementIndex: number) => {
-    commit(removeArrayItems(value, new Set([elementIndex]), 'primitive'));
-    // Removing an item shifts every position after it; clear the selection so
-    // a later bulk action can't target the wrong elements. See #285.
-    selection.clear();
-  };
-
-  const addPrimitive = () => {
-    commit(appendArrayItem(value, 'primitive'));
-  };
-
-  const duplicateSelectedPrimitives = (indices: Set<number>) => {
-    commit(
-      duplicateArrayItems(value, elementIndicesOf(primitiveItems, indices)),
-    );
-  };
-
-  const moveSelectedPrimitives = (
-    indices: Set<number>,
-    direction: 'up' | 'down',
-  ) => {
-    const result = moveArrayItems(
-      value,
-      elementIndicesOf(primitiveItems, indices),
-      direction,
-    );
-
-    if (!result) {
-      commit(null);
-      return;
-    }
-
-    // Element positions, which match selection indices for the all-one-kind
-    // arrays the panel is built for.
-    selection.replace(result.indices);
-    commit(result.code);
-  };
-
-  const moveItem = (from: number, to: number) => {
-    const target = objectItems.find(item => item.index === to);
-
-    if (!target) {
-      return;
-    }
-
-    commit(moveArrayItem(value, from, target.elementIndex));
-    // Positions shift after a move, but count is unchanged so useMultiSelect
-    // never reconciles the set — clear it so a later bulk action can't target
-    // the wrong elements. See #285.
-    selection.clear();
-  };
-
-  const updateProperty = (
-    elementIndex: number,
-    propertyKey: string,
-    next: unknown,
-  ) => {
-    commit(
-      updateArrayItemProperty(value, elementIndex, propertyKey, next, render),
-    );
-  };
-
-  const deleteSelectedItems = (indices: Set<number>) => {
-    commit(
-      removeArrayItems(value, elementIndicesOf(objectItems, indices), 'object'),
-    );
-  };
-
-  const deleteItem = (elementIndex: number) => {
-    commit(removeArrayItems(value, new Set([elementIndex]), 'object'));
-    // Removing an item shifts every position after it; clear the selection so
-    // a later bulk action can't target the wrong elements. See #285.
-    selection.clear();
-  };
-
-  const addItem = () => {
-    commit(appendArrayItem(value, 'object'));
-  };
-
-  const duplicateSelectedItems = (indices: Set<number>) => {
-    commit(duplicateArrayItems(value, elementIndicesOf(objectItems, indices)));
-  };
-
-  const moveSelectedItems = (
-    indices: Set<number>,
-    direction: 'up' | 'down',
-  ) => {
-    const result = moveArrayItems(
-      value,
-      elementIndicesOf(objectItems, indices),
-      direction,
-    );
-
-    if (!result) {
-      commit(null);
-      return;
-    }
-
-    selection.replace(result.indices);
-    commit(result.code);
-  };
-
-  if (isPrimitive) {
+  if (kind === 'primitive') {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">
-            Items ({primitiveItems.length})
-          </div>
+          <div className="text-sm font-semibold">Items ({items.length})</div>
           <Button
             size="small"
             icon={<Plus />}
             variant="solid"
             color="green"
-            onClick={addPrimitive}
+            onClick={actions.add}
           >
             Add Item
           </Button>
         </div>
 
-        <BulkActionsBar
-          count={selection.selected.size}
-          onDuplicate={() => duplicateSelectedPrimitives(selection.selected)}
-          onMoveUp={() => moveSelectedPrimitives(selection.selected, 'up')}
-          onMoveDown={() => moveSelectedPrimitives(selection.selected, 'down')}
-          onDelete={() => {
-            deleteSelectedPrimitives(selection.selected);
-            selection.clear();
-          }}
-          onClear={selection.clear}
-        />
+        {bulkBar}
 
-        {primitiveItems.map((item, i) => (
+        {items.map(item => (
           <div
             key={item.id}
             className="space-y-2 rounded border border-gray-100 bg-gray-50 p-2"
@@ -444,43 +210,9 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
                   onChange={() => {}}
                 />
               </div>
-              <div className="flex space-x-1">
-                <Button
-                  size="small"
-                  icon={<ArrowUp />}
-                  disabled={i === 0}
-                  onClick={() =>
-                    movePrimitive(item.elementIndex, item.index - 1)
-                  }
-                />
-                <Button
-                  size="small"
-                  icon={<ArrowDown />}
-                  disabled={i === primitiveItems.length - 1}
-                  onClick={() =>
-                    movePrimitive(item.elementIndex, item.index + 1)
-                  }
-                />
-                <Button
-                  danger
-                  size="small"
-                  icon={<X />}
-                  disabled={primitiveItems.length <= 1}
-                  onClick={() => deletePrimitive(item.elementIndex)}
-                />
-              </div>
+              {itemControls(item)}
             </div>
-            <Field
-              binding={{
-                id: `primitive-${item.id}`,
-                label: `item-${i}`,
-                property: item.type,
-                value: item.value ?? '',
-                rawValue: String(item.value ?? ''),
-                onChange: next => updatePrimitive(item.elementIndex, next),
-              }}
-              onNodeChange={onChildChange}
-            />
+            <Field binding={item.value!} onNodeChange={onChildChange} />
           </div>
         ))}
       </div>
@@ -490,34 +222,22 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold">
-          Items ({objectItems.length})
-        </div>
+        <div className="text-sm font-semibold">Items ({items.length})</div>
         <Button
           size="small"
           icon={<Plus />}
           variant="solid"
           color="green"
-          disabled={objectItems.length === 0}
-          onClick={addItem}
+          disabled={items.length === 0}
+          onClick={actions.add}
         >
           Add Item
         </Button>
       </div>
 
-      <BulkActionsBar
-        count={selection.selected.size}
-        onDuplicate={() => duplicateSelectedItems(selection.selected)}
-        onMoveUp={() => moveSelectedItems(selection.selected, 'up')}
-        onMoveDown={() => moveSelectedItems(selection.selected, 'down')}
-        onDelete={() => {
-          deleteSelectedItems(selection.selected);
-          selection.clear();
-        }}
-        onClear={selection.clear}
-      />
+      {bulkBar}
 
-      {objectItems.map(item => (
+      {items.map(item => (
         <div key={item.id} className="space-y-3 rounded border bg-gray-50 p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -532,126 +252,32 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
               </div>
               <div className="text-xs font-medium">Item {item.index + 1}</div>
             </div>
-            <div className="flex space-x-1">
-              <Button
-                size="small"
-                icon={<ArrowUp />}
-                disabled={item.index === 0}
-                onClick={() => moveItem(item.elementIndex, item.index - 1)}
-              />
-              <Button
-                size="small"
-                icon={<ArrowDown />}
-                disabled={item.index === objectItems.length - 1}
-                onClick={() => moveItem(item.elementIndex, item.index + 1)}
-              />
-              <Button
-                danger
-                size="small"
-                icon={<X />}
-                disabled={objectItems.length <= 1}
-                onClick={() => deleteItem(item.elementIndex)}
-              />
-            </div>
+            {itemControls(item)}
           </div>
           <div className="space-y-2">
-            {Object.entries(item.editableProperties).map(([key, prop]) => (
-              <div key={`${item.id}-${key}`}>
+            {item.properties.map(binding => (
+              <div key={`${item.id}-${binding.label}`}>
                 <div className="flex flex-col space-y-2">
                   <label className="w-20 shrink-0 text-xs font-medium">
-                    {key}
+                    {binding.label}
                   </label>
-                  <Field
-                    binding={{
-                      id: `item-${item.id}-${key}`,
-                      label: key,
-                      property:
-                        render?.[key] && 'type' in render[key]
-                          ? ((render[key] as BindingRenderLeaf).property ??
-                            (render[key].type as string))
-                          : key,
-                      type:
-                        render?.[key] && 'type' in render[key]
-                          ? (render[key] as BindingRenderLeaf).type
-                          : undefined,
-                      render:
-                        render?.[key] && 'type' in render[key]
-                          ? (render[key] as BindingRenderLeaf).render
-                          : render?.[key] && !('type' in render[key])
-                            ? (render[key] as BindingRenderMap)
-                            : undefined,
-                      value: parseValue(String(prop.value)),
-                      rawValue: String(prop.value),
-                      onChange: next =>
-                        updateProperty(item.elementIndex, key, next),
-                    }}
-                    onNodeChange={onChildChange}
-                  />
+                  <Field binding={binding} onNodeChange={onChildChange} />
                 </div>
                 <span className="text-right text-xs text-gray-500">
-                  ({prop.type})
+                  ({String(binding.meta?.valueType)})
                 </span>
               </div>
             ))}
           </div>
           <div className="space-y-3 border-t pt-2">
-            {Object.entries(item.jsxBindings).length > 0 ||
-            Object.entries(item.jsxFallbacks).length > 0 ? (
-              <>
-                {Object.entries(item.jsxBindings).map(
-                  ([propertyName, bindings]) => (
-                    <div key={propertyName} className="space-y-2">
-                      <div className="text-xs font-medium text-blue-700">
-                        {propertyName} Bindings ({bindings.length}):
-                      </div>
-                      {bindings.map((bindingNode, idx) => {
-                        const nodeId = bindingNode.dataAttributes.find(
-                          a => a.name === 'data-id',
-                        )?.value;
-
-                        return (
-                          <div
-                            key={`binding-${item.id}-${propertyName}-${nodeId || idx}`}
-                            className="rounded border border-blue-100 bg-blue-50
-                              p-2"
-                          >
-                            <div className="mb-1 text-xs text-blue-600">
-                              &lt;{bindingNode.tagName || 'element'}&gt;
-                            </div>
-                            <Node data={bindingNode} onChange={onChildChange} />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ),
-                )}
-                {Object.entries(item.jsxFallbacks).map(
-                  ([propertyName, code]) => (
-                    <div key={propertyName} className="space-y-2">
-                      <div className="text-xs font-medium text-blue-700">
-                        {propertyName}
-                      </div>
-                      <Field
-                        binding={{
-                          id: `item-${item.id}-${propertyName}-jsx`,
-                          label: propertyName,
-                          property: propertyName,
-                          type: 'jsx',
-                          value: code,
-                          rawValue: code,
-                          onChange: next =>
-                            updateProperty(
-                              item.elementIndex,
-                              propertyName,
-                              next,
-                            ),
-                        }}
-                        onNodeChange={onChildChange}
-                      />
-                    </div>
-                  ),
-                )}
-              </>
+            {item.nested.length ? (
+              item.nested.map(group => (
+                <NestedGroup
+                  key={group.property}
+                  group={group}
+                  onNodeChange={onChildChange}
+                />
+              ))
             ) : (
               <div className="text-xs text-gray-500">
                 ✓ No JSX bindings found

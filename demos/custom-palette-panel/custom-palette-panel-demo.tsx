@@ -4,7 +4,12 @@ import { Button } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
 import Context from '~/components/context';
-import Dnd, { Field, type PanelBinding } from '~/components/dnd';
+import Dnd, {
+  Field,
+  type PanelBinding,
+  type PanelNodeChange,
+  useItemsEditor,
+} from '~/components/dnd';
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { cn } from '~/utils';
 import {
@@ -170,6 +175,163 @@ const ValidatedField = ({ binding }: { binding: PanelBinding }) => {
   );
 };
 
+// A deliberately different layout for an `items` binding, built on the
+// exported `useItemsEditor`. Nothing here parses JSX or touches Babel: the
+// hook hands back `PanelBinding`s and position-translated actions, so this
+// only has to decide what it looks like. Compare with the built-in Items
+// panel ("Wrap built-in") — same engine, different markup.
+const HeadlessItems = ({
+  binding,
+  onNodeChange,
+}: {
+  binding: PanelBinding;
+  onNodeChange: PanelNodeChange;
+}) => {
+  const { items, selection, actions } = useItemsEditor(binding.rawValue, {
+    render: binding.render,
+    onChange: binding.onChange,
+    onNodeChange,
+  });
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-gray-500">{items.length} item(s)</span>
+        <div className="flex gap-1">
+          {selection.selected.size > 0 && (
+            <>
+              <button
+                type="button"
+                className="rounded bg-gray-100 px-2 py-0.5 text-xs"
+                onClick={() => actions.moveSelected('up')}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="rounded bg-gray-100 px-2 py-0.5 text-xs"
+                onClick={() => actions.moveSelected('down')}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                className="rounded bg-red-50 px-2 py-0.5 text-xs text-red-600"
+                onClick={actions.removeSelected}
+              >
+                Delete {selection.selected.size}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="rounded bg-green-50 px-2 py-0.5 text-xs text-green-700"
+            onClick={actions.add}
+          >
+            + Add
+          </button>
+        </div>
+      </div>
+
+      {items.map(item => (
+        <details
+          key={item.id}
+          open
+          className="rounded border border-gray-200 px-2 py-1"
+        >
+          <summary className="flex cursor-pointer items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={selection.isSelected(item.index)}
+              onChange={() => selection.toggle(item.index, false)}
+              onClick={e => e.stopPropagation()}
+            />
+            <span className="font-medium">#{item.index + 1}</span>
+            <button
+              type="button"
+              className="ml-auto text-red-500"
+              onClick={e => {
+                e.preventDefault();
+                actions.remove(item.elementIndex);
+              }}
+            >
+              remove
+            </button>
+          </summary>
+
+          <div className="space-y-1 py-1">
+            {/* A primitive array item has a single value binding. */}
+            {item.value && (
+              <input
+                className="w-full rounded border border-gray-300 px-2 py-1
+                  text-sm"
+                defaultValue={item.value.rawValue}
+                onBlur={e => item.value!.onChange(e.target.value)}
+              />
+            )}
+
+            {item.properties.map(prop => (
+              <label key={prop.label} className="flex items-center gap-2">
+                <span className="w-16 shrink-0 text-xs text-gray-500">
+                  {prop.label}
+                </span>
+                <input
+                  className="w-full rounded border border-gray-300 px-2 py-1
+                    text-sm"
+                  defaultValue={prop.rawValue}
+                  onBlur={e => prop.onChange(e.target.value)}
+                />
+              </label>
+            ))}
+
+            {/* The nested elements `bindings` alone can't reach. Each one
+                already carries its own `onChange`, wired to `onNodeChange`
+                by the hook. */}
+            {item.nested.map(group =>
+              group.fallback ? (
+                <Field
+                  key={group.property}
+                  binding={group.fallback}
+                  onNodeChange={onNodeChange}
+                />
+              ) : (
+                group.elements.map(element => (
+                  <div
+                    key={`${group.property}-${element.id}`}
+                    className="space-y-1 rounded bg-gray-50 p-1"
+                  >
+                    <div className="text-[10px] text-gray-400">
+                      {group.property} › &lt;{element.tagName}&gt;
+                    </div>
+                    {element.bindings.map(nestedBinding => (
+                      <label
+                        key={nestedBinding.label}
+                        className="flex items-center gap-2"
+                      >
+                        <span className="w-16 shrink-0 text-xs text-gray-500">
+                          {nestedBinding.label}
+                        </span>
+                        {/* Structural bindings still get the built-in
+                            control — the hook and `Field` compose. */}
+                        <Field
+                          binding={nestedBinding}
+                          onNodeChange={onNodeChange}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                ))
+              ),
+            )}
+          </div>
+        </details>
+      ))}
+    </div>
+  );
+};
+
+type PanelMode = 'custom' | 'wrap' | 'headless';
+
 // Custom Palette & Panel demo. Mirrors the app's `pages/docs/dnd-custom-render`:
 // `Dnd`'s `renderPalette`/`renderPanel` fully replace the built-in layouts.
 // Drag-and-drop keeps working through the exported `DraggableItem`, and
@@ -181,9 +343,12 @@ const ValidatedField = ({ binding }: { binding: PanelBinding }) => {
 // is what makes that lossless — `onNodeChange` rides along with it, and
 // without it nested array/children edits (drop in Stats and edit a card's
 // title) wouldn't commit (#308).
+//
+// "Headless items" is the third option: keep your own markup but reuse the
+// array-editing engine through `useItemsEditor` (see `HeadlessItems`).
 const CustomPalettePanelDemo = () => {
   const [value, setValue] = useState(DEFAULT_TEMPLATE);
-  const [wrapDefaultPanel, setWrapDefaultPanel] = useState(false);
+  const [mode, setMode] = useState<PanelMode>('custom');
 
   return (
     <Context>
@@ -197,17 +362,24 @@ const CustomPalettePanelDemo = () => {
           <span className="text-xs text-gray-600">Panel</span>
           <Button
             size="small"
-            type={wrapDefaultPanel ? 'default' : 'primary'}
-            onClick={() => setWrapDefaultPanel(false)}
+            type={mode === 'custom' ? 'primary' : 'default'}
+            onClick={() => setMode('custom')}
           >
             Custom fields
           </Button>
           <Button
             size="small"
-            type={wrapDefaultPanel ? 'primary' : 'default'}
-            onClick={() => setWrapDefaultPanel(true)}
+            type={mode === 'wrap' ? 'primary' : 'default'}
+            onClick={() => setMode('wrap')}
           >
             Wrap built-in
+          </Button>
+          <Button
+            size="small"
+            type={mode === 'headless' ? 'primary' : 'default'}
+            onClick={() => setMode('headless')}
+          >
+            Headless items
           </Button>
         </div>
         <Dnd
@@ -242,7 +414,7 @@ const CustomPalettePanelDemo = () => {
             </div>
           )}
           renderPanel={data => {
-            if (wrapDefaultPanel) {
+            if (mode === 'wrap') {
               // Spreading the whole render data keeps the built-in panel
               // fully functional — including `onNodeChange`, which nested
               // array/children editors need to commit.
@@ -356,12 +528,23 @@ const CustomPalettePanelDemo = () => {
                               {binding.label}
                             </span>
                             {isStructural ? (
-                              // Renders the control only — the label above is
-                              // ours, which is why `Field` doesn't draw one.
-                              <Field
-                                binding={binding}
-                                onNodeChange={onNodeChange}
-                              />
+                              // Same binding, two ways to render it: the
+                              // built-in control, or your own markup over
+                              // the same engine via `useItemsEditor`.
+                              mode === 'headless' ? (
+                                <HeadlessItems
+                                  binding={binding}
+                                  onNodeChange={onNodeChange}
+                                />
+                              ) : (
+                                // Renders the control only — the label above
+                                // is ours, which is why `Field` doesn't draw
+                                // one.
+                                <Field
+                                  binding={binding}
+                                  onNodeChange={onNodeChange}
+                                />
+                              )
                             ) : entries ? (
                               <ParsedValueEditor
                                 binding={binding}

@@ -218,6 +218,81 @@ positions before every edit. `Field` already does that. For a plain string,
 number or option binding there's little reason to reach for it — a bare
 `<input>` wired to `binding.onChange` is the simpler answer.
 
+### Your own markup for an array binding: `useItemsEditor`
+
+`Field` gives you the built-in *control*. When you want the same engine but
+a different layout, `useItemsEditor` is that engine on its own:
+
+```tsx
+import { useItemsEditor } from '@jbpark/live-editor/dnd';
+
+const MyItems = ({ binding, onNodeChange }) => {
+  const { items, selection, actions } = useItemsEditor(binding.rawValue, {
+    render: binding.render,
+    onChange: binding.onChange,
+    onNodeChange,
+  });
+
+  return (
+    <div>
+      <button onClick={actions.add}>Add</button>
+      {items.map(item => (
+        <details key={item.id}>
+          <summary>
+            #{item.index + 1}
+            <button onClick={() => actions.remove(item.elementIndex)}>x</button>
+          </summary>
+
+          {/* plain properties of an object item */}
+          {item.properties.map(prop => (
+            <input
+              key={prop.label}
+              defaultValue={prop.rawValue}
+              onBlur={e => prop.onChange(e.target.value)}
+            />
+          ))}
+
+          {/* the nested elements `bindings` can't reach */}
+          {item.nested.map(group =>
+            group.elements.map(el =>
+              el.bindings.map(b => (
+                <Live.Dnd.Field key={b.label} binding={b} onNodeChange={onNodeChange} />
+              )),
+            ),
+          )}
+        </details>
+      ))}
+    </div>
+  );
+};
+```
+
+Everything it returns is a `PanelBinding`, so it composes with `Field` —
+render your own layout and still hand individual bindings to the built-in
+control where that's good enough, as above.
+
+What you don't have to reimplement:
+
+- Re-parsing each item's JSX to find nested data-bound elements, and
+  resolving the binding `render` map onto each property.
+- Translating a visible item position (`index`) to its position in the
+  array's elements (`elementIndex`), which is what every edit addresses.
+  They differ whenever the array mixes objects and primitives.
+- Reconciling the selection after a move or delete. Positions shift while
+  the count stays the same, so the selection has to be cleared or replaced
+  or a later bulk action hits the wrong elements.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `kind` | `'object' \| 'primitive'` | Which kind the array is being edited as. An array holding both is treated as objects; the primitives are left untouched rather than dropped. |
+| `items` | `ItemsEditorItem[]` | One entry per item. `properties` holds an object item's plain fields, `nested` its JSX-valued ones, `value` a primitive item's own binding. |
+| `selection` | multi-select state | `selected`, `toggle`, `isSelected`, `clear`, `replace`. Indices are item `index` values; the actions translate. |
+| `actions` | `ItemsEditorActions` | `add`, `move`, `remove`, plus `duplicateSelected` / `moveSelected` / `removeSelected`. |
+| `parseError` | `boolean` | The source didn't parse as an array. `items` is empty. |
+
+The built-in `Items` panel is written against exactly this hook, so anything
+it can do is reachable here.
+
 ### `PanelBinding`
 
 | Field | Type | Description |

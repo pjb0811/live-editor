@@ -12,6 +12,15 @@ import DraggableItem, {
 import Field, { type FieldProps } from './panel/field';
 import { ICON_MAP, ICON_OPTIONS } from './panel/icon-map';
 import DefaultPanel, { type PanelProps } from './panel/panel';
+import {
+  type ItemsEditor,
+  type ItemsEditorActions,
+  type ItemsEditorItem,
+  type ItemsEditorNestedElement,
+  type ItemsEditorNestedGroup,
+  type ItemsEditorOptions,
+  useItemsEditor,
+} from './panel/use-items-editor';
 
 type DndComponent = typeof DndImpl & {
   DraggableItem: typeof DraggableItem;
@@ -40,6 +49,12 @@ Dnd.DefaultPanel = DefaultPanel;
 Dnd.Field = Field;
 
 export { DraggableItem, DefaultPanel, Field };
+// The array-editing engine behind the built-in Items panel, exposed for a
+// consumer who wants their own markup rather than the built-in control
+// (`Field` covers the latter). Everything it returns is `PanelBinding`s, so
+// the two compose: render the hook's own layout and hand individual
+// bindings to `Field` where the built-in control is good enough.
+export { useItemsEditor };
 // The built-in panel's own `widget: 'icon-picker'` icon set/options —
 // exported so a custom renderPanel can reach icon-picker parity (name ->
 // lucide-react component, and the same label/value pairs fed to Select)
@@ -53,6 +68,12 @@ export type {
   PanelNodeChange,
   PanelProps,
   FieldProps,
+  ItemsEditor,
+  ItemsEditorActions,
+  ItemsEditorItem,
+  ItemsEditorNestedElement,
+  ItemsEditorNestedGroup,
+  ItemsEditorOptions,
   DraggableItemProps,
   DraggableItemDragState,
 };
