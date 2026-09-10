@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.2.0
+
+### Minor Changes
+
+- 208cb1e: Export the built-in single-binding control as `Live.Dnd.Field`. A custom `renderPanel` can now mix its own controls with the built-in one per binding, instead of choosing all-or-nothing between hand-rolling every field and wrapping `DefaultPanel`.
+
+  It's driven entirely by public render data — a `PanelBinding` out of `bindings` plus `onNodeChange` — and renders the control only, leaving the label to the caller. Most useful for `items`/`children`/`array` bindings, whose editors reach nested data-bound elements that `bindings` alone can't address.
+
+  Also exports the `FieldProps` and `PanelNodeChange` types. `PanelNodeChange` names the node-level commit callback's shape, which was previously spelled out inline everywhere it appeared.
+
+- 00a2a50: Forward the node-level commit callback to `renderPanel`. `PanelRenderData` now carries `onNodeChange`, so a custom panel that re-embeds `Live.Dnd.DefaultPanel` can spread the render data straight in (`<Live.Dnd.DefaultPanel {...data} />`) and keep nested array/children edits working — previously those edits were silent no-ops, affecting 5 of the 8 shipped sections (9 of Stats' 10 editable elements).
+
+  `onNodeChange` is a required field on `PanelRenderData`. Reading it off the argument in a `renderPanel` is unaffected; only code that constructs a `PanelRenderData` object by hand (a test helper or a re-shaping wrapper) needs to add the field.
+
+- 97daee9: Export `useItemsEditor`, the array-editing engine behind the built-in Items panel, so a custom panel can keep its own markup instead of adopting the built-in control. It returns `PanelBinding`s and position-translated actions, so it composes with `Live.Dnd.Field`: render your own layout and hand individual bindings to the built-in control where that's enough.
+
+  It saves reimplementing the parts that are easy to get wrong — re-parsing each item's JSX to find nested data-bound elements, resolving the binding `render` map, translating visible item positions to array element positions before every edit, and reconciling the selection after a move or delete.
+
+  Also exports the `ItemsEditor`, `ItemsEditorItem`, `ItemsEditorNestedGroup`, `ItemsEditorNestedElement`, `ItemsEditorActions` and `ItemsEditorOptions` types.
+
+  Internally `panel/items.tsx` is now presentation over that hook (668 → 291 lines). The built-in panel's rendered markup is unchanged.
+
 ## 2.1.1
 
 ### Patch Changes
