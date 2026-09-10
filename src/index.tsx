@@ -3,6 +3,9 @@ import './index.css';
 import Context from './components/context';
 import LiveDnd, {
   type FieldProps,
+  type ItemsEditor,
+  type ItemsEditorItem,
+  type ItemsEditorOptions,
   type PaletteRenderData,
   type PanelBinding,
   type PanelNodeChange,
@@ -36,6 +39,9 @@ export type {
   PanelNodeChange,
   PanelRenderData,
   FieldProps,
+  ItemsEditor,
+  ItemsEditorItem,
+  ItemsEditorOptions,
   EditorRenderData,
   FrameProps,
   Section,
