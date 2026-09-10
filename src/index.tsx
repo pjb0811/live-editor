@@ -2,8 +2,10 @@ import './index.css';
 
 import Context from './components/context';
 import LiveDnd, {
+  type FieldProps,
   type PaletteRenderData,
   type PanelBinding,
+  type PanelNodeChange,
   type PanelRenderData,
 } from './components/dnd';
 import LiveEditor, { type EditorRenderData } from './components/editor';
@@ -31,7 +33,9 @@ export {
 export type {
   PaletteRenderData,
   PanelBinding,
+  PanelNodeChange,
   PanelRenderData,
+  FieldProps,
   EditorRenderData,
   FrameProps,
   Section,

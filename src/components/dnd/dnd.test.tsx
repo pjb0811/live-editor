@@ -6,6 +6,7 @@ import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/constants';
 
 import { PreviewContext } from '../context/states';
 import Dnd, { type PanelRenderData } from './dnd';
+import Field from './panel/field';
 
 // The canvas isn't what's under test here, and each section renders a
 // compiled component inside an iframe — none of which jsdom needs to do for
@@ -123,5 +124,41 @@ describe('renderPanel data', () => {
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange.mock.calls[0]![0]).toContain('CHANGED');
+  });
+});
+
+describe('Field, exported for per-binding reuse', () => {
+  // The point of exporting it: everything it needs is public render data, so
+  // a custom panel can delegate one binding without adopting the whole
+  // built-in panel. If this ever needs something internal, the export is a
+  // lie and this fails.
+  it('drives the nested item editors from `bindings` + `onNodeChange` alone', () => {
+    const { getData } = renderWithPanel();
+    const data = getData()!;
+    const onNodeChange = vi.fn();
+
+    const { container } = render(
+      <Field binding={data.bindings[0]!} onNodeChange={onNodeChange} />,
+    );
+
+    const values = [...container.querySelectorAll('textarea')].map(
+      el => el.value,
+    );
+
+    // The nested Title/Description leaves Stats' `bindings` can't reach.
+    expect(values).toContain('Open');
+    expect(values).toContain('Source Project');
+    expect(values).toContain('By Doing');
+  });
+
+  it('renders the control only, leaving the label to the caller', () => {
+    const { getData } = renderWithPanel();
+    const data = getData()!;
+
+    const { container } = render(<Field binding={data.bindings[0]!} />);
+
+    // `FieldGroup` draws "Stats Items (items)" in the built-in panel; a
+    // consumer supplying their own heading must not get a second one.
+    expect(container.textContent).not.toContain('Stats Items');
   });
 });

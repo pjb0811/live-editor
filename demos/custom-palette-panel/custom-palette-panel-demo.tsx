@@ -4,7 +4,7 @@ import { Button } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
 import Context from '~/components/context';
-import Dnd, { type PanelBinding } from '~/components/dnd';
+import Dnd, { Field, type PanelBinding } from '~/components/dnd';
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { cn } from '~/utils';
 import {
@@ -269,6 +269,7 @@ const CustomPalettePanelDemo = () => {
               canMoveUp,
               canMoveDown,
               bindings,
+              onNodeChange,
             } = data;
 
             return (
@@ -306,6 +307,20 @@ const CustomPalettePanelDemo = () => {
                       // to render whatever control you want. onChange commits
                       // through the same AST pipeline as the built-in panel.
                       bindings.map((binding, index) => {
+                        // An `items`/`children`/array binding holds nested
+                        // data-bound JSX that `bindings` alone can't reach
+                        // (see #308). Flattening it gives a wall of tiny
+                        // inputs at best, a raw source textarea at worst —
+                        // so hand these back to the built-in control and
+                        // keep the hand-rolled ones for the simple types.
+                        // This is the point of `Live.Dnd.Field`: the choice
+                        // is per binding, not all-or-nothing.
+                        const isStructural =
+                          binding.type === 'array' ||
+                          binding.property === 'items' ||
+                          binding.property === 'data' ||
+                          binding.property === 'children';
+
                         const isMultiline =
                           binding.type === 'jsx' || binding.type === 'richtext';
                         // Some `children` bindings hold a serialized document
@@ -318,9 +333,10 @@ const CustomPalettePanelDemo = () => {
                         // one of these (or just a long plain string) falls
                         // back to a textarea rather than the single-line
                         // ValidatedField either way.
-                        const flattened = isMultiline
-                          ? null
-                          : flattenEditableValue(binding.rawValue);
+                        const flattened =
+                          isMultiline || isStructural
+                            ? null
+                            : flattenEditableValue(binding.rawValue);
                         const entries =
                           flattened && flattened.length <= MAX_EDITABLE_ENTRIES
                             ? flattened
@@ -339,7 +355,14 @@ const CustomPalettePanelDemo = () => {
                             >
                               {binding.label}
                             </span>
-                            {entries ? (
+                            {isStructural ? (
+                              // Renders the control only — the label above is
+                              // ours, which is why `Field` doesn't draw one.
+                              <Field
+                                binding={binding}
+                                onNodeChange={onNodeChange}
+                              />
+                            ) : entries ? (
                               <ParsedValueEditor
                                 binding={binding}
                                 entries={entries}

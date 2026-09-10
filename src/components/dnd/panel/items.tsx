@@ -28,6 +28,7 @@ import {
   updateArrayItemValue,
 } from '~/utils/ast';
 
+import type { PanelNodeChange } from '../dnd';
 import Field from './field';
 import Node from './node';
 
@@ -63,12 +64,7 @@ interface Props {
   value: string;
   render?: BindingRenderMap;
   onChange?: (value: string) => void;
-  onChildChange?: (params: {
-    id: string;
-    label: string;
-    property: string;
-    value: unknown;
-  }) => void;
+  onChildChange?: PanelNodeChange;
 }
 
 interface BulkActionsBarProps {
