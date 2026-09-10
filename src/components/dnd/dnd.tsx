@@ -143,6 +143,21 @@ export interface PanelRenderData {
   // on a bad edit. Switch on `type` to render your own control (an
   // `<input>`, `<textarea>`, `<select>`, ...) instead of the built-in one.
   bindings: PanelBinding[];
+  // Node-level commit for elements that aren't in `bindings` — the nested
+  // data-bound JSX held inside an `items`/`children` value, which the
+  // built-in Items/Children editors discover by re-extracting that value's
+  // own JSX. Those `data-id`s never reach `bindings` (the top-level
+  // `extract()` doesn't walk into an attribute expression), and no single
+  // `PanelBinding.onChange` can address them since each one closes over a
+  // fixed `id` — hence this `(id, label, property, value)` channel. Pass it
+  // straight through when re-embedding `DefaultPanel`, otherwise nested
+  // array/children edits inside it silently don't commit (#308).
+  onNodeChange: (params: {
+    id: string;
+    label: string;
+    property: string;
+    value: unknown;
+  }) => void;
 }
 
 // One editable data-binding, flattened out of the selected section for a
@@ -500,6 +515,7 @@ const Dnd = ({
         canMoveUp,
         canMoveDown,
         bindings,
+        onNodeChange: onFieldChange,
       });
     }
 

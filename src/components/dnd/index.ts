@@ -15,9 +15,10 @@ type DndComponent = typeof DndImpl & {
   DraggableItem: typeof DraggableItem;
   // The built-in property panel, exported so a `renderPanel` can wrap or
   // partially override it instead of starting from zero — see #237. Its
-  // props line up with `PanelRenderData` (drop `onChange`; `bindings`
-  // is the same array). See panel.tsx's own doc comment for the one
-  // exception (`onNodeChange`, optional, internal-only).
+  // props line up with `PanelRenderData` (drop `onChange`; `bindings` and
+  // `onNodeChange` are the same), so `<DefaultPanel {...data} />` inside a
+  // `renderPanel` is lossless. See panel.tsx's own doc comment for why
+  // `onNodeChange` is optional there but required in `PanelRenderData`.
   DefaultPanel: typeof DefaultPanel;
 };
 
