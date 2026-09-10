@@ -79,6 +79,7 @@ one opaque blob for the whole array.
 | `onMoveDown` | `() => void` | Move the selected section down, same rationale as `onMoveUp`. |
 | `canMoveUp` | `boolean` | Whether `onMoveUp` would do anything right now — disable your move-up control when `false`. |
 | `canMoveDown` | `boolean` | Whether `onMoveDown` would do anything right now — disable your move-down control when `false`. |
+| `onNodeChange` | `(params: { id: string; label: string; property: string; value: unknown }) => void` | Commit an edit to an element addressed by its own `data-id`, rather than through a binding you were handed. Only needed when you re-embed `DefaultPanel` — pass it straight through. See [Wrapping the built-in panel](#wrapping-the-built-in-panel-instead-of-starting-from-zero). |
 
 `bindings` carries each field's `type`, current `value`, `options` (when
 present), and an `onChange` wired straight into the same AST-update pipeline
@@ -153,30 +154,29 @@ own chrome around it (or swap it in for only some sections):
   renderPanel={data => (
     <div>
       <MyCustomHeader item={data.item} />
-      <Live.Dnd.DefaultPanel
-        item={data.item}
-        bindings={data.bindings}
-        onDelete={data.onDelete}
-        onMoveUp={data.onMoveUp}
-        onMoveDown={data.onMoveDown}
-        canMoveUp={data.canMoveUp}
-        canMoveDown={data.canMoveDown}
-      />
+      <Live.Dnd.DefaultPanel {...data} />
     </div>
   )}
 />
 ```
 
-`DefaultPanel`'s props line up 1:1 with `PanelRenderData` (drop `onChange`,
-which it never needed). One thing it takes that `PanelRenderData` doesn't
-have: an internal, optional `onNodeChange` prop that array/children fields
-use to commit an edit to a *different*, dynamically-discovered element than
-the one being rendered — not expressible through a single binding's own
-`onChange`. It's not part of the public data because of that, so a
-`DefaultPanel` re-embedded this way (without `Dnd` wiring it in for you)
-renders everything correctly but nested array/children edits inside it
-won't commit. Rendering `DefaultPanel` un-wrapped, or letting `Dnd` render
-it by not passing `renderPanel` at all, doesn't have this limitation.
+Spread the whole object rather than picking fields off it. `DefaultPanel`'s
+props line up 1:1 with `PanelRenderData` (it just ignores `onChange`, which
+it never needed), so the spread is lossless — and it's the only form that
+carries `onNodeChange` through.
+
+That last one matters more than it looks. `bindings` covers the elements
+`extract()` finds by walking the section's markup, which does not include
+JSX nested *inside* an attribute value — the elements held in an `items` or
+`children` binding. The built-in array/children editors discover those by
+re-extracting that value themselves, and commit them through `onNodeChange`,
+addressing each by its own `data-id`. No single `PanelBinding.onChange` can
+stand in for it, because each one is bound to a fixed element.
+
+Most shipped sections are affected: in `stats`, 9 of the section's 10
+editable elements are only reachable this way. Drop `onNodeChange` and those
+edits are silent no-ops — the fields still render and accept typing, but
+nothing commits.
 
 ### `PanelBinding`
 

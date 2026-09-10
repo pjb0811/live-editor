@@ -26,9 +26,10 @@ interface Props {
   // `Items`/`Children` edit a *different* element than `binding` itself —
   // an array item or a sibling child, each with its own id/label/property —
   // which `binding.onChange`'s single-value shape can't express. This is
-  // the internal, node-level escape hatch those two still need (see #237's
-  // documented items/children boundary); it isn't part of the public
-  // `PanelBinding` surface a custom `renderPanel` sees.
+  // the node-level escape hatch those two need (see #237's documented
+  // items/children boundary). Not part of `PanelBinding`, which is
+  // per-binding; it reaches a custom panel through `PanelRenderData`
+  // instead (#308).
   onNodeChange?: (params: {
     id: string;
     label: string;

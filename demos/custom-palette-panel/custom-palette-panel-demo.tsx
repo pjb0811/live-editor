@@ -175,17 +175,47 @@ const ValidatedField = ({ binding }: { binding: PanelBinding }) => {
 // Drag-and-drop keeps working through the exported `DraggableItem`, and
 // `renderPanel` hands over `bindings` (one per editable field) so custom
 // controls still commit through the same AST-update pipeline.
+//
+// The "Wrap built-in" mode shows the other way to use `renderPanel`: keep
+// `DefaultPanel` and only add around it. Spreading the whole render data in
+// is what makes that lossless — `onNodeChange` rides along with it, and
+// without it nested array/children edits (drop in Stats and edit a card's
+// title) wouldn't commit (#308).
 const CustomPalettePanelDemo = () => {
   const [value, setValue] = useState(DEFAULT_TEMPLATE);
+  const [wrapDefaultPanel, setWrapDefaultPanel] = useState(false);
 
   return (
     <Context>
-      <div className="h-screen overflow-y-auto">
+      <div className="flex h-screen flex-col">
+        <div
+          className={cn(
+            'flex items-center justify-end gap-2',
+            'border-b border-gray-200 px-4 py-2',
+          )}
+        >
+          <span className="text-xs text-gray-600">Panel</span>
+          <Button
+            size="small"
+            type={wrapDefaultPanel ? 'default' : 'primary'}
+            onClick={() => setWrapDefaultPanel(false)}
+          >
+            Custom fields
+          </Button>
+          <Button
+            size="small"
+            type={wrapDefaultPanel ? 'primary' : 'default'}
+            onClick={() => setWrapDefaultPanel(true)}
+          >
+            Wrap built-in
+          </Button>
+        </div>
         <Dnd
           value={value}
           onChange={setValue}
           frame={{ mode: 'shadow', syncStyle: true }}
           dynamicTailwind
+          className="min-h-0 flex-1 overflow-y-auto"
           renderPalette={({ items, onAdd, DraggableItem, isMobile }) => (
             <div className="space-y-2 p-2">
               {items.map(item => (
@@ -211,127 +241,155 @@ const CustomPalettePanelDemo = () => {
               ))}
             </div>
           )}
-          renderPanel={({
-            item,
-            onDelete,
-            onMoveUp,
-            onMoveDown,
-            canMoveUp,
-            canMoveDown,
-            bindings,
-          }) => (
-            <div className="space-y-3 p-4">
-              {item ? (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{item.name}</span>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="small"
-                        icon={<ChevronUp />}
-                        disabled={!canMoveUp}
-                        onClick={onMoveUp}
-                        aria-label="Move section up"
-                      />
-                      <Button
-                        size="small"
-                        icon={<ChevronDown />}
-                        disabled={!canMoveDown}
-                        onClick={onMoveDown}
-                        aria-label="Move section down"
-                      />
-                      <Button
-                        danger
-                        size="small"
-                        icon={<Trash />}
-                        onClick={() => onDelete(item.id)}
-                        aria-label="Delete section"
-                      />
-                    </div>
-                  </div>
-                  {bindings.length ? (
-                    // `bindings` is plain data — switch on each entry's `type`
-                    // to render whatever control you want. onChange commits
-                    // through the same AST pipeline as the built-in panel.
-                    bindings.map((binding, index) => {
-                      const isMultiline =
-                        binding.type === 'jsx' || binding.type === 'richtext';
-                      // Some `children` bindings hold a serialized document
-                      // tree rather than a few simple fields — Features'
-                      // "Feature Cards" flattens to 240 leaves (tag names,
-                      // ids, individual attributes...), which is technically
-                      // correct but useless as a form. Capping the entry
-                      // count treats those as opaque instead of rendering a
-                      // wall of tiny inputs; a value long enough to likely be
-                      // one of these (or just a long plain string) falls
-                      // back to a textarea rather than the single-line
-                      // ValidatedField either way.
-                      const flattened = isMultiline
-                        ? null
-                        : flattenEditableValue(binding.rawValue);
-                      const entries =
-                        flattened && flattened.length <= MAX_EDITABLE_ENTRIES
-                          ? flattened
-                          : null;
-                      const useTextarea =
-                        isMultiline ||
-                        (!entries && binding.rawValue.length > 120);
+          renderPanel={data => {
+            if (wrapDefaultPanel) {
+              // Spreading the whole render data keeps the built-in panel
+              // fully functional — including `onNodeChange`, which nested
+              // array/children editors need to commit.
+              return (
+                <div className="h-full overflow-y-auto">
+                  <p
+                    className={cn(
+                      'border-b border-gray-200 bg-gray-50',
+                      'px-4 py-2 text-xs text-gray-600',
+                    )}
+                  >
+                    Custom header — the built-in panel below is unchanged.
+                  </p>
+                  <Dnd.DefaultPanel {...data} />
+                </div>
+              );
+            }
 
-                      return (
-                        <label
-                          key={`${binding.id}-${binding.property}-${index}`}
-                          className="block space-y-1"
-                        >
-                          <span className="text-xs font-semibold text-gray-700">
-                            {binding.label}
-                          </span>
-                          {entries ? (
-                            <ParsedValueEditor
-                              binding={binding}
-                              entries={entries}
-                            />
-                          ) : binding.widget === 'slider' ? (
-                            <SliderField binding={binding} />
-                          ) : binding.options ? (
-                            <select
-                              className="w-full rounded border border-gray-300
-                                px-2 py-1 text-sm"
-                              value={binding.rawValue}
-                              onChange={e => binding.onChange(e.target.value)}
+            const {
+              item,
+              onDelete,
+              onMoveUp,
+              onMoveDown,
+              canMoveUp,
+              canMoveDown,
+              bindings,
+            } = data;
+
+            return (
+              <div className="space-y-3 p-4">
+                {item ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">{item.name}</span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="small"
+                          icon={<ChevronUp />}
+                          disabled={!canMoveUp}
+                          onClick={onMoveUp}
+                          aria-label="Move section up"
+                        />
+                        <Button
+                          size="small"
+                          icon={<ChevronDown />}
+                          disabled={!canMoveDown}
+                          onClick={onMoveDown}
+                          aria-label="Move section down"
+                        />
+                        <Button
+                          danger
+                          size="small"
+                          icon={<Trash />}
+                          onClick={() => onDelete(item.id)}
+                          aria-label="Delete section"
+                        />
+                      </div>
+                    </div>
+                    {bindings.length ? (
+                      // `bindings` is plain data — switch on each entry's `type`
+                      // to render whatever control you want. onChange commits
+                      // through the same AST pipeline as the built-in panel.
+                      bindings.map((binding, index) => {
+                        const isMultiline =
+                          binding.type === 'jsx' || binding.type === 'richtext';
+                        // Some `children` bindings hold a serialized document
+                        // tree rather than a few simple fields — Features'
+                        // "Feature Cards" flattens to 240 leaves (tag names,
+                        // ids, individual attributes...), which is technically
+                        // correct but useless as a form. Capping the entry
+                        // count treats those as opaque instead of rendering a
+                        // wall of tiny inputs; a value long enough to likely be
+                        // one of these (or just a long plain string) falls
+                        // back to a textarea rather than the single-line
+                        // ValidatedField either way.
+                        const flattened = isMultiline
+                          ? null
+                          : flattenEditableValue(binding.rawValue);
+                        const entries =
+                          flattened && flattened.length <= MAX_EDITABLE_ENTRIES
+                            ? flattened
+                            : null;
+                        const useTextarea =
+                          isMultiline ||
+                          (!entries && binding.rawValue.length > 120);
+
+                        return (
+                          <label
+                            key={`${binding.id}-${binding.property}-${index}`}
+                            className="block space-y-1"
+                          >
+                            <span
+                              className="text-xs font-semibold text-gray-700"
                             >
-                              {binding.options.map(option => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          ) : useTextarea ? (
-                            <textarea
-                              className="w-full rounded border border-gray-300
-                                px-2 py-1 text-sm"
-                              rows={3}
-                              defaultValue={binding.rawValue}
-                              onBlur={e => binding.onChange(e.target.value)}
-                            />
-                          ) : (
-                            <ValidatedField binding={binding} />
-                          )}
-                        </label>
-                      );
-                    })
-                  ) : (
-                    <p className="text-xs text-gray-400">
-                      No editable elements.
-                    </p>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  Select a section on the canvas.
-                </p>
-              )}
-            </div>
-          )}
+                              {binding.label}
+                            </span>
+                            {entries ? (
+                              <ParsedValueEditor
+                                binding={binding}
+                                entries={entries}
+                              />
+                            ) : binding.widget === 'slider' ? (
+                              <SliderField binding={binding} />
+                            ) : binding.options ? (
+                              <select
+                                className="w-full rounded border border-gray-300
+                                  px-2 py-1 text-sm"
+                                value={binding.rawValue}
+                                onChange={e => binding.onChange(e.target.value)}
+                              >
+                                {binding.options.map(option => (
+                                  <option
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : useTextarea ? (
+                              <textarea
+                                className="w-full rounded border border-gray-300
+                                  px-2 py-1 text-sm"
+                                rows={3}
+                                defaultValue={binding.rawValue}
+                                onBlur={e => binding.onChange(e.target.value)}
+                              />
+                            ) : (
+                              <ValidatedField binding={binding} />
+                            )}
+                          </label>
+                        );
+                      })
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        No editable elements.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    Select a section on the canvas.
+                  </p>
+                )}
+              </div>
+            );
+          }}
         />
       </div>
     </Context>

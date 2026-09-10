@@ -12,14 +12,16 @@ import FieldGroup from './field-group';
 // Exported as `Live.Dnd.DefaultPanel` (see index.ts) so a consumer can
 // wrap or partially override the built-in panel instead of starting a
 // `renderPanel` from zero — see #237. Every field here lines up 1:1 with
-// `PanelRenderData` (drop `onChange`, which this panel never needed) with
-// one exception: `onNodeChange` isn't part of the public data a
-// `renderPanel` receives, because it's the internal, node-level escape
-// hatch `Items`/`Children` use to commit a *different* element's edit
-// than any single `PanelBinding.onChange` can express (see field.tsx's
-// items/children boundary note from step 1). It's optional here — a
-// consumer re-embedding `DefaultPanel` outside of `Dnd` itself can omit
-// it, at the cost of nested array/children edits not committing.
+// `PanelRenderData` (drop `onChange`, which this panel never needed), so
+// spreading that data straight in works: `<DefaultPanel {...data} />`.
+// `onNodeChange` is the node-level escape hatch `Items`/`Children` use to
+// commit a *different* element's edit than any single
+// `PanelBinding.onChange` can express (see field.tsx's items/children
+// boundary note from step 1). It's optional here only so a consumer can
+// deliberately render this panel read-only for nested edits; when wrapping
+// it inside a `renderPanel`, forward the `onNodeChange` that
+// `PanelRenderData` hands you or nested array/children edits won't commit
+// (#308).
 export interface PanelProps {
   item?: Section;
   onDelete?: (id: string) => void;
