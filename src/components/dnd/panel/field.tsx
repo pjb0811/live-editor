@@ -16,12 +16,19 @@ import CoreEditor from '~/components/editor/core';
 import { BINDING_PROP } from '~/constants';
 import { parseValue, validateBindingValue } from '~/utils/ast';
 
-import type { PanelBinding } from '../dnd';
+import type { PanelBinding, PanelNodeChange } from '../dnd';
 import Children from './children';
 import { ICON_MAP, ICON_OPTIONS } from './icon-map';
 import Items from './items';
 
-interface Props {
+// Exported as `Live.Dnd.Field` (see index.ts) so a custom `renderPanel` can
+// hand any single binding back to the built-in control instead of
+// reimplementing it — most usefully for `items`/`children` bindings, whose
+// editors discover nested data-bound elements by re-extracting the value's
+// own JSX (~100 lines of Babel walking a consumer would otherwise have to
+// reproduce). Renders the *control* only; the built-in panel's label comes
+// from `FieldGroup`, so a consumer supplies their own heading and layout.
+export interface FieldProps {
   binding: PanelBinding;
   // `Items`/`Children` edit a *different* element than `binding` itself —
   // an array item or a sibling child, each with its own id/label/property —
@@ -29,13 +36,8 @@ interface Props {
   // the node-level escape hatch those two need (see #237's documented
   // items/children boundary). Not part of `PanelBinding`, which is
   // per-binding; it reaches a custom panel through `PanelRenderData`
-  // instead (#308).
-  onNodeChange?: (params: {
-    id: string;
-    label: string;
-    property: string;
-    value: unknown;
-  }) => void;
+  // instead (#308). Omit it and nested array/children edits won't commit.
+  onNodeChange?: PanelNodeChange;
 }
 
 const isColorProperty = (propertyName: string): boolean => {
@@ -161,7 +163,7 @@ const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
   );
 };
 
-const Field = ({ binding, onNodeChange }: Props) => {
+const Field = ({ binding, onNodeChange }: FieldProps) => {
   // `value` is already structured (its real JS type); `rawValue` is the exact
   // source text used for the raw editors (Items/code/textarea) and as the
   // <input> defaultValue. See #238.

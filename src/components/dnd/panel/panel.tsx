@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 import type { Section } from '~/types';
 import { cn } from '~/utils';
 
-import type { PanelBinding } from '../dnd';
+import type { PanelBinding, PanelNodeChange } from '../dnd';
 import FieldGroup from './field-group';
 
 // Exported as `Live.Dnd.DefaultPanel` (see index.ts) so a consumer can
@@ -37,12 +37,7 @@ export interface PanelProps {
   // `bindings` useMemo — the same data a custom renderPanel receives, so
   // this panel doesn't re-derive it from DataAttrNode a second time (#237).
   bindings: PanelBinding[];
-  onNodeChange?: (params: {
-    id: string;
-    label: string;
-    property: string;
-    value: unknown;
-  }) => void;
+  onNodeChange?: PanelNodeChange;
 }
 
 // `bindings` is flat (one entry per bound property, across every editable

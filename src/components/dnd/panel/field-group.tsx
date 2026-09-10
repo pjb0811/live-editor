@@ -1,14 +1,9 @@
-import type { PanelBinding } from '../dnd';
+import type { PanelBinding, PanelNodeChange } from '../dnd';
 import Field from './field';
 
 interface Props {
   bindings: PanelBinding[];
-  onNodeChange?: (params: {
-    id: string;
-    label: string;
-    property: string;
-    value: unknown;
-  }) => void;
+  onNodeChange?: PanelNodeChange;
 }
 
 // One bordered group per element `id` — the same visual grouping `Node`

@@ -178,6 +178,46 @@ editable elements are only reachable this way. Drop `onNodeChange` and those
 edits are silent no-ops — the fields still render and accept typing, but
 nothing commits.
 
+### Reusing the built-in control for one binding
+
+Wrapping `DefaultPanel` is all-or-nothing: you get the built-in panel for
+every field. When you want your own controls for most bindings but not all
+of them, `Live.Dnd.Field` renders the built-in control for a single
+binding:
+
+```tsx
+renderPanel={({ bindings, onNodeChange }) => (
+  <div>
+    {bindings.map(binding => (
+      <label key={`${binding.id}-${binding.property}`}>
+        <span>{binding.label}</span>
+        {binding.type === 'array' || binding.property === 'children' ? (
+          <Live.Dnd.Field binding={binding} onNodeChange={onNodeChange} />
+        ) : (
+          <MyOwnControl binding={binding} />
+        )}
+      </label>
+    ))}
+  </div>
+)}
+```
+
+`Field` takes nothing but a `PanelBinding` out of `bindings` and the same
+`onNodeChange` — both already part of `PanelRenderData`, so no internal
+wiring is involved.
+
+It renders the **control only**. The built-in panel's `Label (property)`
+heading comes from the row around it, not from `Field`, so supply your own
+as above.
+
+This is worth the most on `items`/`children`/`array` bindings. Those hold
+nested data-bound JSX that `bindings` can't reach, and reproducing the
+editor means re-parsing the value's JSX, walking it for `data-id` /
+`data-binding` pairs, and translating item positions back to array element
+positions before every edit. `Field` already does that. For a plain string,
+number or option binding there's little reason to reach for it — a bare
+`<input>` wired to `binding.onChange` is the simpler answer.
+
 ### `PanelBinding`
 
 | Field | Type | Description |

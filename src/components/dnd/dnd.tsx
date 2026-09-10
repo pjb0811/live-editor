@@ -124,6 +124,18 @@ export interface PaletteRenderData {
   isMobile: boolean;
 }
 
+// The node-level commit callback's shape, named because it's now part of
+// the public surface in three places (`PanelRenderData`, `DefaultPanel`,
+// `Field`) and was previously spelled out inline in each — see #308.
+export interface PanelNodeChange {
+  (params: {
+    id: string;
+    label: string;
+    property: string;
+    value: unknown;
+  }): void;
+}
+
 export interface PanelRenderData {
   item?: Section;
   onChange: (next: Partial<Section>) => void;
@@ -152,12 +164,7 @@ export interface PanelRenderData {
   // fixed `id` — hence this `(id, label, property, value)` channel. Pass it
   // straight through when re-embedding `DefaultPanel`, otherwise nested
   // array/children edits inside it silently don't commit (#308).
-  onNodeChange: (params: {
-    id: string;
-    label: string;
-    property: string;
-    value: unknown;
-  }) => void;
+  onNodeChange: PanelNodeChange;
 }
 
 // One editable data-binding, flattened out of the selected section for a

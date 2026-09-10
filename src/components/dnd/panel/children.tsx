@@ -8,18 +8,14 @@ import { nanoid } from 'nanoid';
 import { type DataAttrNode, findEditableChildren } from '~/utils/ast';
 import { moveSelectedIndices, removeIndices } from '~/utils/selection';
 
+import type { PanelNodeChange } from '../dnd';
 import { BulkActionsBar } from './items';
 import Node from './node';
 
 interface Props {
   value: DataAttrNode[];
   onChange?: (value: string) => void;
-  onNodeChange?: (params: {
-    id: string;
-    label: string;
-    property: string;
-    value: unknown;
-  }) => void;
+  onNodeChange?: PanelNodeChange;
 }
 
 const Children = ({ value, onChange, onNodeChange }: Props) => {
