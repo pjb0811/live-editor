@@ -130,6 +130,15 @@ live-editor/
 - TypeScript → `ts.transpileModule()` → Babel JSX 변환
 - 캐시 키: `코드 내용 + 모듈 키` 조합 해시
 
+### 커밋 메시지
+
+- **영어로 작성한다.** 이 저장소는 npm에 공개 배포되고 커밋 히스토리가 CHANGELOG·릴리스 노트와 함께 외부에서 읽히므로, 이슈/PR과 마찬가지로 커밋도 영어로 통일한다. 대화 응답은 영향받지 않는다.
+- **Conventional Commits** 형식 `type(scope): summary` — 스코프는 건드린 영역(`dnd`, `editor`, `frame` 등). 브랜치명에도 같은 접두어를 쓴다(`.claude/skills/version-management/SKILL.md` 참고).
+- 공개 API 브레이킹 체인지는 타입 뒤에 `!`를 붙인다: `refactor(dnd)!: ...`.
+- 요약은 소문자로 시작하고 마침표를 찍지 않는다. 명령형·명사형 모두 무방하다.
+- 본문은 `-` 목록으로, 76자 내외에서 줄바꿈한다. 각 항목은 **무엇을 바꿨는지가 아니라 왜 그렇게 했는지**를 담는다 — 파일 목록은 diff가 이미 말해준다. 관련 이슈는 그 항목 끝에 `(#308)`처럼 붙인다.
+- AI 도구 트레일러(`Co-authored-by: Claude ...`, `Generated with ...`)는 붙이지 않는다.
+
 ---
 
 ## ⚙️ 개발 명령어
