@@ -2,7 +2,7 @@ import { parse, parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 
 import { BINDING_PROP, DATA_ATTR } from '../../constants';
-import { parseBinding } from './binding';
+import { STRING_VALUED_TYPES, parseBinding } from './binding';
 import { traverse } from './document';
 import { nodeToJSX } from './extract';
 import { generateCode, unwrap, wrap } from './helpers';
@@ -258,13 +258,48 @@ const editJsxAttribute = (
   return [{ start: insertAt, end: insertAt, content: `=${content}` }];
 };
 
+// Whether the attribute being replaced was authored as an array or object
+// literal inside a JSX expression container. Narrower than "is an
+// expression" on purpose: `className={cn(...)}` and `items={rows}` are
+// expressions too, but their value doesn't round-trip through the panel as
+// source text, so a string committed against them stays a string.
+const holdsStructuralExpression = (value?: t.JSXAttribute['value']): boolean =>
+  t.isJSXExpressionContainer(value) &&
+  (t.isArrayExpression(value.expression) ||
+    t.isObjectExpression(value.expression));
+
+// Parses committed text back into the array/object literal it claims to be.
+// Requiring that exact shape is what keeps a plain string from silently
+// becoming something else: `"hello"` parses fine as an identifier, and
+// writing `items={hello}` would turn a value into a variable reference.
+const structuralSource = (value: string): t.Expression | null => {
+  try {
+    const expression = parseExpression(value.trim(), {
+      plugins: ['jsx', 'typescript'],
+    });
+
+    return t.isArrayExpression(expression) || t.isObjectExpression(expression)
+      ? expression
+      : null;
+  } catch {
+    return null;
+  }
+};
+
 // Serialize a structured value into a JSX attribute value, once, at the AST
 // boundary — the single point where the declared `type` is known. Replaces
 // the old first-character heuristic (`startsWith('{')` ...) that guessed
 // string-vs-expression and then let `attrValue` guess again. See #238.
+//
+// `current` is the attribute value being replaced. The declared `type` is
+// authoritative when there is one, but most shipped `items` bindings declare
+// none (`{ label: 'FAQ Items', property: 'items' }`), so the source is the
+// only remaining evidence of what the attribute holds — the same evidence
+// `getStructuredValue` reads on the way out via `attr.isStringLiteral`.
 const buildAttributeValue = (
   value: unknown,
   type?: BindingType,
+  current?: t.JSXAttribute['value'],
 ): t.JSXAttribute['value'] => {
   // Declared object/array bindings: an expression container. A string here
   // is already-serialized source text (from the built-in Items/flatten
@@ -289,6 +324,23 @@ const buildAttributeValue = (
   // string stays a string literal whatever it contains, so a genuine
   // `"{not an expression}"` no longer becomes a JSX expression container.
   if (typeof value === 'string') {
+    // ...except when the attribute being replaced is itself an array/object
+    // literal expression. Those hand the panel their *source text* as
+    // `rawValue`, and the array editors commit that same source text back,
+    // so quoting it would rewrite `items={[...]}` into an `items="[{\n ..."`
+    // string literal and leave the document unparseable. Undeclared-type
+    // `items`/`data` bindings only reach here, which is why they broke.
+    if (
+      holdsStructuralExpression(current) &&
+      !(type && STRING_VALUED_TYPES.has(type))
+    ) {
+      const structural = structuralSource(value);
+
+      if (structural) {
+        return t.jsxExpressionContainer(structural);
+      }
+    }
+
     return t.stringLiteral(value);
   }
 
@@ -314,7 +366,10 @@ const editAttribute = (
   // regenerated. Reuses the parsed name node instead of building a fresh
   // identifier so namespaced/dashed names survive untouched.
   const content = generateCode(
-    t.jsxAttribute(attribute.name, buildAttributeValue(value, type)),
+    t.jsxAttribute(
+      attribute.name,
+      buildAttributeValue(value, type, attribute.value),
+    ),
   );
 
   return [

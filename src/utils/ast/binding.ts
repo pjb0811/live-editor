@@ -314,7 +314,7 @@ export const getCurrentValue = (
 // and `richtext` carry source that is an expression, not a literal, so they
 // stay as their exact source string too (the update pipeline re-inserts
 // them as expressions, not string literals).
-const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
+export const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
   'string',
   'url',
   'date',

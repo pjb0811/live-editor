@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { DRAGGABLE_ITEMS } from '~/constants';
+
+import { getCurrentValue } from './binding';
+import { extract } from './extract';
+import { appendArrayItem, parseItems } from './items';
+import type { DataAttrNode } from './types';
 import { bulkUpdate, update } from './update';
 
 const CODE = `
@@ -126,6 +132,61 @@ describe('update', () => {
 
     expect(result.success).toBe(true);
     expect(result.code).toContain('data={[1, 2, 3]}');
+  });
+
+  // Regression: the shipped `items` bindings declare no `type`
+  // (`{ label: 'FAQ Items', property: 'items' }`), so #238's declared-type
+  // gate sent their committed source text down the string-literal path and
+  // rewrote `items={[...]}` into `items="[{\n  key: ...\"...\" }]"`, which
+  // no longer parses as JSX. The panel's array editors always commit source
+  // text, so every add/remove/move on a shipped section broke the document.
+  describe('an array attribute whose binding declares no type', () => {
+    const arrayCode = `<Collapse data-id="i" data-binding={[{ label: 'Items', property: 'items' }]} items={[{ key: '1' }]} />`;
+
+    it('parses committed source text back into an expression', () => {
+      const result = update(
+        arrayCode,
+        'i',
+        'Items',
+        "[{ key: '1' }, { key: '2' }]",
+        'items',
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('items={[{');
+      expect(result.code).toContain("key: '2'");
+      expect(result.code).not.toContain('items="');
+    });
+
+    it('keeps the result parseable when the items hold JSX', () => {
+      const items = `[{ key: '1', label: <p data-id="j">A</p> }]`;
+      const result = update(arrayCode, 'i', 'Items', items, 'items');
+
+      expect(result.success).toBe(true);
+      expect(() => extract(result.code)).not.toThrow();
+      expect(extract(result.code).length).toBeGreaterThan(0);
+    });
+
+    // The narrow gate: only a value that is itself an array/object literal
+    // replaces the expression. Plain text parses as an identifier, and
+    // writing `items={nope}` would turn a value into a variable reference.
+    it('still quotes a committed value that is not an array or object', () => {
+      const result = update(arrayCode, 'i', 'Items', 'nope', 'items');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('items="nope"');
+    });
+
+    // The #238 guarantee is unchanged for attributes that were never
+    // structural: a string committed against a plain text attribute stays a
+    // string literal even when it happens to parse as an array.
+    it('leaves a non-structural attribute quoted', () => {
+      const code = `<Input data-id="k" data-binding={[{ label: 'P', property: 'placeholder' }]} placeholder="x" />`;
+      const result = update(code, 'k', 'P', '[1, 2]', 'placeholder');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('placeholder="[1, 2]"');
+    });
   });
 
   it('returns success: false and the original code when the data-id is not found', () => {
@@ -577,6 +638,50 @@ describe('bulkUpdate', () => {
     expect(batched.code).toBe(sequential.code);
     expect(batched.code).toBe(
       code.replace('title="t"', 'title="t2"').replace('alt="a"', 'alt="a2"'),
+    );
+  });
+});
+
+// The reported break, end to end on the shipped sections: the panel's array
+// editors (built-in `Items`, or a consumer's own markup over
+// `useItemsEditor`) re-serialize the whole array and commit it as source
+// text, so a single "+ Add" has to survive the round trip through `update`.
+// Neither shipped `items` binding declares a `type`, which is exactly the
+// case #238's gate missed.
+describe('adding an item to a shipped section', () => {
+  const flatten = (nodes: DataAttrNode[]): DataAttrNode[] =>
+    nodes.flatMap(node => [node, ...flatten(node.children ?? [])]);
+
+  it.each([
+    ['FAQ', 'FAQ Items'],
+    ['Stats', 'Stats Items'],
+  ])('keeps the %s section parseable', (name, label) => {
+    const section = DRAGGABLE_ITEMS.find(item => item.name === name)!;
+    const node = flatten(extract(section.code)).find(candidate =>
+      candidate.bindings?.some(binding => binding.property === 'items'),
+    )!;
+    const dataId =
+      node.dataAttributes.find(attr => attr.name === 'data-id')?.value ?? '';
+
+    const before = parseItems(getCurrentValue(node, 'items'))!;
+    const appended = appendArrayItem(
+      getCurrentValue(node, 'items'),
+      'object',
+      () => 'fixed',
+    );
+    const result = update(section.code, dataId, label, appended, 'items');
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain('items={[');
+    expect(result.code).not.toMatch(/items="/);
+
+    // The document still parses, and the panel reads one more item back.
+    const reparsed = flatten(extract(result.code)).find(candidate =>
+      candidate.bindings?.some(binding => binding.property === 'items'),
+    )!;
+
+    expect(parseItems(getCurrentValue(reparsed, 'items'))).toHaveLength(
+      before.length + 1,
     );
   });
 });
