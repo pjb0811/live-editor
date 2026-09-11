@@ -1,17 +1,30 @@
 import DndImpl, {
-  type PaletteRenderData,
+  type DndPalette,
+  type DndPanel,
   type PanelBinding,
   type PanelNodeChange,
-  type PanelRenderData,
   type Props,
 } from './dnd';
 import DraggableItem, {
   type DraggableItemDragState,
   type DraggableItemProps,
 } from './draggable';
+import {
+  Canvas,
+  type DndLayoutProps,
+  type DndRegionProps,
+  Layout,
+  Palette,
+  Panel,
+} from './layout';
+import {
+  type DndLayout,
+  useDndLayout,
+  useDndPalette,
+  useDndPanel,
+} from './layout-context';
 import Field, { type FieldProps } from './panel/field';
 import { ICON_MAP, ICON_OPTIONS } from './panel/icon-map';
-import DefaultPanel, { type PanelProps } from './panel/panel';
 import {
   type ItemsEditor,
   type ItemsEditorActions,
@@ -23,32 +36,55 @@ import {
 } from './panel/use-items-editor';
 
 type DndComponent = typeof DndImpl & {
+  // Owns the dnd-kit wiring for a palette item and hands back `ref` /
+  // `dragProps` / `isDragging`, so a custom palette decides how an item
+  // *looks* without reimplementing how dragging works.
   DraggableItem: typeof DraggableItem;
-  // The built-in property panel, exported so a `renderPanel` can wrap or
-  // partially override it instead of starting from zero — see #237. Its
-  // props line up with `PanelRenderData` (drop `onChange`; `bindings` and
-  // `onNodeChange` are the same), so `<DefaultPanel {...data} />` inside a
-  // `renderPanel` is lossless. See panel.tsx's own doc comment for why
-  // `onNodeChange` is optional there but required in `PanelRenderData`.
-  DefaultPanel: typeof DefaultPanel;
-  // The built-in control for one binding, exported so a custom panel can
-  // mix its own controls with the built-in one per binding instead of
-  // choosing all-or-nothing between `renderPanel` and `DefaultPanel`. Takes
-  // a `PanelBinding` straight out of `bindings` plus `onNodeChange` — both
-  // public `PanelRenderData` fields, so nothing internal is needed to drive
-  // it. Most useful for `items`/`children` bindings, whose editors find
-  // nested data-bound elements a consumer can't reach through `bindings`.
-  // Renders the control only — supply your own label.
+  // The built-in control for one binding, exported so a custom panel can mix
+  // its own controls with the built-in one per binding rather than choosing
+  // all-or-nothing. Takes a `PanelBinding` straight out of `bindings` plus
+  // `onNodeChange` — both `useDndPanel()` fields, so nothing internal is
+  // needed to drive it. Most useful for `items`/`children` bindings, whose
+  // editors find nested data-bound elements a consumer can't reach through
+  // `bindings`. Renders the control only — supply your own label.
   Field: typeof Field;
+  // The three built-in regions, each in the container it needs. Pass them as
+  // `children` of `Live.Dnd` in any arrangement to own the layout, mixing in
+  // your own components where you want to replace one. `Canvas` is the one
+  // that can't be replaced — the droppable, the sortable list and each
+  // section's compiled iframe are Dnd's own machinery — so render it exactly
+  // once wherever the canvas belongs.
+  Palette: typeof Palette;
+  Canvas: typeof Canvas;
+  Panel: typeof Panel;
+  // The built-in arrangement: the 3-pane desktop Splitter, the stacked
+  // mobile canvas, and the mobile FAB/Drawers. What `Live.Dnd` renders when
+  // given no children, exported so children can wrap it (a toolbar above it,
+  // say) or replace one region through its `palette`/`panel` slots without
+  // rebuilding the rest. Also the only way to reach the built-in Splitter
+  // layout without importing `@jbpark/ui-kit` directly, which a consumer may
+  // not have as a direct dependency.
+  Layout: typeof Layout;
 };
 
 const Dnd = DndImpl as DndComponent;
 
 Dnd.DraggableItem = DraggableItem;
-Dnd.DefaultPanel = DefaultPanel;
 Dnd.Field = Field;
+Dnd.Palette = Palette;
+Dnd.Canvas = Canvas;
+Dnd.Panel = Panel;
+Dnd.Layout = Layout;
 
-export { DraggableItem, DefaultPanel, Field };
+export { DraggableItem, Field };
+export { Palette, Canvas, Panel, Layout };
+// The data behind each region, so a component placed in `Live.Dnd`'s children
+// can replace one without losing what drives it: the palette's items and
+// `onAdd`, the panel's selected section/bindings/commit callbacks, and the
+// layout state the built-in mobile chrome runs on (`isMobile`, `selectedId` /
+// `clearSelection`, the palette Drawer's open state) — needed because
+// supplying children replaces that chrome along with the Splitter.
+export { useDndPalette, useDndPanel, useDndLayout };
 // The array-editing engine behind the built-in Items panel, exposed for a
 // consumer who wants their own markup rather than the built-in control
 // (`Field` covers the latter). Everything it returns is `PanelBinding`s, so
@@ -56,17 +92,19 @@ export { DraggableItem, DefaultPanel, Field };
 // bindings to `Field` where the built-in control is good enough.
 export { useItemsEditor };
 // The built-in panel's own `widget: 'icon-picker'` icon set/options —
-// exported so a custom renderPanel can reach icon-picker parity (name ->
+// exported so a custom panel can reach icon-picker parity (name ->
 // lucide-react component, and the same label/value pairs fed to Select)
 // instead of reimplementing an icon library, per #236/#237.
 export { ICON_MAP, ICON_OPTIONS };
 export type {
   Props,
-  PaletteRenderData,
-  PanelRenderData,
+  DndPalette,
+  DndPanel,
+  DndLayout,
+  DndLayoutProps,
+  DndRegionProps,
   PanelBinding,
   PanelNodeChange,
-  PanelProps,
   FieldProps,
   ItemsEditor,
   ItemsEditorActions,

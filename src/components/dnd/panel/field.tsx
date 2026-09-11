@@ -21,7 +21,7 @@ import Children from './children';
 import { ICON_MAP, ICON_OPTIONS } from './icon-map';
 import Items from './items';
 
-// Exported as `Live.Dnd.Field` (see index.ts) so a custom `renderPanel` can
+// Exported as `Live.Dnd.Field` (see index.ts) so a custom panel can
 // hand any single binding back to the built-in control instead of
 // reimplementing it — most usefully for `items`/`children` bindings, whose
 // editors discover nested data-bound elements by re-extracting the value's
@@ -35,7 +35,7 @@ export interface FieldProps {
   // which `binding.onChange`'s single-value shape can't express. This is
   // the node-level escape hatch those two need (see #237's documented
   // items/children boundary). Not part of `PanelBinding`, which is
-  // per-binding; it reaches a custom panel through `PanelRenderData`
+  // per-binding; it reaches a custom panel through `useDndPanel()`
   // instead (#308). Omit it and nested array/children edits won't commit.
   onNodeChange?: PanelNodeChange;
 }

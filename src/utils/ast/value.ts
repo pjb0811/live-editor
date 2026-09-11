@@ -198,7 +198,7 @@ const isEditablePrimitive = (value: unknown): value is EditablePrimitive =>
 // existing content declares neither; it's just an object/array-shaped
 // string because that's what the bound prop actually is (e.g. `style`).
 // This recovers editable leaves from the *parsed value's own shape*
-// instead, so it works on content authored without a renderPanel in mind
+// instead, so it works on content authored without a custom panel in mind
 // — including an array of objects whose own members embed further JSX
 // (Live Editor's shipped Stats/FAQ sections both look like this: an
 // `items` array of `{ key, children }`, where `children` is itself a

@@ -177,17 +177,17 @@ for what does and doesn't apply there.
 
 ### Other exports
 
-- **`Live.Error`** (`LiveError`) — the error display component `Live.Preview`'s `showError` renders compile/runtime errors through internally (`title`, `message`, `onReset` props). Exposed in case you want to render the same error UI yourself. (Unrelated to `renderPanel`'s own edit-validation errors, which surface through a `ui-kit` `Toast` instead.)
+- **`Live.Error`** (`LiveError`) — the error display component `Live.Preview`'s `showError` renders compile/runtime errors through internally (`title`, `message`, `onReset` props). Exposed in case you want to render the same error UI yourself. (Unrelated to the property panel's own edit-validation errors, which surface through a `ui-kit` `Toast` instead.)
 - **`LiveRenderer`** — an alias of `Live.Preview`/`LivePreview`, same component, same props.
 - **`LiveProvider`** — the named export for what `Live` itself is (the shared-context provider). `import Live from '@jbpark/live-editor'` and `import { LiveProvider } from '@jbpark/live-editor'` are the same component.
 
 ### Types
 
-`PaletteRenderData`, `PanelRenderData`, `PanelBinding`, `EditorRenderData`,
+`DndPalette`, `DndPanel`, `DndLayout`, `PanelBinding`, `EditorRenderData`,
 `FrameProps`, and `Section` are all importable from the package root:
 
 ```ts
-import type { PanelRenderData, Section } from '@jbpark/live-editor';
+import type { DndPanel, Section } from '@jbpark/live-editor';
 ```
 
 `BindingType`/`BindingOption` live under a subpath instead — see

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Children, useEffect, useMemo, useState } from 'react';
 
 import {
   DndContext,
@@ -17,16 +17,8 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import {
-  Button,
-  Drawer,
-  Space,
-  Splitter,
-  Toast,
-  Typography,
-} from '@jbpark/ui-kit';
+import { Space, Toast, Typography } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
-import { LayoutGrid } from 'lucide-react';
 
 import { DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
@@ -48,10 +40,10 @@ import { DEFAULT_TEMPLATE } from '../../constants';
 import { cn, preloadScripts } from '../../utils';
 import { usePreview } from '../context/states';
 import { type FrameProps } from '../frame';
-import DraggableItem, { DefaultDraggableItem } from './draggable';
 import Droppable from './droppable';
+import Layout from './layout';
+import { DndRegionContext } from './layout-context';
 import Overlay from './overlay';
-import Panel from './panel';
 import Renderer from './renderer';
 import Sortable from './sortable';
 import { useSectionDocument } from './use-section-document';
@@ -111,22 +103,20 @@ const describeUpdateFailure = (
   }
 };
 
-export interface PaletteRenderData {
+// What `useDndPalette()` returns. Deliberately just data: the drag wiring is
+// a component (`Live.Dnd.DraggableItem`) and the breakpoint belongs to
+// `useDndLayout()`, so a custom palette takes each from where it lives
+// rather than having all three funnelled through one object.
+export interface DndPalette {
   items: Section[];
+  // Appends the item to the canvas. Closes the mobile palette Drawer too,
+  // which is a no-op wherever it isn't open.
   onAdd: (item: Section) => void;
-  DraggableItem: typeof DraggableItem;
-  // True when the palette is rendering inside the mobile Drawer, where a
-  // tap can't be a failed drag attempt (there's nothing to drag onto —
-  // the canvas is stacked behind the Drawer) and native dblclick synthesis
-  // from double-tap is unreliable on touch. Custom renderPalette
-  // implementations should treat a single click/tap as "add" here instead
-  // of relying on onDoubleClick.
-  isMobile: boolean;
 }
 
-// The node-level commit callback's shape, named because it's now part of
-// the public surface in three places (`PanelRenderData`, `DefaultPanel`,
-// `Field`) and was previously spelled out inline in each — see #308.
+// The node-level commit callback's shape, named because it's part of the
+// public surface in two places (`DndPanel`, `Field`) and was previously
+// spelled out inline in each — see #308.
 export interface PanelNodeChange {
   (params: {
     id: string;
@@ -136,12 +126,15 @@ export interface PanelNodeChange {
   }): void;
 }
 
-export interface PanelRenderData {
+// What `useDndPanel()` returns — everything the built-in property panel runs
+// on, so a custom panel starts from the same place rather than re-deriving
+// any of it.
+export interface DndPanel {
   item?: Section;
   onChange: (next: Partial<Section>) => void;
   onDelete: (id: string) => void;
   // Alternative to dragging a section to reorder it — needed since the
-  // canvas sits behind the mobile Drawer this panel renders in, so
+  // canvas sits behind the mobile Drawer the panel renders in, so
   // there's nothing visible to drag onto there.
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -161,14 +154,14 @@ export interface PanelRenderData {
   // own JSX. Those `data-id`s never reach `bindings` (the top-level
   // `extract()` doesn't walk into an attribute expression), and no single
   // `PanelBinding.onChange` can address them since each one closes over a
-  // fixed `id` — hence this `(id, label, property, value)` channel. Pass it
-  // straight through when re-embedding `DefaultPanel`, otherwise nested
+  // fixed `id` — hence this `(id, label, property, value)` channel. Hand it
+  // to `Live.Dnd.Field` along with the binding, otherwise nested
   // array/children edits inside it silently don't commit (#308).
   onNodeChange: PanelNodeChange;
 }
 
 // One editable data-binding, flattened out of the selected section for a
-// custom renderPanel. Exposes just what a consumer needs to render its own
+// custom panel. Exposes just what a consumer needs to render its own
 // control — the declared `type`, the current `value`, and an `onChange`
 // that commits through Dnd's AST-update pipeline — so it never has to touch
 // DataAttrNode/parseBinding/getCurrentValue itself.
@@ -184,8 +177,8 @@ export interface PanelBinding {
   // -> checkbox, ...). `undefined` means a plain string binding.
   type?: BindingType;
   // Presentation, as opposed to `type`'s data kind — an open string, not a
-  // closed enum, since a custom renderPanel can declare any widget it
-  // wants (e.g. `'slider'`) and switch on it itself. The built-in panel
+  // closed enum, since a custom panel can declare any widget it wants
+  // (e.g. `'slider'`) and switch on it itself. The built-in panel
   // only recognizes `'icon-picker'`/`'asset-picker'`; anything else falls
   // back to the `type`-appropriate default control. See #236.
   widget?: string;
@@ -234,13 +227,21 @@ export interface Props extends Omit<
   dynamicTailwind?: boolean;
   provider?: (children: React.ReactNode) => React.ReactNode;
   onChange?: (value: string) => void;
-  // Full replacements for the built-in left palette / right panel — receive
-  // the same data/callbacks Dnd itself uses, so drag-and-drop and field
-  // editing keep working exactly as before, just with custom markup. Used
-  // for both the desktop layout and the mobile drawer, since those already
-  // render identical content today.
-  renderPalette?: (data: PaletteRenderData) => React.ReactNode;
-  renderPanel?: (data: PanelRenderData) => React.ReactNode;
+  // The single customization slot. Omit it for the built-in editor. Supply
+  // it and you own the arrangement: compose `Live.Dnd.Palette` /
+  // `Live.Dnd.Canvas` / `Live.Dnd.Panel` (each the built-in region, in the
+  // container it needs) and your own components in any structure you like.
+  // The drag context wraps all of it, so drag-and-drop and field editing
+  // keep working wherever a region lands. Your components read the same data
+  // the built-ins do through `useDndPalette()` / `useDndPanel()` /
+  // `useDndLayout()`.
+  //
+  // Note this replaces the mobile chrome too — the FAB and both Drawers live
+  // in `Live.Dnd.Layout`, which is what runs when children are omitted.
+  // Render it yourself (`<Live.Dnd.Layout panel={<MyPanel />} />`) to keep
+  // the built-in arrangement while swapping one region. Render `Canvas` at
+  // most once either way.
+  children?: React.ReactNode;
 }
 
 const conditionalModifiers: Modifier = args => {
@@ -263,8 +264,7 @@ const Dnd = ({
   frame,
   dynamicTailwind = false,
   provider,
-  renderPalette,
-  renderPanel,
+  children,
   ...restProps
 }: Props) => {
   const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false);
@@ -354,8 +354,9 @@ const Dnd = ({
   // Reads only the extracted `code` local, not `selectedItem`, so the
   // compiler can verify this dependency array actually matches what the
   // body reads — matches Panel's own former version of this same logic,
-  // now shared here so both the built-in Panel and a custom renderPanel
-  // get the same extraction/update pipeline instead of each needing it.
+  // now shared here so both the built-in Panel and a custom one built on
+  // `useDndPanel()` get the same extraction/update pipeline instead of each
+  // needing it.
   const selectedCode = selectedItem?.code;
   const { fields, updatedCode, parseError } = useMemo(() => {
     if (!selectedCode) {
@@ -424,11 +425,11 @@ const Dnd = ({
   // Flattens the extracted `fields` (one DataAttrNode per element) down to
   // one PanelBinding per bound property — the same walk the built-in
   // FieldEditor/Node does internally (data-id + parsed data-binding +
-  // current value), but handed to a custom renderPanel as plain data so it
-  // can render its own controls. Kept in a useMemo keyed on `fields` alone;
-  // `onFieldChange` closes over `updatedCode`/`selectedItem` but is stable
-  // enough per render, and rebuilding on every render would defeat the memo
-  // guarding renderPanel's children.
+  // current value), but published through `useDndPanel()` as plain data so a
+  // custom panel can render its own controls. Kept in a useMemo keyed on
+  // `fields` alone; `onFieldChange` closes over `updatedCode`/`selectedItem`
+  // but is stable enough per render, and rebuilding this array on every
+  // render would re-render every panel consuming it.
   const bindings = useMemo<PanelBinding[]>(() => {
     return fields.flatMap(node => {
       const dataId = node.dataAttributes.find(a => a.name === 'data-id')?.value;
@@ -478,81 +479,35 @@ const Dnd = ({
     }
   }, [frame?.scripts]);
 
-  const renderPaletteItems = (
-    onAdd: (item: Section) => void,
-    forMobileDrawer = false,
-  ) => {
-    const paletteItems = items?.length ? items : DRAGGABLE_ITEMS;
-
-    if (renderPalette) {
-      return renderPalette({
-        items: paletteItems,
-        onAdd,
-        DraggableItem,
-        isMobile: forMobileDrawer,
-      });
-    }
-
-    return (
-      <Space orientation="vertical" align="start">
-        {paletteItems.map(item => (
-          <DefaultDraggableItem
-            key={item.id}
-            item={item}
-            onAdd={onAdd}
-            tapToAdd={forMobileDrawer}
-          />
-        ))}
-      </Space>
-    );
+  // Data, not nodes: the built-in palette and panel read these back through
+  // `useDndPalette()`/`useDndPanel()` exactly as a custom one does, so
+  // there's a single path and no way for the public surface to drift into a
+  // subset of what the built-ins use — the point of #237.
+  const palette: DndPalette = {
+    items: items?.length ? items : DRAGGABLE_ITEMS,
+    onAdd: (item: Section) => {
+      addItem(item);
+      setMobilePaletteOpen(false);
+    },
   };
 
-  const renderPanelContent = () => {
-    const canMoveUp = selectedIndex > 0;
-    const canMoveDown =
-      selectedIndex >= 0 && selectedIndex < sections.length - 1;
-
-    if (renderPanel) {
-      return renderPanel({
-        item: selectedItem,
-        onChange,
-        onDelete,
-        onMoveUp: () => moveSection(selectedId, 'up'),
-        onMoveDown: () => moveSection(selectedId, 'down'),
-        canMoveUp,
-        canMoveDown,
-        bindings,
-        onNodeChange: onFieldChange,
-      });
-    }
-
-    return (
-      <Panel
-        item={selectedItem}
-        onDelete={onDelete}
-        onMoveUp={() => moveSection(selectedId, 'up')}
-        onMoveDown={() => moveSection(selectedId, 'down')}
-        canMoveUp={canMoveUp}
-        canMoveDown={canMoveDown}
-        bindings={bindings}
-        onNodeChange={onFieldChange}
-      />
-    );
+  const panel: DndPanel = {
+    item: selectedItem,
+    onChange,
+    onDelete,
+    onMoveUp: () => moveSection(selectedId, 'up'),
+    onMoveDown: () => moveSection(selectedId, 'down'),
+    canMoveUp: selectedIndex > 0,
+    canMoveDown: selectedIndex >= 0 && selectedIndex < sections.length - 1,
+    bindings,
+    onNodeChange: onFieldChange,
   };
 
-  // Shared between the mobile (full-width) and desktop (Splitter middle
-  // panel) layouts below, so the drop target/sortable-list markup isn't
-  // duplicated per branch.
+  // Content only — the frame container that wraps this (`data-frame-container`
+  // plus the containment styles) belongs to `Live.Dnd.Canvas`, so a custom
+  // layout can't accidentally drop it while still placing the canvas.
   const canvas = (
-    <div
-      className="relative h-full w-full overflow-y-auto"
-      data-frame-container
-      style={{
-        isolation: 'isolate',
-        contain: 'layout style',
-        transform: 'translateZ(0)',
-      }}
-    >
+    <>
       <Droppable
         className={cn(
           !sections.length && 'h-full',
@@ -604,7 +559,7 @@ const Dnd = ({
           </SortableContext>
         )}
       </Droppable>
-    </div>
+    </>
   );
 
   return (
@@ -628,60 +583,29 @@ const Dnd = ({
           )}
           {...restProps}
         >
-          {isMobile ? (
-            canvas
-          ) : (
-            <Splitter withHandle orientation="horizontal">
-              <Splitter.Panel
-                defaultSize="20%"
-                minSize="15%"
-                maxSize="35%"
-                collapsible
-              >
-                <div className="h-full overflow-y-auto bg-gray-50 p-4">
-                  {renderPaletteItems(addItem)}
-                </div>
-              </Splitter.Panel>
-              <Splitter.Panel defaultSize="60%">{canvas}</Splitter.Panel>
-              <Splitter.Panel
-                defaultSize="20%"
-                minSize="15%"
-                maxSize="35%"
-                collapsible
-              >
-                {renderPanelContent()}
-              </Splitter.Panel>
-            </Splitter>
-          )}
-          <Button
-            type="primary"
-            shape="circle"
-            icon={<LayoutGrid />}
-            aria-label="Components"
-            className="fixed right-4 bottom-4 z-20 md:hidden"
-            onClick={() => setMobilePaletteOpen(true)}
-          />
-          <Drawer
-            open={isMobile && mobilePaletteOpen}
-            onClose={() => setMobilePaletteOpen(false)}
-            direction="bottom"
-            size="large"
-            title="Components"
+          {/* Not memoized: `palette`, `panel` and `canvas` are all rebuilt
+              each render anyway, so a memo would only add a dependency list
+              to keep in sync. */}
+          <DndRegionContext.Provider
+            value={{
+              palette,
+              panel,
+              canvas,
+              isMobile,
+              selectedId,
+              clearSelection,
+              paletteOpen: mobilePaletteOpen,
+              setPaletteOpen: setMobilePaletteOpen,
+            }}
           >
-            {renderPaletteItems(item => {
-              addItem(item);
-              setMobilePaletteOpen(false);
-            }, true)}
-          </Drawer>
-          <Drawer
-            open={isMobile && Boolean(selectedId)}
-            onClose={clearSelection}
-            direction="bottom"
-            size="large"
-            title="Properties"
-          >
-            {renderPanelContent()}
-          </Drawer>
+            {/* `Children.toArray` rather than a plain `children ??`: a JSX
+                comment, or a `{cond && <MyLayout />}` that fell through,
+                leaves `children` set but empty — and honouring that
+                literally renders an editor with no regions at all, which
+                looks like a broken build rather than a mistake in the
+                layout. Falling back keeps the failure legible. */}
+            {Children.toArray(children).length ? children : <Layout />}
+          </DndRegionContext.Provider>
         </div>
         <DragOverlay>
           <Overlay

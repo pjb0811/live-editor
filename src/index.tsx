@@ -2,14 +2,15 @@ import './index.css';
 
 import Context from './components/context';
 import LiveDnd, {
+  type DndLayout,
+  type DndPalette,
+  type DndPanel,
   type FieldProps,
   type ItemsEditor,
   type ItemsEditorItem,
   type ItemsEditorOptions,
-  type PaletteRenderData,
   type PanelBinding,
   type PanelNodeChange,
-  type PanelRenderData,
 } from './components/dnd';
 import LiveEditor, { type EditorRenderData } from './components/editor';
 import LiveError from './components/error';
@@ -34,10 +35,11 @@ export {
 };
 
 export type {
-  PaletteRenderData,
+  DndPalette,
+  DndPanel,
+  DndLayout,
   PanelBinding,
   PanelNodeChange,
-  PanelRenderData,
   FieldProps,
   ItemsEditor,
   ItemsEditorItem,

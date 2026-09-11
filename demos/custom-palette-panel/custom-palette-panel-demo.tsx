@@ -5,9 +5,13 @@ import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
 import Context from '~/components/context';
 import Dnd, {
+  DraggableItem,
   Field,
   type PanelBinding,
   type PanelNodeChange,
+  useDndLayout,
+  useDndPalette,
+  useDndPanel,
   useItemsEditor,
 } from '~/components/dnd';
 import { DEFAULT_TEMPLATE } from '~/constants';
@@ -103,7 +107,7 @@ const ParsedValueEditor = ({
   </div>
 );
 
-// `binding.widget` is an open string (#236) — a custom renderPanel switches
+// `binding.widget` is an open string (#236) — a custom panel switches
 // on it to render whatever control it wants; the built-in panel only knows
 // `icon-picker`/`asset-picker`, so anything else (like `'slider'` here) is
 // exclusively this demo's own choice, not a value the library defines.
@@ -332,23 +336,267 @@ const HeadlessItems = ({
 
 type PanelMode = 'custom' | 'wrap' | 'headless';
 
-// Custom Palette & Panel demo. Mirrors the app's `pages/docs/dnd-custom-render`:
-// `Dnd`'s `renderPalette`/`renderPanel` fully replace the built-in layouts.
-// Drag-and-drop keeps working through the exported `DraggableItem`, and
-// `renderPanel` hands over `bindings` (one per editable field) so custom
-// controls still commit through the same AST-update pipeline.
+type LayoutMode = 'built-in' | 'stacked';
+
+// The palette, replaced end to end. `useDndPalette()` hands over the items
+// and the `onAdd` that drops one onto the canvas; `Live.Dnd.DraggableItem`
+// keeps the dnd-kit wiring, so this only decides what an item looks like.
+// `isMobile` comes from `useDndLayout()` — the same signal the built-in
+// palette uses to decide that a tap should add rather than start a drag.
+const MyPalette = () => {
+  const { items, onAdd } = useDndPalette();
+  const { isMobile } = useDndLayout();
+
+  return (
+    <div className="h-full space-y-2 overflow-y-auto p-2">
+      {items.map(item => (
+        <DraggableItem key={item.id} item={item}>
+          {({ ref, dragProps, isDragging }) => (
+            <div
+              ref={ref}
+              {...dragProps}
+              onClick={isMobile ? () => onAdd(item) : undefined}
+              onDoubleClick={() => onAdd(item)}
+              className={cn(
+                'cursor-grab rounded-lg',
+                'border border-dashed border-blue-300',
+                'bg-blue-50 px-3 py-2',
+                'text-sm font-medium text-blue-700',
+                isDragging && 'opacity-50',
+              )}
+            >
+              {item.name}
+            </div>
+          )}
+        </DraggableItem>
+      ))}
+    </div>
+  );
+};
+
+// The panel, replaced end to end. Being a component rather than a callback is
+// what lets the fields below hold their own state — `ValidatedField` keeps a
+// validation message, `useItemsEditor` keeps a selection — without this
+// having to hoist any of it.
+const MyPanel = ({ mode }: { mode: PanelMode }) => {
+  const {
+    item,
+    onDelete,
+    onMoveUp,
+    onMoveDown,
+    canMoveUp,
+    canMoveDown,
+    bindings,
+    onNodeChange,
+  } = useDndPanel();
+
+  if (!item) {
+    return (
+      <p className="p-4 text-sm text-gray-500">
+        Select a section on the canvas.
+      </p>
+    );
+  }
+
+  return (
+    <div className="h-full space-y-3 overflow-y-auto p-4">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold">{item.name}</span>
+        <div className="flex items-center gap-1">
+          <Button
+            size="small"
+            icon={<ChevronUp />}
+            disabled={!canMoveUp}
+            onClick={onMoveUp}
+            aria-label="Move section up"
+          />
+          <Button
+            size="small"
+            icon={<ChevronDown />}
+            disabled={!canMoveDown}
+            onClick={onMoveDown}
+            aria-label="Move section down"
+          />
+          <Button
+            danger
+            size="small"
+            icon={<Trash />}
+            onClick={() => onDelete(item.id)}
+            aria-label="Delete section"
+          />
+        </div>
+      </div>
+      {!bindings.length && (
+        <p className="text-xs text-gray-400">No editable elements.</p>
+      )}
+      {/* `bindings` is plain data — switch on each entry's `type` to render
+          whatever control you want. onChange commits through the same AST
+          pipeline as the built-in panel. */}
+      {bindings.map((binding, index) => {
+        // An `items`/`children`/array binding holds nested data-bound JSX
+        // that `bindings` alone can't reach (see #308). Flattening it gives
+        // a wall of tiny inputs at best, a raw source textarea at worst — so
+        // hand these back to the built-in control and keep the hand-rolled
+        // ones for the simple types. This is the point of `Live.Dnd.Field`:
+        // the choice is per binding, not all-or-nothing.
+        const isStructural =
+          binding.type === 'array' ||
+          binding.property === 'items' ||
+          binding.property === 'data' ||
+          binding.property === 'children';
+
+        const isMultiline =
+          binding.type === 'jsx' || binding.type === 'richtext';
+        // Some `children` bindings hold a serialized document tree rather
+        // than a few simple fields — Features' "Feature Cards" flattens to
+        // 240 leaves (tag names, ids, individual attributes...), which is
+        // technically correct but useless as a form. Capping the entry count
+        // treats those as opaque instead of rendering a wall of tiny inputs;
+        // a value long enough to likely be one of these (or just a long
+        // plain string) falls back to a textarea rather than the single-line
+        // ValidatedField either way.
+        const flattened =
+          isMultiline || isStructural
+            ? null
+            : flattenEditableValue(binding.rawValue);
+        const entries =
+          flattened && flattened.length <= MAX_EDITABLE_ENTRIES
+            ? flattened
+            : null;
+        const useTextarea =
+          isMultiline || (!entries && binding.rawValue.length > 120);
+
+        return (
+          <label
+            key={`${binding.id}-${binding.property}-${index}`}
+            className="block space-y-1"
+          >
+            <span className="text-xs font-semibold text-gray-700">
+              {binding.label}
+            </span>
+            {isStructural ? (
+              // Same binding, two ways to render it: the built-in control,
+              // or your own markup over the same engine via
+              // `useItemsEditor`.
+              mode === 'headless' ? (
+                <HeadlessItems binding={binding} onNodeChange={onNodeChange} />
+              ) : (
+                // Renders the control only — the label above is ours, which
+                // is why `Field` doesn't draw one.
+                <Field binding={binding} onNodeChange={onNodeChange} />
+              )
+            ) : entries ? (
+              <ParsedValueEditor binding={binding} entries={entries} />
+            ) : binding.widget === 'slider' ? (
+              <SliderField binding={binding} />
+            ) : binding.options ? (
+              <select
+                className="w-full rounded border border-gray-300 px-2 py-1
+                  text-sm"
+                value={binding.rawValue}
+                onChange={e => binding.onChange(e.target.value)}
+              >
+                {binding.options.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : useTextarea ? (
+              <textarea
+                className="w-full rounded border border-gray-300 px-2 py-1
+                  text-sm"
+                rows={3}
+                defaultValue={binding.rawValue}
+                onBlur={e => binding.onChange(e.target.value)}
+              />
+            ) : (
+              <ValidatedField binding={binding} />
+            )}
+          </label>
+        );
+      })}
+    </div>
+  );
+};
+
+// The other way to replace a region: keep the built-in panel and only add
+// around it. `Live.Dnd.Panel` reads `useDndPanel()` itself, so wrapping it
+// can't drop a callback on the way through — `onNodeChange` included, which
+// nested array/children edits need to commit (#308). `h-auto` overrides the
+// region's own `h-full` (className is tailwind-merged over the defaults), so
+// the header above it doesn't push it out of view.
+const WrappedPanel = () => (
+  <div className="h-full overflow-y-auto">
+    <p
+      className={cn(
+        'border-b border-gray-200 bg-gray-50',
+        'px-4 py-2 text-xs text-gray-600',
+      )}
+    >
+      Custom header — the built-in panel below is unchanged.
+    </p>
+    <Dnd.Panel className="h-auto" />
+  </div>
+);
+
+// A layout `Live.Dnd` doesn't ship: the palette as a strip across the top,
+// the canvas filling what's left, the panel as a fixed rail on the right.
+// `Canvas` is the one region that has to stay Dnd's (it owns the droppable,
+// the sortable list and the scroll container each section's iframe measures
+// itself against), so all this has to get right is where things go.
 //
-// The "Wrap built-in" mode shows the other way to use `renderPanel`: keep
-// `DefaultPanel` and only add around it. Spreading the whole render data in
-// is what makes that lossless — `onNodeChange` rides along with it, and
-// without it nested array/children edits (drop in Stats and edit a card's
-// title) wouldn't commit (#308).
+// Note this drops the built-in mobile chrome (the floating palette button and
+// the two Drawers) along with the built-in Splitter; a layout that needs them
+// either builds its own from `useDndLayout()` or goes back to
+// `Live.Dnd.Layout` and replaces one region through its slots.
+const StackedLayout = ({
+  palette,
+  panel,
+}: {
+  palette: React.ReactNode;
+  panel: React.ReactNode;
+}) => (
+  <div className="flex h-full min-h-0 w-full flex-col">
+    <div
+      className={cn(
+        'max-h-32 shrink-0 overflow-y-auto',
+        'border-b border-gray-200 p-2',
+      )}
+    >
+      {palette}
+    </div>
+    <div className="flex min-h-0 flex-1">
+      <Dnd.Canvas className="min-w-0 flex-1" />
+      <div className="w-72 shrink-0 border-l border-gray-200">{panel}</div>
+    </div>
+  </div>
+);
+
+// Custom Palette & Panel demo. Mirrors the app's `pages/docs/dnd-custom-render`:
+// `Live.Dnd` renders its built-in layout until you give it children, and every
+// region behind that layout is reachable as data — `useDndPalette()`,
+// `useDndPanel()`, `useDndLayout()` — so a replacement is an ordinary
+// component rather than a callback. Drag-and-drop keeps working through the
+// exported `DraggableItem`, and `useDndPanel()`'s `bindings` (one per editable
+// field) keep custom controls committing through the same AST-update pipeline.
+//
+// The "Wrap built-in" mode shows the other end of the range: keep
+// `Live.Dnd.Panel` and only add around it (see `WrappedPanel`).
 //
 // "Headless items" is the third option: keep your own markup but reuse the
 // array-editing engine through `useItemsEditor` (see `HeadlessItems`).
+//
+// The Layout toggle is the outer layer. "Built-in" keeps the shipped 3-pane
+// Splitter and mobile chrome and only fills its `palette`/`panel` slots;
+// "Stacked" replaces the arrangement itself (see `StackedLayout`).
 const CustomPalettePanelDemo = () => {
   const [value, setValue] = useState(DEFAULT_TEMPLATE);
   const [mode, setMode] = useState<PanelMode>('custom');
+  const [layout, setLayout] = useState<LayoutMode>('built-in');
+
+  const palette = <MyPalette />;
+  const panel = mode === 'wrap' ? <WrappedPanel /> : <MyPanel mode={mode} />;
 
   return (
     <Context>
@@ -381,6 +629,21 @@ const CustomPalettePanelDemo = () => {
           >
             Headless items
           </Button>
+          <span className="ml-4 text-xs text-gray-600">Layout</span>
+          <Button
+            size="small"
+            type={layout === 'built-in' ? 'primary' : 'default'}
+            onClick={() => setLayout('built-in')}
+          >
+            Built-in
+          </Button>
+          <Button
+            size="small"
+            type={layout === 'stacked' ? 'primary' : 'default'}
+            onClick={() => setLayout('stacked')}
+          >
+            Stacked
+          </Button>
         </div>
         <Dnd
           value={value}
@@ -388,215 +651,13 @@ const CustomPalettePanelDemo = () => {
           frame={{ mode: 'shadow', syncStyle: true }}
           dynamicTailwind
           className="min-h-0 flex-1 overflow-y-auto"
-          renderPalette={({ items, onAdd, DraggableItem, isMobile }) => (
-            <div className="space-y-2 p-2">
-              {items.map(item => (
-                <DraggableItem key={item.id} item={item}>
-                  {({ ref, dragProps, isDragging }) => (
-                    <div
-                      ref={ref}
-                      {...dragProps}
-                      onClick={isMobile ? () => onAdd(item) : undefined}
-                      onDoubleClick={() => onAdd(item)}
-                      className={cn(
-                        'cursor-grab rounded-lg',
-                        'border border-dashed border-blue-300',
-                        'bg-blue-50 px-3 py-2',
-                        'text-sm font-medium text-blue-700',
-                        isDragging && 'opacity-50',
-                      )}
-                    >
-                      {item.name}
-                    </div>
-                  )}
-                </DraggableItem>
-              ))}
-            </div>
+        >
+          {layout === 'stacked' ? (
+            <StackedLayout palette={palette} panel={panel} />
+          ) : (
+            <Dnd.Layout palette={palette} panel={panel} />
           )}
-          renderPanel={data => {
-            if (mode === 'wrap') {
-              // Spreading the whole render data keeps the built-in panel
-              // fully functional — including `onNodeChange`, which nested
-              // array/children editors need to commit.
-              return (
-                <div className="h-full overflow-y-auto">
-                  <p
-                    className={cn(
-                      'border-b border-gray-200 bg-gray-50',
-                      'px-4 py-2 text-xs text-gray-600',
-                    )}
-                  >
-                    Custom header — the built-in panel below is unchanged.
-                  </p>
-                  <Dnd.DefaultPanel {...data} />
-                </div>
-              );
-            }
-
-            const {
-              item,
-              onDelete,
-              onMoveUp,
-              onMoveDown,
-              canMoveUp,
-              canMoveDown,
-              bindings,
-              onNodeChange,
-            } = data;
-
-            return (
-              <div className="space-y-3 p-4">
-                {item ? (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">{item.name}</span>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="small"
-                          icon={<ChevronUp />}
-                          disabled={!canMoveUp}
-                          onClick={onMoveUp}
-                          aria-label="Move section up"
-                        />
-                        <Button
-                          size="small"
-                          icon={<ChevronDown />}
-                          disabled={!canMoveDown}
-                          onClick={onMoveDown}
-                          aria-label="Move section down"
-                        />
-                        <Button
-                          danger
-                          size="small"
-                          icon={<Trash />}
-                          onClick={() => onDelete(item.id)}
-                          aria-label="Delete section"
-                        />
-                      </div>
-                    </div>
-                    {bindings.length ? (
-                      // `bindings` is plain data — switch on each entry's `type`
-                      // to render whatever control you want. onChange commits
-                      // through the same AST pipeline as the built-in panel.
-                      bindings.map((binding, index) => {
-                        // An `items`/`children`/array binding holds nested
-                        // data-bound JSX that `bindings` alone can't reach
-                        // (see #308). Flattening it gives a wall of tiny
-                        // inputs at best, a raw source textarea at worst —
-                        // so hand these back to the built-in control and
-                        // keep the hand-rolled ones for the simple types.
-                        // This is the point of `Live.Dnd.Field`: the choice
-                        // is per binding, not all-or-nothing.
-                        const isStructural =
-                          binding.type === 'array' ||
-                          binding.property === 'items' ||
-                          binding.property === 'data' ||
-                          binding.property === 'children';
-
-                        const isMultiline =
-                          binding.type === 'jsx' || binding.type === 'richtext';
-                        // Some `children` bindings hold a serialized document
-                        // tree rather than a few simple fields — Features'
-                        // "Feature Cards" flattens to 240 leaves (tag names,
-                        // ids, individual attributes...), which is technically
-                        // correct but useless as a form. Capping the entry
-                        // count treats those as opaque instead of rendering a
-                        // wall of tiny inputs; a value long enough to likely be
-                        // one of these (or just a long plain string) falls
-                        // back to a textarea rather than the single-line
-                        // ValidatedField either way.
-                        const flattened =
-                          isMultiline || isStructural
-                            ? null
-                            : flattenEditableValue(binding.rawValue);
-                        const entries =
-                          flattened && flattened.length <= MAX_EDITABLE_ENTRIES
-                            ? flattened
-                            : null;
-                        const useTextarea =
-                          isMultiline ||
-                          (!entries && binding.rawValue.length > 120);
-
-                        return (
-                          <label
-                            key={`${binding.id}-${binding.property}-${index}`}
-                            className="block space-y-1"
-                          >
-                            <span
-                              className="text-xs font-semibold text-gray-700"
-                            >
-                              {binding.label}
-                            </span>
-                            {isStructural ? (
-                              // Same binding, two ways to render it: the
-                              // built-in control, or your own markup over
-                              // the same engine via `useItemsEditor`.
-                              mode === 'headless' ? (
-                                <HeadlessItems
-                                  binding={binding}
-                                  onNodeChange={onNodeChange}
-                                />
-                              ) : (
-                                // Renders the control only — the label above
-                                // is ours, which is why `Field` doesn't draw
-                                // one.
-                                <Field
-                                  binding={binding}
-                                  onNodeChange={onNodeChange}
-                                />
-                              )
-                            ) : entries ? (
-                              <ParsedValueEditor
-                                binding={binding}
-                                entries={entries}
-                              />
-                            ) : binding.widget === 'slider' ? (
-                              <SliderField binding={binding} />
-                            ) : binding.options ? (
-                              <select
-                                className="w-full rounded border border-gray-300
-                                  px-2 py-1 text-sm"
-                                value={binding.rawValue}
-                                onChange={e => binding.onChange(e.target.value)}
-                              >
-                                {binding.options.map(option => (
-                                  <option
-                                    key={option.value}
-                                    value={option.value}
-                                  >
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : useTextarea ? (
-                              <textarea
-                                className="w-full rounded border border-gray-300
-                                  px-2 py-1 text-sm"
-                                rows={3}
-                                defaultValue={binding.rawValue}
-                                onBlur={e => binding.onChange(e.target.value)}
-                              />
-                            ) : (
-                              <ValidatedField binding={binding} />
-                            )}
-                          </label>
-                        );
-                      })
-                    ) : (
-                      <p className="text-xs text-gray-400">
-                        No editable elements.
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-sm text-gray-500">
-                    Select a section on the canvas.
-                  </p>
-                )}
-              </div>
-            );
-          }}
-        />
+        </Dnd>
       </div>
     </Context>
   );

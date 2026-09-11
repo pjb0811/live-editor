@@ -5,20 +5,22 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/constants';
 
 import { PreviewContext } from '../context/states';
-import Dnd, { type PanelRenderData } from './dnd';
+import Dnd, { type DndPanel } from './dnd';
+import { Canvas } from './layout';
+import { useDndPanel } from './layout-context';
 import Field from './panel/field';
 
 // The canvas isn't what's under test here, and each section renders a
 // compiled component inside an iframe — none of which jsdom needs to do for
-// us to inspect the data `renderPanel` is handed.
+// us to inspect the data `useDndPanel()` hands over.
 vi.mock('./renderer', () => ({
   default: () => <div data-testid="renderer" />,
 }));
 
-// jsdom has no ResizeObserver, which `useResponsiveSize` (via ui-kit's
-// breakpoint hook) constructs on mount. Never observes anything here — the
-// default breakpoint is enough to land on the desktop layout, where the
-// panel renders unconditionally.
+// jsdom has no ResizeObserver, which `useResponsiveSize` constructs on
+// mount. Never observes anything here, which is fine: the breakpoint only
+// decides how the *built-in* layout arranges itself, and these tests supply
+// their own children instead. See layout.test.tsx for the breakpoint paths.
 beforeAll(() => {
   globalThis.ResizeObserver = class {
     observe() {}
@@ -35,24 +37,26 @@ const documentWith = (sectionCode: string) =>
     `<main id="app-container">${sectionCode}</main>`,
   );
 
-// Renders Dnd with a custom `renderPanel`, selects the only section by
-// clicking it on the canvas, and hands back the data the panel last
-// received plus the Dnd-level onChange spy.
+// Renders Dnd with a custom layout whose panel is nothing but a probe on
+// `useDndPanel()`, selects the only section by clicking it on the canvas, and
+// hands back the data the panel last read plus the Dnd-level onChange spy.
 const renderWithPanel = () => {
   const onChange = vi.fn();
   const setCode = vi.fn();
-  let data: PanelRenderData | undefined;
+  let data: DndPanel | undefined;
+
+  const Probe = () => {
+    data = useDndPanel();
+
+    return <div data-testid="panel" />;
+  };
 
   const { container } = render(
     <PreviewContext.Provider value={{ code: '', setCode }}>
-      <Dnd
-        value={documentWith(stats.code)}
-        onChange={onChange}
-        renderPanel={next => {
-          data = next;
-          return <div data-testid="panel" />;
-        }}
-      />
+      <Dnd value={documentWith(stats.code)} onChange={onChange}>
+        <Canvas />
+        <Probe />
+      </Dnd>
     </PreviewContext.Provider>,
   );
 
@@ -67,7 +71,7 @@ const renderWithPanel = () => {
   return { onChange, getData: () => data };
 };
 
-describe('renderPanel data', () => {
+describe('useDndPanel() data', () => {
   it('forwards the node-level commit callback', () => {
     const { getData } = renderWithPanel();
 

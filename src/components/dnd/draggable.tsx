@@ -16,7 +16,7 @@ export interface DraggableItemProps {
 }
 
 // Owns the dnd-kit wiring (useDraggable + the `type: 'new-item'` data shape
-// Dnd's onDragEnd expects) so a custom renderPalette only has to decide how
+// Dnd's onDragEnd expects) so a custom palette only has to decide how
 // an item *looks*, not how dragging itself works. Exported as
 // Dnd.DraggableItem for that purpose; also used internally for the default
 // palette rendering, so both paths share the exact same drag wiring.

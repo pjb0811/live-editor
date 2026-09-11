@@ -46,8 +46,10 @@ export default function DragAndDrop() {
 - `value` / `onChange` hold the generated source — drops and property edits are
   applied through the same AST pipeline, so the code stays canonical.
 - `frame` configures the preview surface (see [Preview Modes](./preview-modes.mdx)).
-- Use `items` to customize the palette, and `renderPalette` / `renderPanel` to
-  fully replace the built-in UI — see
+- Use `items` to customize the palette's available sections, and `children` to
+  replace the built-in UI — a region of it (`<Live.Dnd.Layout panel={...} />`)
+  or the whole arrangement, driven from the `useDndPalette()` /
+  `useDndPanel()` / `useDndLayout()` hooks — see
   [Custom Palette & Panel](./custom-palette-panel.mdx).
 
 The embedded demo above runs the real `Live.Dnd` component, isolated with
