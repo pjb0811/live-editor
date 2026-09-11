@@ -28,7 +28,7 @@ const bindingRenderLeafSchema = z.object({
 });
 
 // `widget` is deliberately just `z.string()`, not an enum — see #236. An
-// unrecognized widget is expected (a renderPanel consumer's own value, not
+// unrecognized widget is expected (a custom panel author's own value, not
 // this library's), so unlike `type` there is no "drop it" failure mode to
 // design for.
 //
@@ -327,7 +327,7 @@ const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
 
 // Structured counterpart to `getCurrentValue`: returns the value as its real
 // JS type (number/boolean/object/array/string) rather than always as a
-// string, so both the built-in panel and a custom `renderPanel` receive
+// string, so both the built-in panel and a custom panel receive
 // `PanelBinding.value` already typed. `getCurrentValue` still supplies the
 // exact source text (`PanelBinding.rawValue`). See #238.
 //

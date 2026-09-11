@@ -8,9 +8,21 @@ import DemoFrame from '@site/src/components/demo-frame';
 
 # Custom Palette & Panel
 
-`Live.Dnd` accepts `renderPalette` and `renderPanel` to fully replace the
-built-in left palette and right property panel with your own markup, while
-drag-and-drop and field editing keep working exactly as before.
+`Live.Dnd` ships a complete editor — a 3-pane Splitter on desktop, a stacked
+canvas with Drawers on mobile — and renders it whenever you don't say
+otherwise. Everything behind that layout is also reachable as plain data
+through three hooks (`useDndPalette()`, `useDndPanel()`, `useDndLayout()`), so
+replacing the palette, the property panel, or the arrangement of the whole
+thing is a matter of writing an ordinary component and rendering it inside
+`Live.Dnd`. Drag-and-drop and field editing keep working exactly as before.
+
+There are two ways in, and they compose:
+
+- **Keep the built-in layout, swap a region.** Render
+  `<Live.Dnd.Layout palette={...} panel={...} />` and fill only the slot you
+  care about. The Splitter, the mobile FAB, and both Drawers stay.
+- **Replace the layout.** Pass your own `children` and place
+  `Live.Dnd.Canvas` (plus whatever you want around it) wherever you like.
 
 <DemoFrame
   src="demos/custom-palette-panel/"
@@ -28,25 +40,115 @@ whose own `children`/`label` fields are further, separately data-bound
 JSX elements — each array entry gets its own group of fields instead of
 one opaque blob for the whole array.
 
+## Custom layout
+
+By default `Live.Dnd` renders a 3-pane Splitter (palette / canvas / panel)
+on desktop, and on mobile a full-width canvas with the palette and property
+panel in Drawers. Pass `children` to design that layout yourself, composing
+the three regions wherever you want them:
+
+```tsx
+import { Splitter } from '@jbpark/ui-kit';
+
+<Live.Dnd value={value} onChange={setValue}>
+  <Splitter withHandle orientation="horizontal">
+    <Splitter.Panel defaultSize="15%">
+      <Live.Dnd.Palette />
+    </Splitter.Panel>
+    <Splitter.Panel defaultSize="55%">
+      <Live.Dnd.Canvas />
+    </Splitter.Panel>
+    <Splitter.Panel defaultSize="30%">
+      <Live.Dnd.Panel />
+    </Splitter.Panel>
+  </Splitter>
+</Live.Dnd>;
+```
+
+Nothing about the layout is prescribed — a vertical stack, tabs, a
+collapsible sidebar of your own, panels in a modal, three CSS grid areas —
+as long as each region renders somewhere inside `Live.Dnd`, which owns the
+drag context they share.
+
+| Region | Renders |
+| --- | --- |
+| `Live.Dnd.Palette` | The built-in palette draggables, in a scroll container. |
+| `Live.Dnd.Canvas` | The drop target and the sortable list of sections. |
+| `Live.Dnd.Panel` | The built-in property panel, in a scroll container. |
+| `Live.Dnd.Layout` | The built-in arrangement, so you can wrap it (a toolbar above it, say) rather than rebuild it, and replace one region through its `palette`/`panel` slots. Also how to get the built-in Splitter layout without importing `@jbpark/ui-kit` yourself. |
+
+Each takes the props of a `div` (`className` is merged over the region's own
+defaults, so overriding one wins rather than fighting), and each should be
+rendered at most once — `Canvas` in particular carries the scroll container
+the section iframes size themselves against, plus fixed drag ids that a
+second copy would duplicate.
+
+Two things to know:
+
+- **`Canvas` needs a height-constrained parent.** It fills one (`h-full`),
+  so a parent with no height of its own collapses it.
+- **`children` replaces the mobile chrome too** — the floating palette
+  button and both Drawers are part of the default layout, not of `Live.Dnd`.
+  The `useDndLayout()` hook returns what drove them (`isMobile`,
+  `selectedId`, `clearSelection`, `paletteOpen`, `setPaletteOpen`) so a
+  custom layout can build its own:
+
+```tsx
+import { useDndLayout } from '@jbpark/live-editor/dnd';
+
+const MyLayout = () => {
+  const { isMobile, selectedId, clearSelection } = useDndLayout();
+
+  return isMobile ? <Live.Dnd.Canvas /> : /* ... */;
+};
+```
+
+### Keeping the built-in layout and swapping one region
+
+Replacing the palette or the panel usually doesn't mean you want a different
+*arrangement*. `Live.Dnd.Layout` is the built-in one, exported with two slots
+so you can hand it your own component and keep everything else:
+
+```tsx
+<Live.Dnd value={value} onChange={setValue}>
+  <Live.Dnd.Layout panel={<MyPanel />} />
+</Live.Dnd>
+```
+
+That keeps the desktop Splitter, the mobile FAB, and both Drawers — your
+`panel` is placed in the right-hand pane on desktop and in the properties
+Drawer on mobile. A slot goes in raw, so it owns its own container (the
+built-in regions bring theirs); `palette` works the same way.
+
 ## Custom palette
 
-`renderPalette` receives a `PaletteRenderData` object:
+`useDndPalette()` returns what drives the palette:
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `items` | `Section[]` | The palette's available sections. |
 | `onAdd` | `(item: Section) => void` | Add a section to the canvas. |
-| `DraggableItem` | component | Owns the drag wiring — wrap your own markup in it so items stay draggable. |
-| `isMobile` | `boolean` | `true` when the palette is rendering inside the mobile Drawer, where a tap can't be a failed drag attempt (there's nothing to drag onto — the canvas is stacked behind the Drawer) and native dblclick synthesis from double-tap is unreliable on touch. Treat a single click/tap as "add" here instead of relying on `onDoubleClick`, as the example below does.
+
+Wrap your own markup in the exported `Live.Dnd.DraggableItem` so items stay
+draggable — it owns the dnd-kit wiring and hands back `ref` / `dragProps` /
+`isDragging`. For "tap to add", take `isMobile` from `useDndLayout()`: at a
+mobile breakpoint a tap can't be read as a failed drag attempt (in the
+built-in layout the palette sits in a Drawer with the canvas stacked behind
+it, so there's nothing to drag onto) and native dblclick synthesis from
+double-tap is unreliable anyway. Treat a single click/tap as "add" there
+instead of relying on `onDoubleClick`, as below.
 
 ```tsx
-<Live.Dnd
-  value={value}
-  onChange={setValue}
-  renderPalette={({ items, onAdd, DraggableItem, isMobile }) => (
+import { useDndLayout, useDndPalette } from '@jbpark/live-editor/dnd';
+
+const MyPalette = () => {
+  const { items, onAdd } = useDndPalette();
+  const { isMobile } = useDndLayout();
+
+  return (
     <div>
       {items.map(item => (
-        <DraggableItem key={item.id} item={item}>
+        <Live.Dnd.DraggableItem key={item.id} item={item}>
           {({ ref, dragProps, isDragging }) => (
             <div
               ref={ref}
@@ -58,16 +160,20 @@ one opaque blob for the whole array.
               {item.name}
             </div>
           )}
-        </DraggableItem>
+        </Live.Dnd.DraggableItem>
       ))}
     </div>
-  )}
-/>
+  );
+};
+
+<Live.Dnd value={value} onChange={setValue}>
+  <Live.Dnd.Layout palette={<MyPalette />} />
+</Live.Dnd>;
 ```
 
 ## Custom panel
 
-`renderPanel` receives a `PanelRenderData` object:
+`useDndPanel()` returns what drives the property panel:
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -79,25 +185,20 @@ one opaque blob for the whole array.
 | `onMoveDown` | `() => void` | Move the selected section down, same rationale as `onMoveUp`. |
 | `canMoveUp` | `boolean` | Whether `onMoveUp` would do anything right now — disable your move-up control when `false`. |
 | `canMoveDown` | `boolean` | Whether `onMoveDown` would do anything right now — disable your move-down control when `false`. |
-| `onNodeChange` | `(params: { id: string; label: string; property: string; value: unknown }) => void` | Commit an edit to an element addressed by its own `data-id`, rather than through a binding you were handed. Only needed when you re-embed `DefaultPanel` — pass it straight through. See [Wrapping the built-in panel](#wrapping-the-built-in-panel-instead-of-starting-from-zero). |
+| `onNodeChange` | `(params: { id: string; label: string; property: string; value: unknown }) => void` | Commit an edit to an element addressed by its own `data-id`, rather than through a binding you were handed. Needed for the nested elements `bindings` can't reach — pass it to `Live.Dnd.Field` along with the binding. See [below](#reusing-the-built-in-control-for-one-binding). |
 
 `bindings` carries each field's `type`, current `value`, `options` (when
 present), and an `onChange` wired straight into the same AST-update pipeline
 the built-in panel uses. Switch on `binding.type` to render your own control:
 
 ```tsx
-<Live.Dnd
-  value={value}
-  onChange={setValue}
-  renderPanel={({
-    item,
-    bindings,
-    onDelete,
-    onMoveUp,
-    onMoveDown,
-    canMoveUp,
-    canMoveDown,
-  }) => (
+import { useDndPanel } from '@jbpark/live-editor/dnd';
+
+const MyPanel = () => {
+  const { item, bindings, onDelete, onMoveUp, onMoveDown, canMoveUp, canMoveDown } =
+    useDndPanel();
+
+  return (
     <div>
       <header>
         {item?.name}
@@ -137,35 +238,35 @@ the built-in panel uses. Switch on `binding.type` to render your own control:
         </label>
       ))}
     </div>
-  )}
-/>
+  );
+};
 ```
+
+Being an ordinary component rather than a callback is the point: a panel can
+hold its own state — a validation message, an open/closed group, a
+multi-select — without hoisting any of it into the component that renders
+`Live.Dnd`.
 
 ### Wrapping the built-in panel instead of starting from zero
 
-`renderPanel` doesn't have to replace the panel entirely — the built-in one
-is exported as `Live.Dnd.DefaultPanel`, so you can keep it and just add your
-own chrome around it (or swap it in for only some sections):
+You don't have to replace the panel to add to it. `Live.Dnd.Panel` *is* the
+built-in one, so keep it and put your own chrome around it:
 
 ```tsx
-<Live.Dnd
-  value={value}
-  onChange={setValue}
-  renderPanel={data => (
-    <div>
-      <MyCustomHeader item={data.item} />
-      <Live.Dnd.DefaultPanel {...data} />
-    </div>
-  )}
-/>
+const MyPanel = () => (
+  <div>
+    <MyCustomHeader />
+    <Live.Dnd.Panel className="h-auto" />
+  </div>
+);
 ```
 
-Spread the whole object rather than picking fields off it. `DefaultPanel`'s
-props line up 1:1 with `PanelRenderData` (it just ignores `onChange`, which
-it never needed), so the spread is lossless — and it's the only form that
-carries `onNodeChange` through.
+It reads `useDndPanel()` itself, so wrapping it can't drop a callback on the
+way through — `onNodeChange` included. (`className` is merged over the
+region's defaults, so `h-auto` overrides its own `h-full` and the header above
+it doesn't push it out of view.)
 
-That last one matters more than it looks. `bindings` covers the elements
+`onNodeChange` matters more than it looks. `bindings` covers the elements
 `extract()` finds by walking the section's markup, which does not include
 JSX nested *inside* an attribute value — the elements held in an `items` or
 `children` binding. The built-in array/children editors discover those by
@@ -180,31 +281,35 @@ nothing commits.
 
 ### Reusing the built-in control for one binding
 
-Wrapping `DefaultPanel` is all-or-nothing: you get the built-in panel for
+Keeping `Live.Dnd.Panel` is all-or-nothing: you get the built-in panel for
 every field. When you want your own controls for most bindings but not all
 of them, `Live.Dnd.Field` renders the built-in control for a single
 binding:
 
 ```tsx
-renderPanel={({ bindings, onNodeChange }) => (
-  <div>
-    {bindings.map(binding => (
-      <label key={`${binding.id}-${binding.property}`}>
-        <span>{binding.label}</span>
-        {binding.type === 'array' || binding.property === 'children' ? (
-          <Live.Dnd.Field binding={binding} onNodeChange={onNodeChange} />
-        ) : (
-          <MyOwnControl binding={binding} />
-        )}
-      </label>
-    ))}
-  </div>
-)}
+const MyPanel = () => {
+  const { bindings, onNodeChange } = useDndPanel();
+
+  return (
+    <div>
+      {bindings.map(binding => (
+        <label key={`${binding.id}-${binding.property}`}>
+          <span>{binding.label}</span>
+          {binding.type === 'array' || binding.property === 'children' ? (
+            <Live.Dnd.Field binding={binding} onNodeChange={onNodeChange} />
+          ) : (
+            <MyOwnControl binding={binding} />
+          )}
+        </label>
+      ))}
+    </div>
+  );
+};
 ```
 
 `Field` takes nothing but a `PanelBinding` out of `bindings` and the same
-`onNodeChange` — both already part of `PanelRenderData`, so no internal
-wiring is involved.
+`onNodeChange` — both already part of what `useDndPanel()` returns, so no
+internal wiring is involved.
 
 It renders the **control only**. The built-in panel's `Label (property)`
 heading comes from the row around it, not from `Field`, so supply your own
@@ -301,7 +406,7 @@ it can do is reachable here.
 | `label` | `string` | Human-readable label from the binding definition. |
 | `property` | `string` | The bound prop/attribute name. |
 | `type` | `BindingType?` | The declared data kind — what the value *is* (`string`, `number`, `boolean`, ...). `undefined` means a plain string binding. See the full list below. |
-| `widget` | `string?` | The declared presentation — how to *render* it. An open string, not `BindingType`: the library can't enumerate controls it doesn't implement, so a custom `renderPanel` is free to declare and switch on any value it wants (e.g. `'slider'`). The built-in panel only recognizes `'icon-picker'`/`'asset-picker'`. |
+| `widget` | `string?` | The declared presentation — how to *render* it. An open string, not `BindingType`: the library can't enumerate controls it doesn't implement, so a custom panel is free to declare and switch on any value it wants (e.g. `'slider'`). The built-in panel only recognizes `'icon-picker'`/`'asset-picker'`. |
 | `options` | `BindingOption[]?` | Present when the binding defines a fixed option set (render a `<select>`). |
 | `render` | `BindingRenderMap?` | Present on `object`/`array` bindings whose nested keys/items declare their own types — walk it to type each nested field instead of treating the value as an opaque string. |
 | `min` | `number?` | Minimum value for a `number` binding. Compared against the real number `value` delivers — pass it straight to `validateBindingValue`. |
@@ -365,7 +470,7 @@ existing authored content (`data-binding={[{ type: 'icon-picker', ... }]}`)
 keeps parsing — they describe a control, not a data kind, so `parseBinding`
 normalizes them into `{ type: 'string', widget: 'icon-picker' }` /
 `{ type: 'string', widget: 'asset-picker' }` rather than passing them
-through as-is. A custom `renderPanel` should switch on `binding.widget`
+through as-is. A custom panel should switch on `binding.widget`
 for these, not `binding.type`. The built-in panel's icon set is exported
 as `ICON_MAP` (`name -> lucide-react component`), and the same
 label/value pairs it feeds its own `<select>` as `ICON_OPTIONS`, if you
@@ -377,7 +482,7 @@ import { ICON_MAP, ICON_OPTIONS } from '@jbpark/live-editor';
 
 Author a brand-new field with any other widget the same way — `type`
 still describes the data kind (so validation/coercion keeps working),
-`widget` is free text your own `renderPanel` switches on:
+`widget` is free text your own panel switches on:
 
 ```tsx
 // data-binding={[{ label: 'Spacing', property: 'size', type: 'number', widget: 'slider', min: 0, max: 40 }]}
@@ -415,7 +520,7 @@ commit, neither enforced at parse time:
 
 `data-binding` covers declared, per-property edits. For anything else —
 restructuring markup, adding a whole new element, editing something with no
-binding declared at all — `PanelRenderData.item.code` is the section's full
+binding declared at all — `useDndPanel()`'s `item.code` is the section's full
 current source, and the exported `extract()` walks it into the same
 `DataAttrNode` tree the built-in panel reads (including custom, entirely
 undeclared `data-*` attributes, which `extract()` passes through intact).
@@ -424,16 +529,19 @@ Commit any string back with `onChange({ code })`:
 ```tsx
 import { extract } from '@jbpark/live-editor/utils/ast';
 
-renderPanel={({ item, onChange }) => {
+const RawEditor = () => {
+  const { item, onChange } = useDndPanel();
+
   if (!item) return null;
 
   const nodes = extract(item.code); // read whatever you need
+
   return (
     <button onClick={() => onChange({ code: item.code.replace(/foo/, 'bar') })}>
       Edit raw source
     </button>
   );
-}}
+};
 ```
 
 This is a full escape hatch, not a fallback of last resort — it's the same

@@ -72,10 +72,10 @@ export interface BindingItem {
   type?: BindingType;
   // Presentation — how to *render* it. Deliberately an open string, not a
   // closed enum: the library cannot enumerate controls it doesn't
-  // implement, and a renderPanel consumer owns presentation once they use
+  // implement, and a custom panel owns presentation once they use
   // it (see #234/#236). `'icon-picker'`/`'asset-picker'` are the built-in
   // panel's own two widgets; anything else (e.g. `'slider'`) is free for a
-  // custom renderPanel to switch on.
+  // custom panel to switch on.
   widget?: string;
   options?: BindingOption[];
   render?: BindingRenderMap;

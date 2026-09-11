@@ -23,7 +23,7 @@ export const FALLBACK_PROBE_HEIGHT = 812;
 // `clientHeight` already excludes the scroll container's own border, but
 // not any padding/border on wrapper elements *between* the iframe and
 // that container (this codebase's own Sortable/Renderer/Frame don't add
-// any today, but a consumer's own `provider`/`renderPanel` wrapper
+// any today, but a consumer's own `provider` or custom-panel wrapper
 // could) — `wrapperInsets` is the sum of those, added up by the caller
 // while walking from the iframe to the scroll container.
 //

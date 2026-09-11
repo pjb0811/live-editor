@@ -253,7 +253,7 @@ const parseSource = (value: string) => {
 // data-bound elements, resolving the binding `render` map, translating
 // visible item positions to array element positions before every edit, and
 // reconciling the selection after a move or delete (#285). Everything comes
-// back as `PanelBinding`s, the same currency `renderPanel` and
+// back as `PanelBinding`s, the same currency `useDndPanel()` and
 // `Live.Dnd.Field` already speak, so nothing here requires touching Babel.
 export const useItemsEditor = (
   value: string,

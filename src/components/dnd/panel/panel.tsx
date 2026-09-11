@@ -9,19 +9,19 @@ import { cn } from '~/utils';
 import type { PanelBinding, PanelNodeChange } from '../dnd';
 import FieldGroup from './field-group';
 
-// Exported as `Live.Dnd.DefaultPanel` (see index.ts) so a consumer can
-// wrap or partially override the built-in panel instead of starting a
-// `renderPanel` from zero — see #237. Every field here lines up 1:1 with
-// `PanelRenderData` (drop `onChange`, which this panel never needed), so
-// spreading that data straight in works: `<DefaultPanel {...data} />`.
+// The built-in property panel. Reached publicly as `Live.Dnd.Panel`, which
+// is this in the container the desktop pane wants, driven from
+// `useDndPanel()` — every field here lines up with what that hook returns
+// (drop `onChange`, which this panel never needed), so the built-in panel and
+// a custom one run on the same data and the public surface can't drift into a
+// subset of it (#237).
+//
 // `onNodeChange` is the node-level escape hatch `Items`/`Children` use to
 // commit a *different* element's edit than any single
 // `PanelBinding.onChange` can express (see field.tsx's items/children
-// boundary note from step 1). It's optional here only so a consumer can
-// deliberately render this panel read-only for nested edits; when wrapping
-// it inside a `renderPanel`, forward the `onNodeChange` that
-// `PanelRenderData` hands you or nested array/children edits won't commit
-// (#308).
+// boundary note from step 1). Optional here only so this can be rendered
+// read-only for nested edits; leave it out with real data and nested
+// array/children edits silently don't commit (#308).
 export interface PanelProps {
   item?: Section;
   onDelete?: (id: string) => void;
@@ -34,7 +34,7 @@ export interface PanelProps {
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   // `item`'s editable fields, already resolved to PanelBindings by Dnd's
-  // `bindings` useMemo — the same data a custom renderPanel receives, so
+  // `bindings` useMemo — the same data a custom panel receives, so
   // this panel doesn't re-derive it from DataAttrNode a second time (#237).
   bindings: PanelBinding[];
   onNodeChange?: PanelNodeChange;

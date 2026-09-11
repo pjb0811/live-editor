@@ -80,7 +80,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
 };
 
 // The label/value pairs Field's icon-picker feeds to Select, derived once
-// from ICON_MAP — exported (see index.ts) so a custom renderPanel can
+// from ICON_MAP — exported (see index.ts) so a custom panel can
 // reach icon-picker parity without rebuilding this itself, per #236/#237.
 export const ICON_OPTIONS = Object.entries(ICON_MAP).map(([name, Icon]) => ({
   label: (
