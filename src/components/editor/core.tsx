@@ -1,12 +1,6 @@
-import { useCallback, useRef } from 'react';
-
-import { javascript } from '@codemirror/lang-javascript';
+import CodeEditor from '@jbpark/ui-kit/CodeEditor';
 import { vscodeLight } from '@uiw/codemirror-theme-vscode';
-import CodeMirror, {
-  type Extension,
-  type ReactCodeMirrorRef,
-} from '@uiw/react-codemirror';
-import { EditorView } from 'codemirror';
+import { type Extension } from '@uiw/react-codemirror';
 
 import { cn } from '~/utils';
 
@@ -25,6 +19,11 @@ export interface Props {
   onError?: (error: string | null) => void;
 }
 
+// The CodeMirror surface, the Cmd+S save transaction and the JS/TS + line-wrap
+// extensions now live in `@jbpark/ui-kit`'s CodeEditor (#346/#309). This stays
+// only to keep live-editor's own vocabulary: `raw`/`fragment`/`prettierOptions`
+// shape the injected prettier formatter, and `onError` maps to the component's
+// `onFormatError`.
 const Core = ({
   value,
   theme,
@@ -34,73 +33,26 @@ const Core = ({
   fragment,
   raw,
   onChange,
-  onSave: _onSave,
+  onSave,
   onError,
   ...props
 }: Props) => {
-  const editorRef = useRef<ReactCodeMirrorRef>(null);
-
   const formatCode = useFormatCode({ fragment, prettierOptions });
 
-  const onSave = useCallback(
-    async (val: string) => {
-      try {
-        const currentView = editorRef.current?.view;
-        if (!currentView) {
-          return;
-        }
-
-        const currentLength = currentView.state.doc.length;
-        const cursorPos = currentView.state.selection.main.head;
-        const formattedCode = raw ? val : await formatCode(val);
-
-        if (currentLength === currentView.state.doc.length) {
-          const newCursorPos = Math.min(cursorPos, formattedCode.length);
-          const transaction = currentView.state.update({
-            changes: { from: 0, to: currentLength, insert: formattedCode },
-            selection: { anchor: newCursorPos },
-          });
-          currentView.dispatch(transaction);
-
-          onChange?.(formattedCode);
-          _onSave?.(formattedCode);
-        }
-
-        onError?.(null);
-      } catch (e) {
-        onError?.(e instanceof Error ? e.message : String(e));
-      }
-    },
-    [raw, formatCode, onChange, _onSave, onError],
-  );
-
-  const onKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        const currentValue =
-          editorRef.current?.view?.state.doc.toString() || value;
-        onSave(currentValue);
-      }
-    },
-    [onSave, value],
-  );
-
   return (
-    <div className={cn(className)} onKeyDown={onKeyDown}>
-      <CodeMirror
-        ref={editorRef}
-        theme={theme || vscodeLight}
-        height={height || '100%'}
-        value={value}
-        extensions={[
-          javascript({ jsx: true, typescript: true }),
-          EditorView.lineWrapping,
-        ]}
-        onChange={onChange}
-        {...props}
-      />
-    </div>
+    <CodeEditor
+      value={value}
+      theme={theme ?? vscodeLight}
+      height={height || '100%'}
+      className={cn(className)}
+      // `raw` (e.g. innerHTML) skips prettier; otherwise reuse the shared
+      // prettier wiring as the Cmd+S formatter rather than reimplementing it.
+      formatCode={raw ? undefined : formatCode}
+      onChange={onChange}
+      onSave={onSave}
+      onFormatError={onError}
+      {...props}
+    />
   );
 };
 
