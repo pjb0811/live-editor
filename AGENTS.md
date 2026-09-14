@@ -193,7 +193,6 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 | component-naming      | `.claude/skills/component-naming/SKILL.md`      | 컴포넌트/파일 네이밍        |
 | composition-patterns  | `.claude/skills/composition-patterns/SKILL.md`  | 컴포넌트 합성 패턴          |
 | react-best-practices  | `.claude/skills/react-best-practices/SKILL.md`  | React 베스트 프랙티스       |
-| ref-verification      | `.claude/skills/ref-verification/SKILL.md`      | 검증 기준 ref 명시/동기화   |
 | version-management    | `.claude/skills/version-management/SKILL.md`    | 버전/changeset 관리         |
 | web-design-guidelines | `.claude/skills/web-design-guidelines/SKILL.md` | 웹 디자인 가이드라인        |
 | writing-guidelines    | `.claude/skills/writing-guidelines/SKILL.md`    | 문서/텍스트 작성 가이드라인 |
