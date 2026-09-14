@@ -1,7 +1,7 @@
 # Live Editor — Project Overview
 
 React 19 + TypeScript 기반의 인터랙티브 UI 에디터 라이브러리입니다.
-Canvas의 DnD 편집 결과를 Babel AST 변환으로 소스 코드에 역으로 반영하고, 샌드박스 iframe에서 안전하게 미리보기를 실행합니다.
+Canvas의 DnD 편집 결과를 Babel AST 변환으로 소스 코드에 역으로 반영하고, 호스트에서 실행한 결과를 iframe 또는 Shadow DOM에 렌더링합니다. iframe은 DOM/CSS 격리용이며 JavaScript 실행의 보안 경계가 아닙니다.
 
 ---
 
@@ -21,6 +21,8 @@ live-editor/
 │  │  ├─ context/           # 전역 상태 (PreviewContext, ErrorContext)
 │  │  ├─ dnd/               # DnD 시스템 (Canvas + Panel + Renderer)
 │  │  │  ├─ panel/          # 프로퍼티 편집 패널 (children/field/items/node.tsx)
+│  │  │  ├─ layout.tsx      # Palette/Canvas/Panel/Layout 합성 컴포넌트
+│  │  │  ├─ layout-context.ts # 커스텀 레이아웃·팔레트·패널 훅
 │  │  │  ├─ renderer.tsx    # 선택 요소 JSX 구조 렌더링
 │  │  │  ├─ draggable.tsx   # 드래그 가능한 섹션 아이템
 │  │  │  ├─ droppable.tsx   # 드롭 영역
@@ -52,7 +54,8 @@ live-editor/
 │  │  └─ tailwind/          # Tailwind 관련 유틸
 │  ├─ constants/index.ts    # 상수, 정규식, 기본 템플릿
 │  ├─ types/index.ts        # TypeScript 타입 정의
-│  └─ main.tsx              # 진입점
+│  ├─ index.tsx             # 라이브러리 공개 API (Live 및 합성 컴포넌트)
+│  └─ main.tsx              # 로컬 개발 앱 진입점
 ├─ demos/                   # 문서용 독립 iframe 데모
 ├─ website/                 # Docusaurus 문서 사이트
 ├─ .changeset/              # changesets (버전/체인지로그)
@@ -70,7 +73,8 @@ live-editor/
 ```text
 코드 문자열 (PreviewContext)
   → compile() — Babel 인브라우저 트랜스파일 + 캐시
-  → iframe 내부에서 React 컴포넌트 렌더링
+  → 호스트의 new Function()으로 모듈 실행
+  → React 렌더링 (iframe/Shadow DOM/호스트 DOM 선택)
   → 사용자가 DnD/패널로 요소 편집
   → AST 변환 (update()/bulkUpdate() 등) → 새 코드 문자열
   → PreviewContext 업데이트 → 미리보기 재렌더링
@@ -88,7 +92,7 @@ live-editor/
 | `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                            |
 | `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                      |
 | `src/components/preview/client.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                             |
-| `src/components/frame/iframe.tsx`   | iframe 샌드박스 + 스타일 동기화 + 자동 높이                                                                                                         |
+| `src/components/frame/iframe.tsx`   | iframe DOM/CSS 격리 + 스타일 동기화 + 자동 높이                                                                                                     |
 
 ---
 
@@ -107,17 +111,16 @@ live-editor/
 
 ### 경로 alias
 
-```ts
-~/components  →  src/cemnnoopst;
-~/utils       →  src/ilstu;
-~/constants   →  src/acnnosstt;
-~/types       →  src/epsty;
+```text
+~/* → ./src/*
 ```
+
+TypeScript와 Vite/Vitest 설정에 같은 별칭을 사용합니다.
 
 ### CSS
 
 - **Tailwind CSS 4** + `cn()` 유틸리티 (`clsx` + `tailwind-merge`)
-- inline style은 sandbox iframe 내부 또는 Tailwind로 표현 불가한 동적 스타일에만 사용
+- inline style은 미리보기 프레임 내부 또는 Tailwind로 표현 불가한 동적 스타일에만 사용
 
 ### 상태 관리
 
@@ -126,15 +129,20 @@ live-editor/
 
 ### 컴파일 & 캐시
 
-- `compile(code, modules)` — **해시 기반 캐시** (최대 50개)
-- TypeScript → `ts.transpileModule()` → Babel JSX 변환
-- 캐시 키: `코드 내용 + 모듈 키` 조합 해시
+- `compile(code, modules)` — 바운디드 LRU 캐시 (최대 50개)
+- Babel의 TypeScript/React/env 프리셋으로 변환하고 호스트에서 모듈 실행
+- 현재 캐시 키: 원본 코드 + 정렬한 모듈 이름 문자열. 모듈 구현의 변경은 구분하지 못하므로 동일 이름의 모듈 교체 시 캐시 재사용에 주의
+- 문서 파싱 캐시와 섹션 미리보기 캐시는 `src/utils/ast/document.ts`에서 관리
 
 ---
 
 ## ⚙️ 개발 명령어
 
+개발·빌드는 CI와 같은 Node 24 계열(24.11 이상)과 `pnpm@10.29.3`을 사용합니다. 루트와 `website/`는 각각 잠금 파일 기준으로 설치합니다.
+
 ```bash
+pnpm install --frozen-lockfile
+pnpm --dir website install --frozen-lockfile
 pnpm dev           # Vite 개발 서버 (HMR)
 pnpm build         # 타입 체크 + 라이브러리 빌드 (tsdown)
 pnpm build:demos   # 문서용 iframe 데모 빌드
@@ -143,34 +151,38 @@ pnpm lint          # ESLint
 pnpm test          # Vitest 1회 실행
 pnpm test:watch    # Vitest watch 모드
 pnpm bench         # Vitest 벤치마크
-pnpm preview       # 빌드 결과 미리보기
+pnpm build:demo    # 로컬 앱을 dist-demo에 빌드
+pnpm exec vite preview --outDir dist-demo # 로컬 앱 빌드 미리보기
+pnpm --dir website typecheck # 문서 타입 검사
+pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌드
 ```
 
 ---
 
 ## ⚠️ 주의사항
 
-1. **사용자 코드 직접 실행 금지** — 반드시 `compile()` 통해 캐시 후 iframe 내부에서만 실행
-2. **AST 불변 업데이트** — traverse 후 항상 `generate()`로 새 코드 문자열 반환, 노드 직접 mutate 금지
-3. **Fragment 래핑 주의** — AST 파싱 시 `<>{code}</>`로 감싸고 출력 시 언래핑 필요
+1. **실행 경계** — 미리보기는 `compile()` 경로를 사용합니다. 현재 코드는 호스트 권한으로 실행되므로 신뢰할 수 있는 코드만 다룹니다. iframe의 `sandbox` 속성을 JavaScript 격리로 간주하지 않습니다
+2. **소스 보존 편집** — 공유·캐시 AST를 직접 변경하지 않습니다. 기존 소스 구간 편집(`applyEdits` 등)을 사용하고 필요한 조각만 생성해 변경하지 않은 원문을 보존합니다
+3. **Fragment 래핑 주의** — JSX 조각 파싱 경로에서 `wrap()`/`unwrap()`을 짝지어 사용합니다. 전체 문서나 단일 표현식 파싱까지 일괄 래핑하지 않습니다
 4. **data-id 보존** — Canvas ↔ AST 매핑 키이므로 변환 과정에서 손실되지 않도록 주의
-5. **캐시 키에 모듈 포함** — 같은 코드라도 모듈이 다르면 별개 캐시 항목으로 관리
+5. **캐시 유효성** — 코드와 주입 모듈 모두 결과에 영향을 줍니다. 현재 모듈 이름 기반 키의 한계를 고려하고, 캐시 변경 시 모듈 교체도 검증합니다
 
 ---
 
 ## 🛠️ 기술 스택
 
-| 영역   | 기술                                |
-| ------ | ----------------------------------- |
-| Core   | React 19, TypeScript 5.8            |
-| 번들러 | Vite 7 (dev), tsdown (lib build)    |
-| DnD    | @dnd-kit/core, sortable, modifiers  |
-| 에디터 | @uiw/react-codemirror (VSCode 테마) |
-| UI     | Ant Design 6, Tailwind CSS 4        |
-| AST    | @babel/standalone (인브라우저)      |
-| 라우팅 | react-router-dom 7                  |
+| 영역   | 기술                                         |
+| ------ | -------------------------------------------- |
+| Core   | React 19, TypeScript 6                       |
+| 번들러 | Vite 8 (dev), tsdown (lib build)             |
+| DnD    | @dnd-kit/core, sortable, modifiers           |
+| 에디터 | @jbpark/ui-kit/CodeEditor (CodeMirror 기반)  |
+| UI     | @jbpark/ui-kit, lucide-react, Tailwind CSS 4 |
+| AST    | @babel/standalone (인브라우저)               |
 
 ---
+
+라이브러리는 tsdown으로 ESM과 타입 선언을 빌드합니다. `package.json`의 `/provider`, `/editor`, `/dnd`, `/preview`, `/error`, `/utils` 및 AST/Tailwind 하위 진입점으로 기능별 import를 제공합니다. `Live.Dnd`는 `Palette`, `Canvas`, `Panel`, `Layout`과 커스텀 패널용 훅을 공개합니다.
 
 ## 🔗 관련 스킬 파일
 

@@ -130,7 +130,7 @@ can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — s
 ## ⚙️ Requirements
 
 - Peer deps: `react >=19`, `react-dom >=19`
-- Node.js: 20.x or higher
+- Package metadata declares Node.js >=20; repository development/builds use Node.js 24.11+ (24.x, matching CI).
 - **pnpm**: 10.x or higher (managed via [Corepack](https://nodejs.org/api/corepack.html))
 
 ## 🚀 Development (this repo)
@@ -190,7 +190,8 @@ pnpm exec tsc -b
 ### Preview Production Build
 
 ```bash
-pnpm run preview
+pnpm run build:demo
+pnpm exec vite preview --outDir dist-demo
 ```
 
 ## 📦 Versioning & Release

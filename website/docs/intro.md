@@ -12,14 +12,18 @@ isolation.
 
 ## Install
 
-`@jbpark/ui-kit` and `prettier` (used internally for the editor's Cmd+S
-formatting) are regular dependencies and get installed automatically.
-`react` and `react-dom` are peer dependencies — required, but not
-auto-installed by every package manager (npm 7+ does; pnpm and yarn don't by
-default):
+`@jbpark/ui-kit` is a regular dependency and is installed with the package.
+`react` and `react-dom` (>=19) are required peer dependencies; include them in your app.
+`prettier` (^3) is an optional peer dependency. Install it for format-on-save; without it, the editor skips formatting.
 
 ```bash
 npm install @jbpark/live-editor react react-dom
+```
+
+To enable formatting:
+
+```bash
+npm install prettier@^3
 ```
 
 Import the stylesheet once, near your app root:
