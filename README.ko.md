@@ -130,7 +130,7 @@ export default function Example() {
 ## ⚙️ 요구 사항
 
 - Peer dependencies: `react >=19`, `react-dom >=19`
-- Node.js: 20.x 이상
+- 패키지 메타데이터는 Node.js >=20을 선언합니다. 저장소 개발·빌드는 CI와 같은 Node.js 24 계열(24.11 이상)을 사용합니다.
 - **pnpm**: 10.x 이상 ([Corepack](https://nodejs.org/api/corepack.html)으로 관리)
 
 ## 🚀 개발 (이 저장소)
@@ -189,7 +189,8 @@ pnpm exec tsc -b
 ### 프로덕션 프리뷰
 
 ```bash
-pnpm run preview
+pnpm run build:demo
+pnpm exec vite preview --outDir dist-demo
 ```
 
 ## 📦 버전 관리 & 배포
