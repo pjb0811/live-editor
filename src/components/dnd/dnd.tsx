@@ -423,14 +423,19 @@ const Dnd = ({
   };
 
   // Flattens the extracted `fields` (one DataAttrNode per element) down to
-  // one PanelBinding per bound property — the same walk the built-in
+  // one descriptor per bound property — the same walk the built-in
   // FieldEditor/Node does internally (data-id + parsed data-binding +
-  // current value), but published through `useDndPanel()` as plain data so a
-  // custom panel can render its own controls. Kept in a useMemo keyed on
-  // `fields` alone; `onFieldChange` closes over `updatedCode`/`selectedItem`
-  // but is stable enough per render, and rebuilding this array on every
-  // render would re-render every panel consuming it.
-  const bindings = useMemo<PanelBinding[]>(() => {
+  // current value). Everything here is derived from `fields` alone, so the
+  // memo key is honest and the parse/read work still happens once per
+  // parsed section.
+  //
+  // Deliberately no `onChange`: a callback belongs to the render that made
+  // it, not to the parse. Keeping the two in one memo is what caused #336 —
+  // editing another section leaves `selectedCode` (and therefore `fields`)
+  // identical, so the memo was reused and handed back callbacks still bound
+  // to the previous document, whose commit wrote the sibling's old source
+  // back over the newer one.
+  const bindingFields = useMemo(() => {
     return fields.flatMap(node => {
       const dataId = node.dataAttributes.find(a => a.name === 'data-id')?.value;
       const bindingAttr = node.dataAttributes.find(
@@ -458,20 +463,29 @@ const Dnd = ({
         meta: binding.meta,
         value: getStructuredValue(node, binding.property, binding.type),
         rawValue: getCurrentValue(node, binding.property),
-        onChange: (value: unknown) =>
-          onFieldChange({
-            id: dataId,
-            label: binding.label,
-            property: binding.property,
-            value,
-          }),
       }));
     });
-    // onFieldChange is intentionally omitted — it's recreated every render
-    // but only ever called from a user event, so closing over the latest
-    // one via the render that produced these bindings is fine.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fields]);
+
+  // Bound fresh each render on top of the memo above — the same split
+  // `useItemsEditor` uses for its `items`. This is a plain walk of an
+  // already-parsed result with no Babel in it, and it's what guarantees a
+  // commit reads the current `updatedCode`/`selectedItem`/`onChange`.
+  //
+  // The identity churn the previous memo was guarding against was never
+  // real: the `DndRegionContext` value and the `panel` object holding this
+  // array are both fresh object literals every render, so every
+  // `useDndPanel()` consumer already re-rendered regardless.
+  const bindings: PanelBinding[] = bindingFields.map(field => ({
+    ...field,
+    onChange: (value: unknown) =>
+      onFieldChange({
+        id: field.id,
+        label: field.label,
+        property: field.property,
+        value,
+      }),
+  }));
 
   useEffect(() => {
     if (frame?.scripts?.length) {

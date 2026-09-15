@@ -1,5 +1,3 @@
-import { useMemo } from 'react';
-
 import { Button, Typography } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
@@ -33,9 +31,9 @@ export interface PanelProps {
   onMoveDown?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
-  // `item`'s editable fields, already resolved to PanelBindings by Dnd's
-  // `bindings` useMemo — the same data a custom panel receives, so
-  // this panel doesn't re-derive it from DataAttrNode a second time (#237).
+  // `item`'s editable fields, already resolved to PanelBindings by Dnd —
+  // the same data a custom panel receives, so this panel doesn't re-derive
+  // it from DataAttrNode a second time (#237).
   bindings: PanelBinding[];
   onNodeChange?: PanelNodeChange;
 }
@@ -43,9 +41,14 @@ export interface PanelProps {
 // `bindings` is flat (one entry per bound property, across every editable
 // element in the section) — regroup by `id` to render the same "one
 // bordered box per element" layout as before. `bindings` is already
-// ordered element-by-element, property-by-property (dnd.tsx builds it via
-// `fields.flatMap`), so a Map preserves both the element order and each
-// element's own property order with no extra sorting.
+// ordered element-by-element, property-by-property (dnd.tsx builds it by
+// flat-mapping the extracted fields), so a Map preserves both the element
+// order and each element's own property order with no extra sorting.
+//
+// Not memoized: Dnd rebinds `bindings` every render so its commit callbacks
+// can't go stale against the document (#336), which means a dependency on
+// it would miss every time. This is a single pass over an already-parsed
+// list, so the miss costs more than the walk.
 const groupBindingsById = (bindings: PanelBinding[]): PanelBinding[][] => {
   const groups = new Map<string, PanelBinding[]>();
 
@@ -72,7 +75,7 @@ const Panel = ({
   bindings,
   onNodeChange,
 }: PanelProps) => {
-  const groups = useMemo(() => groupBindingsById(bindings), [bindings]);
+  const groups = groupBindingsById(bindings);
 
   if (!item) {
     return (
