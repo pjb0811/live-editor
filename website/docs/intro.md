@@ -164,6 +164,14 @@ for what does and doesn't apply there.
 | `provider`        | `(children: ReactNode) => ReactNode?` | Wrap the rendered output in your own context providers.                                                                                                                                                                                                                    |
 | `container`       | `HTMLElement \| null?`                | Currently unused — reserved for future use, has no effect today.                                                                                                                                                                                                           |
 
+### Replacing injected modules
+
+Compilation results are cached by source and injected module entries. Module names are order-independent; objects and functions are compared by reference, and primitive values by `Object.is`. Separate module implementations keep separate cache entries within the shared 50-entry LRU limit.
+
+To update a module in React, pass a new module object inside a new `modules` map. Recreating only the outer map with the same entries reuses the compilation. Mutating properties inside an existing module object does not invalidate the cache.
+
+Direct callers of `compile()` can call `clearCompilationCache()` from `@jbpark/live-editor/utils` before compiling again after an in-place mutation. Clearing the cache does not trigger React renders or invalidate `useCompiledModule`'s memo by itself; use new module references for mounted previews.
+
 ### `Live.Editor`
 
 | Prop              | Type                                        | Description                                                                                                                                                                            |
