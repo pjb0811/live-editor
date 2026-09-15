@@ -28,35 +28,58 @@ export const baseModules = {
   'ui-kit/utils': utils,
 };
 
-const compilationCache = createBoundedCache<string, Module>(CONFIG.CACHE_LIMIT);
+interface CompilationKey {
+  code: string;
+  modules: [string, unknown][];
+}
 
-// Uses the raw code+moduleKeys string as the key rather than hashing it —
-// a 32-bit hash (the previous approach) can collide between two genuinely
-// different inputs, which would silently serve one code string's compiled
-// Module for another. The bounded LRU cache already caps memory use, so
-// there's no need to shrink the key itself.
+// The index holds only the keys still in the bounded LRU. Comparing at most
+// CACHE_LIMIT snapshots avoids an unbounded identity registry for symbols
+// or serializing module objects/functions (which may be cyclic or closures).
+const compilationKeys = new Set<CompilationKey>();
+const compilationCache = createBoundedCache<CompilationKey, Module>(
+  CONFIG.CACHE_LIMIT,
+  key => compilationKeys.delete(key),
+);
+
 const createCacheKey = (
   code: string,
   modules: Record<string, unknown>,
-): string => {
-  const moduleKeys = Object.keys(modules).sort().join(',');
+): CompilationKey => ({
+  code,
+  modules: Object.keys(modules)
+    .sort()
+    .map(name => [name, modules[name]]),
+});
 
-  return code + '|' + moduleKeys;
-};
-
+// Objects/functions compare by reference; primitives compare by value.
+// Replace a module object when its implementation changes. In-place edits
+// inside an existing module are intentionally not observed by this cache.
 export const compile = (
   code: string,
   modules: Record<string, unknown>,
 ): Module => {
-  const cacheKey = createCacheKey(code, modules);
+  const candidate = createCacheKey(code, modules);
 
-  if (compilationCache.has(cacheKey)) {
-    return compilationCache.get(cacheKey)!;
+  for (const key of compilationKeys) {
+    if (
+      key.code === candidate.code &&
+      key.modules.length === candidate.modules.length &&
+      key.modules.every(
+        ([name, value], index) =>
+          name === candidate.modules[index]![0] &&
+          Object.is(value, candidate.modules[index]![1]),
+      )
+    ) {
+      return compilationCache.get(key)!;
+    }
   }
 
-  const result = compileModule(code, modules);
+  const result = compileModule(code, Object.fromEntries(candidate.modules));
 
-  compilationCache.set(cacheKey, result);
+  compilationCache.set(candidate, result);
+  compilationKeys.add(candidate);
+
   return result;
 };
 

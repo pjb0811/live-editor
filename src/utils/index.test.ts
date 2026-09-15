@@ -1,11 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // utils/index.ts imports @jbpark/ui-kit for baseModules, which pulls in its
 // CSS — stub both out since detectTypeScript doesn't touch either.
 vi.mock('@jbpark/ui-kit', () => ({}));
 vi.mock('@jbpark/ui-kit/utils', () => ({}));
 
-const { compile, detectTypeScript } = await import('./index');
+const { compile, clearCompilationCache, detectTypeScript } =
+  await import('./index');
 
 describe('detectTypeScript', () => {
   it('does not flag the default template as TypeScript', () => {
@@ -144,5 +145,106 @@ export default App;
     expect(module.error).toBeUndefined();
     expect(module.exports.default).toBeTypeOf('function');
     expect((module.exports.default as unknown as () => number)()).toBe(5);
+  });
+});
+
+describe('compile module cache (#329)', () => {
+  const code = "import { value } from 'fixture'; export default () => value;";
+  const read = (module: ReturnType<typeof compile>) => {
+    expect(module.error).toBeUndefined();
+
+    return (module.exports.default as unknown as () => unknown)();
+  };
+
+  beforeEach(() => clearCompilationCache());
+
+  it('isolates alternating consumers with different module implementations', () => {
+    const firstModules = { fixture: { value: 1 } };
+    const secondModules = { fixture: { value: 2 } };
+    const first = compile(code, firstModules);
+    const second = compile(code, secondModules);
+
+    expect(read(first)).toBe(1);
+    expect(read(second)).toBe(2);
+    expect(compile(code, firstModules)).toBe(first);
+    expect(compile(code, secondModules)).toBe(second);
+  });
+
+  it('reuses stable module values across new maps and key insertion orders', () => {
+    const fixture = { value: 1 };
+    const extra = {};
+    const first = compile(code, { fixture, extra });
+
+    expect(compile(code, { extra, fixture })).toBe(first);
+  });
+
+  it('snapshots module entries instead of retaining the mutable input map', () => {
+    const modules = { fixture: { value: 1 } };
+    const first = compile(code, modules);
+    modules.fixture = { value: 2 };
+
+    expect(read(compile(code, modules))).toBe(2);
+    expect(read(first)).toBe(1);
+  });
+
+  it('distinguishes functions with identical source and cyclic objects', () => {
+    const make = (value: number) => () => value;
+    const functionCode =
+      "import get from 'fixture'; export default () => get();";
+
+    expect(read(compile(functionCode, { fixture: make(1) }))).toBe(1);
+    expect(read(compile(functionCode, { fixture: make(2) }))).toBe(2);
+
+    const fixture: { value: number; self?: unknown } = { value: 3 };
+    fixture.self = fixture;
+
+    expect(read(compile(code, { fixture }))).toBe(3);
+  });
+
+  it('compares primitive modules by value without serializing symbols', () => {
+    const primitiveCode =
+      "import value from 'fixture'; export default () => value;";
+    const first = Symbol('same');
+    const second = Symbol('same');
+
+    expect(read(compile(primitiveCode, { fixture: first }))).toBe(first);
+    expect(read(compile(primitiveCode, { fixture: second }))).toBe(second);
+    expect(read(compile(primitiveCode, { fixture: 1 }))).toBe(1);
+    expect(read(compile(primitiveCode, { fixture: 2 }))).toBe(2);
+  });
+
+  it('does not collide module names containing delimiters', () => {
+    const nameCode = "import value from 'a,b'; export default () => value;";
+
+    expect(read(compile(nameCode, { 'a,b': 1 }))).toBe(1);
+    expect(compile(nameCode, { a: 1, b: 1 }).error).toBeDefined();
+  });
+
+  it('requires explicit clearing for in-place mutation of a module object', () => {
+    const snapshotCode =
+      "import { value } from 'fixture'; const snapshot = value; export default () => snapshot;";
+    const fixture = { value: 1 };
+    const first = compile(snapshotCode, { fixture });
+    fixture.value = 2;
+
+    expect(compile(snapshotCode, { fixture })).toBe(first);
+    expect(read(first)).toBe(1);
+    clearCompilationCache();
+    expect(read(compile(snapshotCode, { fixture }))).toBe(2);
+  });
+
+  it('keeps only 50 module variants and refreshes recency on a hit', () => {
+    const fixtures = Array.from({ length: 51 }, (_, value) => ({ value }));
+    const results = fixtures
+      .slice(0, 50)
+      .map(fixture => compile(code, { fixture }));
+
+    expect(compile(code, { fixture: fixtures[0] })).toBe(results[0]);
+    compile(code, { fixture: fixtures[50] });
+    expect(compile(code, { fixture: fixtures[0] })).toBe(results[0]);
+    const evicted = compile(code, { fixture: fixtures[1] });
+
+    expect(evicted).not.toBe(results[1]);
+    expect(read(evicted)).toBe(1);
   });
 });
