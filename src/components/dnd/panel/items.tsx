@@ -1,9 +1,10 @@
 import { Button, Checkbox } from '@jbpark/ui-kit';
-import { ArrowDown, ArrowUp, Copy, Plus, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 
 import type { BindingRenderMap } from '~/utils/ast';
 
 import type { PanelNodeChange } from '../dnd';
+import BulkActionsBar from './bulk-actions-bar';
 import Field from './field';
 import {
   type ItemsEditorNestedGroup,
@@ -16,67 +17,6 @@ interface Props {
   onChange?: (value: string) => void;
   onChildChange?: PanelNodeChange;
 }
-
-interface BulkActionsBarProps {
-  count: number;
-  onDuplicate: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onDelete: () => void;
-  onClear: () => void;
-}
-
-const BulkActionsBar = ({
-  count,
-  onDuplicate,
-  onMoveUp,
-  onMoveDown,
-  onDelete,
-  onClear,
-}: BulkActionsBarProps) => {
-  if (count === 0) {
-    return null;
-  }
-
-  return (
-    <div
-      className="flex items-center justify-between rounded border
-        border-blue-200 bg-blue-50 p-2"
-    >
-      <div className="text-xs font-medium text-blue-700">{count} selected</div>
-      <div className="flex items-center space-x-1">
-        <Button
-          size="small"
-          icon={<Copy />}
-          title="Duplicate selected"
-          onClick={onDuplicate}
-        />
-        <Button
-          size="small"
-          icon={<ArrowUp />}
-          title="Move selected up"
-          onClick={onMoveUp}
-        />
-        <Button
-          size="small"
-          icon={<ArrowDown />}
-          title="Move selected down"
-          onClick={onMoveDown}
-        />
-        <Button
-          danger
-          size="small"
-          icon={<X />}
-          title="Delete selected"
-          onClick={onDelete}
-        />
-        <Button size="small" onClick={onClear}>
-          Clear
-        </Button>
-      </div>
-    </div>
-  );
-};
 
 // The data-bound elements found inside one JSX-valued property, or the
 // raw-source fallback when that property declared no binding at all (#298).
@@ -291,4 +231,3 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 };
 
 export default Items;
-export { BulkActionsBar };

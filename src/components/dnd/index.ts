@@ -90,6 +90,11 @@ export { useDndPalette, useDndPanel, useDndLayout };
 // (`Field` covers the latter). Everything it returns is `PanelBinding`s, so
 // the two compose: render the hook's own layout and hand individual
 // bindings to `Field` where the built-in control is good enough.
+export { useChildrenEditor } from './panel/use-children-editor';
+export type {
+  ChildrenEditor,
+  ChildrenEditorOptions,
+} from './panel/use-children-editor';
 export { useItemsEditor };
 // The built-in panel's own `widget: 'icon-picker'` icon set/options —
 // exported so a custom panel can reach icon-picker parity (name ->

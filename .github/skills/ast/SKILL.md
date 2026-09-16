@@ -37,7 +37,8 @@ description: 'Babel AST 변환 코드를 작성하거나 src/utils/ast/ 모듈�
 value → helpers, types
 binding → value, types
 extract → binding, document, helpers, types, value
-update → binding, document, extract, helpers, patch, types, value
+children → extract, helpers, patch, types
+update → binding, children, document, helpers, patch, types, value
 tree → helpers
 ```
 
@@ -47,7 +48,7 @@ tree → helpers
 
 ## 작업 규칙
 
-- **소스 보존 편집**: 공유·캐시 AST를 직접 변경하지 않는다. AST에서 위치를 찾고 `SourceEdit`/`applyEdits` 또는 기존 문서 구간 편집 함수로 원문을 수정한다. 새 값이나 복제 조각에 필요한 코드만 생성하며, 변경하지 않은 원문은 보존한다. 기존 `children` 재생성 경로의 한계는 #321에서 별도로 추적한다.
+- **소스 보존 편집**: 공유·캐시 AST를 직접 변경하지 않는다. AST에서 위치를 찾고 `SourceEdit`/`applyEdits` 또는 기존 문서 구간 편집 함수로 원문을 수정한다. 새 값이나 복제 조각에 필요한 코드만 생성하며, 변경하지 않은 원문은 보존한다. `children.ts`의 구조 편집은 원본 JSX 구간을 이동·삭제·복제하고, 모델로 표현할 수 없는 구조는 원본을 유지하며 거부한다. 배열 소스 보존은 #339에서 별도로 추적한다.
 - **Fragment 래핑**: JSX 조각을 래핑하는 경로에서는 `wrap()`/`unwrap()`을 짝지어 사용하고 소스 오프셋도 보정한다. 전체 문서의 `parse()`나 단일 표현식의 `parseExpression()`에는 일괄 적용하지 않는다.
 - **data-id 보존**: Canvas ↔ AST 매핑 키이므로 `extract`/`update` 어느 경로에서도 유실되지 않도록 주의.
 - **캐시 무효화**: `extract()`는 `extractCache`(raw 문자열 키)로 캐시된다. 캐시 키에 영향 없는 변경이면 무시해도 되지만, 파싱 로직 자체를 바꿨다면 관련 테스트에서 `clearExtractCache()` 호출이 필요한지 확인.

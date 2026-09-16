@@ -225,6 +225,7 @@ const processChildrenBinding = (
   jsxElement: t.JSXElement,
   processedNodes?: WeakSet<t.JSXElement | t.JSXFragment>,
   shouldWrap: boolean = true,
+  source?: string,
 ): DataAttrNode[] | undefined => {
   const jsxChildren = jsxElement.children.filter(
     child => t.isJSXElement(child) || t.isJSXFragment(child),
@@ -238,13 +239,22 @@ const processChildrenBinding = (
 
   jsxChildren.forEach(child => {
     if (t.isJSXElement(child)) {
-      const childResults = extractFromNode(child, processedNodes);
+      const childResults = extractFromNode(child, processedNodes, source);
 
       if (shouldWrap) {
         const wrapperNode = createWrapperNode(
           collectText(child.children),
           childResults,
         );
+        wrapperNode.source = source?.slice(child.start!, child.end!);
+        const dataId = childResults[0]?.dataAttributes.find(
+          attr => attr.name === DATA_ATTR.ID,
+        )?.value;
+
+        if (dataId) {
+          wrapperNode.id = `child:${dataId}`;
+        }
+
         childrenNodes.push(wrapperNode);
       } else {
         childrenNodes.push(...childResults);
@@ -256,7 +266,11 @@ const processChildrenBinding = (
 
       child.children.forEach(fragmentChild => {
         if (t.isJSXElement(fragmentChild)) {
-          const childResults = extractFromNode(fragmentChild, processedNodes);
+          const childResults = extractFromNode(
+            fragmentChild,
+            processedNodes,
+            source,
+          );
           fragmentChildren.push(...childResults);
         }
       });
@@ -266,6 +280,7 @@ const processChildrenBinding = (
           collectText(child.children),
           fragmentChildren,
         );
+        fragmentNode.source = source?.slice(child.start!, child.end!);
         childrenNodes.push(fragmentNode);
       }
     }
@@ -470,7 +485,12 @@ const parseToNodes = (raw: string): DataAttrNode[] => {
       let childrenNodes: DataAttrNode[] | undefined;
 
       if (childrenBinding) {
-        childrenNodes = processChildrenBinding(path.node, processedNodes);
+        childrenNodes = processChildrenBinding(
+          path.node,
+          processedNodes,
+          true,
+          wrapped,
+        );
       }
 
       for (const arrayBinding of arrayBindings) {
@@ -519,6 +539,7 @@ export function extract(raw: string): DataAttrNode[] {
 function extractFromNode(
   node: t.JSXElement,
   processedNodes?: WeakSet<t.JSXElement | t.JSXFragment>,
+  source?: string,
 ): DataAttrNode[] {
   processedNodes?.add(node);
 
@@ -534,11 +555,11 @@ function extractFromNode(
   let childrenNodes: DataAttrNode[] | undefined;
 
   if (childrenBinding) {
-    childrenNodes = processChildrenBinding(node, processedNodes);
+    childrenNodes = processChildrenBinding(node, processedNodes, true, source);
   }
 
   if (!childrenNodes) {
-    childrenNodes = processChildrenBinding(node, processedNodes, false);
+    childrenNodes = processChildrenBinding(node, processedNodes, false, source);
   }
 
   return [

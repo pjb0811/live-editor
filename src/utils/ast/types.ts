@@ -11,6 +11,8 @@ export interface DataAttrNode {
   dataAttributes: Attribute[];
   textContent: string;
   rawChildren?: string;
+  // Exact structural child source, used to validate source-preserving edits.
+  source?: string;
   loc?: {
     start: { line: number; column: number };
     end: { line: number; column: number };
