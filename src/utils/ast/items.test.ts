@@ -282,7 +282,9 @@ describe('moveArrayItems', () => {
 
 describe('removeArrayItems', () => {
   it('removes the selected items', () => {
-    expect(removeArrayItems(`['a', 'b', 'c']`, new Set([0, 2]))).toBe(`['b']`);
+    expect(removeArrayItems(`['a', 'b', 'c']`, new Set([0, 2]))).toBe(
+      `[ 'b' ]`,
+    );
   });
 
   // Every "add" clones an existing item, so an empty array is a dead end.
@@ -304,7 +306,7 @@ describe('removeArrayItems', () => {
     ).toBeNull();
     expect(
       removeArrayItems(`[{ a: 1 }, { b: 2 }]`, new Set([0]), 'object'),
-    ).toBe(`[{\n  b: 2\n}]`);
+    ).toBe(`[ { b: 2 }]`);
   });
 });
 
@@ -335,13 +337,13 @@ describe('duplicateArrayItems', () => {
 describe('appendArrayItem', () => {
   it('appends a copy of the first object item', () => {
     expect(appendArrayItem(`[{ key: 'k1' }]`, 'object', ids())).toBe(
-      `[{\n  key: 'k1'\n}, {\n  key: "k1-ID0"\n}]`,
+      `[{ key: 'k1' }, { key: "k1-ID0" }]`,
     );
   });
 
   it('appends a copy of the first primitive item', () => {
     expect(appendArrayItem(PRIMITIVES, 'primitive', ids())).toBe(
-      `['a', 'b', 'c', "a"]`,
+      `['a', 'b', 'c', 'a']`,
     );
   });
 
@@ -349,7 +351,7 @@ describe('appendArrayItem', () => {
   // has to be picked by kind rather than by position.
   it('picks the template by kind in a mixed array', () => {
     expect(appendArrayItem(`['a', { id: 1 }]`, 'object', ids())).toContain(
-      'id: 1\n}, {\n  id: 1',
+      'id: 1 }, { id: 1',
     );
   });
 
@@ -380,6 +382,6 @@ describe('mixed arrays', () => {
         new Set([1]),
         'object',
       ),
-    ).toBe(`['keep', {\n  id: 2\n}, 42]`);
+    ).toBe(`['keep',  { id: 2 }, 42]`);
   });
 });

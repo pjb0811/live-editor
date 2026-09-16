@@ -90,6 +90,7 @@ const extractCache = createBoundedCache<string, DataAttrNode[]>(
 
 const extractAttributes = (
   attributes: (t.JSXAttribute | t.JSXSpreadAttribute)[],
+  source?: string,
 ): { allAttrs: Attribute[]; dataAttrs: Attribute[] } => {
   const allAttrs: Attribute[] = [];
   const dataAttrs: Attribute[] = [];
@@ -109,7 +110,17 @@ const extractAttributes = (
         isStringLiteral = true;
       } else if (t.isJSXExpressionContainer(attr.value)) {
         try {
-          value = generateCode(attr.value.expression);
+          const expression = attr.value.expression;
+          const structural =
+            t.isArrayExpression(unwrapExpression(expression)) ||
+            t.isObjectExpression(unwrapExpression(expression));
+          value =
+            source &&
+            structural &&
+            expression.start != null &&
+            expression.end != null
+              ? source.slice(expression.start, expression.end)
+              : generateCode(expression);
           isStringLiteral = false;
         } catch {
           value = null;
@@ -395,10 +406,13 @@ const getBindingExpression = (
   return null;
 };
 
-const readNodeBindingInfo = (node: t.JSXElement): NodeBindingInfo => {
+const readNodeBindingInfo = (
+  node: t.JSXElement,
+  source?: string,
+): NodeBindingInfo => {
   const opening = node.openingElement;
   const tagName = getTagName(opening);
-  const { allAttrs, dataAttrs } = extractAttributes(opening.attributes);
+  const { allAttrs, dataAttrs } = extractAttributes(opening.attributes, source);
 
   const bindingAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING);
   const bindingExpr = getBindingExpression(opening);
@@ -476,7 +490,7 @@ const parseToNodes = (raw: string): DataAttrNode[] => {
         childrenBinding,
         arrayBindings,
         rawChildren,
-      } = readNodeBindingInfo(path.node);
+      } = readNodeBindingInfo(path.node, wrapped);
 
       if (!tagName || !dataAttrs.length) {
         return;
@@ -550,7 +564,7 @@ function extractFromNode(
     bindings,
     childrenBinding,
     rawChildren,
-  } = readNodeBindingInfo(node);
+  } = readNodeBindingInfo(node, source);
 
   let childrenNodes: DataAttrNode[] | undefined;
 

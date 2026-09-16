@@ -47,6 +47,7 @@ live-editor/
 │  │  │  ├─ extract.ts      # raw JSX 문자열 → DataAttrNode 트리 (extract())
 │  │  │  ├─ document.ts     # 문서 파싱/섹션 분리/미리보기 생성 (traverse)
 │  │  │  ├─ children.ts     # 자식 JSX 소스 구간 편집 (이동/삭제/복제/추가)
+│  │  │  ├─ array-source.ts # 밀집 배열 구간/쉼표 보존 편집
 │  │  │  ├─ items.ts        # 배열 아이템 편집 (추가/이동/삭제)
 │  │  │  ├─ patch.ts        # 소스 스팬 기반 부분 편집 적용 (applyEdits)
 │  │  │  ├─ update.ts       # 값 → AST 반영 (update(), bulkUpdate())

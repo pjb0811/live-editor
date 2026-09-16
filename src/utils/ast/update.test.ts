@@ -664,11 +664,14 @@ describe('adding an item to a shipped section', () => {
       node.dataAttributes.find(attr => attr.name === 'data-id')?.value ?? '';
 
     const before = parseItems(getCurrentValue(node, 'items'))!;
+    let nextId = 0;
     const appended = appendArrayItem(
       getCurrentValue(node, 'items'),
       'object',
-      () => 'fixed',
+      () => `fixed-${nextId++}`,
     );
+
+    expect(appended).not.toBeNull();
     const result = update(section.code, dataId, label, appended, 'items');
 
     expect(result.success).toBe(true);

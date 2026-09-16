@@ -398,6 +398,32 @@ What you don't have to reimplement:
 The built-in `Items` panel is written against exactly this hook, so anything
 it can do is reachable here.
 
+#### Array source preservation and limits
+
+Value edits replace only the selected value's source span. Original array
+indices are retained: holes and spread entries are omitted from the visible
+list, but they remain in the source. For example, changing A in
+`[, {label:'A'}, {label:'B'}]` leaves the leading hole and B untouched.
+
+| Operation | Dense arrays | Arrays with holes or spreads |
+| --- | --- | --- |
+| Edit a supported literal or object property | Supported | Supported at its original syntax position |
+| Move, remove, duplicate, append | Supported | Refused; edit the source code instead |
+| Edit a spread entry itself | Not applicable | Refused |
+
+Structural edits preserve raw element text, comments, whitespace and trailing
+commas. Gaps between elements stay in their original positions during moves;
+deleting an element removes its expression and the necessary separator while
+leaving surrounding comments. Copies retain expressions and nested JSX, with
+fresh static `key` and `data-id` values. Dynamic/ambiguous copy identities,
+colliding generated IDs, and parenthesized top-level elements are refused.
+The existing last-item guard and empty-array Add limitation remain in place.
+
+A refused operation returns `null` from the AST helper, leaves source and
+selection unchanged, and displays an error through the built-in hook. Public
+helper signatures are unchanged. Formatting of returned code now follows the
+original source rather than Babel's whole-array formatting.
+
 ### Your own controls for a children binding: `useChildrenEditor`
 
 Pass the structured `binding.value` to `useChildrenEditor`. It sends structural

@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
+import { Toast } from '@jbpark/ui-kit';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
+import type { DataAttrNode } from '~/utils/ast';
 
 import { useItemsEditor } from './use-items-editor';
 
@@ -153,5 +156,72 @@ describe('useItemsEditor mutations', () => {
 
     // Not cleared — the items are still selected, at their new positions.
     expect([...result.current.selection.selected]).toEqual([0]);
+  });
+});
+
+describe('useItemsEditor source fidelity', () => {
+  it('uses original indices for value edits in a sparse array with a spread', () => {
+    const source = `[, ...rows, {label:'A'}, /* keep */ {label:'B'},]`;
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useItemsEditor(source, { onChange }));
+
+    expect(result.current.items.map(item => item.elementIndex)).toEqual([2, 3]);
+    act(() => result.current.items[0]!.properties[0]!.onChange('Changed'));
+    expect(onChange).toHaveBeenCalledWith(source.replace("'A'", '"Changed"'));
+  });
+
+  it('preserves selection and source when sparse structural edits are refused', () => {
+    const onChange = vi.fn();
+    const toast = vi.spyOn(Toast, 'error').mockImplementation(() => 'test');
+    const { result } = renderHook(() =>
+      useItemsEditor(`[, {label:'A'}, {label:'B'}]`, { onChange }),
+    );
+
+    try {
+      act(() => result.current.selection.toggle(1, false));
+      act(() => result.current.actions.remove(1));
+      act(() => result.current.actions.moveSelected('up'));
+      act(() => result.current.actions.duplicateSelected());
+      expect(onChange).not.toHaveBeenCalled();
+      expect([...result.current.selection.selected]).toEqual([1]);
+      expect(toast).toHaveBeenCalledWith(
+        'Failed to update this item',
+        expect.objectContaining({
+          description: expect.stringContaining('source was preserved'),
+        }),
+      );
+    } finally {
+      toast.mockRestore();
+    }
+  });
+
+  it('maps bulk move selection back to visible indices in mixed arrays', () => {
+    const onChange = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ source }) => useItemsEditor(source, { onChange }),
+      { initialProps: { source: `[0, {label:'A'}, {label:'B'}]` } },
+    );
+
+    act(() => result.current.selection.toggle(1, false));
+    act(() => result.current.actions.moveSelected('up'));
+    const moved = onChange.mock.calls[0]![0];
+    rerender({ source: moved });
+    expect([...result.current.selection.selected]).toEqual([0]);
+    act(() => result.current.actions.removeSelected());
+    expect(onChange.mock.calls[1]![0]).toContain("label:'A'");
+    expect(onChange.mock.calls[1]![0]).not.toContain("label:'B'");
+  });
+
+  it('retains nested array and JSX source in panel bindings', () => {
+    const raw = `[, /* gap */ {label:'A'},]`;
+    const jsx = `<p data-id='p' data-binding={[{label:'Children',property:'children'}]}><b data-id='b'>{value}</b></p>`;
+    const { result } = renderHook(() =>
+      useItemsEditor(`[{ nested: ${raw}, children: ${jsx} }]`),
+    );
+
+    expect(result.current.items[0]!.properties[0]!.rawValue).toBe(raw);
+    const children = result.current.items[0]!.nested[0]!.elements[0]!
+      .bindings[0]!.value as DataAttrNode[];
+    expect(children[0]!.source).toBe("<b data-id='b'>{value}</b>");
   });
 });
