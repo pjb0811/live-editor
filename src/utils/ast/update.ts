@@ -3,11 +3,11 @@ import * as t from '@babel/types';
 
 import { BINDING_PROP, DATA_ATTR } from '../../constants';
 import { STRING_VALUED_TYPES, parseBinding } from './binding';
+import { editChildrenSource } from './children';
 import { traverse } from './document';
-import { nodeToJSX } from './extract';
 import { generateCode, unwrap, wrap } from './helpers';
 import { type SourceEdit, applyEdits } from './patch';
-import type { BindingType, DataAttrNode } from './types';
+import type { BindingType } from './types';
 import { valueToExpression } from './value';
 
 // Every editor below returns the source spans it wants to change rather
@@ -144,34 +144,6 @@ const editInnerHTML = (element: t.JSXElement, value: string): EditResult => {
   }
 
   return [{ start: range.start, end: range.end, content: value }];
-};
-
-const editChildren = (element: t.JSXElement, value: unknown): EditResult => {
-  try {
-    const childrenData = (
-      typeof value === 'string' ? JSON.parse(value) : value
-    ) as DataAttrNode[];
-
-    const range = childrenRange(element);
-
-    if (!range) {
-      return [];
-    }
-
-    // These children are new, so there is no source text to preserve —
-    // generating the fragment is correct here. The point of #239 is to
-    // generate *only* the fragment, never the enclosing tree.
-    const content = childrenData
-      .map(childData => nodeToJSX(childData))
-      .filter((node): node is t.JSXElement | t.JSXFragment => node !== null)
-      .map(node => generateCode(node))
-      .join('');
-
-    return [{ start: range.start, end: range.end, content, indent: true }];
-  } catch (error) {
-    console.error('❌ Children update error:', error);
-    return null;
-  }
 };
 
 const editRichtext = (element: t.JSXElement, value: string): EditResult => {
@@ -550,11 +522,11 @@ export const update = (
           }
 
           case BINDING_PROP.CHILDREN: {
-            // editChildren logs the underlying JSON/AST error itself, so the
-            // console genuinely has details for this path.
-            collect(editChildren(path.node, value), () => ({
+            collect(editChildrenSource(wrapped, path.node, value), () => ({
               reason: 'parse-error',
-              error: new Error(`could not update "${prop}"`),
+              error: new Error(
+                'Unsupported or stale children edit; source was preserved',
+              ),
             }));
             break;
           }

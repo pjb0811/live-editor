@@ -59,6 +59,8 @@ export {
 } from './document';
 export { bulkUpdate, update } from './update';
 export type { UpdateFailure, UpdateResult } from './update';
+export { getChildrenSignatures } from './children';
+export type { ChildrenAction, ChildrenEdit } from './children';
 export { clone, fillIds, replaceIds } from './tree';
 export type { ValidationResult } from './validate';
 export { validateBindingValue } from './validate';

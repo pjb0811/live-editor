@@ -1,16 +1,14 @@
 import { useMemo } from 'react';
 
 import { Button, Checkbox } from '@jbpark/ui-kit';
-import { useMultiSelect } from '@jbpark/use-hooks';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
-import { nanoid } from 'nanoid';
 
 import { type DataAttrNode, findEditableChildren } from '~/utils/ast';
-import { moveSelectedIndices, removeIndices } from '~/utils/selection';
 
 import type { PanelNodeChange } from '../dnd';
-import { BulkActionsBar } from './items';
+import BulkActionsBar from './bulk-actions-bar';
 import Node from './node';
+import { useChildrenEditor } from './use-children-editor';
 
 interface Props {
   value: DataAttrNode[];
@@ -21,7 +19,7 @@ interface Props {
 const Children = ({ value, onChange, onNodeChange }: Props) => {
   const items = useMemo(() => (Array.isArray(value) ? value : []), [value]);
 
-  const selection = useMultiSelect(items.length);
+  const { selection, actions } = useChildrenEditor(items, { onChange });
 
   const editableChildrenMap = useMemo(() => {
     const map = new Map<number, DataAttrNode[]>();
@@ -34,110 +32,28 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
     return map;
   }, [items]);
 
-  const moveItem = (fromIndex: number, toIndex: number) => {
-    const nextItems = [...items];
-    const [movedItem] = nextItems.splice(fromIndex, 1);
-    nextItems.splice(toIndex, 0, movedItem!);
-
-    onChange?.(JSON.stringify(nextItems));
-  };
-
-  const moveSelectedItems = (
-    indices: Set<number>,
-    direction: 'up' | 'down',
-  ) => {
-    const { items: nextItems, indices: nextIndices } = moveSelectedIndices(
-      items,
-      indices,
-      direction,
-    );
-
-    selection.replace(nextIndices);
-    onChange?.(JSON.stringify(nextItems));
-  };
-
-  const deleteSelectedItems = (indices: Set<number>) => {
-    if (items.length - indices.size < 1) {
-      return;
-    }
-
-    const nextItems = removeIndices(items, indices);
-    onChange?.(JSON.stringify(nextItems));
-  };
-
-  const deleteItem = (index: number) => deleteSelectedItems(new Set([index]));
-
-  const addItem = () => {
-    const template = items[0] || createDefaultItem();
-    const newItem = cloneDataAttrNode(template);
-
-    const nextItems = [...items, newItem];
-    onChange?.(JSON.stringify(nextItems));
-  };
-
-  const duplicateSelectedItems = (indices: Set<number>) => {
-    const sources = [...indices]
-      .sort((a, b) => a - b)
-      .map(index => items[index])
-      .filter((item): item is DataAttrNode => Boolean(item));
-
-    if (sources.length === 0) {
-      return;
-    }
-
-    const clones = sources.map(cloneDataAttrNode);
-    onChange?.(JSON.stringify([...items, ...clones]));
-  };
-
-  const createDefaultItem = (): DataAttrNode => ({
-    id: nanoid(6),
-    tagName: 'div',
-    attributes: [
-      { name: 'data-id', value: nanoid(6) },
-      { name: 'data-item', value: 'true' },
-    ],
-    dataAttributes: [
-      { name: 'data-id', value: nanoid(6) },
-      { name: 'data-item', value: 'true' },
-    ],
-    textContent: '',
-    children: [],
-  });
-
-  const cloneDataAttrNode = (node: DataAttrNode): DataAttrNode => ({
-    ...node,
-    id: nanoid(6),
-    attributes: node.attributes.map(attr => ({
-      ...attr,
-      value: attr.name === 'data-id' ? nanoid(6) : attr.value,
-    })),
-    dataAttributes: node.dataAttributes.map(attr => ({
-      ...attr,
-      value: attr.name === 'data-id' ? nanoid(6) : attr.value,
-    })),
-    children: node.children?.map(cloneDataAttrNode),
-  });
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-green-700">
           Children Items ({items.length})
         </div>
-        <Button size="small" color="green" icon={<Plus />} onClick={addItem}>
+        <Button
+          size="small"
+          color="green"
+          icon={<Plus />}
+          onClick={actions.add}
+        >
           Add Child
         </Button>
       </div>
 
       <BulkActionsBar
         count={selection.selected.size}
-        onDuplicate={() => duplicateSelectedItems(selection.selected)}
-        onMoveUp={() => moveSelectedItems(selection.selected, 'up')}
-        onMoveDown={() => moveSelectedItems(selection.selected, 'down')}
-        onDelete={() => {
-          deleteSelectedItems(selection.selected);
-          selection.clear();
-        }}
+        onDuplicate={actions.duplicateSelected}
+        onMoveUp={() => actions.moveSelected('up')}
+        onMoveDown={() => actions.moveSelected('down')}
+        onDelete={actions.removeSelected}
         onClear={selection.clear}
       />
 
@@ -167,25 +83,20 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
                 size="small"
                 icon={<ArrowUp />}
                 disabled={itemIndex === 0}
-                onClick={() => moveItem(itemIndex, itemIndex - 1)}
+                onClick={() => actions.move(itemIndex, itemIndex - 1)}
               />
               <Button
                 size="small"
                 icon={<ArrowDown />}
                 disabled={itemIndex === items.length - 1}
-                onClick={() => moveItem(itemIndex, itemIndex + 1)}
+                onClick={() => actions.move(itemIndex, itemIndex + 1)}
               />
               <Button
-                title={
-                  items.length <= 1
-                    ? 'At least 1 item is required'
-                    : 'Delete item'
-                }
+                title="Delete item"
                 danger
                 size="small"
                 icon={<X />}
-                disabled={items.length <= 1}
-                onClick={() => deleteItem(itemIndex)}
+                onClick={() => actions.remove(itemIndex)}
               />
             </div>
           </div>
@@ -202,7 +113,7 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
 
                 return (
                   <div
-                    key={`editable-${itemIndex}-${nodeId || idx}`}
+                    key={`editable-${nodeId || idx}`}
                     className="rounded border border-green-100 bg-white p-2"
                   >
                     <div className="mb-1 text-xs text-green-600">

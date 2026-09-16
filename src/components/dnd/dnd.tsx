@@ -96,7 +96,10 @@ const describeUpdateFailure = (
     case 'parse-error':
       return {
         title: `Failed to update "${label}"`,
-        description: 'Check the console for details.',
+        description:
+          failure.error instanceof Error
+            ? failure.error.message
+            : 'Check the console for details.',
       };
     default:
       return { title: `Failed to update "${label}"` };

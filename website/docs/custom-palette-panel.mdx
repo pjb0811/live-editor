@@ -398,6 +398,70 @@ What you don't have to reimplement:
 The built-in `Items` panel is written against exactly this hook, so anything
 it can do is reachable here.
 
+### Your own controls for a children binding: `useChildrenEditor`
+
+Pass the structured `binding.value` to `useChildrenEditor`. It sends structural
+commands through the existing `binding.onChange` callback:
+
+```tsx
+import { useChildrenEditor } from '@jbpark/live-editor/dnd';
+
+const MyChildren = ({ binding }) => {
+  const { items, selection, actions } = useChildrenEditor(binding.value, {
+    onChange: binding.onChange,
+  });
+
+  return (
+    <div>
+      <button onClick={actions.add}>Add child</button>
+      <button onClick={actions.duplicateSelected}>Duplicate selected</button>
+      <button onClick={actions.removeSelected}>Delete selected</button>
+      {items.map((item, index) => (
+        <div key={item.id ?? index}>
+          <input
+            type="checkbox"
+            checked={selection.isSelected(index)}
+            onChange={() => selection.toggle(index)}
+          />
+          Child {index + 1}
+          <button disabled={index === 0} onClick={() => actions.move(index, index - 1)}>
+            Move up
+          </button>
+          <button onClick={() => actions.remove(index)}>Delete</button>
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+`items` contains the extracted `DataAttrNode` children. `selection` exposes
+`selected`, `toggle`, `isSelected`, `clear`, and `replace`. Actions are `add`,
+`move(from, to)`, `remove(index)`, `duplicateSelected`, `moveSelected('up' | 'down')`,
+and `removeSelected`. All indices refer to the current extracted list.
+For nested field controls, use `Live.Dnd.Field` with `onNodeChange` as shown above.
+
+Structural edits preserve each subtree's original source. Text, comments, and
+expressions between children stay in their original slots. Copies are appended
+before the closing tag, with fresh `data-id` values on copied JSX elements.
+Add copies the first child, or inserts an empty `div` when the list is empty.
+Selection clears when the host supplies changed source, including undo and
+external edits; a rejected edit leaves the selection intact.
+
+The AST layer refuses stale commands, invalid indices, unmodeled empty or
+expression-only fragments, and copies whose dynamic IDs or trailing spreads
+make identity ambiguous. A refused edit returns `success: false` and keeps the
+original code; the built-in panel displays an error. Self-closing parents must
+be expanded before adding children.
+
+Existing JSON `DataAttrNode[]` inputs to `update()` remain supported for reorder
+and removal. Unchanged children reuse their original source. Arbitrary modeled
+replacements are accepted only when the old children can be represented without
+source loss and the result introduces no duplicate static IDs. Prefer the hook
+for structural operations; retain the extracted `source` metadata for stale-edit
+checks. Low-level callers can use `ChildrenEdit` and `getChildrenSignatures` from
+`@jbpark/live-editor/utils/ast`.
+
 ### `PanelBinding`
 
 | Field | Type | Description |
