@@ -15,7 +15,6 @@ import {
   extractNodeValue,
   extractObjectProperties,
   findEditableChildren,
-  generateCode,
   getCurrentValue,
   getStructuredValue,
   moveArrayItem,
@@ -146,8 +145,8 @@ interface RawPrimitiveItem {
 // Pulls the data-bound elements out of one JSX-valued property. A container
 // declaring `children` wins outright: it owns the elements below it, so
 // listing them separately would offer the same edit twice.
-const bindingsInJSX = (node: t.Expression): DataAttrNode[] => {
-  const nodes = extract(generateCode(node));
+const bindingsInJSX = (source: string): DataAttrNode[] => {
+  const nodes = extract(source);
   const container = nodes.find(n =>
     n.bindings?.some(b => b.property === 'children'),
   );
@@ -185,11 +184,11 @@ const parseSource = (value: string) => {
 
   const objectItems: RawObjectItem[] = [];
   const primitiveItems: RawPrimitiveItem[] = [];
-  const elements = ast.elements.filter((element): element is t.Expression =>
-    Boolean(element),
-  );
+  ast.elements.forEach((element, elementIndex) => {
+    if (!t.isExpression(element)) {
+      return;
+    }
 
-  elements.forEach((element, elementIndex) => {
     if (!t.isObjectExpression(element)) {
       const extracted = extractNodeValue(element);
 
@@ -218,12 +217,17 @@ const parseSource = (value: string) => {
       const propertyName = prop.key.name;
 
       try {
-        const found = bindingsInJSX(prop.value);
+        const found = bindingsInJSX(
+          value.slice(prop.value.start!, prop.value.end!),
+        );
 
         if (found.length > 0) {
           jsxBindings[propertyName] = found;
         } else {
-          jsxFallbacks[propertyName] = generateCode(prop.value);
+          jsxFallbacks[propertyName] = value.slice(
+            prop.value.start!,
+            prop.value.end!,
+          );
         }
       } catch (error) {
         console.error(
@@ -233,11 +237,22 @@ const parseSource = (value: string) => {
       }
     });
 
+    const editableProperties = extractObjectProperties(element);
+
+    for (const property of Object.values(editableProperties)) {
+      if (property.type === 'array' || property.type === 'object') {
+        property.value = value.slice(
+          property.astNode.start!,
+          property.astNode.end!,
+        );
+      }
+    }
+
     objectItems.push({
       id: nanoid(6),
       index: objectItems.length,
       elementIndex,
-      editableProperties: extractObjectProperties(element),
+      editableProperties,
       jsxBindings,
       jsxFallbacks,
     });
@@ -286,12 +301,16 @@ export const useItemsEditor = (
   const commit = (next: string | null) => {
     if (next === null) {
       Toast.error('Failed to update this item', {
-        description: 'Check the console for details.',
+        description:
+          'The source was preserved. Structural edits require a dense array without spreads; use the code editor for unsupported syntax.',
       });
-      return;
+
+      return false;
     }
 
     onChange?.(next);
+
+    return true;
   };
 
   // Selection indices are positions among the visible items; every AST
@@ -328,17 +347,25 @@ export const useItemsEditor = (
         return;
       }
 
-      commit(moveArrayItem(value, elementIndex, target.elementIndex));
+      const accepted = commit(
+        moveArrayItem(value, elementIndex, target.elementIndex),
+      );
       // Positions shift after a move, but the count doesn't, so
       // `useMultiSelect` never reconciles the set on its own — clear it so a
       // later bulk action can't target the wrong elements. See #285.
-      selection.clear();
+      if (accepted) {
+        selection.clear();
+      }
     },
 
     remove: elementIndex => {
-      commit(removeArrayItems(value, new Set([elementIndex]), kind));
+      const accepted = commit(
+        removeArrayItems(value, new Set([elementIndex]), kind),
+      );
       // Removing an item shifts every position after it; same reasoning.
-      selection.clear();
+      if (accepted) {
+        selection.clear();
+      }
     },
 
     duplicateSelected: () =>
@@ -356,17 +383,31 @@ export const useItemsEditor = (
         return;
       }
 
-      // Element positions, which match selection indices for the
-      // all-one-kind arrays this is built for.
-      selection.replace(result.indices);
+      // Translate the moved source positions back into the visible kind.
+      const parsed = parseArrayExpression(result.code);
+      const visible =
+        parsed?.elements.flatMap((node, index) =>
+          t.isExpression(node) && t.isObjectExpression(node) === !isPrimitive
+            ? [index]
+            : [],
+        ) ?? [];
+      selection.replace(
+        new Set(
+          visible.flatMap((position, index) =>
+            result.indices.has(position) ? [index] : [],
+          ),
+        ),
+      );
       commit(result.code);
     },
 
     removeSelected: () => {
-      commit(
+      const accepted = commit(
         removeArrayItems(value, elementIndicesOf(selection.selected), kind),
       );
-      selection.clear();
+      if (accepted) {
+        selection.clear();
+      }
     },
   };
 

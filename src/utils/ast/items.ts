@@ -4,8 +4,15 @@ import { nanoid } from 'nanoid';
 
 import { BINDING_PROP } from '../../constants';
 import { moveSelectedIndices, removeIndices } from '../selection';
+import {
+  appendArraySource,
+  denseArraySource,
+  removeArraySource,
+  reorderArraySource,
+  validArrayIndices,
+} from './array-source';
 import { generateCode } from './helpers';
-import { clone } from './tree';
+import { type SourceEdit, applyEdits } from './patch';
 import type {
   BindingRenderLeaf,
   BindingRenderMap,
@@ -20,19 +27,10 @@ import {
   valueToExpression,
 } from './value';
 
-// The editing engine behind the built-in array-item panel. Every function
-// here is string in, string out: the array source is re-parsed on each call
-// and the resulting tree is thrown away, so nothing is shared with a
-// caller's memoized state and there is no live AST to keep in sync.
-//
-// This used to live in `panel/items.tsx`, where it mutated the nodes held
-// by a `useMemo` and restored JSX by substituting `__JSX_<id>__` strings
-// into the generated output. Neither is needed: Babel prints JSX inside an
-// object literal correctly, and a raw JSX value parses straight into a
-// node. See #247.
-//
-// `null` means the edit could not be applied and the caller should keep the
-// value it already has.
+// Array edits are source patches. Parsing locates the requested value or
+// element; unrelated expressions, comments and formatting are not printed
+// again. Structural edits require dense arrays; value edits preserve holes
+// and spreads at their existing source positions. `null` means refusal.
 
 export type ItemKind = 'object' | 'primitive';
 
@@ -45,40 +43,22 @@ export interface ArrayItem {
   node: t.Expression;
 }
 
-const elementsOf = (code: string): t.Expression[] | null => {
-  const ast = parseArrayExpression(code);
-
-  if (!ast) {
-    return null;
-  }
-
-  return ast.elements.filter((element): element is t.Expression =>
-    Boolean(element),
-  );
-};
+const elementsOf = (code: string) =>
+  parseArrayExpression(code)?.elements ?? null;
 
 const kindOf = (element: t.Expression): ItemKind =>
   t.isObjectExpression(element) ? 'object' : 'primitive';
 
-const toCode = (elements: t.Expression[]): string => {
-  return generateCode(t.arrayExpression(elements));
-};
-
-// Reads the array's elements without touching them. The caller renders from
-// this; every edit goes back through the source string, never through these
-// nodes.
+// Omit holes and spreads from the visible list without renumbering source
+// positions. A spread is not one runtime value that the panel can edit.
 export const parseItems = (code: string): ArrayItem[] | null => {
   const elements = elementsOf(code);
 
-  if (!elements) {
-    return null;
-  }
-
-  return elements.map((node, index) => ({
-    index,
-    kind: kindOf(node),
-    node,
-  }));
+  return (
+    elements?.flatMap((node, index) =>
+      t.isExpression(node) ? [{ index, kind: kindOf(node), node }] : [],
+    ) ?? null
+  );
 };
 
 const resolveRenderLeaf = (
@@ -268,9 +248,27 @@ export const updateArrayItemProperty = (
     return null;
   }
 
-  target.value = nextValue;
+  let serialized =
+    typeof value === 'string' &&
+    (declaredType === 'array' ||
+      declaredType === 'object' ||
+      t.isJSXElement(nextValue) ||
+      t.isJSXFragment(nextValue))
+      ? value.trim()
+      : generateCode(nextValue);
 
-  return toCode(elements);
+  if (
+    nextValue.trailingComments?.some(comment => comment.type === 'CommentLine')
+  ) {
+    serialized += '\n';
+  }
+
+  // A shorthand property shares the key/value span: expand it explicitly.
+  const content = target.shorthand ? `${key}: ${serialized}` : serialized;
+
+  return applyEdits(code, [
+    { start: target.value.start!, end: target.value.end!, content },
+  ]);
 };
 
 export const updateArrayItemValue = (
@@ -281,7 +279,7 @@ export const updateArrayItemValue = (
   const elements = elementsOf(code);
   const element = elements?.[index];
 
-  if (!elements || !element) {
+  if (!elements || !t.isExpression(element)) {
     return null;
   }
 
@@ -294,9 +292,13 @@ export const updateArrayItemValue = (
     return null;
   }
 
-  elements[index] = nextValue;
-
-  return toCode(elements);
+  return applyEdits(code, [
+    {
+      start: element.start!,
+      end: element.end!,
+      content: generateCode(nextValue),
+    },
+  ]);
 };
 
 export const moveArrayItem = (
@@ -304,114 +306,172 @@ export const moveArrayItem = (
   from: number,
   to: number,
 ): string | null => {
-  const elements = elementsOf(code);
+  const data = denseArraySource(code);
 
-  if (!elements?.[from]) {
+  if (
+    !data ||
+    !validArrayIndices([from], data.elements.length) ||
+    !Number.isInteger(to)
+  ) {
     return null;
   }
 
-  // `to` is left unchecked so the splice pair keeps its usual semantics: a
-  // destination past the end appends, and a single-item move that goes
-  // nowhere is a no-op rather than a reported failure.
-  const next = [...elements];
+  // Preserve the existing splice destination semantics (including append).
+  const next = [...data.elements];
   const [moved] = next.splice(from, 1);
-
   next.splice(to, 0, moved!);
 
-  return toCode(next);
+  return reorderArraySource(code, data.elements, next);
 };
 
-// Shifts the selection as a block and reports where it ended up, so the
-// caller can keep its selection state in step without redoing the maths.
 export const moveArrayItems = (
   code: string,
   indices: Set<number>,
   direction: 'up' | 'down',
 ): { code: string; indices: Set<number> } | null => {
-  const elements = elementsOf(code);
+  const data = denseArraySource(code);
 
-  if (!elements) {
+  if (
+    !data ||
+    !validArrayIndices(indices, data.elements.length) ||
+    !['up', 'down'].includes(direction)
+  ) {
     return null;
   }
 
-  const { items, indices: nextIndices } = moveSelectedIndices(
-    elements,
-    indices,
-    direction,
-  );
+  const next = moveSelectedIndices(data.elements, indices, direction);
 
-  return { code: toCode(items), indices: nextIndices };
+  return {
+    code: reorderArraySource(code, data.elements, next.items),
+    indices: next.indices,
+  };
 };
 
-// Refuses to remove the last item of its kind: the panel shows one kind at
-// a time and every "add" clones an existing item of that kind, so emptying
-// it leaves no way back. Counting the whole array instead would let the
-// object panel delete its last object while a primitive kept the total
-// above zero.
+// Keep the last-item guard until the empty-array creation contract (#316)
+// is implemented. It must count the visible kind in a mixed array.
 export const removeArrayItems = (
   code: string,
   indices: Set<number>,
   kind?: ItemKind,
 ): string | null => {
-  const elements = elementsOf(code);
+  const data = denseArraySource(code);
 
-  if (!elements) {
+  if (!data || !validArrayIndices(indices, data.elements.length)) {
     return null;
   }
 
-  const remaining = removeIndices(elements, indices);
+  const remaining = removeIndices(data.elements, indices);
   const survivors =
     kind === undefined
       ? remaining
-      : remaining.filter(element => kindOf(element) === kind);
+      : remaining.filter(node => kindOf(node) === kind);
 
-  if (survivors.length < 1) {
+  if (!survivors.length) {
     return null;
   }
 
-  return toCode(remaining);
+  return removeArraySource(code, data, indices);
 };
 
-// Gives a cloned item a fresh `key`, so React can still tell the copy from
-// its original, and normalizes its editable properties back to literals.
-const cloneItem = (
+// Copy exact source; only static object keys / JSX identities get changed.
+// Re-evaluating modeled property values here would erase expressions.
+const copyItem = (
+  code: string,
   element: t.Expression,
   generateId: () => string,
-): t.Expression => {
-  const cloned = clone(element) as t.Expression;
+  usedIds: Set<string>,
+): string | null => {
+  const edits: SourceEdit[] = [];
+  let unsupported = false;
+  const reserveId = (id: string) => {
+    if (usedIds.has(id)) {
+      unsupported = true;
+    }
 
-  if (!t.isObjectExpression(cloned)) {
-    return cloned;
-  }
+    usedIds.add(id);
 
-  const editable = extractObjectProperties(cloned);
+    return JSON.stringify(id);
+  };
 
-  cloned.properties.forEach(property => {
-    if (!t.isObjectProperty(property) || !t.isIdentifier(property.key)) {
+  t.traverseFast(element, node => {
+    if (!t.isJSXOpeningElement(node)) {
       return;
     }
 
-    const key = property.key.name;
+    const ids = node.attributes.filter(
+      (attr): attr is t.JSXAttribute =>
+        t.isJSXAttribute(attr) &&
+        t.isJSXIdentifier(attr.name, { name: 'data-id' }),
+    );
+    const attr = ids[0];
 
-    if (key === 'key' && t.isStringLiteral(property.value)) {
-      property.value = t.stringLiteral(
-        `${property.value.value}-${generateId()}`,
-      );
+    if (
+      ids.length > 1 ||
+      (attr &&
+        (!t.isStringLiteral(attr.value) ||
+          node.attributes
+            .slice(node.attributes.indexOf(attr) + 1)
+            .some(a => t.isJSXSpreadAttribute(a))))
+    ) {
+      unsupported = true;
       return;
     }
 
-    const source = editable[key];
-
-    if (source) {
-      const next = createNodeFromValue(source.type, source.value);
-
-      if (next) {
-        property.value = next;
-      }
+    if (attr && t.isStringLiteral(attr.value)) {
+      edits.push({
+        start: attr.value.start!,
+        end: attr.value.end!,
+        content: reserveId(generateId()),
+      });
     }
   });
 
-  return cloned;
+  if (t.isObjectExpression(element)) {
+    const keys = element.properties.filter(
+      (prop): prop is t.ObjectProperty =>
+        t.isObjectProperty(prop) &&
+        !prop.computed &&
+        (t.isIdentifier(prop.key, { name: 'key' }) ||
+          t.isStringLiteral(prop.key, { value: 'key' })),
+    );
+    const key = keys[0];
+
+    if (
+      keys.length > 1 ||
+      (key &&
+        (!t.isStringLiteral(key.value) ||
+          element.properties
+            .slice(element.properties.indexOf(key) + 1)
+            .some(
+              prop =>
+                t.isSpreadElement(prop) ||
+                ('computed' in prop && prop.computed),
+            )))
+    ) {
+      return null;
+    }
+
+    if (key && t.isStringLiteral(key.value)) {
+      edits.push({
+        start: key.value.start!,
+        end: key.value.end!,
+        content: reserveId(`${key.value.value}-${generateId()}`),
+      });
+    }
+  }
+
+  if (unsupported) {
+    return null;
+  }
+
+  return applyEdits(
+    code.slice(element.start!, element.end!),
+    edits.map(edit => ({
+      ...edit,
+      start: edit.start - element.start!,
+      end: edit.end - element.start!,
+    })),
+  );
 };
 
 export const duplicateArrayItems = (
@@ -419,50 +479,54 @@ export const duplicateArrayItems = (
   indices: Set<number>,
   generateId: () => string = () => nanoid(6),
 ): string | null => {
-  const elements = elementsOf(code);
+  const data = denseArraySource(code);
 
-  if (!elements) {
+  if (
+    !data ||
+    !indices.size ||
+    !validArrayIndices(indices, data.elements.length)
+  ) {
     return null;
   }
 
-  const clones = [...indices]
+  const usedIds = new Set<string>();
+
+  t.traverseFast(data.array, node => {
+    if (
+      t.isJSXAttribute(node) &&
+      t.isJSXIdentifier(node.name, { name: 'data-id' }) &&
+      t.isStringLiteral(node.value)
+    ) {
+      usedIds.add(node.value.value);
+    } else if (
+      t.isObjectProperty(node) &&
+      !node.computed &&
+      (t.isIdentifier(node.key, { name: 'key' }) ||
+        t.isStringLiteral(node.key, { value: 'key' })) &&
+      t.isStringLiteral(node.value)
+    ) {
+      usedIds.add(node.value.value);
+    }
+  });
+
+  const copies = [...indices]
     .sort((a, b) => a - b)
-    .map(index => elements[index])
-    .filter((element): element is t.Expression => Boolean(element))
-    .map(element => cloneItem(element, generateId));
+    .map(index => copyItem(code, data.elements[index]!, generateId, usedIds));
 
-  if (clones.length === 0) {
-    return null;
-  }
-
-  return toCode([...elements, ...clones]);
+  return copies.every((copy): copy is string => copy !== null)
+    ? appendArraySource(code, data, copies)
+    : null;
 };
 
-// Appends a copy of the first item of `kind`. There is no schema to build a
-// blank item from, so an existing one is the only available template.
 export const appendArrayItem = (
   code: string,
   kind: ItemKind,
   generateId: () => string = () => nanoid(6),
 ): string | null => {
-  const elements = elementsOf(code);
+  const data = denseArraySource(code);
+  const index = data?.elements.findIndex(node => kindOf(node) === kind) ?? -1;
 
-  if (!elements) {
-    return null;
-  }
-
-  const template = elements.find(element => kindOf(element) === kind);
-
-  if (!template) {
-    return null;
-  }
-
-  if (kind === 'primitive') {
-    const { type, value } = extractNodeValue(template);
-    const next = createNodeFromValue(type, value);
-
-    return next ? toCode([...elements, next]) : null;
-  }
-
-  return toCode([...elements, cloneItem(template, generateId)]);
+  return index < 0
+    ? null
+    : duplicateArrayItems(code, new Set([index]), generateId);
 };

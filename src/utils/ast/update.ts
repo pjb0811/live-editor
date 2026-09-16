@@ -8,7 +8,7 @@ import { traverse } from './document';
 import { generateCode, unwrap, wrap } from './helpers';
 import { type SourceEdit, applyEdits } from './patch';
 import type { BindingType } from './types';
-import { valueToExpression } from './value';
+import { unwrapExpression, valueToExpression } from './value';
 
 // Every editor below returns the source spans it wants to change rather
 // than mutating the tree, so `update` can patch the original text and leave
@@ -237,8 +237,8 @@ const editJsxAttribute = (
 // source text, so a string committed against them stays a string.
 const holdsStructuralExpression = (value?: t.JSXAttribute['value']): boolean =>
   t.isJSXExpressionContainer(value) &&
-  (t.isArrayExpression(value.expression) ||
-    t.isObjectExpression(value.expression));
+  (t.isArrayExpression(unwrapExpression(value.expression)) ||
+    t.isObjectExpression(unwrapExpression(value.expression)));
 
 // Parses committed text back into the array/object literal it claims to be.
 // Requiring that exact shape is what keeps a plain string from silently
@@ -250,7 +250,8 @@ const structuralSource = (value: string): t.Expression | null => {
       plugins: ['jsx', 'typescript'],
     });
 
-    return t.isArrayExpression(expression) || t.isObjectExpression(expression)
+    return t.isArrayExpression(unwrapExpression(expression)) ||
+      t.isObjectExpression(unwrapExpression(expression))
       ? expression
       : null;
   } catch {
@@ -330,6 +331,34 @@ const editAttribute = (
 
   if (!attribute || attribute.start == null || attribute.end == null) {
     return null;
+  }
+
+  // Serialized array/object edits already carry preserved source. Validate
+  // their shape, then replace only the expression value instead of printing
+  // the attribute (which would reformat every untouched array sibling).
+  if (
+    typeof value === 'string' &&
+    (type === 'array' ||
+      type === 'object' ||
+      (holdsStructuralExpression(attribute.value) &&
+        !(type && STRING_VALUED_TYPES.has(type))))
+  ) {
+    const expression = structuralSource(value);
+
+    if (expression && t.isJSXExpressionContainer(attribute.value)) {
+      const text = value.trim();
+      const lineComment = expression.trailingComments?.some(
+        comment => comment.type === 'CommentLine',
+      );
+
+      return [
+        {
+          start: attribute.value.expression.start!,
+          end: attribute.value.expression.end!,
+          content: `${text}${lineComment ? '\n' : ''}`,
+        },
+      ];
+    }
   }
 
   // Generate the whole attribute rather than just its value, so Babel's
