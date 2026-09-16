@@ -44,7 +44,10 @@ const Node = ({ data, onChange }: FieldEditorProps) => {
           );
 
           return (
-            <div key={binding.label} className="space-y-1">
+            <div
+              key={`${binding.property}-${binding.label}`}
+              className="space-y-1"
+            >
               <label className="block text-xs font-semibold text-gray-700">
                 {binding.label}
                 <span className="ml-1 text-gray-400">({binding.property})</span>

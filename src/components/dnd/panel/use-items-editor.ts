@@ -72,8 +72,16 @@ export interface ItemsEditorItem {
 }
 
 export interface ItemsEditorActions {
+  // Appends a copy of the first item of the current `kind`. An array
+  // binding stays editable only while it holds at least one item: the shape
+  // of a new item comes from its siblings, never from a guess. On an empty
+  // array this is a no-op that raises the failure toast, so a custom panel
+  // should offer it only when `items` is non-empty, the way the built-in
+  // panel does (#316).
   add: () => void;
   move: (elementIndex: number, toIndex: number) => void;
+  // Refuses the edit that would remove the last item, keeping the array
+  // non-empty and therefore editable.
   remove: (elementIndex: number) => void;
   duplicateSelected: () => void;
   moveSelected: (direction: 'up' | 'down') => void;

@@ -175,7 +175,8 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
   // they need local live state to hold what the user is typing. Left
   // uncontrolled (`defaultValue`), they ignored later changes to the canonical
   // value — an undo/redo or another field touching the same binding — because
-  // `Field` reconciles rather than remounts (stable `key={binding.label}`).
+  // `Field` reconciles rather than remounts (a stable key, now
+  // `property`+`label` — see #318).
   // The stale text then got re-committed on blur, clobbering the undo. Track
   // the canonical `rawValue` with a render-phase reset, the same pattern
   // `ColorPickerField` uses above. See #284. (The date picker commits on

@@ -54,7 +54,10 @@ const NestedGroup = ({
           <div className="space-y-2 rounded">
             <div className="space-y-1">
               {element.bindings.map(binding => (
-                <div key={binding.label} className="space-y-1">
+                <div
+                  key={`${binding.property}-${binding.label}`}
+                  className="space-y-1"
+                >
                   <label className="block text-xs font-semibold text-gray-700">
                     {binding.label}
                     <span className="ml-1 text-gray-400">
@@ -76,11 +79,67 @@ const NestedGroup = ({
 // array source lives in that hook, which is exported so a consumer can put
 // their own markup over the same engine — see its doc comment (#237/#308).
 const Items = ({ value, render, onChange, onChildChange }: Props) => {
-  const { kind, items, selection, actions } = useItemsEditor(value, {
-    render,
-    onChange,
-    onNodeChange: onChildChange,
-  });
+  const { kind, items, selection, actions, parseError } = useItemsEditor(
+    value,
+    {
+      render,
+      onChange,
+      onNodeChange: onChildChange,
+    },
+  );
+
+  const header = (
+    <div className="flex items-center justify-between">
+      <div className="text-sm font-semibold">Items ({items.length})</div>
+      {/* Add copies an existing item, so it is offered only once there is
+          one to copy — see the empty-list notice below (#316). */}
+      {items.length > 0 && (
+        <Button
+          size="small"
+          icon={<Plus />}
+          variant="solid"
+          color="green"
+          onClick={actions.add}
+        >
+          Add Item
+        </Button>
+      )}
+    </div>
+  );
+
+  if (parseError) {
+    return (
+      <div className="space-y-4">
+        {header}
+        <div
+          className="rounded border border-dashed border-red-200 p-3 text-xs
+            text-red-600"
+        >
+          This value could not be read as a list. Edit it in the code editor.
+        </div>
+      </div>
+    );
+  }
+
+  // An array binding is editable only while it holds at least one item: the
+  // panel derives an item's shape from its siblings and will not invent one.
+  // `removeArrayItems` already refuses to empty a populated array, so this
+  // state means the source itself declared `[]` (or only holes/spreads).
+  if (items.length === 0) {
+    return (
+      <div className="space-y-4">
+        {header}
+        <div
+          className="rounded border border-dashed border-gray-200 p-3 text-xs
+            text-gray-500"
+        >
+          No editable items. The panel copies an existing item rather than
+          guessing the shape of a new one — add the first item in the code
+          editor.
+        </div>
+      </div>
+    );
+  }
 
   const bulkBar = (
     <BulkActionsBar
@@ -120,18 +179,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
   if (kind === 'primitive') {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">Items ({items.length})</div>
-          <Button
-            size="small"
-            icon={<Plus />}
-            variant="solid"
-            color="green"
-            onClick={actions.add}
-          >
-            Add Item
-          </Button>
-        </div>
+        {header}
 
         {bulkBar}
 
@@ -161,19 +209,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold">Items ({items.length})</div>
-        <Button
-          size="small"
-          icon={<Plus />}
-          variant="solid"
-          color="green"
-          disabled={items.length === 0}
-          onClick={actions.add}
-        >
-          Add Item
-        </Button>
-      </div>
+      {header}
 
       {bulkBar}
 
