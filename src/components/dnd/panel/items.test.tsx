@@ -1,11 +1,19 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Items from './items';
 
 const objects = `[{ key: 'a', label: 'Alpha' }, { key: 'b', label: 'Beta' }]`;
 const primitives = `['one', 'two']`;
+
+beforeAll(() => {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+});
 
 const addButton = () =>
   screen
@@ -62,5 +70,22 @@ describe('Items panel empty-array contract', () => {
     expect(screen.getByText(/could not be read as a list/i)).not.toBeNull();
     expect(screen.queryByText(/no editable items/i)).toBeNull();
     expect(addButton()).toBeUndefined();
+  });
+});
+
+describe('Items', () => {
+  it('keeps untouched item subtrees mounted when another item changes', () => {
+    const first = `[{ label: 'A' }, { label: 'B' }]`;
+    const second = `[{ label: 'A' }, { label: 'BB' }]`;
+    const { container, rerender } = render(<Items value={first} />);
+    const before = container.querySelectorAll('textarea');
+
+    expect(before).toHaveLength(2);
+
+    rerender(<Items value={second} />);
+
+    const after = container.querySelectorAll('textarea');
+
+    expect(after[0]).toBe(before[0]);
   });
 });

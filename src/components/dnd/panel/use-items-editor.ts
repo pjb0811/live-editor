@@ -52,8 +52,8 @@ export interface ItemsEditorNestedGroup {
 
 export interface ItemsEditorItem {
   // Stable only for this parse of `value` — regenerated whenever the source
-  // string changes. Fine as a React key, not as an identity across edits;
-  // use `elementIndex` for that.
+  // string changes. It is not suitable as a React key across value edits;
+  // use `elementIndex` for the built-in panel instead.
   id: string;
   // Position among the visible items of this kind, which is what selection
   // indices refer to.
