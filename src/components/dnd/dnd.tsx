@@ -36,7 +36,6 @@ import {
 } from '~/utils/ast';
 import type { UpdateFailure } from '~/utils/ast';
 
-import { DEFAULT_TEMPLATE } from '../../constants';
 import { cn, preloadScripts } from '../../utils';
 import { usePreview } from '../context/states';
 import { type FrameProps } from '../frame';
@@ -295,10 +294,10 @@ const Dnd = ({
   // useSectionDocument writes into PreviewContext, but this component
   // never read `code` back — so the section a reader just dragged in
   // vanished on the very next render. `Client` (preview/client.tsx)
-  // already resolves the same dual-source situation with `_code || code`;
-  // mirrored here, with DEFAULT_TEMPLATE kept only as the final fallback
-  // for the case neither is set (fresh, empty context) — see #244.
-  const value = _value || code || DEFAULT_TEMPLATE;
+  // resolves the same dual-source situation by distinguishing an omitted
+  // prop from an explicitly empty string; mirror that contract here. The
+  // ContextProvider supplies DEFAULT_TEMPLATE for a fresh document.
+  const value = _value === undefined ? code : _value;
 
   const {
     sections,

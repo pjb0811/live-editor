@@ -12,7 +12,7 @@ import { useCompiledModule } from './use-compiled-module';
 import { useDynamicTailwind } from './use-dynamic-tailwind';
 
 const Client = ({
-  code: _code = '',
+  code: _code,
   className,
   showError,
   props = {},
@@ -27,7 +27,7 @@ const Client = ({
 
   const classNames = cn(isError && 'hidden', className);
 
-  const effectiveCode = _code || code;
+  const effectiveCode = _code === undefined ? code : _code;
 
   const module = useCompiledModule(effectiveCode, modules);
 
