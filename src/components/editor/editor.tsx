@@ -17,7 +17,8 @@ export interface EditorRenderData {
   formatCode: (code: string) => Promise<string>;
 }
 
-export interface Props extends Omit<CoreProps, 'onSave' | 'onError'> {
+export interface Props extends Omit<CoreProps, 'value' | 'onSave' | 'onError'> {
+  value?: string;
   defaultValue?: string;
   debounce?: number;
   // Full replacement for the built-in CodeMirror editor. Editor still owns
@@ -40,7 +41,7 @@ const Editor = ({
   const { setError } = useError();
 
   const value =
-    _value.trim() === '' ? defaultValue || DEFAULT_TEMPLATE : _value;
+    _value === undefined ? (defaultValue ?? DEFAULT_TEMPLATE) : _value;
 
   const onChange = useCallback(
     (value: string) => {
