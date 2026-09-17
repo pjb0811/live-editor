@@ -518,6 +518,14 @@ export const duplicateArrayItems = (
     : null;
 };
 
+// Appends a copy of the first item of `kind`. There is deliberately no
+// "create from scratch" path: the shape of an item is defined by its
+// siblings, and inventing one (`{}`, or a guess from the render map) would
+// either be uneditable or silently impose a shape the consumer never
+// declared. An array binding is therefore editable only while it holds at
+// least one item — the same invariant `removeArrayItems` maintains by
+// refusing any edit that would empty the array. `null` here means the array
+// has no item of `kind` to copy; the first one belongs in the source (#316).
 export const appendArrayItem = (
   code: string,
   kind: ItemKind,
