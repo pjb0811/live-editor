@@ -1,8 +1,16 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useMutationObserver } from '@jbpark/use-hooks';
+
+import { createStyleSyncManager, reconcileStyles } from './style-sync';
 
 interface Props {
   // Clones the host document's <link rel="stylesheet">/<style> tags into the
@@ -29,13 +37,7 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
   // Appended as siblings of the portal target (below), not inside it — that
   // subtree is React-owned via createPortal, and anything appended there
   // directly would get wiped on the next reconcile.
-  const styleManagerRef = useRef<{
-    copiedLinks: Set<string>;
-    copiedStyles: Set<string>;
-  }>({
-    copiedLinks: new Set(),
-    copiedStyles: new Set(),
-  });
+  const styleManagerRef = useRef(createStyleSyncManager());
 
   const applyStyle = useCallback(() => {
     const shadowRoot = shadowRootRef.current;
@@ -44,51 +46,7 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
       return;
     }
 
-    const manager = styleManagerRef.current;
-
-    const links = document.querySelectorAll<HTMLLinkElement>(
-      'link[rel="stylesheet"]',
-    );
-    const newLinks = Array.from(links)
-      .map(link => link.href)
-      .filter(href => !manager.copiedLinks.has(href));
-
-    if (newLinks.length) {
-      const fragment = document.createDocumentFragment();
-      newLinks.forEach(href => {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = href;
-        fragment.appendChild(link);
-        manager.copiedLinks.add(href);
-      });
-      shadowRoot.appendChild(fragment);
-    }
-
-    const styleTags = document.querySelectorAll<HTMLStyleElement>('style');
-    const newStyles = Array.from(styleTags)
-      .map(style => style.textContent || '')
-      .filter(content => {
-        if (!content) {
-          return false;
-        }
-        const hash = content.length + content.slice(0, 50);
-        if (manager.copiedStyles.has(hash)) {
-          return false;
-        }
-        manager.copiedStyles.add(hash);
-        return true;
-      });
-
-    if (newStyles.length) {
-      const fragment = document.createDocumentFragment();
-      newStyles.forEach(content => {
-        const style = document.createElement('style');
-        style.textContent = content;
-        fragment.appendChild(style);
-      });
-      shadowRoot.appendChild(fragment);
-    }
+    reconcileStyles(document, shadowRoot, styleManagerRef.current, syncStyle);
   }, [syncStyle]);
 
   const applyStyleTimeoutRef = useRef<number>(undefined);
@@ -100,6 +58,10 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
     clearTimeout(applyStyleTimeoutRef.current);
     applyStyleTimeoutRef.current = window.setTimeout(applyStyle, 50);
   }, [applyStyle]);
+
+  useEffect(() => {
+    return () => clearTimeout(applyStyleTimeoutRef.current);
+  }, []);
 
   useMutationObserver(document.head, debouncedApplyStyle, {
     enabled: syncStyle,
