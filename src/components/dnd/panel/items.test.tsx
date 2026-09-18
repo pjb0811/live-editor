@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { useState } from 'react';
+
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Items from './items';
@@ -87,5 +89,51 @@ describe('Items', () => {
     const after = container.querySelectorAll('textarea');
 
     expect(after[0]).toBe(before[0]);
+  });
+
+  it('moves item subtrees with their source item', () => {
+    const before = `[{ label: 'A' }, { label: 'B' }]`;
+    const after = `[{ label: 'B' }, { label: 'A' }]`;
+    const { container, rerender } = render(<Items value={before} />);
+    const nodeOfA = container.querySelectorAll('textarea')[0]!;
+
+    rerender(<Items value={after} />);
+
+    const nodes = [...container.querySelectorAll('textarea')];
+
+    expect(nodes.indexOf(nodeOfA)).toBe(1);
+  });
+
+  it('keeps surviving item subtrees after a delete', () => {
+    const before = `[{ label: 'A' }, { label: 'B' }, { label: 'C' }]`;
+    const after = `[{ label: 'B' }, { label: 'C' }]`;
+    const { container, rerender } = render(<Items value={before} />);
+    const [, nodeOfB, nodeOfC] = container.querySelectorAll('textarea');
+
+    rerender(<Items value={after} />);
+
+    const nodes = [...container.querySelectorAll('textarea')];
+
+    expect(nodes[0]).toBe(nodeOfB);
+    expect(nodes[1]).toBe(nodeOfC);
+  });
+
+  it('keeps the original subtree when duplicating an item through the panel', () => {
+    const ControlledItems = () => {
+      const [value, setValue] = useState(`[{ label: 'A' }]`);
+
+      return <Items value={value} onChange={setValue} />;
+    };
+
+    const { container } = render(<ControlledItems />);
+    const nodeOfOriginal = container.querySelector('textarea')!;
+
+    fireEvent.click(addButton()!);
+
+    const nodes = [...container.querySelectorAll('textarea')];
+
+    expect(nodes).toHaveLength(2);
+    expect(nodes[0]).toBe(nodeOfOriginal);
+    expect(nodes[1]).not.toBe(nodeOfOriginal);
   });
 });

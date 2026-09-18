@@ -185,7 +185,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
         {items.map(item => (
           <div
-            key={item.elementIndex}
+            key={item.id}
             className="space-y-2 rounded border border-gray-100 bg-gray-50 p-2"
           >
             <div className="flex items-center justify-between space-x-1">
@@ -214,10 +214,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
       {bulkBar}
 
       {items.map(item => (
-        <div
-          key={item.elementIndex}
-          className="space-y-3 rounded border bg-gray-50 p-3"
-        >
+        <div key={item.id} className="space-y-3 rounded border bg-gray-50 p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div
@@ -235,9 +232,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           </div>
           <div className="space-y-2">
             {item.properties.map(binding => (
-              <div
-                key={`${item.elementIndex}-${binding.property}-${binding.label}`}
-              >
+              <div key={`${item.id}-${binding.property}-${binding.label}`}>
                 <div className="flex flex-col space-y-2">
                   <label className="w-20 shrink-0 text-xs font-medium">
                     {binding.label}
