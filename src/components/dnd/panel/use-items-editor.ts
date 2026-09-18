@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import * as t from '@babel/types';
 import { Toast } from '@jbpark/ui-kit';
@@ -26,6 +26,7 @@ import {
   updateArrayItemProperty,
   updateArrayItemValue,
 } from '~/utils/ast';
+import { moveSelectedIndices } from '~/utils/selection';
 
 import type { PanelBinding, PanelNodeChange } from '../dnd';
 
@@ -51,9 +52,9 @@ export interface ItemsEditorNestedGroup {
 }
 
 export interface ItemsEditorItem {
-  // Stable only for this parse of `value` — regenerated whenever the source
-  // string changes. It is not suitable as a React key across value edits;
-  // use `elementIndex` for the built-in panel instead.
+  // Stable while this hook can prove the same item survived a source edit.
+  // Structural actions update this identity alongside the source patch, so
+  // React keys follow moved/duplicated/deleted rows instead of their positions.
   id: string;
   // Position among the visible items of this kind, which is what selection
   // indices refer to.
@@ -137,6 +138,7 @@ interface RawObjectItem {
   id: string;
   index: number;
   elementIndex: number;
+  source: string;
   editableProperties: ReturnType<typeof extractObjectProperties>;
   jsxBindings: Record<string, DataAttrNode[]>;
   jsxFallbacks: Record<string, string>;
@@ -146,8 +148,16 @@ interface RawPrimitiveItem {
   id: string;
   index: number;
   elementIndex: number;
+  source: string;
   value: string | number | boolean | null;
   type: ReturnType<typeof extractNodeValue>['type'];
+}
+
+interface ItemIdentityState {
+  value: string;
+  kind: ItemsEditor['kind'];
+  ids: string[];
+  signatures: string[];
 }
 
 // Pulls the data-bound elements out of one JSX-valued property. A container
@@ -204,6 +214,7 @@ const parseSource = (value: string) => {
         id: nanoid(6),
         index: primitiveItems.length,
         elementIndex,
+        source: value.slice(element.start!, element.end!),
         value: extracted.value,
         type: extracted.type,
       });
@@ -260,6 +271,7 @@ const parseSource = (value: string) => {
       id: nanoid(6),
       index: objectItems.length,
       elementIndex,
+      source: value.slice(element.start!, element.end!),
       editableProperties,
       jsxBindings,
       jsxFallbacks,
@@ -267,6 +279,72 @@ const parseSource = (value: string) => {
   });
 
   return { objectItems, primitiveItems, parseError: false };
+};
+
+const createIdentityState = (
+  value: string,
+  kind: ItemsEditor['kind'],
+  items: Array<RawObjectItem | RawPrimitiveItem>,
+  ids: string[] = items.map(item => item.id),
+): ItemIdentityState => ({
+  value,
+  kind,
+  ids,
+  signatures: items.map(item => item.source),
+});
+
+const reconcileIdentityState = (
+  current: ItemIdentityState | null,
+  value: string,
+  kind: ItemsEditor['kind'],
+  items: Array<RawObjectItem | RawPrimitiveItem>,
+): ItemIdentityState => {
+  if (
+    current &&
+    current.value === value &&
+    current.kind === kind &&
+    current.ids.length === items.length
+  ) {
+    return current;
+  }
+
+  if (!current || current.kind !== kind) {
+    return createIdentityState(value, kind, items);
+  }
+
+  const previousCounts = new Map<string, number>();
+  const nextCounts = new Map<string, number>();
+
+  current.signatures.forEach(signature => {
+    previousCounts.set(signature, (previousCounts.get(signature) ?? 0) + 1);
+  });
+  items.forEach(item => {
+    nextCounts.set(item.source, (nextCounts.get(item.source) ?? 0) + 1);
+  });
+
+  const ids = items.map(item => {
+    const previousIndex = current.signatures.indexOf(item.source);
+
+    return previousIndex >= 0 &&
+      previousCounts.get(item.source) === 1 &&
+      nextCounts.get(item.source) === 1
+      ? current.ids[previousIndex]!
+      : item.id;
+  });
+
+  return createIdentityState(value, kind, items, ids);
+};
+
+const moveId = (ids: string[], from: number, to: number) => {
+  const next = [...ids];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved!);
+
+  return next;
+};
+
+const removeIds = (ids: string[], indices: Set<number>) => {
+  return ids.filter((_, index) => !indices.has(index));
 };
 
 // The array-editing engine behind the built-in Items panel, exposed so a
@@ -300,13 +378,21 @@ export const useItemsEditor = (
       ? 'primitive'
       : 'object';
   const isPrimitive = kind === 'primitive';
+  const rawItems = isPrimitive ? primitiveItems : objectItems;
+  const [identityState, setIdentityState] = useState(() =>
+    createIdentityState(value, kind, rawItems),
+  );
+  const identity = useMemo(
+    () => reconcileIdentityState(identityState, value, kind, rawItems),
+    [identityState, kind, rawItems, value],
+  );
 
   const selection = useMultiSelect(
     isPrimitive ? primitiveItems.length : objectItems.length,
   );
 
   // `null` means the edit could not be applied.
-  const commit = (next: string | null) => {
+  const commit = (next: string | null, nextIds?: string[]) => {
     if (next === null) {
       Toast.error('Failed to update this item', {
         description:
@@ -314,6 +400,18 @@ export const useItemsEditor = (
       });
 
       return false;
+    }
+
+    const parsed = parseSource(next);
+    const nextItems =
+      kind === 'primitive' ? parsed.primitiveItems : parsed.objectItems;
+
+    if (nextIds) {
+      setIdentityState(createIdentityState(next, kind, nextItems, nextIds));
+    } else {
+      setIdentityState(
+        createIdentityState(next, kind, nextItems, identity.ids),
+      );
     }
 
     onChange?.(next);
@@ -345,18 +443,24 @@ export const useItemsEditor = (
   };
 
   const actions: ItemsEditorActions = {
-    add: () => commit(appendArrayItem(value, kind)),
+    add: () => {
+      const next = appendArrayItem(value, kind);
+
+      commit(next, next ? [...identity.ids, nanoid(6)] : undefined);
+    },
 
     move: (elementIndex, toIndex) => {
       const items = isPrimitive ? primitiveItems : objectItems;
+      const from = items.find(item => item.elementIndex === elementIndex);
       const target = items.find(item => item.index === toIndex);
 
-      if (!target) {
+      if (!from || !target) {
         return;
       }
 
       const accepted = commit(
         moveArrayItem(value, elementIndex, target.elementIndex),
+        moveId(identity.ids, from.index, target.index),
       );
       // Positions shift after a move, but the count doesn't, so
       // `useMultiSelect` never reconciles the set on its own — clear it so a
@@ -367,8 +471,11 @@ export const useItemsEditor = (
     },
 
     remove: elementIndex => {
+      const items = isPrimitive ? primitiveItems : objectItems;
+      const removed = items.find(item => item.elementIndex === elementIndex);
       const accepted = commit(
         removeArrayItems(value, new Set([elementIndex]), kind),
+        removed ? removeIds(identity.ids, new Set([removed.index])) : undefined,
       );
       // Removing an item shifts every position after it; same reasoning.
       if (accepted) {
@@ -376,10 +483,23 @@ export const useItemsEditor = (
       }
     },
 
-    duplicateSelected: () =>
-      commit(duplicateArrayItems(value, elementIndicesOf(selection.selected))),
+    duplicateSelected: () => {
+      const selected = elementIndicesOf(selection.selected);
+      const next = duplicateArrayItems(value, selected);
+      const copied = rawItems
+        .filter(item => selected.has(item.elementIndex))
+        .sort((a, b) => a.elementIndex - b.elementIndex)
+        .map(() => nanoid(6));
+
+      commit(next, next ? [...identity.ids, ...copied] : undefined);
+    },
 
     moveSelected: direction => {
+      const nextIdentity = moveSelectedIndices(
+        identity.ids,
+        selection.selected,
+        direction,
+      );
       const result = moveArrayItems(
         value,
         elementIndicesOf(selection.selected),
@@ -406,12 +526,13 @@ export const useItemsEditor = (
           ),
         ),
       );
-      commit(result.code);
+      commit(result.code, nextIdentity.items);
     },
 
     removeSelected: () => {
       const accepted = commit(
         removeArrayItems(value, elementIndicesOf(selection.selected), kind),
+        removeIds(identity.ids, selection.selected),
       );
       if (accepted) {
         selection.clear();
@@ -424,7 +545,7 @@ export const useItemsEditor = (
   // already-parsed result — no Babel.
   const items: ItemsEditorItem[] = isPrimitive
     ? primitiveItems.map(item => ({
-        id: item.id,
+        id: identity.ids[item.index] ?? item.id,
         index: item.index,
         elementIndex: item.elementIndex,
         properties: [],
@@ -440,13 +561,14 @@ export const useItemsEditor = (
         },
       }))
     : objectItems.map(item => {
+        const id = identity.ids[item.index] ?? item.id;
         const properties: PanelBinding[] = Object.entries(
           item.editableProperties,
         ).map(([key, prop]) => {
           const leaf = resolveLeaf(render, key);
 
           return {
-            id: `item-${item.id}-${key}`,
+            id: `item-${id}-${key}`,
             label: key,
             property: leaf ? (leaf.property ?? (leaf.type as string)) : key,
             type: leaf?.type,
@@ -533,7 +655,7 @@ export const useItemsEditor = (
         ];
 
         return {
-          id: item.id,
+          id,
           index: item.index,
           elementIndex: item.elementIndex,
           properties,
