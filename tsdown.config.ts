@@ -47,21 +47,15 @@ export default defineConfig({
   deps: {
     onlyBundle: [
       /^@babel\//,
-      /^@codemirror\//,
       /^@jridgewell\//,
-      '@marijn/find-cluster-break',
       'clsx',
       'debug',
-      'has-flag',
       'js-tokens',
       'jsesc',
       'ms',
       'nanoid',
       'picocolors',
-      'style-mod',
-      'supports-color',
       'tailwind-merge',
-      'w3c-keyname',
     ],
   },
 });

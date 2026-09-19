@@ -35,7 +35,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24.x
+          node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
 
       # package.json's version is untagged only right after a Version

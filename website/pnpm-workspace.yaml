@@ -1,3 +1,6 @@
+overrides:
+  '@tiptap/*': 3.31.3
+
 onlyBuiltDependencies:
   - '@swc/core'
   - core-js
