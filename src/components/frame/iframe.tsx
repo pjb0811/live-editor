@@ -63,7 +63,7 @@ const IFrame = ({
   const applyStyle = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
 
-    if (!doc || !syncStyle) {
+    if (!doc) {
       return;
     }
 
@@ -95,7 +95,6 @@ const IFrame = ({
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['href'],
   });
 
   useEffect(() => {

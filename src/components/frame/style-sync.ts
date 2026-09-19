@@ -11,6 +11,9 @@ export const createStyleSyncManager = (): StyleSyncManager => ({
   clones: new Map(),
 });
 
+const isDocument = (target: Document | ShadowRoot): target is Document =>
+  target.nodeType === Node.DOCUMENT_NODE;
+
 const sourceStyles = (document: Document): SourceStyle[] =>
   Array.from(
     document.head.querySelectorAll<HTMLLinkElement | HTMLStyleElement>(
@@ -51,8 +54,7 @@ const createClone = (
   target: Document | ShadowRoot,
   transformStyle: (content: string) => string,
 ): SyncedStyle => {
-  const ownerDocument =
-    target instanceof Document ? target : target.ownerDocument;
+  const ownerDocument = isDocument(target) ? target : target.ownerDocument;
   const clone = ownerDocument.createElement(
     source.tagName.toLowerCase(),
   ) as SyncedStyle;
@@ -62,6 +64,9 @@ const createClone = (
 
   return clone;
 };
+
+const targetContainer = (target: Document | ShadowRoot) =>
+  isDocument(target) ? target.head : target;
 
 const isSyncedStyle = (node: Node): node is SyncedStyle => {
   const element = node as Element;
@@ -92,6 +97,7 @@ export const reconcileStyles = (
 
   const sources = sourceStyles(sourceDocument);
   const sourceSet = new Set(sources);
+  const container = targetContainer(target);
 
   manager.clones.forEach((clone, source) => {
     if (!sourceSet.has(source)) {
@@ -114,10 +120,10 @@ export const reconcileStyles = (
 
     const nextSibling = previous
       ? previous.nextSibling
-      : (Array.from(target.childNodes).find(isSyncedStyle) ?? null);
+      : (Array.from(container.childNodes).find(isSyncedStyle) ?? null);
 
     if (clone !== nextSibling) {
-      target.insertBefore(clone, nextSibling);
+      container.insertBefore(clone, nextSibling);
     }
 
     previous = clone;

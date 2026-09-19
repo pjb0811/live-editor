@@ -42,7 +42,7 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
   const applyStyle = useCallback(() => {
     const shadowRoot = shadowRootRef.current;
 
-    if (!shadowRoot || !syncStyle) {
+    if (!shadowRoot) {
       return;
     }
 
@@ -68,7 +68,6 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['href'],
   });
 
   useLayoutEffect(() => {

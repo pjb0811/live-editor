@@ -11,7 +11,7 @@ const createTarget = () => {
   return host.attachShadow({ mode: 'open' });
 };
 
-const syncedStyles = (target: ShadowRoot) => [
+const syncedStyles = (target: Document | ShadowRoot) => [
   ...target.querySelectorAll('[data-live-editor-synced-style]'),
 ];
 
@@ -96,8 +96,44 @@ describe('reconcileStyles', () => {
     expect(clone.media).toBe('screen');
     expect(clone.hasAttribute('disabled')).toBe(true);
 
+    link.media = 'print';
+    link.removeAttribute('disabled');
+    reconcileStyles(source, target, manager, true);
+
+    expect(syncedStyles(target)[0]).toBe(clone);
+    expect(clone.media).toBe('print');
+    expect(clone.hasAttribute('disabled')).toBe(false);
+
     reconcileStyles(source, target, manager, false);
 
     expect(syncedStyles(target)).toHaveLength(0);
+  });
+
+  it('syncs into an iframe document head and moves clones after a remount', () => {
+    const source = document.implementation.createHTMLDocument();
+    const firstTarget = document.implementation.createHTMLDocument();
+    const secondTarget = document.implementation.createHTMLDocument();
+    const manager = createStyleSyncManager();
+    const style = source.createElement('style');
+
+    style.textContent = '.preview { min-height: 100vh; }';
+    source.head.appendChild(style);
+
+    reconcileStyles(source, firstTarget, manager, true, content =>
+      content.replace('100vh', '640px'),
+    );
+
+    expect(syncedStyles(firstTarget)).toHaveLength(1);
+    expect(firstTarget.head.lastElementChild?.textContent).toBe(
+      '.preview { min-height: 640px; }',
+    );
+
+    reconcileStyles(source, secondTarget, manager, true);
+
+    expect(syncedStyles(firstTarget)).toHaveLength(0);
+    expect(syncedStyles(secondTarget)).toHaveLength(1);
+    expect(secondTarget.head.lastElementChild?.ownerDocument).toBe(
+      secondTarget,
+    );
   });
 });
