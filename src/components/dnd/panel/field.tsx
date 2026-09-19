@@ -189,6 +189,18 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
     setText(rawValue);
   }
 
+  // Guard against the canonical value with the same shape as the commit:
+  // raw source text for string-in/string-out controls, structured values
+  // for typed controls. Comparing across those shapes lets no-op edits
+  // through when, for example, `'42'` and `42` describe the same field.
+  const commitIfChanged = (next: unknown) => {
+    const current = typeof next === 'string' ? rawValue : value;
+
+    if (next !== current) {
+      onChange(next);
+    }
+  };
+
   if (
     binding.property === 'items' ||
     binding.property === 'data' ||
@@ -209,11 +221,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
       <RichTextEditor
         value={rawValue}
         toolbar={RICHTEXT_TOOLBAR}
-        onChange={next => {
-          if (next !== rawValue) {
-            onChange(next);
-          }
-        }}
+        onChange={commitIfChanged}
       />
     );
   }
@@ -227,11 +235,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
         height="150px"
         fragment={!isHTML}
         raw={isHTML}
-        onSave={next => {
-          if (next !== rawValue) {
-            onChange(next);
-          }
-        }}
+        onSave={commitIfChanged}
       />
     );
   }
@@ -304,11 +308,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
       <Select
         value={stringValue}
         options={binding.options}
-        onChange={next => {
-          if (next !== value) {
-            onChange(next);
-          }
-        }}
+        onChange={commitIfChanged}
       />
     );
   }
@@ -317,7 +317,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
     return (
       <ColorPickerField
         value={normalizeToHex(stringValue)}
-        onChange={onChange}
+        onChange={commitIfChanged}
       />
     );
   }
@@ -338,9 +338,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
 
             setValidationError(null);
 
-            if (next !== value) {
-              onChange(next);
-            }
+            commitIfChanged(next);
           }}
         />
         {validationError && (
@@ -369,9 +367,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
 
             setValidationError(null);
 
-            if (next !== value) {
-              onChange(next);
-            }
+            commitIfChanged(next);
           }}
         />
         {validationError && (
@@ -394,11 +390,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
         <Select
           value={stringValue}
           options={ICON_OPTIONS}
-          onChange={next => {
-            if (next !== value) {
-              onChange(next);
-            }
-          }}
+          onChange={commitIfChanged}
         />
         {SelectedIcon && <SelectedIcon size={18} className="shrink-0" />}
       </div>
@@ -433,9 +425,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
 
             setValidationError(null);
 
-            if (next !== value) {
-              onChange(next);
-            }
+            commitIfChanged(next);
           }}
         />
         <Upload
@@ -446,9 +436,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
           onChange={files => {
             const next = files[0]?.url ?? '';
 
-            if (next !== value) {
-              onChange(next);
-            }
+            commitIfChanged(next);
           }}
         />
         {validationError && (
@@ -484,9 +472,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
 
             setValidationError(null);
 
-            if (next !== value) {
-              onChange(next);
-            }
+            commitIfChanged(next);
           }}
         />
         {validationError && (
@@ -519,9 +505,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
 
           setValidationError(null);
 
-          if (next !== rawValue) {
-            onChange(next);
-          }
+          commitIfChanged(next);
         }}
       />
       {validationError && (
