@@ -1,5 +1,6 @@
 import { parse } from '@babel/parser';
 import _traverse from '@babel/traverse';
+import type { TraverseOptions } from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
@@ -19,7 +20,9 @@ import { createBoundedCache } from '../cache';
 //
 // Exported so extract.ts/update.ts share this same safe binding instead of
 // each re-importing '@babel/traverse' directly and re-triggering the bug.
-export const traverse =
+type Traverse = (parent: t.Node, opts?: TraverseOptions) => void;
+
+export const traverse: Traverse =
   typeof _traverse === 'function'
     ? _traverse
     : (_traverse as unknown as { default: typeof _traverse }).default;
