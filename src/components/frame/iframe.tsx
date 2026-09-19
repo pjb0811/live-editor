@@ -12,6 +12,7 @@ import {
   estimatePositionedElementHeight,
   isVisuallyHidden,
 } from './measure';
+import { createStyleSyncManager, reconcileStyles } from './style-sync';
 import {
   convertViewportUnits,
   rewriteInlineViewportUnits,
@@ -57,72 +58,22 @@ const IFrame = ({
   const prevStylesheetCountRef = useRef(0);
   const shouldAutoHeight = autoHeight && style.height == null;
 
-  const styleManagerRef = useRef<{
-    copiedLinks: Set<string>;
-    copiedStyles: Set<string>;
-  }>({
-    copiedLinks: new Set(),
-    copiedStyles: new Set(),
-  });
+  const styleManagerRef = useRef(createStyleSyncManager());
 
   const applyStyle = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
 
-    if (!doc || !syncStyle) {
+    if (!doc) {
       return;
     }
 
-    const manager = styleManagerRef.current;
-
-    const links = document.querySelectorAll<HTMLLinkElement>(
-      'link[rel="stylesheet"]',
+    reconcileStyles(
+      document,
+      doc,
+      styleManagerRef.current,
+      syncStyle,
+      convertViewportUnits,
     );
-    const newLinks = Array.from(links)
-      .map(link => link.href)
-      .filter(href => !manager.copiedLinks.has(href));
-
-    if (newLinks.length) {
-      const fragment = doc.createDocumentFragment();
-      newLinks.forEach(href => {
-        const link = doc.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = href;
-        fragment.appendChild(link);
-        manager.copiedLinks.add(href);
-      });
-      doc.head.appendChild(fragment);
-    }
-
-    const styles = document.querySelectorAll<HTMLStyleElement>('style');
-    const newStyles = Array.from(styles)
-      .map(style => style.textContent || '')
-      .filter(content => {
-        if (!content) {
-          return false;
-        }
-        const hash = content.length + content.slice(0, 50);
-        if (manager.copiedStyles.has(hash)) {
-          return false;
-        }
-        manager.copiedStyles.add(hash);
-        return true;
-      });
-
-    if (newStyles.length) {
-      const fragment = doc.createDocumentFragment();
-      newStyles.forEach(content => {
-        const style = doc.createElement('style');
-        // Host styles can legitimately use vh/svh/etc themselves (e.g. a
-        // shared design-system stylesheet) — converted the same way as
-        // the styles/stylesheets props below, so they resolve against
-        // the preview's own probe height instead of the iframe's, once
-        // autoHeight's container context (see ensureContainerStyle) is
-        // active.
-        style.textContent = convertViewportUnits(content);
-        fragment.appendChild(style);
-      });
-      doc.head.appendChild(fragment);
-    }
   }, [syncStyle]);
 
   const applyStyleTimeoutRef = useRef<number>(undefined);
@@ -144,7 +95,6 @@ const IFrame = ({
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['href'],
   });
 
   useEffect(() => {
