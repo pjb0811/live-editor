@@ -45,6 +45,9 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Check package types
+        run: node .github/scripts/check-package-types.mjs
+
       - name: Install website dependencies
         run: pnpm --dir website install
 
