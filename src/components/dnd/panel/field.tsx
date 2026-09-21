@@ -7,8 +7,6 @@ import {
   useState,
 } from 'react';
 
-import type { EditorSelection } from '@codemirror/state';
-import type { EditorView, ViewUpdate } from '@codemirror/view';
 import {
   Checkbox,
   ColorPicker,
@@ -20,6 +18,11 @@ import {
   type UploadFile,
 } from '@jbpark/ui-kit';
 import { useDebounce } from '@jbpark/use-hooks';
+import type {
+  EditorSelection,
+  EditorView,
+  ViewUpdate,
+} from '@uiw/react-codemirror';
 
 import CoreEditor from '~/components/editor/core';
 import { BINDING_PROP } from '~/constants';

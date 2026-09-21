@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { StrictMode, useState } from 'react';
 
-import { EditorView } from '@codemirror/view';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { EditorView } from '@uiw/react-codemirror';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Items from './items';

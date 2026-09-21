@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 
-import type { EditorSelection } from '@codemirror/state';
-import type { EditorView, ViewUpdate } from '@codemirror/view';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import type {
+  EditorSelection,
+  EditorView,
+  ViewUpdate,
+} from '@uiw/react-codemirror';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { PanelBinding } from '../dnd';
