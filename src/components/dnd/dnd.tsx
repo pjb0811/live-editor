@@ -22,18 +22,7 @@ import { useResponsiveSize } from '@jbpark/use-hooks';
 
 import { DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
-import {
-  type BindingOption,
-  type BindingRenderMap,
-  type BindingType,
-  type DataAttrNode,
-  extract,
-  fillIds,
-  getCurrentValue,
-  getStructuredValue,
-  parseBinding,
-  update,
-} from '~/utils/ast';
+import { type DataAttrNode, extract, fillIds, update } from '~/utils/ast';
 import type { UpdateFailure } from '~/utils/ast';
 
 import { cn, preloadScripts } from '../../utils';
@@ -43,6 +32,12 @@ import Droppable from './droppable';
 import Layout from './layout';
 import { DndRegionContext } from './layout-context';
 import Overlay from './overlay';
+import {
+  type PanelBinding,
+  type PanelNodeChange,
+  resolvePanelBindings,
+  withPanelCommit,
+} from './panel-binding';
 import Renderer from './renderer';
 import Sortable from './sortable';
 import { useSectionDocument } from './use-section-document';
@@ -116,17 +111,10 @@ export interface DndPalette {
   onAdd: (item: Section) => void;
 }
 
-// The node-level commit callback's shape, named because it's part of the
-// public surface in two places (`DndPanel`, `Field`) and was previously
-// spelled out inline in each — see #308.
-export interface PanelNodeChange {
-  (params: {
-    id: string;
-    label: string;
-    property: string;
-    value: unknown;
-  }): void;
-}
+// `PanelNodeChange`/`PanelBinding` live in `./panel-binding` alongside the
+// DataAttrNode -> PanelBinding conversion they describe, and are re-exported
+// here so `Live.Dnd`'s public types keep their original import path (#340).
+export type { PanelBinding, PanelNodeChange } from './panel-binding';
 
 // What `useDndPanel()` returns — everything the built-in property panel runs
 // on, so a custom panel starts from the same place rather than re-deriving
@@ -160,61 +148,6 @@ export interface DndPanel {
   // to `Live.Dnd.Field` along with the binding, otherwise nested
   // array/children edits inside it silently don't commit (#308).
   onNodeChange: PanelNodeChange;
-}
-
-// One editable data-binding, flattened out of the selected section for a
-// custom panel. Exposes just what a consumer needs to render its own
-// control — the declared `type`, the current `value`, and an `onChange`
-// that commits through Dnd's AST-update pipeline — so it never has to touch
-// DataAttrNode/parseBinding/getCurrentValue itself.
-export interface PanelBinding {
-  // `data-id` of the owning element — stable across edits.
-  id: string;
-  // Human-readable label from the binding definition.
-  label: string;
-  // The bound prop/attribute name (e.g. `children`, `src`, `color`).
-  property: string;
-  // The declared data-binding type — switch on this to pick a control
-  // (`string`/`url` -> <input>, `jsx`/`richtext` -> <textarea>, `boolean`
-  // -> checkbox, ...). `undefined` means a plain string binding.
-  type?: BindingType;
-  // Presentation, as opposed to `type`'s data kind — an open string, not a
-  // closed enum, since a custom panel can declare any widget it wants
-  // (e.g. `'slider'`) and switch on it itself. The built-in panel
-  // only recognizes `'icon-picker'`/`'asset-picker'`; anything else falls
-  // back to the `type`-appropriate default control. See #236.
-  widget?: string;
-  // Present when the binding defines a fixed option set (render a <select>).
-  options?: BindingOption[];
-  // Present for `object`/`array` bindings whose nested keys/items declare
-  // their own types — the same map the built-in panel uses to type each
-  // nested field instead of falling back to a plain string input.
-  render?: BindingRenderMap;
-  // Constraints declared on the binding. `min`/`max` compare against the
-  // real number `value` delivers for `type: 'number'` bindings (see
-  // `validateBindingValue`).
-  min?: number;
-  max?: number;
-  pattern?: string;
-  required?: boolean;
-  // Consumer-defined keys carried straight through from the authored
-  // data-binding — namespaced instead of spread onto PanelBinding so they
-  // can't collide with a future first-class field. Absent when nothing
-  // extra was authored. See #234.
-  meta?: Record<string, unknown>;
-  // Current value as its real JS type — a number for `type: 'number'`, a
-  // boolean for `type: 'boolean'`, an object/array for `object`/`array`,
-  // a string otherwise. Switch on this without re-parsing. See #238.
-  value: unknown;
-  // The exact source text behind `value`, for cases that can't round-trip
-  // through a JS value — `jsx`/`richtext` bindings, or an attribute whose
-  // source is an expression you want to edit as text.
-  rawValue: string;
-  // Commit a new value through the same AST-update pipeline the built-in
-  // panel uses (including the error Toast on a bad edit). Pass the value as
-  // its real type; it's serialized once, at the AST boundary, where the
-  // declared `type` is known — so no string quoting/guessing on your side.
-  onChange: (value: unknown) => void;
 }
 
 export interface Props extends Omit<
@@ -437,37 +370,10 @@ const Dnd = ({
   // identical, so the memo was reused and handed back callbacks still bound
   // to the previous document, whose commit wrote the sibling's old source
   // back over the newer one.
-  const bindingFields = useMemo(() => {
-    return fields.flatMap(node => {
-      const dataId = node.dataAttributes.find(a => a.name === 'data-id')?.value;
-      const bindingAttr = node.dataAttributes.find(
-        a => a.name === 'data-binding',
-      )?.value;
-
-      if (!dataId || !bindingAttr) {
-        return [];
-      }
-
-      const parsed = node.bindings ?? parseBinding(bindingAttr);
-
-      return parsed.map(binding => ({
-        id: dataId,
-        label: binding.label,
-        property: binding.property,
-        type: binding.type,
-        widget: binding.widget,
-        options: binding.options,
-        render: binding.render,
-        min: binding.min,
-        max: binding.max,
-        pattern: binding.pattern,
-        required: binding.required,
-        meta: binding.meta,
-        value: getStructuredValue(node, binding.property, binding.type),
-        rawValue: getCurrentValue(node, binding.property),
-      }));
-    });
-  }, [fields]);
+  const bindingFields = useMemo(
+    () => fields.flatMap(node => resolvePanelBindings(node)?.bindings ?? []),
+    [fields],
+  );
 
   // Bound fresh each render on top of the memo above — the same split
   // `useItemsEditor` uses for its `items`. This is a plain walk of an
@@ -478,16 +384,10 @@ const Dnd = ({
   // real: the `DndRegionContext` value and the `panel` object holding this
   // array are both fresh object literals every render, so every
   // `useDndPanel()` consumer already re-rendered regardless.
-  const bindings: PanelBinding[] = bindingFields.map(field => ({
-    ...field,
-    onChange: (value: unknown) =>
-      onFieldChange({
-        id: field.id,
-        label: field.label,
-        property: field.property,
-        value,
-      }),
-  }));
+  const bindings: PanelBinding[] = withPanelCommit(
+    bindingFields,
+    onFieldChange,
+  );
 
   useEffect(() => {
     if (frame?.scripts?.length) {
