@@ -15,12 +15,9 @@ import {
   extractNodeValue,
   extractObjectProperties,
   findEditableChildren,
-  getCurrentValue,
-  getStructuredValue,
   moveArrayItem,
   moveArrayItems,
   parseArrayExpression,
-  parseBinding,
   parseValue,
   removeArrayItems,
   updateArrayItemProperty,
@@ -28,7 +25,12 @@ import {
 } from '~/utils/ast';
 import { moveSelectedIndices } from '~/utils/selection';
 
-import type { PanelBinding, PanelNodeChange } from '../dnd';
+import {
+  type PanelBinding,
+  type PanelNodeChange,
+  resolvePanelBindings,
+  withPanelCommit,
+} from '../panel-binding';
 
 // One data-bound element discovered inside a JSX-valued item property.
 // These are the elements the top-level `bindings` array can't reach —
@@ -586,54 +588,17 @@ export const useItemsEditor = (
           ...Object.entries(item.jsxBindings).map(([property, nodes]) => ({
             property,
             elements: nodes.flatMap(node => {
-              const id = node.dataAttributes.find(
-                a => a.name === 'data-id',
-              )?.value;
-              const attr = node.dataAttributes.find(
-                a => a.name === 'data-binding',
-              )?.value;
+              const source = resolvePanelBindings(node);
 
-              if (!id || !attr) {
-                return [];
-              }
-
-              const parsed = node.bindings ?? parseBinding(attr);
-
-              if (!parsed.length) {
+              if (!source) {
                 return [];
               }
 
               return [
                 {
-                  id,
-                  tagName: node.tagName || 'element',
-                  bindings: parsed.map(binding => ({
-                    id,
-                    label: binding.label,
-                    property: binding.property,
-                    type: binding.type,
-                    widget: binding.widget,
-                    options: binding.options,
-                    render: binding.render,
-                    min: binding.min,
-                    max: binding.max,
-                    pattern: binding.pattern,
-                    required: binding.required,
-                    meta: binding.meta,
-                    value: getStructuredValue(
-                      node,
-                      binding.property,
-                      binding.type,
-                    ),
-                    rawValue: getCurrentValue(node, binding.property),
-                    onChange: (next: unknown) =>
-                      onNodeChange?.({
-                        id,
-                        label: binding.label,
-                        property: binding.property,
-                        value: next,
-                      }),
-                  })),
+                  id: source.id,
+                  tagName: source.tagName,
+                  bindings: withPanelCommit(source.bindings, onNodeChange),
                 },
               ];
             }),
