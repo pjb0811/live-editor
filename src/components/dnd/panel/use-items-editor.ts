@@ -642,7 +642,7 @@ export const useItemsEditor = (
             property,
             elements: [],
             fallback: {
-              id: `item-${item.id}-${property}-jsx`,
+              id: `item-${id}-${property}-jsx`,
               label: property,
               property,
               type: 'jsx' as const,

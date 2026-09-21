@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react';
+
 import CodeEditor from '@jbpark/ui-kit/CodeEditor';
 import { vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { type Extension } from '@uiw/react-codemirror';
@@ -17,6 +19,8 @@ export interface Props {
   onChange?: (value: string) => void;
   onSave?: (value: string) => void;
   onError?: (error: string | null) => void;
+  onCreateEditor?: ComponentProps<typeof CodeEditor>['onCreateEditor'];
+  onUpdate?: ComponentProps<typeof CodeEditor>['onUpdate'];
 }
 
 // The CodeMirror surface, the Cmd+S save transaction and the JS/TS + line-wrap

@@ -1,13 +1,18 @@
 // @vitest-environment jsdom
-import { useState } from 'react';
+import { StrictMode, useState } from 'react';
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { EditorView } from '@uiw/react-codemirror';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Items from './items';
 
 const objects = `[{ key: 'a', label: 'Alpha' }, { key: 'b', label: 'Beta' }]`;
 const primitives = `['one', 'two']`;
+const fallbacks = `[
+  { key: 'a', children: <div>A content</div> },
+  { key: 'b', children: <div>B content</div> },
+]`;
 
 beforeAll(() => {
   globalThis.ResizeObserver = class {
@@ -15,6 +20,16 @@ beforeAll(() => {
     unobserve() {}
     disconnect() {}
   };
+  globalThis.matchMedia = vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
 });
 
 const addButton = () =>
@@ -135,5 +150,46 @@ describe('Items', () => {
     expect(nodes).toHaveLength(2);
     expect(nodes[0]).toBe(nodeOfOriginal);
     expect(nodes[1]).not.toBe(nodeOfOriginal);
+  });
+
+  it('preserves a focused JSX fallback editor and its selection through a move', () => {
+    const ControlledItems = () => {
+      const [value, setValue] = useState(fallbacks);
+
+      return <Items value={value} onChange={setValue} />;
+    };
+
+    const { container } = render(
+      <StrictMode>
+        <ControlledItems />
+      </StrictMode>,
+    );
+    const before = [...container.querySelectorAll<HTMLElement>('.cm-editor')];
+    const editorOfA = before.find(editor =>
+      EditorView.findFromDOM(editor)
+        ?.state.doc.toString()
+        .includes('A content'),
+    )!;
+    const viewOfA = EditorView.findFromDOM(editorOfA)!;
+
+    viewOfA.dispatch({ selection: { anchor: 8 } });
+    viewOfA.focus();
+
+    const moveUpButtons = screen
+      .getAllByRole('button')
+      .filter(button => button.querySelector('.lucide-arrow-up'));
+    fireEvent.click(moveUpButtons[1]!);
+
+    const after = [...container.querySelectorAll<HTMLElement>('.cm-editor')];
+    const movedEditor = after.find(editor =>
+      EditorView.findFromDOM(editor)
+        ?.state.doc.toString()
+        .includes('A content'),
+    )!;
+    const movedView = EditorView.findFromDOM(movedEditor)!;
+
+    expect(after.indexOf(movedEditor)).toBe(1);
+    expect(movedView.state.selection.main.head).toBe(8);
+    expect(movedView.hasFocus).toBe(true);
   });
 });
