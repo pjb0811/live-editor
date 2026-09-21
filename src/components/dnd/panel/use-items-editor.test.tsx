@@ -30,6 +30,11 @@ const nested = `[
   },
 ]`;
 
+const fallbacks = `[
+  { key: 'a', children: <div>A content</div> },
+  { key: 'b', children: <div>B content</div> },
+]`;
+
 describe('useItemsEditor derivation', () => {
   it('resolves object items to PanelBindings, no AST types leaking out', () => {
     const { result } = renderHook(() => useItemsEditor(objects));
@@ -156,6 +161,24 @@ describe('useItemsEditor mutations', () => {
 
     // Not cleared — the items are still selected, at their new positions.
     expect([...result.current.selection.selected]).toEqual([0]);
+  });
+
+  it('moves a JSX fallback binding identity with its item', () => {
+    const onChange = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ source }) => useItemsEditor(source, { onChange }),
+      { initialProps: { source: fallbacks } },
+    );
+    const bindingId = result.current.items[0]!.nested[0]!.fallback!.id;
+
+    act(() => result.current.actions.move(0, 1));
+    rerender({ source: onChange.mock.calls[0]![0] });
+
+    const next = result.current.items.find(item =>
+      item.nested[0]!.fallback!.rawValue.includes('A content'),
+    );
+
+    expect(next?.nested[0]!.fallback!.id).toBe(bindingId);
   });
 });
 

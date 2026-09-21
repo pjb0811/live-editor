@@ -1,5 +1,14 @@
-import { type ComponentProps, useEffect, useRef, useState } from 'react';
+import {
+  type ComponentProps,
+  type FocusEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
+import type { EditorSelection } from '@codemirror/state';
+import type { EditorView, ViewUpdate } from '@codemirror/view';
 import {
   Checkbox,
   ColorPicker,
@@ -102,6 +111,63 @@ interface ColorPickerFieldProps {
   value: string;
   onChange: (value: string) => void;
 }
+
+interface JSXEditorFieldProps {
+  value: string;
+  isHTML: boolean;
+  onSave: (value: string) => void;
+}
+
+// Moving a keyed item reconnects descendant effects under Strict Effects.
+// `@uiw/react-codemirror` recreates its EditorView during that reconnect,
+// replacing the `.cm-editor` DOM and otherwise losing focus/selection. Keep
+// those user-facing values above the view lifecycle and restore them when the
+// replacement view is created (#359).
+const JSXEditorField = ({ value, isHTML, onSave }: JSXEditorFieldProps) => {
+  const selectionRef = useRef<EditorSelection | null>(null);
+  const focusedRef = useRef(false);
+
+  const handleUpdate = useCallback((update: ViewUpdate) => {
+    selectionRef.current = update.state.selection;
+  }, []);
+
+  const handleCreateEditor = useCallback((view: EditorView) => {
+    if (selectionRef.current) {
+      view.dispatch({ selection: selectionRef.current });
+    }
+
+    if (focusedRef.current) {
+      view.focus();
+    }
+  }, []);
+
+  const handleFocus = useCallback(() => {
+    focusedRef.current = true;
+  }, []);
+
+  const handleBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
+    if (
+      event.relatedTarget &&
+      !event.currentTarget.contains(event.relatedTarget as Node)
+    ) {
+      focusedRef.current = false;
+    }
+  }, []);
+
+  return (
+    <div onFocusCapture={handleFocus} onBlurCapture={handleBlur}>
+      <CoreEditor
+        value={value}
+        height="150px"
+        fragment={!isHTML}
+        raw={isHTML}
+        onSave={onSave}
+        onUpdate={handleUpdate}
+        onCreateEditor={handleCreateEditor}
+      />
+    </div>
+  );
+};
 
 const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
   const [liveValue, setLiveValue] = useState(value);
@@ -230,11 +296,9 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
     const isHTML = binding.property === BINDING_PROP.INNER_HTML;
 
     return (
-      <CoreEditor
+      <JSXEditorField
         value={rawValue}
-        height="150px"
-        fragment={!isHTML}
-        raw={isHTML}
+        isHTML={isHTML}
         onSave={commitIfChanged}
       />
     );
