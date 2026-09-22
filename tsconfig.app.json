@@ -28,6 +28,6 @@
       "~/*": ["./src/*"]
     }
   },
-  "include": ["src", "demos"],
+  "include": ["src", "demos", "e2e"],
   "exclude": ["demos/vite.config.ts"]
 }
