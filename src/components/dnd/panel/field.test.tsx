@@ -67,6 +67,21 @@ const binding = (override: Partial<PanelBinding> = {}): PanelBinding => ({
 afterEach(cleanup);
 
 describe('Field commit guards', () => {
+  it('shows code-editor guidance instead of an unsafe value control', () => {
+    render(
+      <Field
+        binding={binding({
+          rawValue: '{ ...defaults, label: "A" }',
+          canEditValue: false,
+        })}
+      />,
+    );
+
+    expect(screen.getByText(/not editable here/i)).not.toBeNull();
+    expect(screen.getByText(/use the code editor/i)).not.toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
   it('does not commit an untyped textarea value when the parsed value is unchanged', () => {
     const onChange = vi.fn();
 

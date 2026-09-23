@@ -8,7 +8,11 @@ import { traverse } from './document';
 import { generateCode, unwrap, wrap } from './helpers';
 import { type SourceEdit, applyEdits } from './patch';
 import type { BindingType } from './types';
-import { unwrapExpression, valueToExpression } from './value';
+import {
+  isLosslesslyEvaluable,
+  unwrapExpression,
+  valueToExpression,
+} from './value';
 
 // Every editor below returns the source spans it wants to change rather
 // than mutating the tree, so `update` can patch the original text and leave
@@ -378,6 +382,30 @@ const editAttribute = (
   ];
 };
 
+const canEditAttributeValue = (
+  attribute: t.JSXAttribute,
+  value: unknown,
+  type?: BindingType,
+) => {
+  if (
+    !t.isJSXExpressionContainer(attribute.value) ||
+    t.isJSXEmptyExpression(attribute.value.expression) ||
+    isLosslesslyEvaluable(attribute.value.expression)
+  ) {
+    return true;
+  }
+
+  // Array/object editors commit validated source strings rather than a
+  // partially evaluated JS value. Their own patch engines preserve every
+  // expression, so accept that raw-source handoff here.
+  return (
+    typeof value === 'string' &&
+    holdsStructuralExpression(attribute.value) &&
+    !(type && STRING_VALUED_TYPES.has(type)) &&
+    structuralSource(value) !== null
+  );
+};
+
 // Why an edit failed. Before #270 every one of these collapsed into a bare
 // `success: false`, so the panel showed one generic "Failed to update this
 // field / check the console" toast for structurally different problems — and
@@ -402,6 +430,7 @@ export type UpdateFailure =
       count: number;
     }
   | { reason: 'attribute-not-found'; dataId: string; property: string }
+  | { reason: 'unsupported-syntax'; dataId: string; property: string }
   | { reason: 'parse-error'; error: unknown };
 
 export interface UpdateResult {
@@ -563,6 +592,21 @@ export const update = (
           default: {
             // The declared `property` names a JSX attribute that isn't on
             // this element — the binding declaration is wrong, not the value.
+            const attribute = findAttribute(opening, prop);
+
+            if (
+              attribute &&
+              propertyBinding.type !== 'jsx' &&
+              !canEditAttributeValue(attribute, value, propertyBinding.type)
+            ) {
+              failure = {
+                reason: 'unsupported-syntax',
+                dataId,
+                property: prop,
+              };
+              break;
+            }
+
             collect(
               propertyBinding.type === 'jsx'
                 ? editJsxAttribute(opening, prop, value)

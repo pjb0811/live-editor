@@ -66,6 +66,12 @@ export const denseArraySource = (source: string) => {
   return { array, elements, commas: commas as number[], trailing };
 };
 
+// Keep presentation and mutation on the same syntax boundary. Consumers can
+// use this before offering structural controls, while every write still calls
+// denseArraySource() again so stale source is refused at commit time.
+export const canStructurallyEditArray = (source: string) =>
+  denseArraySource(source) !== null;
+
 export const validArrayIndices = (indices: Iterable<number>, length: number) =>
   [...indices].every(
     index => Number.isInteger(index) && index >= 0 && index < length,

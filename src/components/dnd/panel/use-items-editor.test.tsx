@@ -60,6 +60,33 @@ describe('useItemsEditor derivation', () => {
     expect(result.current.items[0]!.properties).toEqual([]);
   });
 
+  it('keeps unsupported item expressions visible but code-editor-only', () => {
+    const { result } = renderHook(() =>
+      useItemsEditor(`[getValue(), \`hello ${'${name}'}\`, theme.value]`),
+    );
+
+    expect(result.current.items.map(item => item.value!.rawValue)).toEqual([
+      'getValue()',
+      '`hello ${name}`',
+      'theme.value',
+    ]);
+    expect(result.current.items.map(item => item.value!.canEditValue)).toEqual([
+      false,
+      false,
+      false,
+    ]);
+  });
+
+  it('marks partially modeled object properties as code-editor-only', () => {
+    const { result } = renderHook(() =>
+      useItemsEditor(`[{ config: { ...defaults, label: getLabel() } }]`),
+    );
+    const config = result.current.items[0]!.properties[0]!;
+
+    expect(config.rawValue).toBe('{ ...defaults, label: getLabel() }');
+    expect(config.canEditValue).toBe(false);
+  });
+
   it('finds data-bound elements nested inside a JSX-valued property', () => {
     const { result } = renderHook(() => useItemsEditor(nested));
 
@@ -95,8 +122,23 @@ describe('useItemsEditor derivation', () => {
     const { result } = renderHook(() => useItemsEditor('not an array'));
 
     expect(result.current.parseError).toBe(true);
+    expect(result.current.canEditStructure).toBe(false);
     expect(result.current.items).toEqual([]);
   });
+
+  it.each([
+    { source: objects, supported: true },
+    { source: `[, {label:'A'}]`, supported: false },
+    { source: `[...rows, {label:'A'}]`, supported: false },
+    { source: `[(value), {label:'A'}]`, supported: false },
+  ])(
+    'reports structural edit support from the mutation syntax gate: $source',
+    ({ source, supported }) => {
+      const { result } = renderHook(() => useItemsEditor(source));
+
+      expect(result.current.canEditStructure).toBe(supported);
+    },
+  );
 });
 
 describe('useItemsEditor mutations', () => {

@@ -46,6 +46,65 @@ export const unwrapExpression = (node: t.Node): t.Node => {
   return current;
 };
 
+// Whether evaluateLiteral() and valueToExpression() can round-trip a value
+// without dropping calls, references, spreads, holes or computed properties.
+// Presentation uses this to disable partial editors and mutation reuses it as
+// the final guard, so both layers share one editable-syntax boundary.
+export const isLosslesslyEvaluable = (node: t.Node): boolean => {
+  const value = unwrapExpression(node);
+
+  if (
+    t.isStringLiteral(value) ||
+    t.isNumericLiteral(value) ||
+    t.isBooleanLiteral(value) ||
+    t.isNullLiteral(value)
+  ) {
+    return true;
+  }
+
+  if (
+    t.isUnaryExpression(value) &&
+    value.operator === '-' &&
+    t.isNumericLiteral(value.argument)
+  ) {
+    return true;
+  }
+
+  if (t.isTemplateLiteral(value)) {
+    return value.expressions.length === 0;
+  }
+
+  if (t.isArrayExpression(value)) {
+    return value.elements.every(
+      element => element !== null && isLosslesslyEvaluable(element),
+    );
+  }
+
+  if (t.isObjectExpression(value)) {
+    return value.properties.every(
+      property =>
+        t.isObjectProperty(property) &&
+        !property.computed &&
+        (t.isIdentifier(property.key) ||
+          t.isStringLiteral(property.key) ||
+          t.isNumericLiteral(property.key)) &&
+        isLosslesslyEvaluable(property.value),
+    );
+  }
+
+  return false;
+};
+
+export const canLosslesslyEvaluateSource = (source: string): boolean => {
+  try {
+    return isLosslesslyEvaluable(
+      parseExpression(source, { plugins: ['jsx', 'typescript'] }),
+    );
+  } catch {
+    return false;
+  }
+};
+
 // AST 노드를 코드 실행(new Function/eval) 없이 순수 리터럴 구조만 재귀적으로
 // 실제 JS 값으로 변환한다. 함수 호출, 변수 참조 등 리터럴이 아닌 표현식은
 // 평가하지 않고 undefined를 반환한다 — 사용자 코드는 iframe 안에서만 실행한다는

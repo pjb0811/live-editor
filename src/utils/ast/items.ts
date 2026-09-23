@@ -22,6 +22,7 @@ import {
   createNodeFromValue,
   extractNodeValue,
   extractObjectProperties,
+  isLosslesslyEvaluable,
   parseArrayExpression,
   parseValue,
   valueToExpression,
@@ -68,59 +69,6 @@ const resolveRenderLeaf = (
   const leaf = render?.[key];
 
   return leaf && 'type' in leaf ? (leaf as BindingRenderLeaf) : null;
-};
-
-// Whether a node's value survives `evaluateLiteral` intact. It returns
-// `undefined` for anything that isn't a literal and skips spread properties
-// outright, so rebuilding from its output would quietly drop an identifier,
-// a call, or a spread — `{ c: theme.red }` would be written back as `{}`.
-// Rebuilding is only safe when the node holds nothing but literals.
-//
-// The accepted set mirrors the branches `evaluateLiteral` and
-// `valueToExpression` both handle, so a shape that round-trips faithfully
-// isn't refused: a negative number is a `UnaryExpression`, not a literal
-// node, and an expression-free template literal is just a string.
-const isLosslesslyEvaluable = (node: t.Node): boolean => {
-  if (
-    t.isStringLiteral(node) ||
-    t.isNumericLiteral(node) ||
-    t.isBooleanLiteral(node) ||
-    t.isNullLiteral(node)
-  ) {
-    return true;
-  }
-
-  if (
-    t.isUnaryExpression(node) &&
-    node.operator === '-' &&
-    t.isNumericLiteral(node.argument)
-  ) {
-    return true;
-  }
-
-  if (t.isTemplateLiteral(node)) {
-    return node.expressions.length === 0;
-  }
-
-  if (t.isArrayExpression(node)) {
-    return node.elements.every(
-      element => element !== null && isLosslesslyEvaluable(element),
-    );
-  }
-
-  if (t.isObjectExpression(node)) {
-    return node.properties.every(
-      property =>
-        t.isObjectProperty(property) &&
-        !property.computed &&
-        (t.isIdentifier(property.key) ||
-          t.isStringLiteral(property.key) ||
-          t.isNumericLiteral(property.key)) &&
-        isLosslesslyEvaluable(property.value),
-    );
-  }
-
-  return false;
 };
 
 // Escapes text for a template literal's raw slot. `@babel/types` rejects a

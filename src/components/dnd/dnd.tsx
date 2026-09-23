@@ -87,6 +87,11 @@ const describeUpdateFailure = (
         title: `Failed to update "${label}"`,
         description: 'The target element could not be found in this section.',
       };
+    case 'unsupported-syntax':
+      return {
+        title: `Cannot edit "${label}" in the panel`,
+        description: `The "${failure.property}" expression was preserved. Change it in the code editor instead.`,
+      };
     case 'parse-error':
       return {
         title: `Failed to update "${label}"`,

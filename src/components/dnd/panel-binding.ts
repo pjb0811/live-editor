@@ -4,6 +4,7 @@ import {
   type BindingRenderMap,
   type BindingType,
   type DataAttrNode,
+  canLosslesslyEvaluateSource,
   getCurrentValue,
   getStructuredValue,
   parseBinding,
@@ -69,6 +70,10 @@ export interface PanelBinding {
   // through a JS value — `jsx`/`richtext` bindings, or an attribute whose
   // source is an expression you want to edit as text.
   rawValue: string;
+  // False when the built-in control would have to reconstruct a partial
+  // literal and could discard an expression, spread, hole or reference.
+  // Raw array/JSX editors retain their own narrower source-safe contracts.
+  canEditValue?: boolean;
   // Commit a new value through the same AST-update pipeline the built-in
   // panel uses (including the error Toast on a bad edit). Pass the value as
   // its real type; it's serialized once, at the AST boundary, where the
@@ -96,6 +101,30 @@ export interface PanelBindingSource {
 const readAttribute = (node: DataAttrNode, name: string) =>
   node.dataAttributes.find(attribute => attribute.name === name)?.value;
 
+const canEditBindingValue = (node: DataAttrNode, binding: BindingItem) => {
+  if (
+    binding.property === 'children' ||
+    binding.property === 'innerText' ||
+    binding.property === 'innerHTML' ||
+    binding.property === 'items' ||
+    binding.property === 'data' ||
+    binding.type === 'array' ||
+    binding.type === 'jsx' ||
+    binding.type === 'richtext'
+  ) {
+    return true;
+  }
+
+  const attribute = node.attributes.find(
+    candidate => candidate.name === binding.property,
+  );
+
+  return (
+    attribute?.isStringLiteral === true ||
+    canLosslesslyEvaluateSource(attribute?.value ?? '')
+  );
+};
+
 // The single `BindingItem` -> `PanelBindingData` mapping. Every field the
 // public `PanelBinding` declares is listed exactly once here, so adding a
 // new one reaches the built-in panel, a custom panel and nested item
@@ -119,6 +148,7 @@ const toPanelBindingData = (
   meta: binding.meta,
   value: getStructuredValue(node, binding.property, binding.type),
   rawValue: getCurrentValue(node, binding.property),
+  ...(!canEditBindingValue(node, binding) && { canEditValue: false }),
 });
 
 // Read one extracted element's `data-id`/`data-binding` into panel bindings.
