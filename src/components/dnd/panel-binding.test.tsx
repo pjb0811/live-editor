@@ -103,6 +103,39 @@ describe('resolvePanelBindings', () => {
     expect(source.bindings[0]!.rawValue).toBe('42');
   });
 
+  it.each([
+    ['an external reference', 'value={theme.value}'],
+    ['a call expression', 'value={getValue()}'],
+    ['an object spread', 'value={{ ...defaults, label: "A" }}'],
+    ['a sparse array outside the Items editor', 'value={[, "A"]}'],
+  ])('marks %s as code-editor-only', (_, attribute) => {
+    const source = resolvePanelBindings(
+      nodeOf(
+        `<Comp data-id="dynamic" data-binding={[{ label: 'Value', property: 'value' }]} ${attribute} />`,
+        'dynamic',
+      ),
+    )!;
+
+    expect(source.bindings[0]!.canEditValue).toBe(false);
+  });
+
+  it('keeps literal attributes and source-safe array editors enabled', () => {
+    const source = resolvePanelBindings(
+      nodeOf(
+        `<Comp data-id="safe" data-binding={[
+          { label: 'Style', property: 'style' },
+          { label: 'Rows', property: 'items', type: 'array' }
+        ]} style={{ color: 'red' }} items={[, ...rows, { label: 'A' }]} />`,
+        'safe',
+      ),
+    )!;
+
+    expect(source.bindings.map(binding => binding.canEditValue)).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
   it('reuses bindings already parsed by extract instead of the attribute text', () => {
     const node = nodeOf(element, 't1');
     const reused: DataAttrNode = {

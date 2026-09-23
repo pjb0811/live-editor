@@ -91,6 +91,36 @@ describe('Items panel empty-array contract', () => {
 });
 
 describe('Items', () => {
+  it('keeps value edits available but disables sparse array structure edits', () => {
+    const { container } = render(
+      <Items value={`[, { label: 'A' }, ...rows, { label: 'B' }]`} />,
+    );
+
+    expect(screen.getByText(/values remain editable/i)).not.toBeNull();
+    expect(addButton()).toBeUndefined();
+
+    const structuralButtons = [
+      ...container.querySelectorAll<HTMLButtonElement>('button'),
+    ].filter(button =>
+      button.querySelector('.lucide-arrow-up, .lucide-arrow-down, .lucide-x'),
+    );
+
+    expect(structuralButtons).not.toHaveLength(0);
+    expect(
+      structuralButtons.every(button => (button as HTMLButtonElement).disabled),
+    ).toBe(true);
+
+    const checkboxes = [
+      ...container.querySelectorAll<HTMLInputElement>('[role="checkbox"]'),
+    ];
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes.every(checkbox => checkbox.disabled)).toBe(true);
+
+    const valueEditors = container.querySelectorAll('textarea');
+    expect(valueEditors).toHaveLength(2);
+    expect([...valueEditors].every(editor => !editor.disabled)).toBe(true);
+  });
+
   it('keeps untouched item subtrees mounted when another item changes', () => {
     const first = `[{ label: 'A' }, { label: 'B' }]`;
     const second = `[{ label: 'A' }, { label: 'BB' }]`;

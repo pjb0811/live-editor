@@ -79,21 +79,19 @@ const NestedGroup = ({
 // array source lives in that hook, which is exported so a consumer can put
 // their own markup over the same engine — see its doc comment (#237/#308).
 const Items = ({ value, render, onChange, onChildChange }: Props) => {
-  const { kind, items, selection, actions, parseError } = useItemsEditor(
-    value,
-    {
+  const { kind, items, selection, actions, canEditStructure, parseError } =
+    useItemsEditor(value, {
       render,
       onChange,
       onNodeChange: onChildChange,
-    },
-  );
+    });
 
   const header = (
     <div className="flex items-center justify-between">
       <div className="text-sm font-semibold">Items ({items.length})</div>
       {/* Add copies an existing item, so it is offered only once there is
           one to copy — see the empty-list notice below (#316). */}
-      {items.length > 0 && (
+      {items.length > 0 && canEditStructure && (
         <Button
           size="small"
           icon={<Plus />}
@@ -144,6 +142,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
   const bulkBar = (
     <BulkActionsBar
       count={selection.selected.size}
+      disabled={!canEditStructure}
       onDuplicate={actions.duplicateSelected}
       onMoveUp={() => actions.moveSelected('up')}
       onMoveDown={() => actions.moveSelected('down')}
@@ -157,20 +156,20 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
       <Button
         size="small"
         icon={<ArrowUp />}
-        disabled={item.index === 0}
+        disabled={!canEditStructure || item.index === 0}
         onClick={() => actions.move(item.elementIndex, item.index - 1)}
       />
       <Button
         size="small"
         icon={<ArrowDown />}
-        disabled={item.index === items.length - 1}
+        disabled={!canEditStructure || item.index === items.length - 1}
         onClick={() => actions.move(item.elementIndex, item.index + 1)}
       />
       <Button
         danger
         size="small"
         icon={<X />}
-        disabled={items.length <= 1}
+        disabled={!canEditStructure || items.length <= 1}
         onClick={() => actions.remove(item.elementIndex)}
       />
     </div>
@@ -183,6 +182,17 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
         {bulkBar}
 
+        {!canEditStructure && (
+          <div
+            className="rounded border border-dashed border-amber-200 p-3 text-xs
+              text-amber-700"
+          >
+            Values remain editable, but moving, copying, adding, and deleting
+            require a dense array without spreads or parenthesized top-level
+            items. Use the code editor for those structural changes.
+          </div>
+        )}
+
         {items.map(item => (
           <div
             key={item.id}
@@ -190,11 +200,14 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           >
             <div className="flex items-center justify-between space-x-1">
               <div
-                onClick={e => selection.toggle(item.index, e.shiftKey)}
+                onClick={e =>
+                  canEditStructure && selection.toggle(item.index, e.shiftKey)
+                }
                 className="inline-flex"
               >
                 <Checkbox
                   checked={selection.isSelected(item.index)}
+                  disabled={!canEditStructure}
                   onChange={() => {}}
                 />
               </div>
@@ -213,16 +226,30 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
       {bulkBar}
 
+      {!canEditStructure && (
+        <div
+          className="rounded border border-dashed border-amber-200 p-3 text-xs
+            text-amber-700"
+        >
+          Values remain editable, but moving, copying, adding, and deleting
+          require a dense array without spreads or parenthesized top-level
+          items. Use the code editor for those structural changes.
+        </div>
+      )}
+
       {items.map(item => (
         <div key={item.id} className="space-y-3 rounded border bg-gray-50 p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div
-                onClick={e => selection.toggle(item.index, e.shiftKey)}
+                onClick={e =>
+                  canEditStructure && selection.toggle(item.index, e.shiftKey)
+                }
                 className="inline-flex"
               >
                 <Checkbox
                   checked={selection.isSelected(item.index)}
+                  disabled={!canEditStructure}
                   onChange={() => {}}
                 />
               </div>

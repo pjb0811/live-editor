@@ -10,6 +10,8 @@ import {
   type BindingRenderMap,
   type DataAttrNode,
   appendArrayItem,
+  canLosslesslyEvaluateSource,
+  canStructurallyEditArray,
   duplicateArrayItems,
   extract,
   extractNodeValue,
@@ -102,6 +104,10 @@ export interface ItemsEditor {
   // `index` values, not `elementIndex` — the actions below translate.
   selection: ReturnType<typeof useMultiSelect>;
   actions: ItemsEditorActions;
+  // Whether the current source can be moved, copied, removed or appended
+  // without losing syntax. Value/property edits can remain available when
+  // this is false. Every action revalidates the source before committing.
+  canEditStructure: boolean;
   // The source didn't parse as an array expression. `items` is empty; the
   // built-in panel also raises a toast.
   parseError: boolean;
@@ -366,6 +372,10 @@ export const useItemsEditor = (
     () => parseSource(value),
     [value],
   );
+  const canEditStructure = useMemo(
+    () => canStructurallyEditArray(value),
+    [value],
+  );
 
   useEffect(() => {
     if (parseError) {
@@ -557,7 +567,9 @@ export const useItemsEditor = (
           label: `item-${item.index}`,
           property: item.type,
           value: item.value ?? '',
-          rawValue: String(item.value ?? ''),
+          rawValue:
+            item.type === 'unknown' ? item.source : String(item.value ?? ''),
+          canEditValue: canLosslesslyEvaluateSource(item.source),
           onChange: next =>
             commit(updateArrayItemValue(value, item.elementIndex, next)),
         },
@@ -568,6 +580,10 @@ export const useItemsEditor = (
           item.editableProperties,
         ).map(([key, prop]) => {
           const leaf = resolveLeaf(render, key);
+          const propertySource = value.slice(
+            prop.astNode.start!,
+            prop.astNode.end!,
+          );
 
           return {
             id: `item-${id}-${key}`,
@@ -576,7 +592,9 @@ export const useItemsEditor = (
             type: leaf?.type,
             render: leaf ? leaf.render : resolveMap(render, key),
             value: parseValue(String(prop.value)),
-            rawValue: String(prop.value),
+            rawValue:
+              prop.type === 'unknown' ? propertySource : String(prop.value),
+            canEditValue: canLosslesslyEvaluateSource(propertySource),
             // Carried through so a consumer can label the control with the
             // property's actual kind, as the built-in panel does.
             meta: { valueType: prop.type },
@@ -613,6 +631,7 @@ export const useItemsEditor = (
               type: 'jsx' as const,
               value: code,
               rawValue: code,
+              canEditValue: true,
               onChange: (next: unknown) =>
                 updateProperty(item.elementIndex, property, next),
             },
@@ -628,5 +647,12 @@ export const useItemsEditor = (
         };
       });
 
-  return { kind, items, selection, actions, parseError };
+  return {
+    kind,
+    items,
+    selection,
+    actions,
+    canEditStructure,
+    parseError,
+  };
 };

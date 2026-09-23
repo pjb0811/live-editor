@@ -19,6 +19,33 @@ const CODE = `
 `;
 
 describe('update', () => {
+  it.each([
+    ['a reference', 'value={externalValue}', 'Changed'],
+    ['a call', 'value={getValue()}', 'Changed'],
+    [
+      'an object spread',
+      'value={{ ...defaults, label: "A" }}',
+      { label: 'Changed' },
+    ],
+    ['a sparse array', 'value={[, "A"]}', ['Changed']],
+  ])(
+    'refuses to rebuild %s from a partial panel value',
+    (_, attribute, next) => {
+      const code = `<Comp data-id="x" data-binding={[{label:'Value',property:'value'}]} ${attribute} />`;
+      const result = update(code, 'x', 'Value', next, 'value');
+
+      expect(result).toEqual({
+        code,
+        success: false,
+        failure: {
+          reason: 'unsupported-syntax',
+          dataId: 'x',
+          property: 'value',
+        },
+      });
+    },
+  );
+
   it('replaces innerText content', () => {
     const result = update(CODE, 'a', 'Text', 'new text');
 

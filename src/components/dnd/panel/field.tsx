@@ -258,6 +258,19 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
     setText(rawValue);
   }
 
+  if (binding.canEditValue === false) {
+    return (
+      <div
+        className="space-y-1 rounded border border-dashed border-amber-200 p-3
+          text-xs text-amber-700"
+      >
+        <div>This expression is preserved but is not editable here.</div>
+        <code className="block overflow-x-auto text-amber-800">{rawValue}</code>
+        <div>Use the code editor to change it.</div>
+      </div>
+    );
+  }
+
   // Guard against the canonical value with the same shape as the commit:
   // raw source text for string-in/string-out controls, structured values
   // for typed controls. Comparing across those shapes lets no-op edits

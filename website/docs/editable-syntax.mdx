@@ -1,0 +1,77 @@
+---
+sidebar_position: 5.5
+title: Editable Syntax
+---
+
+# Editable Syntax
+
+Live Editor preserves source first. The property panel only offers an edit
+when it can identify the exact source span to replace without rebuilding or
+evaluating unrelated expressions. Unsupported syntax remains valid preview
+code and stays editable in `Live.Editor`; a rejected panel operation returns
+the original source unchanged.
+
+## Support matrix
+
+“Value” means changing one scalar or object property. Move, duplicate, and
+delete describe array items or JSX children; they do not apply to a scalar
+attribute.
+
+| Authored syntax | Read | Value edit | Move | Duplicate | Delete | Fallback |
+| --- | --- | --- | --- | --- | --- | --- |
+| String, number, boolean, and `null` literals | Yes | Yes | — | — | — | — |
+| Object/array containing only supported literal values | Yes | Yes | Yes when it is a dense Items array | Yes when it is a dense Items array | Yes when it is a dense Items array | Code editor for unsupported nested expressions |
+| Static JSX element or fragment in a `children` binding | Yes | Nested bindings only | Yes | Yes when static IDs can be regenerated safely | Yes | — |
+| Conditional, logical, call, or `.map()` expression in children | Preserved, not modeled as a child | No direct value control | No direct control | No direct control | No direct control | Code editor |
+| Dense array item containing an identifier, call, template, function, or JSX | The item source is preserved; unsupported values are shown as code-only | Supported literal/property spans only | Yes, as raw source | Yes, unless identity is ambiguous | Yes | Code editor for the value itself |
+| Sparse array (holes) | Visible expressions only; holes remain in source | Supported visible values only | No | No | No | Code editor; structural controls are disabled |
+| Array spread (`...items`) | Static siblings are visible; spread remains in source | Supported static siblings only | No | No | No | Code editor; structural controls are disabled |
+| Parenthesized top-level array item | Yes | Supported inner values only | No | No | No | Code editor |
+| Variable or function call used instead of an array literal | No list model | No | No | No | No | Code editor |
+| Variable, call, spread, hole, or computed property inside a partially modeled object | Raw source only | No; rebuilding could drop syntax | — | — | — | The value control is replaced with code-editor guidance |
+| Dynamic or ambiguous `key` / `data-id` | Yes | Other supported values remain editable | Yes | No | Yes | Make the identity static before copying |
+
+Array value edits and structure edits deliberately have different boundaries.
+For example, changing `label` in
+`[, ...rows, { label: 'A' }]` replaces only `'A'`; the hole and spread remain
+unchanged. Moving or deleting that item is disabled because the visible panel
+indices do not represent every runtime array entry.
+
+`useItemsEditor()` exposes this decision as `canEditStructure`. It is computed
+with the same dense-array check used again by every mutation helper, so custom
+panels can disable controls up front without weakening commit-time validation.
+Likewise, `PanelBinding.canEditValue === false` means a partial value editor
+would be lossy. The built-in `Field` replaces that control with the exact raw
+expression and code-editor guidance; custom panels should do the same. The AST
+mutation layer repeats the same literal-safety check and returns an
+`unsupported-syntax` failure if a stale or custom caller still attempts it.
+
+## Children and expressions
+
+A `children` binding models static JSX elements and fragments. Text, comments,
+and expressions between those nodes are source gaps: moving static children
+keeps those gaps in place, and copying a subtree keeps its inner expressions
+verbatim. An expression-only or otherwise unmodeled fragment is never reported
+as a successful structural edit. The AST update returns `success: false`, the
+original code remains intact, and the user can continue in the code editor.
+
+Children commands also carry signatures of the extracted nodes. The mutation
+layer compares them with the latest source before writing, so a command created
+before an external edit or undo cannot overwrite newer code.
+
+## Why `data-binding` remains the contract
+
+`data-binding` keeps edit metadata beside the JSX source span it describes.
+That gives the editor a stable property name, value kind, validation hints, and
+optional nested `render` map without executing application code. It also lets
+the AST layer validate the current source immediately before a patch.
+
+An external schema can be useful for forms or domain models, but it does not by
+itself identify which JSX span owns a value, how static `data-id` identities
+should be copied, or whether the current expression can be changed losslessly.
+Live Editor therefore does not replace `data-binding` with an external schema.
+A custom panel may use external metadata for presentation while still committing
+through the `PanelBinding` callbacks and the same source-preserving rules.
+
+See [Custom Palette and Panel](./custom-palette-panel.mdx) for the public panel
+hooks and [Editor Mode](./editor-mode.mdx) for the code-editor fallback.

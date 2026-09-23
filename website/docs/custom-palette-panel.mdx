@@ -332,7 +332,7 @@ a different layout, `useItemsEditor` is that engine on its own:
 import { useItemsEditor } from '@jbpark/live-editor/dnd';
 
 const MyItems = ({ binding, onNodeChange }) => {
-  const { items, selection, actions } = useItemsEditor(binding.rawValue, {
+  const { items, selection, actions, canEditStructure } = useItemsEditor(binding.rawValue, {
     render: binding.render,
     onChange: binding.onChange,
     onNodeChange,
@@ -340,12 +340,17 @@ const MyItems = ({ binding, onNodeChange }) => {
 
   return (
     <div>
-      <button onClick={actions.add}>Add</button>
+      <button disabled={!canEditStructure} onClick={actions.add}>Add</button>
       {items.map(item => (
         <details key={item.id}>
           <summary>
             #{item.index + 1}
-            <button onClick={() => actions.remove(item.elementIndex)}>x</button>
+            <button
+              disabled={!canEditStructure}
+              onClick={() => actions.remove(item.elementIndex)}
+            >
+              x
+            </button>
           </summary>
 
           {/* plain properties of an object item */}
@@ -393,6 +398,7 @@ What you don't have to reimplement:
 | `items` | `ItemsEditorItem[]` | One entry per item. `properties` holds an object item's plain fields, `nested` its JSX-valued ones, `value` a primitive item's own binding. |
 | `selection` | multi-select state | `selected`, `toggle`, `isSelected`, `clear`, `replace`. Indices are item `index` values; the actions translate. |
 | `actions` | `ItemsEditorActions` | `add`, `move`, `remove`, plus `duplicateSelected` / `moveSelected` / `removeSelected`. |
+| `canEditStructure` | `boolean` | Uses the same dense-array syntax gate as the mutation helpers. Keep value controls available when false, but disable move, copy, add, and delete and direct the user to the code editor. |
 | `parseError` | `boolean` | The source didn't parse as an array. `items` is empty. |
 
 The built-in `Items` panel is written against exactly this hook, so anything
@@ -506,6 +512,7 @@ checks. Low-level callers can use `ChildrenEdit` and `getChildrenSignatures` fro
 | `meta` | `Record<string, unknown>?` | Any authored key that isn't one of the fields above (a step increment, a unit suffix, a group name, ...) — see below. `undefined` when nothing extra was authored, not an empty object. |
 | `value` | `unknown` | Current value as its real JS type — a `number` for a `number` binding, a `boolean`, an `object`/`array`, a `string` otherwise. Switch on it without re-parsing. |
 | `rawValue` | `string` | The exact source text behind `value`, for cases that can't round-trip through a JS value (`jsx`/`richtext`, or an expression attribute you want to edit as text). Use it for an `<input>` `defaultValue` and for `flattenEditableValue`/`setEditableValue`. |
+| `canEditValue` | `boolean?` | `false` when reconstructing the modeled value could discard a reference, call, spread, hole, or computed property. Hide or disable the value control and direct the user to the code editor. `undefined` means the value is editable. |
 | `onChange` | `(value: unknown) => void` | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). Pass the value as its real type — it's serialized once, at the AST boundary, where the declared `type` is known, so no string quoting on your side. |
 
 `BindingType` is a closed union of 12 values: `array`, `object`, `string`,

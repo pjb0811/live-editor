@@ -139,16 +139,17 @@ describe('children structural commands', () => {
     expect(result.code).toBe(source);
   });
 
-  it.each(['<>{value}</>', '<></>'])(
-    'refuses unmodeled fragments without losing source: %s',
-    fragment => {
-      const code = `<div ${binding}>${fragment}${second}</div>`;
-      const result = edit(code, { type: 'remove', indices: [0] });
+  it.each([
+    '<>{value}</>',
+    '<></>',
+    '<>{items.map(item => <p data-id={item.id}>{item.label}</p>)}</>',
+  ])('refuses unmodeled fragments without losing source: %s', fragment => {
+    const code = `<div ${binding}>${fragment}${second}</div>`;
+    const result = edit(code, { type: 'remove', indices: [0] });
 
-      expect(result.success).toBe(false);
-      expect(result.code).toBe(code);
-    },
-  );
+    expect(result.success).toBe(false);
+    expect(result.code).toBe(code);
+  });
 
   it('refuses to clone dynamic identities while still allowing source moves', () => {
     const code = `<div ${binding}><p data-id={key}>A</p>${second}</div>`;
