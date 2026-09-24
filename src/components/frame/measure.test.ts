@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computeProbeHeight,
   estimatePositionedElementHeight,
+  isAnimationActive,
   isVisuallyHidden,
   parseTranslateY,
 } from './measure';
@@ -34,6 +35,18 @@ describe('isVisuallyHidden (#132 stage 3)', () => {
     );
   });
 
+  it('treats an animating opacity:0 element as visible (#374)', () => {
+    expect(
+      isVisuallyHidden({ visibility: 'visible', opacity: '0' }, true),
+    ).toBe(false);
+  });
+
+  it('keeps visibility:hidden hidden even while animating (#374)', () => {
+    expect(isVisuallyHidden({ visibility: 'hidden', opacity: '1' }, true)).toBe(
+      true,
+    );
+  });
+
   it('treats a normally-visible element as not hidden', () => {
     expect(isVisuallyHidden({ visibility: 'visible', opacity: '1' })).toBe(
       false,
@@ -44,6 +57,26 @@ describe('isVisuallyHidden (#132 stage 3)', () => {
     expect(isVisuallyHidden({ visibility: 'visible', opacity: '0.01' })).toBe(
       false,
     );
+  });
+});
+
+describe('isAnimationActive (#374)', () => {
+  it('counts a running animation', () => {
+    expect(isAnimationActive('running')).toBe(true);
+  });
+
+  it('counts a paused animation — stopped part-way, not dismissed', () => {
+    expect(isAnimationActive('paused')).toBe(true);
+  });
+
+  it('does not count a finished animation', () => {
+    // The `animation-fill-mode: forwards` case: a completed fade-out holds
+    // opacity:0 in `finished`, and that element is hidden for good.
+    expect(isAnimationActive('finished')).toBe(false);
+  });
+
+  it('does not count an idle animation', () => {
+    expect(isAnimationActive('idle')).toBe(false);
   });
 });
 

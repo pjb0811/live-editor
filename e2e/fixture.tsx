@@ -25,6 +25,76 @@ const documentCode = `const App = () => (
 
 export default App;`;
 
+// #374: every section holds the same 400px-tall `position: fixed` element,
+// which only autoHeight's descendant walk can account for — nothing about it
+// contributes to the document's own scrollHeight.
+//
+// The fade-in sections use a long `animation-delay` with
+// `animation-fill-mode: backwards` rather than a short animation caught
+// part-way through. Both put the element at computed `opacity: 0` with a
+// `running` animation, which is the state the walk has to get right, but the
+// delay phase holds it there indefinitely instead of leaving the assertion
+// racing the animation clock. `finish()` from the test then completes them on
+// demand.
+const fixedBlock = (extra = '') =>
+  `<div style={{ position: 'fixed', left: 0, right: 0, top: 0, height: 400, background: 'salmon'${extra} }} />`;
+
+const flowBlock = (height: number) =>
+  `<p style={{ margin: 0, height: ${height} }}>flow</p>`;
+
+const keyframes = (name: string, from: number, to: number) =>
+  `<style>{'@keyframes ${name} { from { opacity: ${from} } to { opacity: ${to} } }'}</style>`;
+
+const autoHeightCode = `const Growing = () => {
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    ref.current?.animate([{ height: '0px' }, { height: '400px' }], {
+      duration: 30000,
+      easing: 'linear',
+      fill: 'forwards',
+    });
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      style={{ position: 'fixed', left: 0, right: 0, top: 0, height: 0, overflow: 'hidden', background: 'salmon' }}
+    />
+  );
+};
+
+const App = () => (
+  <main id="app-container">
+    <section data-id="s-static" data-name="static">
+      ${fixedBlock()}
+    </section>
+    <section data-id="s-fade" data-name="fade">
+      ${keyframes('fadein', 0, 1)}
+      ${fixedBlock(", animation: 'fadein 300ms linear 30s backwards'")}
+    </section>
+    <section data-id="s-fade-flow" data-name="fade-flow">
+      ${keyframes('fadein', 0, 1)}
+      ${flowBlock(40)}
+      ${fixedBlock(", animation: 'fadein 300ms linear 30s backwards'")}
+    </section>
+    <section data-id="s-closed" data-name="closed">
+      ${flowBlock(60)}
+      ${fixedBlock(', opacity: 0')}
+    </section>
+    <section data-id="s-fading-out" data-name="fading-out">
+      ${keyframes('fadeout', 1, 0)}
+      ${flowBlock(60)}
+      ${fixedBlock(", animation: 'fadeout 30s linear forwards'")}
+    </section>
+    <section data-id="s-waapi" data-name="waapi">
+      <Growing />
+    </section>
+  </main>
+);
+
+export default App;`;
+
 interface EditorSnapshot {
   document: string;
   selection: number;
@@ -151,10 +221,30 @@ export const SurfaceFixture = () => {
   );
 };
 
+export const AutoHeightFixture = () => (
+  <Live>
+    {/* Tall enough that probeHeight never caps a 400px estimate. */}
+    <div style={{ height: 900 }}>
+      <Live.Dnd value={autoHeightCode} frame={{ mode: 'iframe' }}>
+        <Live.Dnd.Canvas />
+      </Live.Dnd>
+    </div>
+  </Live>
+);
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
+
+const fixtures = {
+  surfaces: <SurfaceFixture />,
+  autoheight: <AutoHeightFixture />,
+} as const;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {scenario === 'surfaces' ? <SurfaceFixture /> : <ItemsFixture />}
+    {scenario && scenario in fixtures ? (
+      fixtures[scenario as keyof typeof fixtures]
+    ) : (
+      <ItemsFixture />
+    )}
   </StrictMode>,
 );
