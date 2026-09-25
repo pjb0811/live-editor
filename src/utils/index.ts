@@ -10,6 +10,7 @@ import type { Module, Section } from '~/types';
 
 import { CONFIG, REGEX, TS_PATTERNS } from '../constants';
 import {
+  clearDocumentParseCache,
   createSectionPreviewCache,
   generateSectionPreview,
   generateSectionPreviews,
@@ -17,6 +18,7 @@ import {
   parseDocument,
   replaceDocumentSections,
 } from './ast/document';
+import { clearExtractCache } from './ast/extract';
 import { createBoundedCache } from './cache';
 
 export function cn(...inputs: ClassValue[]) {
@@ -83,9 +85,10 @@ export const compile = (
   return result;
 };
 
+// `compilationKeys` needs no separate pass: it is drained by the `onEvict`
+// the cache was built with, which `clear()` runs for every entry.
 export const clearCompilationCache = () => {
   compilationCache.clear();
-  console.log('🧹 Compilation cache cleared');
 };
 
 // TypeScript source used to go through `ts.transpileModule` and then this
@@ -251,4 +254,63 @@ export const getCachedScriptBlob = async (src: string): Promise<string> => {
 
 export const preloadScripts = (scripts: string[]): void => {
   scripts.forEach(src => getCachedScriptBlob(src));
+};
+
+// Blob URLs are browser resources, not just memory, so dropping the entries
+// is not enough — they have to be revoked. `clear()` runs the same `onEvict`
+// the LRU does, so the `URL.revokeObjectURL` above covers this path too.
+//
+// `loadingScriptCache` goes with it: a promise from a session that no longer
+// exists should not be adopted by the next one, which would otherwise hand
+// back a blob URL created before the revocation.
+export const clearScriptCache = () => {
+  scriptCache.clear();
+  loadingScriptCache.clear();
+};
+
+// The single place that knows the full set of editor-owned caches. A new
+// cache added to the compile or AST pipeline needs adding here and nowhere
+// else — the point of centralizing it is that the provider never has to
+// learn about individual caches, which is how the previous arrangement
+// (provider clearing the compilation cache and only that) drifted.
+//
+// Deliberately not exhaustive of every cache in the library: an instance
+// from `createSectionPreviewCache` is owned by the component that holds it
+// (`useState(() => createSectionPreviewCache())`), so it is already released
+// with that component and there is nothing global to clear.
+export const clearEditorCaches = () => {
+  clearCompilationCache();
+  clearDocumentParseCache();
+  clearExtractCache();
+  clearScriptCache();
+};
+
+// These caches are shared across every editor session in the page, so they
+// can only be released once the *last* one is gone. Clearing on any single
+// unmount would reach into siblings that are still mounted — harmless when
+// the only casualty was a compilation cache (a cache miss costs time, not
+// correctness), but not once revoking blob URLs is part of it: a sibling
+// could be handed a URL that is dead before its iframe loads it.
+let activeEditorSessions = 0;
+
+// Returns the release function rather than exposing the counter, so a caller
+// cannot release a session it never acquired. Idempotent, so React calling
+// an effect's cleanup twice cannot drive the count negative.
+export const registerEditorSession = (): (() => void) => {
+  activeEditorSessions += 1;
+
+  let released = false;
+
+  return () => {
+    if (released) {
+      return;
+    }
+
+    released = true;
+    activeEditorSessions -= 1;
+
+    if (activeEditorSessions === 0) {
+      clearEditorCaches();
+    }
+  };
 };

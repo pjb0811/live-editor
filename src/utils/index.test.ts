@@ -1,12 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // utils/index.ts imports @jbpark/ui-kit for baseModules, which pulls in its
 // CSS — stub both out since detectTypeScript doesn't touch either.
 vi.mock('@jbpark/ui-kit', () => ({}));
 vi.mock('@jbpark/ui-kit/utils', () => ({}));
 
-const { compile, clearCompilationCache, detectTypeScript } =
-  await import('./index');
+const {
+  compile,
+  clearCompilationCache,
+  clearEditorCaches,
+  clearScriptCache,
+  detectTypeScript,
+  getCachedScriptBlob,
+  registerEditorSession,
+} = await import('./index');
+const { clearDocumentParseCache, parseDocument } =
+  await import('./ast/document');
+const { clearExtractCache, extract } = await import('./ast/extract');
 
 describe('detectTypeScript', () => {
   it('does not flag the default template as TypeScript', () => {
@@ -246,5 +256,152 @@ describe('compile module cache (#329)', () => {
 
     expect(evicted).not.toBe(results[1]);
     expect(read(evicted)).toBe(1);
+  });
+});
+
+describe('editor session cache lifecycle (#373)', () => {
+  const SRC = 'https://example.test/script.js';
+  const DOC = `const App = () => (
+  <main id="app-container">
+    <section data-id="a" data-name="A"><p>a</p></section>
+  </main>
+);
+
+export default App;`;
+  const BINDING_CODE = `<div data-id="a" data-binding="[{label:'A',property:'innerText'}]">A</div>`;
+  const COMPILE_CODE =
+    "import { value } from 'fixture'; export default () => value;";
+
+  // Node has Blob but no object-URL registry, so both halves are stubbed.
+  // `revoked` is what the blob-URL assertions actually read: the point is not
+  // that entries were dropped but that the browser resource was released.
+  let created = 0;
+  let revoked: string[] = [];
+
+  beforeEach(() => {
+    created = 0;
+    revoked = [];
+
+    vi.stubGlobal('fetch', () =>
+      Promise.resolve({ text: () => Promise.resolve('export default 1;') }),
+    );
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: () => `blob:stub/${(created += 1)}`,
+      revokeObjectURL: (url: string) => revoked.push(url),
+    });
+
+    clearEditorCaches();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('clears the compilation cache', () => {
+    const fixture = { value: 1 };
+    const first = compile(COMPILE_CODE, { fixture });
+
+    expect(compile(COMPILE_CODE, { fixture })).toBe(first);
+
+    clearEditorCaches();
+
+    expect(compile(COMPILE_CODE, { fixture })).not.toBe(first);
+  });
+
+  it('clears the document parse cache, which the provider never used to reach', () => {
+    const first = parseDocument(DOC)!;
+
+    expect(parseDocument(DOC)!.ast).toBe(first.ast);
+
+    clearEditorCaches();
+
+    expect(parseDocument(DOC)!.ast).not.toBe(first.ast);
+  });
+
+  it('clears the extracted binding cache', () => {
+    const first = extract(BINDING_CODE);
+
+    expect(extract(BINDING_CODE)).toBe(first);
+
+    clearEditorCaches();
+
+    expect(extract(BINDING_CODE)).not.toBe(first);
+  });
+
+  it('revokes cached script blob URLs rather than only dropping the entries', async () => {
+    const url = await getCachedScriptBlob(SRC);
+
+    expect(await getCachedScriptBlob(SRC)).toBe(url);
+    expect(revoked).toEqual([]);
+
+    clearEditorCaches();
+
+    expect(revoked).toEqual([url]);
+    expect(await getCachedScriptBlob(SRC)).not.toBe(url);
+  });
+
+  it('does not let a new session adopt a pending load from a cleared one', async () => {
+    const pending = getCachedScriptBlob(SRC);
+
+    clearScriptCache();
+
+    const fresh = getCachedScriptBlob(SRC);
+
+    expect(await fresh).not.toBe(await pending);
+  });
+
+  it('keeps the caches while another session is still mounted', () => {
+    const releaseFirst = registerEditorSession();
+    const releaseSecond = registerEditorSession();
+
+    const fixture = { value: 1 };
+    const compiled = compile(COMPILE_CODE, { fixture });
+
+    releaseFirst();
+
+    // Reaching into a sibling's caches is the reason this is reference
+    // counted: a wasted compile is survivable, a blob URL revoked out from
+    // under a still-mounted iframe is not.
+    expect(compile(COMPILE_CODE, { fixture })).toBe(compiled);
+
+    releaseSecond();
+
+    expect(compile(COMPILE_CODE, { fixture })).not.toBe(compiled);
+  });
+
+  it('ignores a release called more than once', () => {
+    const releaseFirst = registerEditorSession();
+    const releaseSecond = registerEditorSession();
+
+    releaseFirst();
+    releaseFirst();
+
+    const fixture = { value: 1 };
+    const compiled = compile(COMPILE_CODE, { fixture });
+
+    // Had the repeated call decremented again, the count would already be 0
+    // here and this release would clear nothing.
+    releaseSecond();
+
+    expect(compile(COMPILE_CODE, { fixture })).not.toBe(compiled);
+  });
+
+  it('leaves the narrower clears working on their own', () => {
+    const first = parseDocument(DOC)!;
+
+    clearCompilationCache();
+
+    expect(parseDocument(DOC)!.ast).toBe(first.ast);
+
+    clearDocumentParseCache();
+
+    expect(parseDocument(DOC)!.ast).not.toBe(first.ast);
+
+    const extracted = extract(BINDING_CODE);
+
+    clearExtractCache();
+
+    expect(extract(BINDING_CODE)).not.toBe(extracted);
   });
 });
