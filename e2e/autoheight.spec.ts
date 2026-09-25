@@ -29,25 +29,6 @@ const finishAnimations = (page: Page) =>
     ),
   );
 
-// Forces one measurement pass without changing anything that affects the
-// height, standing in for whatever real mutation happens around a
-// script-driven animation starting (a motion library inserting the element it
-// is about to animate, say). Needed because `element.animate()` is invisible
-// to the MutationObserver and the ResizeObserver alike, so without it the
-// animation might never be seen by a measurement pass at all — and it is the
-// pass that *sees* a running animation which schedules the re-measure for
-// when that animation settles.
-const pokeDom = (page: Page) =>
-  Promise.all(
-    previewFrames(page).map(frame =>
-      frame.evaluate(() => {
-        document
-          .getElementById('iframe-root')
-          ?.firstElementChild?.setAttribute('data-poke', '1');
-      }),
-    ),
-  );
-
 test.describe('autoHeight with animated content (#374)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/e2e/fixture.html?scenario=autoheight');
@@ -99,9 +80,12 @@ test.describe('autoHeight with animated content (#374)', () => {
     page,
   }) => {
     // The Web Animations API fires no DOM event when an animation ends, so
-    // this section is covered by its `finished` promise instead.
-    await pokeDom(page);
-
+    // this section is covered by its `finished` promise instead. The section
+    // starts its animation from an effect on mount, a beat after the mutation
+    // that triggers the first measurement pass — so nothing here forces an
+    // extra pass, and the animation has to be picked up by the follow-up look
+    // each pass books for itself.
+    //
     // Part-way through a 30s growth from 0 to 400px, so whatever it reads now
     // it is not the settled height.
     expect((await readHeights(page))[WAAPI]).toBeLessThan(FIXED_HEIGHT);
