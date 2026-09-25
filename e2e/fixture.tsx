@@ -95,6 +95,32 @@ const App = () => (
 
 export default App;`;
 
+// A measurement pass used to cancel every transition in the preview outright,
+// so an overlay opened by a class or style change snapped to its end state
+// instead of fading. One section, one overlay, driven by the test.
+const transitionCode = `const App = () => (
+  <main id="app-container">
+    <section data-id="s-transition" data-name="transition">
+      <p style={{ margin: 0, height: 60 }}>flow</p>
+      <div
+        id="overlay"
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          top: 0,
+          height: 400,
+          background: 'salmon',
+          opacity: 0,
+          transition: 'opacity 5s linear',
+        }}
+      />
+    </section>
+  </main>
+);
+
+export default App;`;
+
 interface EditorSnapshot {
   document: string;
   selection: number;
@@ -232,11 +258,22 @@ export const AutoHeightFixture = () => (
   </Live>
 );
 
+export const TransitionFixture = () => (
+  <Live>
+    <div style={{ height: 900 }}>
+      <Live.Dnd value={transitionCode} frame={{ mode: 'iframe' }}>
+        <Live.Dnd.Canvas />
+      </Live.Dnd>
+    </div>
+  </Live>
+);
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
   surfaces: <SurfaceFixture />,
   autoheight: <AutoHeightFixture />,
+  transitions: <TransitionFixture />,
 } as const;
 
 createRoot(document.getElementById('root')!).render(
