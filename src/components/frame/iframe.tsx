@@ -439,9 +439,9 @@ const IFrame = ({
   // `finished` promise is the equivalent signal, so each gets exactly one
   // re-measure scheduled for when it settles.
   //
-  // CSS animations are skipped because their `animationend` already bubbles
-  // to the mount node — tracking them here too would just measure twice.
-  // Transitions are skipped for the reason given in hasActiveAnimation.
+  // CSS animations and transitions are both skipped: their
+  // `animationend`/`transitionend` already bubble to the mount node, so
+  // tracking them here too would only measure twice.
   //
   // A cancelled animation rejects `finished` with an AbortError and snaps
   // the element back to its un-animated style, which is as much a reason to
