@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { DEFAULT_TEMPLATE } from '~/constants';
-import { clearCompilationCache } from '~/utils';
+import { registerEditorSession } from '~/utils';
 
 import type { ErrorContextType, PreviewContextType } from './states';
 import { ErrorContext, PreviewContext } from './states';
@@ -25,11 +25,13 @@ const ContextProvider = ({ children }: { children?: React.ReactNode }) => {
     setCodeState(next);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      clearCompilationCache();
-    };
-  }, []);
+  // The provider is the ownership boundary for every editor-owned cache, not
+  // just the compilation one it used to clear here: parsed documents,
+  // extracted bindings and the blob URLs generated for external scripts all
+  // outlive an editing session otherwise, released only when the LRU happens
+  // to evict them. registerEditorSession both counts this session and hands
+  // back the release, so the caches go when the last provider does.
+  useEffect(() => registerEditorSession(), []);
 
   // Without this, a new object identity on every ContextProvider render
   // (even ones that don't touch code/error at all, e.g. a parent
