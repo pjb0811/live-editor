@@ -63,27 +63,22 @@ const isCssTransition = (
 // transient `opacity: 0` (the first frames of a fade-in — measure it)
 // from a permanent one (a closed overlay — skip it).
 //
-// Transitions are excluded deliberately. withMeasurementOverrides
-// neutralizes them for the duration of the measurement, so a
-// transitioning element is read at its settled target value already; an
-// element transitioning *to* `opacity: 0` therefore reads 0 here and has
-// to stay excluded. Counting its transition as "in flight" would put an
-// element on its way out back into the estimate.
+// Transitions count here, unlike keyframe animations they are not
+// distinguished: now that a measurement pass only freezes transitions when
+// it moves the probe height (see withMeasurementOverrides), an element at
+// the very start of a fade-*in* transition genuinely reads `opacity: 0`
+// with a running transition and has to be measured. An element fading
+// *out* needs no special case — part-way through it reads a fractional
+// opacity, so it is measured for as long as it is still visible, and once
+// the transition is over it reads `0` with nothing running and drops out.
 //
-// getAnimations() is feature-detected for the same reason as above —
-// without it this returns false, which is exactly the pre-#374 behavior.
-const hasActiveAnimation = (
-  win: Window & typeof globalThis,
-  el: HTMLElement,
-): boolean =>
+// getAnimations() is feature-detected: jsdom and pre-2020 browsers don't
+// implement it, and without it this returns false, which is the safe
+// direction (under-measuring a fading-in overlay rather than inflating a
+// section by the height of a dismissed one).
+const hasActiveAnimation = (el: HTMLElement): boolean =>
   typeof el.getAnimations === 'function' &&
-  el
-    .getAnimations()
-    .some(
-      animation =>
-        isAnimationActive(animation.playState) &&
-        !isCssTransition(win, animation),
-    );
+  el.getAnimations().some(animation => isAnimationActive(animation.playState));
 
 // `finished` never resolves for an animation that repeats forever, so a
 // handler attached to one would only pin its closure for as long as the
@@ -94,6 +89,89 @@ const neverFinishes = (animation: Animation): boolean => {
   const timing = animation.effect?.getComputedTiming();
 
   return timing?.iterations === Infinity || timing?.duration === Infinity;
+};
+
+// A second, separate style — inert (`media="not all"`) except for the
+// brief window updateHeight actually measures in, toggled on right
+// before and off right after (#132 stage 4). Two things it guards
+// against:
+//
+// - transitions: if any rule in the preview (or a browser default)
+//   gives `html`/an ancestor a `transition` on a property this
+//   measurement touches, changing ensureContainerStyle's `height` would
+//   animate instead of applying instantly, and a read taken right after
+//   would catch a mid-transition value instead of the settled one. Only
+//   applied on a pass that actually changes the probe height — see
+//   `freezeTransitions`.
+// - scrollbar chrome: applying a new probe height can make a scrollbar
+//   appear/disappear for exactly this measurement pass; on platforms
+//   where it takes up layout width (Windows, unlike macOS's overlay
+//   scrollbars), that narrows content and skews the height reading.
+//   `scrollbar-width: none`/`::-webkit-scrollbar { display: none }`
+//   only hides the *chrome* — unlike `overflow: hidden`, scrolling
+//   itself still works, so content that ends up taller than its probe
+//   height is still reachable rather than silently clipped.
+//
+// A single style element (not two, and never added/removed) so
+// toggling it can't itself trip the MutationObserver watching for
+// *content* changes.
+const MEASUREMENT_OVERRIDE_STYLE_ID = 'autoheight-measurement-overrides';
+
+const SCROLLBAR_OVERRIDE_RULES = [
+  'html, body { scrollbar-width: none !important; }',
+  'html::-webkit-scrollbar, body::-webkit-scrollbar { display: none !important; }',
+];
+
+const FREEZE_TRANSITIONS_RULE =
+  '*, *::before, *::after { transition: none !important; }';
+
+// `freezeTransitions` is deliberately not always on. `transition: none`
+// does not pause a transition for the duration of the measurement — it
+// *cancels* it, and lifting the override afterwards does not resume it.
+// Measured in Chromium: 0.5s into a 4s fade the element read `0.974`
+// with one running animation; inside the override window it read `0`
+// with none, and it was still `0` with none 0.8s after the override came
+// back off. The element had snapped to its end state for good.
+//
+// Freezing on every pass therefore killed every transition in the
+// preview that happened to overlap a measurement — and because a DOM
+// mutation is what both triggers a measurement and typically starts a
+// transition (a class toggle opening an overlay), that was most of them.
+//
+// The guard is only needed for what the measurement *itself* changes:
+// the probe height, and with it any `cq*`-unit descendant sized against
+// it. When the probe height is unchanged from the last pass, the pass
+// changes nothing, so there is nothing to freeze and the preview's own
+// transitions are left alone.
+const withMeasurementOverrides = (
+  doc: Document,
+  freezeTransitions: boolean,
+  measure: () => void,
+) => {
+  let styleEl = doc.getElementById(
+    MEASUREMENT_OVERRIDE_STYLE_ID,
+  ) as HTMLStyleElement | null;
+
+  if (!styleEl) {
+    styleEl = doc.createElement('style');
+    styleEl.id = MEASUREMENT_OVERRIDE_STYLE_ID;
+    styleEl.media = 'not all';
+    doc.head?.appendChild(styleEl);
+  }
+
+  const text = (
+    freezeTransitions
+      ? [FREEZE_TRANSITIONS_RULE, ...SCROLLBAR_OVERRIDE_RULES]
+      : SCROLLBAR_OVERRIDE_RULES
+  ).join('\n');
+
+  if (styleEl.textContent !== text) {
+    styleEl.textContent = text;
+  }
+
+  styleEl.media = 'all';
+  measure();
+  styleEl.media = 'not all';
 };
 
 const IFrame = ({
@@ -126,6 +204,10 @@ const IFrame = ({
   // Lets those handlers call back into the *current* updateHeight without
   // updateHeight having to list itself as its own dependency.
   const updateHeightRef = useRef<(() => void) | null>(null);
+  // The probe height the container style was last built for. A pass that
+  // leaves it unchanged changes nothing about the document, which is what
+  // lets that pass measure without freezing the preview's transitions.
+  const lastProbeHeightRef = useRef<number | undefined>(undefined);
   const shouldAutoHeight = autoHeight && style.height == null;
 
   const styleManagerRef = useRef(createStyleSyncManager());
@@ -340,53 +422,15 @@ const IFrame = ({
       doc.head?.appendChild(styleEl);
     }
 
-    styleEl.textContent = `html { container-type: size !important; height: ${probeHeight}px !important; }`;
-  };
+    const text = `html { container-type: size !important; height: ${probeHeight}px !important; }`;
 
-  // A second, separate style — inert (`media="not all"`) except for the
-  // brief window updateHeight actually measures in, toggled on right
-  // before and off right after (#132 stage 4). Two things it guards
-  // against:
-  //
-  // - transitions: if any rule in the preview (or a browser default)
-  //   gives `html`/an ancestor a `transition` on a property this
-  //   measurement touches, changing ensureContainerStyle's `height` would
-  //   animate instead of applying instantly, and a read taken right after
-  //   would catch a mid-transition value instead of the settled one.
-  // - scrollbar chrome: applying a new probe height can make a scrollbar
-  //   appear/disappear for exactly this measurement pass; on platforms
-  //   where it takes up layout width (Windows, unlike macOS's overlay
-  //   scrollbars), that narrows content and skews the height reading.
-  //   `scrollbar-width: none`/`::-webkit-scrollbar { display: none }`
-  //   only hides the *chrome* — unlike `overflow: hidden`, scrolling
-  //   itself still works, so content that ends up taller than its probe
-  //   height is still reachable rather than silently clipped.
-  //
-  // A single style element (not two, and never added/removed) so
-  // toggling it can't itself trip the MutationObserver watching for
-  // *content* changes.
-  const MEASUREMENT_OVERRIDE_STYLE_ID = 'autoheight-measurement-overrides';
-
-  const withMeasurementOverrides = (doc: Document, measure: () => void) => {
-    let styleEl = doc.getElementById(
-      MEASUREMENT_OVERRIDE_STYLE_ID,
-    ) as HTMLStyleElement | null;
-
-    if (!styleEl) {
-      styleEl = doc.createElement('style');
-      styleEl.id = MEASUREMENT_OVERRIDE_STYLE_ID;
-      styleEl.media = 'not all';
-      styleEl.textContent = [
-        '*, *::before, *::after { transition: none !important; }',
-        'html, body { scrollbar-width: none !important; }',
-        'html::-webkit-scrollbar, body::-webkit-scrollbar { display: none !important; }',
-      ].join('\n');
-      doc.head?.appendChild(styleEl);
+    // Only written when it actually differs. Re-assigning identical
+    // textContent would tear down and rebuild the same CSSOM rule on every
+    // pass, and the whole point of the probe height being stable is that a
+    // pass changes nothing about the document (see freezeTransitions).
+    if (styleEl.textContent !== text) {
+      styleEl.textContent = text;
     }
-
-    styleEl.media = 'all';
-    measure();
-    styleEl.media = 'not all';
   };
 
   // Script-driven animations are the blind spot the animationend listeners
@@ -395,9 +439,9 @@ const IFrame = ({
   // `finished` promise is the equivalent signal, so each gets exactly one
   // re-measure scheduled for when it settles.
   //
-  // CSS animations are skipped because their `animationend` already bubbles
-  // to the mount node — tracking them here too would just measure twice.
-  // Transitions are skipped for the reason given in hasActiveAnimation.
+  // CSS animations and transitions are both skipped: their
+  // `animationend`/`transitionend` already bubble to the mount node, so
+  // tracking them here too would only measure twice.
   //
   // A cancelled animation rejects `finished` with an AbortError and snaps
   // the element back to its un-animated style, which is as much a reason to
@@ -498,7 +542,14 @@ const IFrame = ({
 
     let contentHeight = 0;
 
-    withMeasurementOverrides(doc, () => {
+    // First pass (`undefined`) and any pass that moves the probe height are
+    // the only ones that change the container context, so they are the only
+    // ones that need the preview's transitions out of the way.
+    const freezeTransitions = probeHeight !== lastProbeHeightRef.current;
+
+    lastProbeHeightRef.current = probeHeight;
+
+    withMeasurementOverrides(doc, freezeTransitions, () => {
       ensureContainerStyle(doc, probeHeight);
 
       // Rewrite vh-family units the container context can't otherwise reach —
@@ -531,8 +582,7 @@ const IFrame = ({
         // change — whether a fully transparent element is fading in
         // (measure it) or simply not shown (skip it) — so every other
         // element still costs nothing but the computed-style read.
-        const isAnimating =
-          style.opacity === '0' && hasActiveAnimation(win, el);
+        const isAnimating = style.opacity === '0' && hasActiveAnimation(el);
 
         if (isVisuallyHidden(style, isAnimating)) {
           return;
@@ -649,30 +699,48 @@ const IFrame = ({
     characterData: true,
   });
 
-  // A CSS animation finishing is neither a DOM mutation nor a resize of the
-  // mount node, so neither observer above re-runs the measurement — a
-  // fixed/absolute element read mid-fade would keep its stale height on the
-  // iframe until something unrelated happened to the DOM (#374). Both events
-  // bubble, so a single listener on the mount node covers every descendant.
-  // `animationcancel` counts as much as `animationend`: a cancelled
-  // animation snaps the element back to its un-animated style, changing the
-  // height just the same.
+  // An animation or transition finishing is neither a DOM mutation nor a
+  // resize of the mount node, so neither observer above re-runs the
+  // measurement — a fixed/absolute element read mid-fade would keep its
+  // stale height on the iframe until something unrelated happened to the DOM
+  // (#374). All four events bubble, so a single listener each on the mount
+  // node covers every descendant.
+  //
+  // The `cancel` events count as much as the `end` ones: a cancelled
+  // animation or transition snaps the element back to its un-animated style,
+  // changing the height just the same.
+  //
+  // `transitionend`/`transitioncancel` used to be unnecessary, because every
+  // measurement pass cancelled every transition outright. Now that a pass
+  // only freezes transitions when it moves the probe height, a transition
+  // can genuinely still be running when a pass reads it, so its completion
+  // needs the same re-measure a keyframe animation's does.
   //
   // useEventListener resolves an element target through a ref, so mountNode
   // (portal-owned state, not something this component renders) is wrapped in
   // one that changes identity only when the node itself does. `enabled`
   // keeps it from polling for a node that isn't there yet.
   const mountNodeRef = useMemo(() => ({ current: mountNode }), [mountNode]);
-  const animationListenerEnabled = shouldAutoHeight && mountNode !== null;
+  const settleListenerEnabled = shouldAutoHeight && mountNode !== null;
 
   useEventListener('animationend', updateHeight, {
     target: mountNodeRef,
-    enabled: animationListenerEnabled,
+    enabled: settleListenerEnabled,
   });
 
   useEventListener('animationcancel', updateHeight, {
     target: mountNodeRef,
-    enabled: animationListenerEnabled,
+    enabled: settleListenerEnabled,
+  });
+
+  useEventListener('transitionend', updateHeight, {
+    target: mountNodeRef,
+    enabled: settleListenerEnabled,
+  });
+
+  useEventListener('transitioncancel', updateHeight, {
+    target: mountNodeRef,
+    enabled: settleListenerEnabled,
   });
 
   const content = mountNode
