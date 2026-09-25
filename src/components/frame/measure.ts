@@ -47,10 +47,35 @@ export const computeProbeHeight = (
 // out on its own) — without this check, a closed bottom sheet or a
 // not-yet-faded-in overlay sitting in the DOM inflates the measured
 // height by however tall it would be if shown.
-export const isVisuallyHidden = (computed: {
-  visibility: string;
-  opacity: string;
-}): boolean => computed.visibility === 'hidden' || computed.opacity === '0';
+//
+// `opacity:0` on its own can't separate that closed overlay from the
+// *first frames of a fade-in*, which is on its way to being visible and
+// belongs in the height (#374). `isAnimating` is how the caller resolves
+// it: an element part-way through a keyframe animation is measured even
+// while fully transparent. It deliberately doesn't rescue
+// `visibility:hidden` — an element animating some unrelated property
+// while hidden is still hidden.
+export const isVisuallyHidden = (
+  computed: {
+    visibility: string;
+    opacity: string;
+  },
+  isAnimating = false,
+): boolean =>
+  computed.visibility === 'hidden' ||
+  (computed.opacity === '0' && !isAnimating);
+
+// Which `Animation.playState`s mean "this element's appearance is still
+// in flight, don't trust the current frame as its resting state".
+//
+// `playState !== 'idle'` would be the tempting shorthand and is wrong:
+// a *finished* fade-out with `animation-fill-mode: forwards` sits in
+// `finished` while holding `opacity: 0`, and that element really is
+// hidden for good — counting it as animating would put the full height
+// of a dismissed overlay back into the estimate. `paused` counts because
+// a paused fade-in is stopped part-way through, not dismissed.
+export const isAnimationActive = (playState: string): boolean =>
+  playState === 'running' || playState === 'paused';
 
 // `translate(Xpx, Ypx)` / `translateY(Ypx)` / `matrix(a,b,c,d,tx,ty)`'s Y
 // component — a positioned popup/overlay is commonly offset this way

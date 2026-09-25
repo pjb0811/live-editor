@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useMutationObserver, useResizeObserver } from '@jbpark/use-hooks';
+import {
+  useEventListener,
+  useMutationObserver,
+  useResizeObserver,
+} from '@jbpark/use-hooks';
 
 import { getCachedScriptBlob } from '~/utils';
 
@@ -10,6 +14,7 @@ import {
   FALLBACK_PROBE_HEIGHT,
   computeProbeHeight,
   estimatePositionedElementHeight,
+  isAnimationActive,
   isVisuallyHidden,
 } from './measure';
 import { createStyleSyncManager, reconcileStyles } from './style-sync';
@@ -34,6 +39,63 @@ export interface Props {
 
 const EMPTY_STRING_ARRAY: string[] = [];
 
+// `getAnimations()` returns three kinds of animation mixed together:
+// CSSAnimation (a @keyframes rule), CSSTransition (a `transition`) and
+// plain Animation (`element.animate()`). They need telling apart below
+// because only the first two announce their own completion through a
+// bubbling DOM event. Both constructors are feature-detected rather than
+// assumed: jsdom exposes neither.
+const isCssAnimation = (
+  win: Window & typeof globalThis,
+  animation: Animation,
+): boolean =>
+  typeof win.CSSAnimation === 'function' &&
+  animation instanceof win.CSSAnimation;
+
+const isCssTransition = (
+  win: Window & typeof globalThis,
+  animation: Animation,
+): boolean =>
+  typeof win.CSSTransition === 'function' &&
+  animation instanceof win.CSSTransition;
+
+// Whether this element's look is still in flight, which is what tells a
+// transient `opacity: 0` (the first frames of a fade-in — measure it)
+// from a permanent one (a closed overlay — skip it).
+//
+// Transitions are excluded deliberately. withMeasurementOverrides
+// neutralizes them for the duration of the measurement, so a
+// transitioning element is read at its settled target value already; an
+// element transitioning *to* `opacity: 0` therefore reads 0 here and has
+// to stay excluded. Counting its transition as "in flight" would put an
+// element on its way out back into the estimate.
+//
+// getAnimations() is feature-detected for the same reason as above —
+// without it this returns false, which is exactly the pre-#374 behavior.
+const hasActiveAnimation = (
+  win: Window & typeof globalThis,
+  el: HTMLElement,
+): boolean =>
+  typeof el.getAnimations === 'function' &&
+  el
+    .getAnimations()
+    .some(
+      animation =>
+        isAnimationActive(animation.playState) &&
+        !isCssTransition(win, animation),
+    );
+
+// `finished` never resolves for an animation that repeats forever, so a
+// handler attached to one would only pin its closure for as long as the
+// element lives. No signal is lost by skipping it: such an element is
+// perpetually "animating", so hasActiveAnimation keeps it in the estimate
+// on every pass anyway.
+const neverFinishes = (animation: Animation): boolean => {
+  const timing = animation.effect?.getComputedTiming();
+
+  return timing?.iterations === Infinity || timing?.duration === Infinity;
+};
+
 const IFrame = ({
   title = 'Live Preview',
   sandbox,
@@ -56,6 +118,14 @@ const IFrame = ({
   const loadedScriptsRef = useRef<Set<string>>(new Set());
   const prevStyleCountRef = useRef(0);
   const prevStylesheetCountRef = useRef(0);
+  // Animations already given a "re-measure once you settle" handler, so a
+  // long-running one still in flight across many measurement passes only
+  // ever gets one (see trackScriptAnimations). Weak so it never keeps a
+  // finished animation — or the element owning it — alive.
+  const trackedAnimationsRef = useRef(new WeakSet<Animation>());
+  // Lets those handlers call back into the *current* updateHeight without
+  // updateHeight having to list itself as its own dependency.
+  const updateHeightRef = useRef<(() => void) | null>(null);
   const shouldAutoHeight = autoHeight && style.height == null;
 
   const styleManagerRef = useRef(createStyleSyncManager());
@@ -319,6 +389,46 @@ const IFrame = ({
     styleEl.media = 'not all';
   };
 
+  // Script-driven animations are the blind spot the animationend listeners
+  // below can't cover: the Web Animations API fires no DOM event when one
+  // ends, so nothing would re-run a measurement taken mid-fade. Their
+  // `finished` promise is the equivalent signal, so each gets exactly one
+  // re-measure scheduled for when it settles.
+  //
+  // CSS animations are skipped because their `animationend` already bubbles
+  // to the mount node — tracking them here too would just measure twice.
+  // Transitions are skipped for the reason given in hasActiveAnimation.
+  //
+  // A cancelled animation rejects `finished` with an AbortError and snaps
+  // the element back to its un-animated style, which is as much a reason to
+  // re-measure as a clean finish — hence one handler on both settle paths.
+  const trackScriptAnimations = useCallback(
+    (doc: Document, win: Window & typeof globalThis) => {
+      if (typeof doc.getAnimations !== 'function') {
+        return;
+      }
+
+      doc.getAnimations().forEach(animation => {
+        if (
+          trackedAnimationsRef.current.has(animation) ||
+          !isAnimationActive(animation.playState) ||
+          isCssAnimation(win, animation) ||
+          isCssTransition(win, animation) ||
+          neverFinishes(animation)
+        ) {
+          return;
+        }
+
+        trackedAnimationsRef.current.add(animation);
+
+        animation.finished
+          .catch(() => undefined)
+          .then(() => updateHeightRef.current?.());
+      });
+    },
+    [],
+  );
+
   // Not ported from #132 stage 4: a "settled scrollHeight + settled probe
   // height both unchanged -> skip" guard, meant to avoid redundant re-runs
   // from updateHeight's own `iframe.style.height` write looping back
@@ -416,7 +526,15 @@ const IFrame = ({
         // a not-yet-faded-in overlay) keep a non-zero offsetHeight —
         // display:none doesn't need checking here since the browser
         // already zeroes *its* offsetHeight on its own.
-        if (isVisuallyHidden(style)) {
+        //
+        // The animation lookup is confined to the one verdict it can
+        // change — whether a fully transparent element is fading in
+        // (measure it) or simply not shown (skip it) — so every other
+        // element still costs nothing but the computed-style read.
+        const isAnimating =
+          style.opacity === '0' && hasActiveAnimation(win, el);
+
+        if (isVisuallyHidden(style, isAnimating)) {
           return;
         }
 
@@ -438,7 +556,16 @@ const IFrame = ({
     if (contentHeight > 0) {
       iframe.style.height = `${Math.ceil(contentHeight)}px`;
     }
-  }, [shouldAutoHeight, mountNode]);
+
+    // Outside the measurement window on purpose: the overrides above cancel
+    // running transitions, and this read should see the document's real
+    // animation set rather than one the act of measuring just altered.
+    trackScriptAnimations(doc, win);
+  }, [shouldAutoHeight, mountNode, trackScriptAnimations]);
+
+  useEffect(() => {
+    updateHeightRef.current = updateHeight;
+  }, [updateHeight]);
 
   // updateHeight only ever adds/refreshes the container-context style —
   // if autoHeight is toggled off (or an explicit style.height is passed)
@@ -520,6 +647,32 @@ const IFrame = ({
     subtree: true,
     attributes: true,
     characterData: true,
+  });
+
+  // A CSS animation finishing is neither a DOM mutation nor a resize of the
+  // mount node, so neither observer above re-runs the measurement — a
+  // fixed/absolute element read mid-fade would keep its stale height on the
+  // iframe until something unrelated happened to the DOM (#374). Both events
+  // bubble, so a single listener on the mount node covers every descendant.
+  // `animationcancel` counts as much as `animationend`: a cancelled
+  // animation snaps the element back to its un-animated style, changing the
+  // height just the same.
+  //
+  // useEventListener resolves an element target through a ref, so mountNode
+  // (portal-owned state, not something this component renders) is wrapped in
+  // one that changes identity only when the node itself does. `enabled`
+  // keeps it from polling for a node that isn't there yet.
+  const mountNodeRef = useMemo(() => ({ current: mountNode }), [mountNode]);
+  const animationListenerEnabled = shouldAutoHeight && mountNode !== null;
+
+  useEventListener('animationend', updateHeight, {
+    target: mountNodeRef,
+    enabled: animationListenerEnabled,
+  });
+
+  useEventListener('animationcancel', updateHeight, {
+    target: mountNodeRef,
+    enabled: animationListenerEnabled,
   });
 
   const content = mountNode
