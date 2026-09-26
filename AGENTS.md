@@ -32,11 +32,11 @@ live-editor/
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx, measure.ts, viewport-units.ts)
-│  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, use-dynamic-tailwind.ts)
+│  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, base-modules.ts, use-dynamic-tailwind.ts)
 │  ├─ pages/
 │  │  └─ editor/            # 로컬 개발용 에디터 페이지 (index.tsx = 앱 레이아웃, Editor/DnD 토글)
 │  ├─ utils/
-│  │  ├─ index.ts           # compile(), cn(), baseModules 등 핵심 유틸
+│  │  ├─ index.ts           # compile(), cn() 등 핵심 유틸 (UI kit을 import하지 않음 — Node에서 로드 가능해야 함)
 │  │  ├─ cache.ts           # 바운디드 LRU 캐시
 │  │  ├─ selection.ts       # 다중 선택 헬퍼
 │  │  ├─ ast/               # Babel AST 조작 유틸 (파이프라인 단계별 분리, index.ts는 재수출 배럴)
@@ -88,7 +88,7 @@ live-editor/
 
 | 파일                                | 역할                                                                                                                                                |
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/utils/index.ts`                | `compile()`, `cn()`, `baseModules`, `getCachedScriptBlob()`                                                                                         |
+| `src/utils/index.ts`                | `compile()`, `cn()`, `getCachedScriptBlob()`. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                            |
 | `src/utils/ast/`                    | `extract()`, `update()`/`bulkUpdate()`, `parseBinding()`, `getCurrentValue()`, `clone()` — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
 | `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                         |
 | `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                            |

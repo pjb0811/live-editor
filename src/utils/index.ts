@@ -1,8 +1,6 @@
 import React from 'react';
 
 import * as Babel from '@babel/standalone';
-import * as ui from '@jbpark/ui-kit';
-import * as utils from '@jbpark/ui-kit/utils';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -24,11 +22,6 @@ import { createBoundedCache } from './cache';
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
-export const baseModules = {
-  'ui-kit': ui,
-  'ui-kit/utils': utils,
-};
 
 interface CompilationKey {
   code: string;
