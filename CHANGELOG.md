@@ -1,5 +1,207 @@
 # Changelog
 
+## 4.0.0
+
+### Major Changes
+
+- 8d6c841: Draw the line between what the library owns and what a panel owns: the
+  library describes a value's data kind (`type`) and its constraints
+  (`min`/`max`/`pattern`/`required`); choosing and drawing a control is the
+  consumer's. `widget` is passed through untouched and the built-in panel no
+  longer reads it.
+
+  **Breaking**
+
+  - The built-in `icon-picker` and `asset-picker` controls are removed, along
+    with the `ICON_MAP`/`ICON_OPTIONS` exports. A binding declaring either
+    widget now gets the built-in default control for its `type`. Render your
+    own control in a custom panel by switching on `binding.widget.type`.
+  - `icon-picker`/`asset-picker` are no longer `BindingType` values. An
+    authored `type: 'icon-picker'` is treated like any unrecognized type: the
+    field is kept, untyped. Author `type: 'string', widget: 'icon-picker'`
+    instead.
+  - A render-map leaf's `PanelBinding.property` is now the object key when the
+    leaf declares no `property`. It used to be the leaf's `type` name, or
+    `undefined` when that type was unrecognized.
+
+  **Render-map leaves are full fields**
+
+  A nested `render` leaf now accepts every field a top-level binding does —
+  `label`, `widget`, `options`, `min`, `max`, `pattern`, `required`, and
+  consumer-defined keys under `meta` — and they reach the panel. Nested item
+  fields are validated the same way flat fields are; a leaf's `required` or
+  `min` used to be silently dropped. The leaf path now goes through the same
+  field conversion as every other panel path, and the items editor's
+  `meta.valueType` is merged into the leaf's own `meta` instead of replacing it.
+
+  **More forgiving parsing**
+
+  A malformed `min`, `max`, `pattern` or `required` now degrades just that
+  field, as `type`, `widget` and `options` already did, instead of dropping the
+  whole binding.
+
+- 5441b17: Make `@jbpark/live-editor/utils`, `/provider` and `/error` importable outside a
+  bundler. `./utils` imported `@jbpark/ui-kit` at module scope to build
+  `baseModules`, and evaluating the UI kit reaches its stylesheet imports, so
+  importing any of these entries in Node (SSR, build scripts, tests) threw
+  `Unknown file extension ".css"`.
+
+  **Breaking:** `baseModules` moved from `@jbpark/live-editor/utils` to
+  `@jbpark/live-editor/preview`, next to the preview that uses it. Update the
+  import if you read it directly:
+
+  ```ts
+  import { baseModules } from '@jbpark/live-editor/preview';
+  ```
+
+  Compiled samples resolve `'ui-kit'` and `'ui-kit/utils'` exactly as before.
+
+### Minor Changes
+
+- a0887d5: Add two `Live.Dnd` props for customizing the built-in panel without replacing
+  it.
+
+  - `renderField(props, builtin)` is called before the built-in control for
+    every field: top-level bindings, keys inside an `object` value, array item
+    properties, and `Live.Dnd.Field` in a custom panel. Return a node to replace
+    the control, `null` to render nothing, or `undefined` to keep `builtin`.
+    Switch on `binding.widget?.type`, `binding.type` or anything else on the
+    binding.
+  - `onEditError(error)` receives every edit the editor could not apply — a
+    rejected field update, a section or `items` value that fails to parse, or
+    a refused array edit — instead of the built-in toast. The payload carries
+    the toast's `title` and `description`, plus `failure.reason` for updates.
+
+  Both are exported as types: `DndRenderField` and `DndEditError`.
+
+- 4b0c59a: Let consumers replace the error box shown for a canvas section that fails.
+
+  - `renderSectionFallback({ section, reason, message })` renders in place of a
+    section that failed to compile (`'compile'`), threw while rendering
+    (`'runtime'`), or was skipped (`'forced'`). Return `undefined` to keep the
+    built-in error box. A fallback that throws reverts to the built-in one for
+    that section only.
+  - `shouldForceSectionFallback(section)` runs before a section is compiled.
+    Returning `true` skips compiling it, so none of its top-level code runs, and
+    renders the fallback with reason `'forced'`.
+
+  Neither changes rendering, memoization or error isolation when omitted. Both
+  types are exported: `DndRenderSectionFallback` and `DndSectionFallbackArgs`.
+  `Live.Error.Boundary`'s `fallback` also receives a `reset` function as its
+  second argument.
+
+- ef8fc04: Let a binding's `widget` carry that control's own configuration instead of
+  only naming it:
+
+  ```js
+  {
+    label: 'Content Spacing', property: 'size', type: 'number',
+    min: 0, max: 40,
+    widget: { type: 'slider', step: 4, unit: 'px' },
+  }
+  ```
+
+  `step`/`unit` are typed fields on `widget`, and any further control-specific
+  keys pass through as before, so a custom panel reads them without narrowing
+  `unknown`. `min`/`max`/`pattern`/`required` stay on the item: they are value
+  constraints `validateBindingValue` enforces with or without a widget, so
+  moving them would make a range unexpressible for a plain number input and
+  give a slider a second, conflictable copy of its bounds.
+
+  Not a breaking change. The bare-string form (`widget: 'slider'`) still parses,
+  normalized to `{ type: 'slider' }`, so consumers only ever switch on
+  `widget.type`.
+
+  Also fixes a latent parse defect on the same field: a malformed `widget` used
+  to fail the item schema and drop the entire binding, so the field vanished
+  from the panel with no error. It now degrades to widget-less and keeps the
+  field, matching how an unrecognized `type` behaves.
+
+### Patch Changes
+
+- d6aa94f: Stop `autoHeight` from dropping elements that are still animating. A
+  `position: fixed`/`absolute` element part-way through a fade-in sits at
+  computed `opacity: 0`, which the measurement walk read as permanently hidden
+  and left out of the height — a section whose only content was such an element
+  kept the browser's default 150px iframe height, and one with flow content was
+  clipped to it. An element at `opacity: 0` with a running or paused keyframe
+  animation is now measured, while a closed overlay and a finished fade-out
+  holding `opacity: 0` through `animation-fill-mode: forwards` stay excluded.
+
+  The height is also re-measured when an animation settles, which no observer
+  used to notice: a finishing animation is neither a DOM mutation nor a resize,
+  so a height read mid-fade stayed on the iframe until something unrelated
+  happened to the DOM. CSS animations are picked up through bubbling
+  `animationend`/`animationcancel`, and script-driven ones (`element.animate()`)
+  through their `finished` promise, since the Web Animations API dispatches no
+  DOM event.
+
+- a30b708: Stop `autoHeight` measurement from cancelling the preview's own CSS
+  transitions. The measurement pass applied `transition: none !important` to
+  every element, which does not pause a transition for the duration of the read
+  — it cancels it, and lifting the override afterwards does not resume it. Since
+  a DOM mutation is both what schedules a measurement and what typically starts
+  a transition (a class toggle opening an overlay), a fading overlay snapped
+  straight to its end state.
+
+  The override is now applied only on a pass that actually moves the probe
+  height, which is the only thing the measurement itself changes. A pass that
+  leaves the probe height alone changes nothing about the document, so there is
+  nothing to freeze.
+
+  Two consequences of transitions being allowed to run: the height is
+  re-measured on `transitionend`/`transitioncancel`, which no observer used to
+  notice, and an element at `opacity: 0` with a running transition now counts as
+  in flight for the height estimate, the same as one with a running keyframe
+  animation.
+
+- 130e682: Make the default palette exercise every binding option the library supports.
+  Hero's background style is now an `object` binding with a typed `color` key,
+  its button gains a `jsx` icon field, and its variant options include the
+  `solid` value the button actually uses. Stats exposes its marquee speed (with
+  the bare-string `widget` form) and a `boolean` pause-on-hover toggle. A new
+  Roadmap section shows an `array` binding whose render-map leaves use labels,
+  options, constraints, widgets, an `object` leaf with its own render map, and
+  consumer metadata, alongside top-level `date` and `url` fields.
+
+  Also fix nested keys of an object value in the built-in panel being headed by
+  the raw key instead of the render-map leaf's `label`.
+
+- aa786ee: Release every editor-owned cache when the last provider unmounts, not just
+  the compilation cache. Parsed documents, extracted bindings and the blob URLs
+  generated for external scripts previously outlived an editing session, freed
+  only when their LRU happened to evict them — so opening and closing an editor
+  repeatedly in one tab accumulated source-derived data, and blob URLs stayed
+  un-revoked.
+
+  `clearEditorCaches()` is the one place that knows the full set, so a cache
+  added to the compile or AST pipeline no longer has to be remembered at the
+  provider too. `clearScriptCache()` is exported alongside it for the script
+  cache on its own.
+
+  Cleanup is now reference counted through `registerEditorSession()`. Clearing
+  on any single unmount reached into providers that were still mounted, which
+  was survivable when a wasted compile was the only cost but is not once
+  revoking blob URLs is part of it.
+
+- e2d4f3f: Fix two defects in the preview compile/script pipeline, and translate its two
+  remaining Korean error messages to English.
+
+  - `compile()`'s `require` shim tested a module's truthiness instead of its
+    presence, so a module whose value is legitimately `0`, `''`, `false`, or
+    `null` was reported as missing — even though the compilation cache already
+    supports and compares primitive modules by value.
+  - `getCachedScriptBlob()` dropped its in-flight entry only on success, so one
+    failed fetch left a rejected promise in the map that every later caller
+    adopted: that script stayed unloadable for the rest of the session even
+    after the network recovered. `preloadScripts()` also no longer raises an
+    unhandled rejection when a preload fails.
+
+- 68745a7: Resolve a data-bound element into panel bindings through one shared conversion. The built-in panel, a custom panel's `useDndPanel()` bindings and the nested editors inside an `items` value previously repeated the same `DataAttrNode` -> `PanelBinding` mapping, so a binding field could reach one surface and silently miss the others. All three now read the same conversion, which keeps `widget`, `render`, constraints and consumer-defined `meta` consistent across them. No public API change.
+- a2039a6: Expose value and array-structure editability to custom panels, disable lossy
+  built-in controls before mutation, preserve unsupported expressions, and
+  document the supported editable syntax.
+
 ## 3.2.1
 
 ### Patch Changes
