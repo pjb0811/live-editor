@@ -329,28 +329,32 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
 
     return (
       <div className="space-y-2 rounded border border-gray-200 bg-gray-50 p-2">
-        {Object.entries(objectValue).map(([key, val]) => (
-          <div key={key} className="space-y-1">
-            <label className="block text-xs font-medium text-gray-600">
-              {key}
-            </label>
-            <Field
-              binding={{
-                ...toBindingFields(resolveRenderEntry(binding.render, key)),
-                id,
-                value: val,
-                rawValue:
-                  typeof val === 'object' && val !== null
-                    ? JSON.stringify(val)
-                    : String(val),
-                onChange: next => {
-                  onChange({ ...objectValue, [key]: next });
-                },
-              }}
-              onNodeChange={onNodeChange}
-            />
-          </div>
-        ))}
+        {Object.entries(objectValue).map(([key, val]) => {
+          const nested = resolveRenderEntry(binding.render, key);
+
+          return (
+            <div key={key} className="space-y-1">
+              <label className="block text-xs font-medium text-gray-600">
+                {nested.label}
+              </label>
+              <Field
+                binding={{
+                  ...toBindingFields(nested),
+                  id,
+                  value: val,
+                  rawValue:
+                    typeof val === 'object' && val !== null
+                      ? JSON.stringify(val)
+                      : String(val),
+                  onChange: next => {
+                    onChange({ ...objectValue, [key]: next });
+                  },
+                }}
+                onNodeChange={onNodeChange}
+              />
+            </div>
+          );
+        })}
       </div>
     );
   }

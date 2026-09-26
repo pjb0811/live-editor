@@ -83,26 +83,26 @@ export const DRAGGABLE_ITEMS: Section[] = [
             {
               label: 'Background Style',
               property: 'style',
+              type: 'object',
+              // Types the keys inside the object value; a leaf takes the same
+              // fields as a top-level binding.
+              render: {
+                backgroundColor: { type: 'color', label: 'Background Color' },
+              },
+              // Not a library field, so it arrives as meta.group.
+              group: 'layout',
             },
             {
               label: 'Content Spacing',
               property: 'size',
               type: 'number',
-              // min/max stay on the item: they are value constraints that
-              // validateBindingValue enforces with or without a widget, so a
-              // slider reads its bounds from here rather than declaring a
-              // second, conflictable copy.
+              // Constraints the library validates with or without a widget.
               min: 0,
               max: 40,
-              // The widget carries only what draws the control. The built-in
-              // panel ignores it (the library ships no widgets) — slider is
-              // here as the example a custom panel switches on, together
-              // with the per-control config it reads back out.
-              widget: {
-                type: 'slider',
-                step: 4,
-                unit: 'px',
-              },
+              // Presentation only: the built-in panel ignores it and shows a
+              // number input; a custom panel can switch on widget.type.
+              widget: { type: 'slider', step: 4, unit: 'px' },
+              group: 'layout',
             },
           ]}
           style={{
@@ -122,6 +122,8 @@ export const DRAGGABLE_ITEMS: Section[] = [
               {
                 label: 'Title',
                 property: 'innerText',
+                type: 'string',
+                required: true,
               },
             ]}
             className={cn(
@@ -154,38 +156,30 @@ export const DRAGGABLE_ITEMS: Section[] = [
                 property: 'innerText',
               },
               {
+                label: 'Button Icon',
+                property: 'icon',
+                type: 'jsx',
+              },
+              {
                 label: 'Button Size',
                 property: 'size',
                 options: [
-                  {
-                    label: 'small',
-                    value: 'small',
-                  },
-                  {
-                    label: 'middle',
-                    value: 'middle',
-                  },
-                  {
-                    label: 'large',
-                    value: 'large',
-                  },
+                  { label: 'Small', value: 'small' },
+                  { label: 'Middle', value: 'middle' },
+                  { label: 'Large', value: 'large' },
                 ],
               },
               {
                 label: 'Button Variant',
                 property: 'variant',
                 options: [
-                  {
-                    label: 'default',
-                    value: 'default',
-                  },
-                  {
-                    label: 'outlined',
-                    value: 'outlined',
-                  },
+                  { label: 'Solid', value: 'solid' },
+                  { label: 'Outlined', value: 'outlined' },
+                  { label: 'Filled', value: 'filled' },
                 ],
               },
             ]}
+            icon={<span>🚀</span>}
             size="large"
             variant="solid"
             className={cn(
@@ -930,7 +924,19 @@ export const DRAGGABLE_ITEMS: Section[] = [
       >
         <ui.Marquees
           data-id=""
-          data-binding={[{ label: 'Stats Items', property: 'items' }]}
+          data-binding={[
+            { label: 'Stats Items', property: 'items' },
+            {
+              label: 'Scroll Speed',
+              property: 'speed',
+              type: 'number',
+              min: 20,
+              max: 300,
+              // The bare-string form; it arrives as { type: 'slider' }.
+              widget: 'slider',
+            },
+            { label: 'Pause On Hover', property: 'pauseOnHover', type: 'boolean' },
+          ]}
           speed={100}
           pauseOnHover={true}
           autoFill={true}
@@ -1102,6 +1108,190 @@ export const DRAGGABLE_ITEMS: Section[] = [
             },
           ]}
         />
+      </section>
+    `,
+  },
+  {
+    id: 'roadmap',
+    name: 'Roadmap',
+    code: `
+      <section
+        data-name="Roadmap"
+        className={cn(
+          'px-5 py-16',
+          //
+        )}
+      >
+        <div
+          className={cn(
+            'mx-auto max-w-3xl',
+            //
+          )}
+        >
+          <h2
+            data-id=""
+            data-binding={[
+              { label: 'Title', property: 'innerText', required: true },
+            ]}
+            className={cn(
+              'mb-8 text-center text-4xl font-bold text-gray-800',
+              //
+            )}
+          >
+            Roadmap
+          </h2>
+          <ui.List
+            data-id=""
+            data-binding={[
+              {
+                label: 'Milestones',
+                property: 'data',
+                type: 'array',
+                // One leaf per item key. Each leaf takes the same fields as a
+                // top-level binding, and label falls back to the key.
+                render: {
+                  title: {
+                    type: 'string',
+                    label: 'Title',
+                    required: true,
+                  },
+                  date: { type: 'date', label: 'Release Date', required: true },
+                  status: {
+                    type: 'string',
+                    label: 'Status',
+                    options: [
+                      { label: 'Planned', value: 'planned' },
+                      { label: 'In Progress', value: 'in-progress' },
+                      { label: 'Shipped', value: 'shipped' },
+                    ],
+                  },
+                  progress: {
+                    type: 'number',
+                    label: 'Progress',
+                    min: 0,
+                    max: 100,
+                    widget: { type: 'slider', step: 10, unit: '%' },
+                  },
+                  color: { type: 'color', label: 'Accent Color' },
+                  highlight: { type: 'boolean', label: 'Highlight' },
+                  // An object-valued key: its own render map types the keys
+                  // inside it, one level further down.
+                  link: {
+                    type: 'object',
+                    label: 'Link',
+                    render: {
+                      text: { type: 'string', label: 'Link Text' },
+                      href: {
+                        type: 'url',
+                        label: 'Link URL',
+                        pattern: '^https://',
+                        // Not a library field, so it arrives as meta.hint.
+                        hint: 'Must use https',
+                      },
+                    },
+                  },
+                },
+              },
+            ]}
+            data={[
+              {
+                title: 'Visual editing',
+                date: '2026-03-02',
+                status: 'shipped',
+                progress: 100,
+                color: '#22c55e',
+                highlight: false,
+                link: { text: 'Release notes', href: 'https://github.com' },
+              },
+              {
+                title: 'Custom panels',
+                date: '2026-09-26',
+                status: 'in-progress',
+                progress: 60,
+                color: '#6366f1',
+                highlight: true,
+                link: { text: 'Guide', href: 'https://github.com' },
+              },
+              {
+                title: 'Collaboration',
+                date: '2027-01-15',
+                status: 'planned',
+                progress: 0,
+                color: '#f59e0b',
+                highlight: false,
+                link: { text: 'Discussion', href: 'https://github.com' },
+              },
+            ]}
+            itemKey={item => item.title}
+            renderItem={item => (
+              <div
+                className={cn(
+                  'flex items-center gap-4 border-b border-gray-100 py-4',
+                  item.highlight && 'rounded-lg bg-indigo-50 px-4',
+                )}
+              >
+                <span
+                  className="size-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: item.color }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-gray-800">{item.title}</p>
+                  <p className="text-sm text-gray-500">
+                    {item.date} · {item.status}
+                  </p>
+                  <ui.Progress value={item.progress} className="mt-2" />
+                </div>
+                <a
+                  href={item.link.href}
+                  className="text-sm text-indigo-500 hover:underline"
+                >
+                  {item.link.text}
+                </a>
+              </div>
+            )}
+          />
+          <p
+            className={cn(
+              'mt-6 text-center text-sm text-gray-500',
+              //
+            )}
+          >
+            Last updated{' '}
+            <time
+              data-id=""
+              data-binding={[
+                {
+                  label: 'Updated On',
+                  property: 'dateTime',
+                  type: 'date',
+                  required: true,
+                },
+                { label: 'Updated Text', property: 'innerText' },
+              ]}
+              dateTime="2026-09-26"
+            >
+              September 26, 2026
+            </time>
+            {' · '}
+            <a
+              data-id=""
+              data-binding={[
+                { label: 'Link Text', property: 'innerText' },
+                {
+                  label: 'Link URL',
+                  property: 'href',
+                  type: 'url',
+                  required: true,
+                  pattern: '^https://',
+                },
+              ]}
+              href="https://github.com/pjb0811/live-editor/releases"
+              className="text-indigo-500 hover:underline"
+            >
+              All releases
+            </a>
+          </p>
+        </div>
       </section>
     `,
   },
