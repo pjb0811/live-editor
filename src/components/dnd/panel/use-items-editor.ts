@@ -6,7 +6,6 @@ import { useMultiSelect } from '@jbpark/use-hooks';
 import { nanoid } from 'nanoid';
 
 import {
-  type BindingRenderLeaf,
   type BindingRenderMap,
   type DataAttrNode,
   appendArrayItem,
@@ -31,6 +30,8 @@ import {
   type PanelBinding,
   type PanelNodeChange,
   resolvePanelBindings,
+  resolveRenderEntry,
+  toBindingFields,
   withPanelCommit,
 } from '../panel-binding';
 
@@ -123,24 +124,6 @@ export interface ItemsEditorOptions {
   // A single binding's `onChange` can't express this — see #308.
   onNodeChange?: PanelNodeChange;
 }
-
-const resolveLeaf = (
-  render: BindingRenderMap | undefined,
-  key: string,
-): BindingRenderLeaf | null => {
-  const leaf = render?.[key];
-
-  return leaf && 'type' in leaf ? (leaf as BindingRenderLeaf) : null;
-};
-
-const resolveMap = (
-  render: BindingRenderMap | undefined,
-  key: string,
-): BindingRenderMap | undefined => {
-  const leaf = render?.[key];
-
-  return leaf && !('type' in leaf) ? (leaf as BindingRenderMap) : undefined;
-};
 
 interface RawObjectItem {
   id: string;
@@ -579,25 +562,23 @@ export const useItemsEditor = (
         const properties: PanelBinding[] = Object.entries(
           item.editableProperties,
         ).map(([key, prop]) => {
-          const leaf = resolveLeaf(render, key);
+          const binding = resolveRenderEntry(render, key);
           const propertySource = value.slice(
             prop.astNode.start!,
             prop.astNode.end!,
           );
 
           return {
+            ...toBindingFields(binding),
             id: `item-${id}-${key}`,
-            label: key,
-            property: leaf ? (leaf.property ?? (leaf.type as string)) : key,
-            type: leaf?.type,
-            render: leaf ? leaf.render : resolveMap(render, key),
+            // Merged over the leaf's own metadata, never under it: a consumer
+            // labels the control with the property's actual kind, as the
+            // built-in panel does, so an authored `valueType` can't shadow it.
+            meta: { ...binding.meta, valueType: prop.type },
             value: parseValue(String(prop.value)),
             rawValue:
               prop.type === 'unknown' ? propertySource : String(prop.value),
             canEditValue: canLosslesslyEvaluateSource(propertySource),
-            // Carried through so a consumer can label the control with the
-            // property's actual kind, as the built-in panel does.
-            meta: { valueType: prop.type },
             onChange: next => updateProperty(item.elementIndex, key, next),
           };
         });

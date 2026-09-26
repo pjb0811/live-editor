@@ -1,6 +1,7 @@
 import {
   type BindingItem,
   type BindingOption,
+  type BindingRenderLeaf,
   type BindingRenderMap,
   type BindingType,
   type BindingWidget,
@@ -43,9 +44,8 @@ export interface PanelBinding {
   // an open string rather than a closed enum, since a custom panel can
   // declare any control it wants (e.g. `'slider'`) along with that control's
   // own config (`step`, `unit`, ...). Always the object form even when
-  // authored as a bare string. The built-in panel only recognizes
-  // `'icon-picker'`/`'asset-picker'`; anything else falls back to the
-  // `type`-appropriate default control. See #236.
+  // authored as a bare string. Passed through untouched: the built-in panel
+  // ignores it and renders the `type`-appropriate default control.
   //
   // Value constraints are *not* in here — `min`/`max`/`pattern`/`required`
   // below apply with or without a widget.
@@ -131,16 +131,14 @@ const canEditBindingValue = (node: DataAttrNode, binding: BindingItem) => {
   );
 };
 
-// The single `BindingItem` -> `PanelBindingData` mapping. Every field the
-// public `PanelBinding` declares is listed exactly once here, so adding a
-// new one reaches the built-in panel, a custom panel and nested item
-// editors together instead of whichever path the author happened to edit.
-const toPanelBindingData = (
-  node: DataAttrNode,
-  id: string,
+// Every field a binding declares, listed exactly once. The mapped return type
+// makes leaving one out a type error, so a field added to `BindingItem`
+// reaches the built-in panel, a custom panel, nested item editors and
+// render-map leaves together instead of whichever path the author happened
+// to edit (#340, #383).
+export const toBindingFields = (
   binding: BindingItem,
-): PanelBindingData => ({
-  id,
+): { [K in keyof Required<BindingItem>]: BindingItem[K] } => ({
   label: binding.label,
   property: binding.property,
   type: binding.type,
@@ -152,6 +150,39 @@ const toPanelBindingData = (
   pattern: binding.pattern,
   required: binding.required,
   meta: binding.meta,
+});
+
+// The binding a nested key of an `object`/`array` value would have if it were
+// declared at the top level. A render-map leaf carries its own field spec;
+// `label` and `property` fall back to the key, which is what the property is
+// actually called. A nested map (or nothing) yields an untyped field that
+// still hands its sub-map down.
+export const resolveRenderEntry = (
+  render: BindingRenderMap | undefined,
+  key: string,
+): BindingItem => {
+  const entry = render?.[key];
+
+  if (entry && 'type' in entry) {
+    const leaf = entry as BindingRenderLeaf;
+
+    return {
+      ...leaf,
+      label: leaf.label ?? key,
+      property: leaf.property ?? key,
+    };
+  }
+
+  return { label: key, property: key, render: entry as BindingRenderMap };
+};
+
+const toPanelBindingData = (
+  node: DataAttrNode,
+  id: string,
+  binding: BindingItem,
+): PanelBindingData => ({
+  ...toBindingFields(binding),
+  id,
   value: getStructuredValue(node, binding.property, binding.type),
   rawValue: getCurrentValue(node, binding.property),
   ...(!canEditBindingValue(node, binding) && { canEditValue: false }),

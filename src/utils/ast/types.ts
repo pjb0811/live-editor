@@ -27,14 +27,10 @@ export interface BindingOption {
   value: string;
 }
 
-// `icon-picker`/`asset-picker` are kept here as deprecated aliases, not
-// removed — see #236. They describe a *control*, not a data kind, and
-// conflating that with the rest of this list (which does describe what a
-// value actually is) left a consumer with nowhere to express their own
-// widget choice. `parseBinding` normalizes an authored `type: 'icon-picker'`
-// into `{ type: 'string', widget: 'icon-picker' }` rather than passing it
-// through as-is, so existing authored content keeps working unchanged while
-// `BindingItem.widget` becomes the real, open-ended home for this axis.
+// Data kinds only — what a value *is*, never how to draw it. How a field is
+// rendered belongs to `BindingItem.widget`, which the library passes through
+// without interpreting: choosing a control is the consumer's job, so the
+// built-in panel only ever renders the default control for each kind.
 export const BINDING_TYPES = [
   'array',
   'object',
@@ -46,8 +42,6 @@ export const BINDING_TYPES = [
   'richtext',
   'date',
   'url',
-  'icon-picker',
-  'asset-picker',
 ] as const;
 
 export type BindingType = (typeof BINDING_TYPES)[number];
@@ -63,10 +57,9 @@ export type BindingType = (typeof BINDING_TYPES)[number];
 // them here too would make the range unexpressible without a widget, and
 // give a slider a second, conflicting source for the same bounds.
 export interface BindingWidget {
-  // The control name. Open string, not an enum, for the reason in #236: the
-  // library cannot enumerate controls it doesn't implement.
-  // `'icon-picker'`/`'asset-picker'` are the built-in panel's own two;
-  // anything else (e.g. `'slider'`) is a custom panel's to switch on.
+  // The control name. Open string, not an enum: the library implements no
+  // controls of its own, so every value (e.g. `'slider'`) is a custom
+  // panel's to switch on. The built-in panel ignores it.
   type: string;
   // Presentation hints general enough to be worth typing. Both were already
   // authorable before this object existed — they just landed in the untyped
@@ -79,22 +72,11 @@ export interface BindingWidget {
   [key: string]: unknown;
 }
 
-export interface BindingRenderLeaf {
-  // Optional, matching the top-level BindingItem.type — an unrecognized
-  // leaf type degrades to untyped instead of dropping the entry (see
-  // sanitizeRenderMap in binding.ts and #234).
-  type?: BindingType;
-  property?: string;
-  render?: BindingRenderMap;
-}
-
-export interface BindingRenderMap {
-  [key: string]: BindingRenderLeaf | BindingRenderMap;
-}
-
-export interface BindingItem {
-  label: string;
-  property: string;
+// The fields a binding declares about itself, shared by a top-level
+// `BindingItem` and a nested render-map leaf so the two can't drift apart:
+// a leaf is a field in the panel like any other and can say everything a
+// flat field can. See #383.
+export interface BindingFieldSpec {
   // Data kind — what the value *is*. Closed, since the library's own
   // validation/coercion (validateBindingValue, parseValue) has to be able
   // to switch on it exhaustively.
@@ -116,6 +98,25 @@ export interface BindingItem {
   // Undefined when nothing extra was authored, not an empty object. See
   // #234: `parseBinding` used to silently strip these.
   meta?: Record<string, unknown>;
+}
+
+// A render-map entry is a leaf when it declares `type` — even one that didn't
+// survive sanitization, so an unrecognized leaf type degrades to untyped
+// instead of dropping the entry (see sanitizeRenderMap in binding.ts and
+// #234). `label`/`property` are optional here, unlike on BindingItem: both
+// fall back to the entry's key.
+export interface BindingRenderLeaf extends BindingFieldSpec {
+  label?: string;
+  property?: string;
+}
+
+export interface BindingRenderMap {
+  [key: string]: BindingRenderLeaf | BindingRenderMap;
+}
+
+export interface BindingItem extends BindingFieldSpec {
+  label: string;
+  property: string;
 }
 
 export type NodeValueType =

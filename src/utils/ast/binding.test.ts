@@ -78,16 +78,17 @@ describe('parseBinding', () => {
     expect(result[0]).toHaveProperty('type', typeValue);
   });
 
+  // `icon-picker`/`asset-picker` named a control, not a data kind, and the
+  // library no longer ships either control. An authored alias is just an
+  // unrecognized type now: the field stays, as a plain untyped one.
   it.each(['icon-picker', 'asset-picker'])(
-    'normalizes %s from a legacy type value into type: string + widget',
+    'degrades the former %s type alias to an untyped field',
     typeValue => {
       const result = parseBinding(
         `[{label: 'X', property: 'y', type: '${typeValue}'}]`,
       );
 
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveProperty('type', 'string');
-      expect(result[0]).toHaveProperty('widget', { type: typeValue });
+      expect(result).toEqual([{ label: 'X', property: 'y' }]);
     },
   );
 
@@ -157,15 +158,22 @@ describe('parseBinding', () => {
     },
   );
 
-  it('lets an explicitly authored widget win over a legacy type alias', () => {
-    const result = parseBinding(
-      "[{label: 'X', property: 'y', type: 'icon-picker', widget: { type: 'slider', step: 2 }}]",
-    );
+  it.each([
+    ['min', "min: '0'"],
+    ['max', 'max: null'],
+    ['pattern', 'pattern: 42'],
+    ['required', "required: 'yes'"],
+  ])(
+    'degrades a malformed %s to absent rather than dropping the item',
+    (key, source) => {
+      const result = parseBinding(
+        `[{label: 'X', property: 'y', type: 'number', ${source}}]`,
+      );
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toHaveProperty('type', 'string');
-    expect(result[0]).toHaveProperty('widget', { type: 'slider', step: 2 });
-  });
+      expect(result).toEqual([{ label: 'X', property: 'y', type: 'number' }]);
+      expect(result[0]).not.toHaveProperty(key);
+    },
+  );
 
   it('extracts both type and property on nested render leaves', () => {
     const result = parseBinding(`
@@ -219,6 +227,51 @@ describe('parseBinding', () => {
     `);
 
     expect('type' in result[0]!.render!.bogus!).toBe(true);
+  });
+
+  // A leaf is a field in the panel like any other, so it declares everything
+  // a top-level binding can, through the same sanitizer (#383).
+  it("keeps a render leaf's label, widget, options, constraints and meta", () => {
+    const [item] = parseBinding(`[{
+      label: 'Items', property: 'items', type: 'array',
+      render: {
+        size: {
+          type: 'number', label: 'Size', widget: { type: 'slider', step: 4 },
+          min: 0, max: 40, required: true, group: 'layout',
+        },
+        tone: {
+          type: 'string', widget: 'segmented', pattern: '^[a-z]+$',
+          options: [{ label: 'Light', value: 'light' }, { label: 1 }],
+        },
+      },
+    }]`);
+
+    expect(item?.render).toEqual({
+      size: {
+        type: 'number',
+        label: 'Size',
+        widget: { type: 'slider', step: 4 },
+        min: 0,
+        max: 40,
+        required: true,
+        meta: { group: 'layout' },
+      },
+      tone: {
+        type: 'string',
+        widget: { type: 'segmented' },
+        pattern: '^[a-z]+$',
+        options: [{ label: 'Light', value: 'light' }],
+      },
+    });
+  });
+
+  it("degrades a render leaf's malformed widget and min without dropping the leaf", () => {
+    const [item] = parseBinding(`[{
+      label: 'Items', property: 'items',
+      render: { size: { type: 'number', widget: 42, min: 'low', max: 40 } },
+    }]`);
+
+    expect(item?.render).toEqual({ size: { type: 'number', max: 40 } });
   });
 
   it('carries unrecognized keys under a namespaced meta object instead of dropping them', () => {

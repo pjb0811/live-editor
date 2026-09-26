@@ -108,8 +108,8 @@ const ParsedValueEditor = ({
 );
 
 // `binding.widget.type` is an open string (#236) — a custom panel switches
-// on it to render whatever control it wants; the built-in panel only knows
-// `icon-picker`/`asset-picker`, so anything else (like `'slider'` here) is
+// on it to render whatever control it wants. The library implements no
+// widgets and the built-in panel ignores the field, so `'slider'` here is
 // exclusively this demo's own choice, not a value the library defines.
 //
 // `step`/`unit` are typed fields on `widget`, so they need no narrowing. Any

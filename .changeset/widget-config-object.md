@@ -22,8 +22,7 @@ give a slider a second, conflictable copy of its bounds.
 
 Not a breaking change. The bare-string form (`widget: 'slider'`) still parses,
 normalized to `{ type: 'slider' }`, so consumers only ever switch on
-`widget.type` — the same normalization the `type: 'icon-picker'` alias already
-went through.
+`widget.type`.
 
 Also fixes a latent parse defect on the same field: a malformed `widget` used
 to fail the item schema and drop the entire binding, so the field vanished
