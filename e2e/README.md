@@ -8,8 +8,10 @@ dependencies before running the same command.
 
 The scenarios cover keyboard item range selection (#320), CodeMirror
 focus/selection through a nested JSX item move (#359), preservation of
-panel, external, and code-editor changes across DnD/Editor transitions, and
-`autoHeight` measurement of animated `position: fixed` content (#374). The
+panel, external, and code-editor changes across DnD/Editor transitions,
+`autoHeight` measurement of animated `position: fixed` content (#374), section
+error recovery and host style sync in both frame modes, and a code-editor undo
+followed by a panel edit (#344). The
 second uses `HTMLElement.click()` deliberately: a physical click on the move
 button is an intentional blur, whereas this test isolates the editor lifecycle
 caused by moving a focused item.
@@ -29,6 +31,18 @@ both what starts the transition and the mutation that schedules a measurement â€
 the collision that used to kill it. Assertions read computed opacity inside the
 preview frame, since a snapped transition and a completed one reach the same
 final height and only the intermediate value tells them apart.
+
+`frames` runs in both frame modes (`iframe` and `shadow`), since each isolates
+a section differently. One case has a section throw while rendering and checks
+that the error stays in its slot and that fixing the code recovers it without
+remounting its frame. The test tags the iframe element or shadow host before
+the fix and finds the tag again after. The other adds, changes and removes a
+host stylesheet and reads the section's computed color, so a style that
+lingers in the frame after removal fails (#338).
+
+`history` uses the real CodeMirror editor: it types, undoes with the keyboard,
+types again, then edits through the DnD panel, and checks the panel built on
+the undone document rather than the undone text.
 
 Chromium is the supported browser for this initial suite. Expand to Firefox
 or WebKit when a browser-specific behavior or support requirement warrants
