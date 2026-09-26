@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import * as t from '@babel/types';
-import { useMultiSelect } from '@jbpark/use-hooks';
+import type { useMultiSelect } from '@jbpark/use-hooks';
 import { nanoid } from 'nanoid';
 
 import {
@@ -34,6 +34,10 @@ import {
   toBindingFields,
   withPanelCommit,
 } from '../panel-binding';
+import {
+  selectionAfter,
+  useStructuralSelection,
+} from './use-structural-selection';
 
 // One data-bound element discovered inside a JSX-valued item property.
 // These are the elements the top-level `bindings` array can't reach —
@@ -395,12 +399,20 @@ export const useItemsEditor = (
     [identityState, kind, rawItems, value],
   );
 
-  const selection = useMultiSelect(
+  const { selection, record } = useStructuralSelection(
     isPrimitive ? primitiveItems.length : objectItems.length,
+    value,
   );
 
-  // `null` means the edit could not be applied.
-  const commit = (next: string | null, nextIds?: string[]) => {
+  // `null` means the edit could not be applied. `nextSelection` is where the
+  // selection stands once it is: applied now, since a non-null `next` means
+  // the edit succeeded, and again when this exact source comes back as
+  // `value`. Any other new `value` clears it (useStructuralSelection).
+  const commit = (
+    next: string | null,
+    nextIds: string[] | undefined,
+    nextSelection: Set<number>,
+  ) => {
     if (next === null) {
       reportError({
         type: 'items',
@@ -424,6 +436,7 @@ export const useItemsEditor = (
       );
     }
 
+    record(nextSelection, revision => revision === next, { now: true });
     onChange?.(next);
 
     return true;
@@ -447,8 +460,11 @@ export const useItemsEditor = (
     propertyKey: string,
     next: unknown,
   ) => {
+    // A value edit moves nothing, so the selection stands.
     commit(
       updateArrayItemProperty(value, elementIndex, propertyKey, next, render),
+      undefined,
+      new Set(selection.selected),
     );
   };
 
@@ -456,7 +472,11 @@ export const useItemsEditor = (
     add: () => {
       const next = appendArrayItem(value, kind);
 
-      commit(next, next ? [...identity.ids, nanoid(6)] : undefined);
+      commit(
+        next,
+        next ? [...identity.ids, nanoid(6)] : undefined,
+        selectionAfter({ type: 'append' }, selection.selected, rawItems.length),
+      );
     },
 
     move: (elementIndex, toIndex) => {
@@ -468,29 +488,24 @@ export const useItemsEditor = (
         return;
       }
 
-      const accepted = commit(
+      // Positions shift after a move but the count doesn't, so the
+      // selection is cleared rather than left on the wrong items (#285).
+      commit(
         moveArrayItem(value, elementIndex, target.elementIndex),
         moveId(identity.ids, from.index, target.index),
+        new Set(),
       );
-      // Positions shift after a move, but the count doesn't, so
-      // `useMultiSelect` never reconciles the set on its own — clear it so a
-      // later bulk action can't target the wrong elements. See #285.
-      if (accepted) {
-        selection.clear();
-      }
     },
 
     remove: elementIndex => {
       const items = isPrimitive ? primitiveItems : objectItems;
       const removed = items.find(item => item.elementIndex === elementIndex);
-      const accepted = commit(
+      // Removing an item shifts every position after it; same reasoning.
+      commit(
         removeArrayItems(value, new Set([elementIndex]), kind),
         removed ? removeIds(identity.ids, new Set([removed.index])) : undefined,
+        new Set(),
       );
-      // Removing an item shifts every position after it; same reasoning.
-      if (accepted) {
-        selection.clear();
-      }
     },
 
     duplicateSelected: () => {
@@ -501,7 +516,15 @@ export const useItemsEditor = (
         .sort((a, b) => a.elementIndex - b.elementIndex)
         .map(() => nanoid(6));
 
-      commit(next, next ? [...identity.ids, ...copied] : undefined);
+      commit(
+        next,
+        next ? [...identity.ids, ...copied] : undefined,
+        selectionAfter(
+          { type: 'duplicate', indices: [...selection.selected] },
+          selection.selected,
+          rawItems.length,
+        ),
+      );
     },
 
     moveSelected: direction => {
@@ -517,7 +540,7 @@ export const useItemsEditor = (
       );
 
       if (!result) {
-        commit(null);
+        commit(null, undefined, selection.selected);
         return;
       }
 
@@ -529,24 +552,26 @@ export const useItemsEditor = (
             ? [index]
             : [],
         ) ?? [];
-      selection.replace(
+      // The moved block, mapped back from element positions: in a mixed
+      // array a step can pass a hidden element, so this is not the same as
+      // shifting the visible indices.
+      commit(
+        result.code,
+        nextIdentity.items,
         new Set(
           visible.flatMap((position, index) =>
             result.indices.has(position) ? [index] : [],
           ),
         ),
       );
-      commit(result.code, nextIdentity.items);
     },
 
     removeSelected: () => {
-      const accepted = commit(
+      commit(
         removeArrayItems(value, elementIndicesOf(selection.selected), kind),
         removeIds(identity.ids, selection.selected),
+        new Set(),
       );
-      if (accepted) {
-        selection.clear();
-      }
     },
   };
 
@@ -569,7 +594,11 @@ export const useItemsEditor = (
             item.type === 'unknown' ? item.source : String(item.value ?? ''),
           canEditValue: canLosslesslyEvaluateSource(item.source),
           onChange: next =>
-            commit(updateArrayItemValue(value, item.elementIndex, next)),
+            commit(
+              updateArrayItemValue(value, item.elementIndex, next),
+              undefined,
+              new Set(selection.selected),
+            ),
         },
       }))
     : objectItems.map(item => {
