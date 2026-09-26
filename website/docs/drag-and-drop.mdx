@@ -57,3 +57,44 @@ export default function DragAndDrop() {
 The embedded demo above runs the real `Live.Dnd` component, isolated with
 `shadow` mode inside a sandboxed iframe (see
 [Preview Modes](./preview-modes.mdx)).
+
+## Sections that fail
+
+A section that fails to compile, or throws while rendering, shows an error box
+in its slot on the canvas; the other sections keep working. To show your own
+placeholder instead, pass `renderSectionFallback`:
+
+```tsx
+const retired = new Set(['Legacy Banner']);
+
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  renderSectionFallback={({ section, reason, message }) => (
+    <div className="rounded border border-dashed p-6 text-center">
+      {section.name} is unavailable
+      {reason !== 'forced' && <small>{message}</small>}
+    </div>
+  )}
+  shouldForceSectionFallback={section => retired.has(section.name)}
+/>
+```
+
+| `reason` | When | `message` |
+| --- | --- | --- |
+| `'compile'` | The section's code doesn't compile. | The compiler's message. |
+| `'runtime'` | The section threw while rendering. | The error's message. |
+| `'forced'` | `shouldForceSectionFallback` returned `true`. | `undefined` |
+
+- Return `undefined` to keep the built-in error box for that case.
+- `shouldForceSectionFallback` runs before a section is compiled. A section it
+  selects is never compiled, so none of its top-level code runs. Use it for
+  sections you know can't work, such as ones that import a component your
+  `modules` no longer provide.
+- A runtime fallback renders inside the section's frame, where the section's
+  own content would have been. In `iframe` mode it only gets the host's styles
+  with `frame.syncStyle`, so prefer inline styles there. Compile and forced
+  fallbacks render outside the frame.
+- Fixing a section's code recovers it automatically.
+- If your fallback itself throws, that section falls back to the built-in
+  error box. The canvas keeps working.

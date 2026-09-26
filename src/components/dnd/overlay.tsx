@@ -10,6 +10,7 @@ import Sortable from './sortable';
 
 interface Props {
   sections: Section[];
+  isForced?: (section: Section) => boolean;
   renderProps: {
     fullCode: string;
     modules: Record<string, unknown>;
@@ -18,7 +19,7 @@ interface Props {
   };
 }
 
-const Overlay = ({ sections, renderProps }: Props) => {
+const Overlay = ({ sections, isForced, renderProps }: Props) => {
   const { active } = useDndContext();
 
   if (!active) {
@@ -40,6 +41,10 @@ const Overlay = ({ sections, renderProps }: Props) => {
       <Sortable id={section.id} name={section.name}>
         <Renderer
           preview={preview}
+          sectionId={section.id}
+          sectionName={section.name}
+          sectionCode={section.code}
+          forceFallback={isForced?.(section) ?? false}
           modules={renderProps.modules}
           frame={renderProps.frame}
           dynamicTailwind={renderProps.dynamicTailwind}

@@ -4,7 +4,9 @@ import Error from './error';
 
 interface Props {
   children: React.ReactNode;
-  fallback?: (message?: string) => React.ReactNode;
+  // `reset` clears the caught error and renders `children` again, the same
+  // thing the built-in error's reset button does.
+  fallback?: (message?: string, reset?: () => void) => React.ReactNode;
   onError?: (e: Error, info: React.ErrorInfo) => void;
   // Values whose identity changing (typically the code/module that produced
   // `children`) should auto-recover a caught error without needing a
@@ -58,14 +60,16 @@ class ErrorBoundary extends React.Component<Props, State> {
     }
   }
 
+  reset = () => this.setState({ hasError: false, error: undefined });
+
   render() {
     if (this.state.hasError) {
       return this.props.fallback ? (
-        <>{this.props.fallback(this.state.error?.message)}</>
+        <>{this.props.fallback(this.state.error?.message, this.reset)}</>
       ) : (
         <Error
           message={this.state.error?.message}
-          onReset={() => this.setState({ hasError: false, error: undefined })}
+          onReset={this.reset}
           title="Rendering Error"
         />
       );
