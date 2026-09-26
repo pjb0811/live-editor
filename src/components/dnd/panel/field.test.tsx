@@ -225,4 +225,21 @@ describe('Field object values', () => {
     expect(screen.getByText('Must be at least 0.')).not.toBeNull();
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('labels a nested key with its leaf label, falling back to the key', () => {
+    render(
+      <Field
+        binding={binding({
+          type: 'object',
+          value: { size: 12, gap: 4 },
+          rawValue: '{ size: 12, gap: 4 }',
+          render: { size: { type: 'number', label: 'Size' } },
+        })}
+      />,
+    );
+
+    expect(screen.getByText('Size')).not.toBeNull();
+    expect(screen.getByText('gap')).not.toBeNull();
+    expect(screen.queryByText('size')).toBeNull();
+  });
 });

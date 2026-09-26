@@ -519,13 +519,8 @@ checks. Low-level callers can use `ChildrenEdit` and `getChildrenSignatures` fro
 `string`, `number`, `boolean`, `color`, `jsx`, `richtext`, `date`, `url`.
 Switching on it alone is enough for the scalar types; for `object`/`array`
 values, see `flattenEditableValue` below rather than treating them as plain
-text.
-
-An authored `type` this library doesn't recognize (a typo, or a future
-value) doesn't reject the binding — it's dropped, so `binding.type` is
-simply `undefined` rather than the string you wrote. Every other field
-degrades the same way: a malformed `widget`, `options` entry, `min`, `max`,
-`pattern` or `required` is left off, and the rest of the binding survives.
+text. [Data Binding](./data-binding.mdx) describes how each field is
+authored and what the built-in panel does with it.
 
 ### Choosing a control is the panel's job
 
@@ -560,32 +555,17 @@ through as `unknown`, so narrow it before use. The shipped Custom Palette &
 Panel demo's "Content Spacing" field does exactly this; drag it in the
 embedded demo above to see it live.
 
-Any key you author on a binding itself that isn't one of the fields in the
-table above — a group name, an ordering hint — isn't dropped either; it
-survives under `binding.meta`, namespaced there instead of spread onto the
-binding so it can't collide with a future first-class field. `meta`'s values
-are typed `unknown` for the same reason.
+Any key you author on a binding that the library doesn't define arrives
+under `binding.meta`, typed `unknown` for the same reason.
 
 ### Nested fields
 
-A `render` map describes the keys inside an `object`/`array` value. An entry
-that declares `type` is a leaf, and a leaf accepts every field a top-level
-binding does — `label`, `widget`, `options`, constraints and `meta` — so a
-nested field can be named, drawn and validated like a flat one:
-
-```tsx
-// data-binding={[{
-//   label: 'Items', property: 'items', type: 'array',
-//   render: {
-//     size: { type: 'number', label: 'Size', min: 0, max: 40, widget: { type: 'slider', step: 4 } },
-//   },
-// }]}
-```
-
-`useItemsEditor` hands each key back as a `PanelBinding` carrying those
-fields. `label` and `property` fall back to the key when the leaf omits
-them, and `meta.valueType` is always set to the property's actual kind (an
-authored `valueType` is overridden).
+A render-map leaf accepts every field a top-level binding does (see
+[Nested fields](./data-binding.mdx#nested-fields)). `useItemsEditor` hands
+each key of an item back as a `PanelBinding` carrying those fields, so switch
+on `widget` and validate against constraints exactly as for a flat binding.
+`label` and `property` fall back to the key, and `meta.valueType` is always
+set to the property's actual kind (an authored `valueType` is overridden).
 
 Constraints declared on a binding (`min`/`max`/`pattern`/`required`) aren't
 enforced automatically — call the exported `validateBindingValue(binding,

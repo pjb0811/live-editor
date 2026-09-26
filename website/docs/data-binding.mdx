@@ -1,0 +1,223 @@
+---
+sidebar_position: 4.5
+title: Data Binding
+---
+
+# Data Binding
+
+A palette section becomes editable in the property panel through two
+attributes on its elements:
+
+- `data-id`: the element's identity. Leave it empty (`data-id=""`) in palette
+  sections; `Live.Dnd` assigns a unique id when the section is dropped.
+- `data-binding`: an array describing which props of that element the panel
+  can edit, and how.
+
+```tsx
+<h1
+  data-id=""
+  data-binding={[{ label: 'Title', property: 'innerText', required: true }]}
+>
+  Welcome
+</h1>
+```
+
+Each entry in the array is one field in the panel. The rest of this page lists
+what an entry can declare.
+
+The default palette (the sections `Live.Dnd` shows when you pass no `items`)
+uses every option on this page. Its **Roadmap** section is the most complete
+example, and you can try it in the [Drag & Drop](./drag-and-drop.mdx) demo.
+
+## Who owns what
+
+The library owns what a value **is** and what it **may be**: its data kind
+(`type`) and its constraints (`min`, `max`, `pattern`, `required`). The
+built-in panel picks a default control from those and validates edits against
+them.
+
+How a field is **drawn** belongs to the panel. `widget` is carried through to
+your panel untouched; the built-in panel never reads it. See
+[Custom Palette & Panel](./custom-palette-panel.mdx#choosing-a-control-is-the-panels-job)
+for switching on it.
+
+## Fields
+
+| Field           | Type                                                              | Meaning                                                                                                                    |
+| --------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `label`         | `string`                                                          | **Required.** The field's heading in the panel. Must be unique within one element.                                         |
+| `property`      | `string`                                                          | The prop to edit. See [Properties](#properties). Can be omitted only for `type: 'richtext'`, which then edits `innerHTML`. |
+| `type`          | `BindingType`                                                     | The data kind. Picks the default control and how the value is validated and written back. See [Types](#types).             |
+| `options`       | `{ label: string; value: string }[]`                              | A fixed set of values. The built-in panel shows a select.                                                                  |
+| `min` / `max`   | `number`                                                          | Range for a number value.                                                                                                  |
+| `pattern`       | `string`                                                          | A regular expression (as a string) a text value must match.                                                                |
+| `required`      | `boolean`                                                         | An empty value is rejected.                                                                                                |
+| `render`        | `BindingRenderMap`                                                | Types the keys inside an `object` or `array` value. See [Nested fields](#nested-fields).                                   |
+| `widget`        | `string` or `{ type: string; step?: number; unit?: string; ... }` | A presentation hint for **your own** panel. Ignored by the built-in panel.                                                 |
+| _any other key_ | `unknown`                                                         | Kept as-is under `binding.meta` for your own panel (a group name, a hint, ...).                                            |
+
+A malformed value never removes the field. An unknown `type`, a `min` that is
+not a number, or an invalid `widget` is dropped on its own, and the rest of the
+entry still works.
+
+## Properties
+
+`property` names what the field edits:
+
+| `property`       | Edits                                                                                              |
+| ---------------- | -------------------------------------------------------------------------------------------------- |
+| `innerText`      | The element's text content.                                                                        |
+| `innerHTML`      | The element's HTML content. Used by `type: 'richtext'`.                                            |
+| `children`       | The element's JSX children, as a reorderable list.                                                 |
+| `items` / `data` | An array prop, as a list of items you can add, move, duplicate and delete.                         |
+| any other name   | That JSX attribute, e.g. `size`, `href`, `style`. The attribute must already exist on the element. |
+
+## Types
+
+| `type`     | Built-in control                           | Validation                       |
+| ---------- | ------------------------------------------ | -------------------------------- |
+| `string`   | Text area                                  | `required`, `pattern`            |
+| `number`   | Number input                               | `required`, `min`, `max`         |
+| `boolean`  | Checkbox                                   | —                                |
+| `color`    | Color picker                               | —                                |
+| `date`     | Date picker (value stored as `YYYY-MM-DD`) | `required`, valid date           |
+| `url`      | URL input                                  | `required`, `pattern`, valid URL |
+| `richtext` | Rich text editor                           | —                                |
+| `jsx`      | Code editor                                | —                                |
+| `object`   | One nested field per key                   | per nested field                 |
+| `array`    | Item list                                  | per nested field                 |
+
+Without a `type`, the built-in panel picks a control from the current value (a
+checkbox for `true`, a number input for `42`, and so on). A property whose name
+contains `color` also gets a color picker. `options` replaces the text, number,
+color, date and URL controls with a select.
+
+## Constraints
+
+`min`, `max`, `pattern` and `required` are checked before an edit is committed.
+A rejected edit shows its message under the field and leaves the source
+unchanged:
+
+```tsx
+{
+  label: 'Content Spacing',
+  property: 'size',
+  type: 'number',
+  min: 0,
+  max: 40,
+}
+```
+
+Typing `99` shows _Must be at most 40._ Custom panels can run the same check
+with `validateBindingValue(binding, value)`.
+
+## Nested fields
+
+For an `object` or `array` value, `render` describes the keys inside it. An
+entry that declares `type` is a **leaf**, and a leaf accepts every field a
+top-level entry does: `label`, `options`, constraints, `widget`, a nested
+`render`, and extra keys for `meta`. `label` and `property` fall back to the
+key.
+
+An `object` binding, from the default Hero section:
+
+```tsx
+<ui.Space
+  data-id=""
+  data-binding={[
+    {
+      label: 'Background Style',
+      property: 'style',
+      type: 'object',
+      render: {
+        backgroundColor: { type: 'color', label: 'Background Color' },
+      },
+    },
+  ]}
+  style={{ backgroundColor: '#6366f1' }}
+/>
+```
+
+An `array` binding, trimmed from the default Roadmap section. Each item gets one
+field per key, labeled and validated by its leaf. `link` is itself an `object`
+leaf with its own `render` map:
+
+```tsx
+<ui.List
+  data-id=""
+  data-binding={[
+    {
+      label: 'Milestones',
+      property: 'data',
+      type: 'array',
+      render: {
+        title: { type: 'string', label: 'Title', required: true },
+        date: { type: 'date', label: 'Release Date', required: true },
+        status: {
+          type: 'string',
+          label: 'Status',
+          options: [
+            { label: 'Planned', value: 'planned' },
+            { label: 'Shipped', value: 'shipped' },
+          ],
+        },
+        progress: { type: 'number', label: 'Progress', min: 0, max: 100 },
+        color: { type: 'color', label: 'Accent Color' },
+        highlight: { type: 'boolean', label: 'Highlight' },
+        link: {
+          type: 'object',
+          label: 'Link',
+          render: {
+            text: { type: 'string', label: 'Link Text' },
+            href: { type: 'url', label: 'Link URL', pattern: '^https://' },
+          },
+        },
+      },
+    },
+  ]}
+  data={[
+    {
+      title: 'Visual editing',
+      date: '2026-03-02',
+      status: 'shipped',
+      progress: 100,
+      color: '#22c55e',
+      highlight: false,
+      link: { text: 'Release notes', href: 'https://github.com' },
+    },
+  ]}
+  renderItem={item => <div>{/* ... */}</div>}
+/>
+```
+
+A `render` entry without `type` is treated as a plain group of further entries.
+It cannot have a label of its own, so prefer an `object` leaf as above.
+
+JSX-valued keys inside an item (`children`, or a key holding an element) are
+not typed through `render`. The panel shows the bindings declared on those
+elements instead, or a code editor when they declare none.
+
+## Presentation and metadata
+
+Two ways to pass information to a custom panel without the library acting on
+it:
+
+```tsx
+{
+  label: 'Scroll Speed',
+  property: 'speed',
+  type: 'number',
+  min: 20,
+  max: 300,
+  widget: { type: 'slider', step: 10 },
+  group: 'motion',
+}
+```
+
+- `widget` describes the control. A bare string (`widget: 'slider'`) arrives as
+  `{ type: 'slider' }`, so your panel always switches on `widget.type`. `step`
+  and `unit` are typed; anything else you add to it arrives as `unknown`.
+- Any key the library does not define (`group` above) arrives under
+  `binding.meta.group`.
+
+The built-in panel shows the number input above and ignores both.

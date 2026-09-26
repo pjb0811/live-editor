@@ -83,12 +83,14 @@ describe('useDndPanel() data', () => {
     const { onChange, getData } = renderWithPanel();
 
     const data = getData()!;
-    // Stats' only top-level binding. Everything else in the section lives
-    // inside this one's `items` value, so `extract()` never reaches it and
-    // no `PanelBinding.onChange` can address it — that's the whole reason
-    // `onNodeChange` has to be forwarded (#308).
+    // Stats' only top-level bindings, all on the marquee itself. Everything
+    // else in the section lives inside its `items` value, so `extract()`
+    // never reaches it and no `PanelBinding.onChange` can address it —
+    // that's the whole reason `onNodeChange` has to be forwarded (#308).
     expect(data.bindings.map(binding => binding.label)).toEqual([
       'Stats Items',
+      'Scroll Speed',
+      'Pause On Hover',
     ]);
 
     // Where the built-in Items editor finds these: the binding's own raw
