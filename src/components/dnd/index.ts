@@ -34,6 +34,10 @@ import {
   type ItemsEditorOptions,
   useItemsEditor,
 } from './panel/use-items-editor';
+import type {
+  DndRenderSectionFallback,
+  DndSectionFallbackArgs,
+} from './section-fallback-context';
 
 type DndComponent = typeof DndImpl & {
   // Owns the dnd-kit wiring for a palette item and hands back `ref` /
@@ -108,6 +112,8 @@ export type {
   FieldProps,
   DndEditError,
   DndRenderField,
+  DndRenderSectionFallback,
+  DndSectionFallbackArgs,
   ItemsEditor,
   ItemsEditorActions,
   ItemsEditorItem,

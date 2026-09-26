@@ -45,6 +45,10 @@ import {
   withPanelCommit,
 } from './panel-binding';
 import Renderer from './renderer';
+import {
+  type DndRenderSectionFallback,
+  SectionFallbackContext,
+} from './section-fallback-context';
 import Sortable from './sortable';
 import { useSectionDocument } from './use-section-document';
 
@@ -182,6 +186,14 @@ export interface Props extends Omit<
   // error toast is not shown; the payload carries the same title and
   // description so a host can show them its own way.
   onEditError?: (error: DndEditError) => void;
+  // Renders in place of a canvas section that failed to compile, threw while
+  // rendering, or was skipped by `shouldForceSectionFallback`. Return
+  // `undefined` for the built-in error box. See `DndSectionFallbackArgs`.
+  renderSectionFallback?: DndRenderSectionFallback;
+  // Checked for every section before it is compiled. Return `true` to skip
+  // compiling it (so none of its top-level code runs) and render the
+  // fallback with reason `forced`.
+  shouldForceSectionFallback?: (section: Section) => boolean;
   // The single customization slot. Omit it for the built-in editor. Supply
   // it and you own the arrangement: compose `Live.Dnd.Palette` /
   // `Live.Dnd.Canvas` / `Live.Dnd.Panel` (each the built-in region, in the
@@ -221,6 +233,8 @@ const Dnd = ({
   provider,
   renderField,
   onEditError,
+  renderSectionFallback,
+  shouldForceSectionFallback,
   children,
   ...restProps
 }: Props) => {
@@ -235,6 +249,18 @@ const Dnd = ({
   // the drag overlay's `fullCode` — not something `useSectionDocument`
   // exposes back out.
   const { code } = usePreview();
+
+  // A throwing predicate is treated as "not forced" rather than taking the
+  // whole editor down with it.
+  const isForced = (section: Section) => {
+    try {
+      return shouldForceSectionFallback?.(section) === true;
+    } catch (error) {
+      console.error('shouldForceSectionFallback threw', error);
+
+      return false;
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -503,6 +529,10 @@ const Dnd = ({
               >
                 <Renderer
                   preview={previews[index]!}
+                  sectionId={section.id}
+                  sectionName={section.name}
+                  sectionCode={section.code}
+                  forceFallback={isForced(section)}
                   modules={modules}
                   frame={frame}
                   dynamicTailwind={dynamicTailwind}
@@ -518,7 +548,7 @@ const Dnd = ({
   );
 
   return (
-    <>
+    <SectionFallbackContext.Provider value={renderSectionFallback}>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -567,6 +597,7 @@ const Dnd = ({
         <DragOverlay>
           <Overlay
             sections={sections}
+            isForced={isForced}
             renderProps={{
               fullCode: value,
               modules,
@@ -577,7 +608,7 @@ const Dnd = ({
           />
         </DragOverlay>
       </DndContext>
-    </>
+    </SectionFallbackContext.Provider>
   );
 };
 

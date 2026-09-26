@@ -6,8 +6,18 @@ import Frame, { type FrameProps } from '~/components/frame';
 import { useCompiledModule } from '~/components/preview/use-compiled-module';
 import { useDynamicTailwind } from '~/components/preview/use-dynamic-tailwind';
 
+import SectionFallback from './section-fallback';
+
 interface Props {
   preview: string;
+  // The section's identity for `renderSectionFallback`, as primitives rather
+  // than the `Section` object: sections are re-extracted on every document
+  // change, so an object prop would defeat the memo below.
+  sectionId?: string;
+  sectionName?: string;
+  sectionCode?: string;
+  // Skip compiling and render the fallback (`shouldForceSectionFallback`).
+  forceFallback?: boolean;
   modules?: Record<string, unknown>;
   headers?: Record<string, boolean>;
   frame?: FrameProps;
@@ -22,13 +32,20 @@ interface Props {
 // iframe tree at all — see #97.
 const Renderer = ({
   preview,
+  sectionId = '',
+  sectionName = '',
+  sectionCode = preview,
+  forceFallback = false,
   headers,
   modules,
   frame,
   dynamicTailwind = false,
   provider,
 }: Props) => {
-  const module = useCompiledModule(preview, modules);
+  // Empty code compiles to nothing, so a forced section never reaches the
+  // compiler or runs any of its top-level code.
+  const module = useCompiledModule(forceFallback ? '' : preview, modules);
+  const section = { id: sectionId, name: sectionName, code: sectionCode };
 
   // In `shadow` mode there's no separate document to load a stylesheet into
   // — the shadow root only gets whatever CSS naturally inherits across the
@@ -38,7 +55,7 @@ const Renderer = ({
   // since it lives inside the same portal target.
   const { ref: wrapperRef, css: dynamicCSS } = useDynamicTailwind(
     preview,
-    dynamicTailwind,
+    dynamicTailwind && !forceFallback,
   );
 
   const renderProvider = (component: React.ReactNode) => {
@@ -49,8 +66,27 @@ const Renderer = ({
   // portal into an iframe for code that never produced a component, and a
   // silent blank slot (the previous behaviour) gives the author no clue why
   // their section vanished. Mirrors preview/client.tsx's compile-error branch.
+  if (forceFallback) {
+    return (
+      <SectionFallback
+        args={{ section, reason: 'forced' }}
+        builtin={
+          <LiveError
+            message="This section is not rendered in this editor."
+            title="Section Unavailable"
+          />
+        }
+      />
+    );
+  }
+
   if (module?.error) {
-    return <LiveError message={module.error} title="Compile Error" />;
+    return (
+      <SectionFallback
+        args={{ section, reason: 'compile', message: module.error }}
+        builtin={<LiveError message={module.error} title="Compile Error" />}
+      />
+    );
   }
 
   const Component = module?.exports?.default;
@@ -92,7 +128,21 @@ const Renderer = ({
             reporting into it would overwrite each other with no way to tell
             which section failed.
           */}
-          <ErrorBoundary resetKeys={[preview]}>
+          <ErrorBoundary
+            resetKeys={[preview]}
+            fallback={(message, reset) => (
+              <SectionFallback
+                args={{ section, reason: 'runtime', message }}
+                builtin={
+                  <LiveError
+                    message={message}
+                    onReset={reset}
+                    title="Rendering Error"
+                  />
+                }
+              />
+            )}
+          >
             {renderProvider(
               <>
                 <Component

@@ -7,6 +7,8 @@ import LiveDnd, {
   type DndPalette,
   type DndPanel,
   type DndRenderField,
+  type DndRenderSectionFallback,
+  type DndSectionFallbackArgs,
   type FieldProps,
   type ItemsEditor,
   type ItemsEditorItem,
@@ -39,6 +41,8 @@ export {
 export type {
   DndEditError,
   DndRenderField,
+  DndRenderSectionFallback,
+  DndSectionFallbackArgs,
   DndPalette,
   DndPanel,
   DndLayout,
