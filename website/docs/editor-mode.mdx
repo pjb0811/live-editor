@@ -48,10 +48,12 @@ export default function EditorMode() {
 }
 ```
 
-- `Live.Editor` is a controlled CodeMirror surface — pass `value` / `onChange`.
-  It only pushes to the shared preview code `debounce` ms after you stop
-  typing (default `1000`) — a full second of lag is expected, not a bug.
-  Pass `debounce={0}` for immediate updates.
+- `Live.Editor` is a CodeMirror surface. Pass `value` / `onChange` to own
+  the code yourself, or omit `value` to let `Live` hold it (see
+  [Who owns the code](#who-owns-the-code)). Either way it pushes to the shared
+  preview code `debounce` ms after you stop typing (default `1000`) — a full
+  second of lag is expected, not a bug. Pass `debounce={0}` for immediate
+  updates.
 - `Live.Preview` compiles the shared code and renders it; `showError` surfaces
   compile/runtime errors inline.
 - `dynamicTailwind` compiles Tailwind classes from the rendered preview at
@@ -61,3 +63,32 @@ export default function EditorMode() {
 
 See [Overview](./intro.md#props-reference) for the full prop list on both
 components.
+
+## Who owns the code
+
+Every surface inside one `<Live>` reads and writes the same code. Who holds it
+depends on whether you pass `value`:
+
+| Surface | Holds the code | Told about an edit | Shared preview code updates |
+| --- | --- | --- | --- |
+| `Live.Editor` with `value` | you | `onChange`, on every edit | `debounce` ms after typing stops |
+| `Live.Editor` without `value` | `Live` | `onChange`, on every edit | `debounce` ms after typing stops; the editor shows each keystroke at once |
+| `Live.Dnd` with `value` | you | `onChange`, on every edit | at once |
+| `Live.Dnd` without `value` | `Live` | `onChange`, on every edit | at once |
+| `Live.Preview` | — | — | reads the shared code, unless you pass `code` |
+
+- **Pick one owner per `<Live>`.** Either pass the same `value` / `onChange`
+  state to every surface, or pass `value` to none of them. Mixing the two is
+  not supported: a surface you control ignores changes the others make to
+  `Live`'s own copy.
+- **Without `value`, surfaces stay in step.** A `Live.Editor` and a `Live.Dnd`
+  that both omit `value` share `Live`'s copy, so an edit in one shows up in
+  the other. An editor without `value` or `defaultValue` starts from that
+  shared code.
+- **A pending update is never lost.** The editor pushes a waiting update at
+  once when it loses focus or unmounts, instead of dropping it. Switching to
+  another tab, or clicking into a `Live.Dnd` panel, right after typing still
+  works on the typed code.
+- **Formatting (Cmd/Ctrl+S) applies at once.** It calls `onChange` with the
+  formatted code and updates the shared code without waiting for `debounce`.
+- **Separate `<Live>` providers are independent.** Each holds its own code.
