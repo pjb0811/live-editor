@@ -9,6 +9,7 @@ import {
   type BindingOption,
   type BindingRenderMap,
   type BindingType,
+  type BindingWidget,
   type DataAttrNode,
 } from './types';
 import { evaluateLiteral, parseArrayExpression, parseValue } from './value';
@@ -27,22 +28,48 @@ const bindingRenderLeafSchema = z.object({
   property: z.string().optional(),
 });
 
-// `widget` is deliberately just `z.string()`, not an enum — see #236. An
+// `widget.type` is deliberately just `z.string()`, not an enum — see #236. An
 // unrecognized widget is expected (a custom panel author's own value, not
-// this library's), so unlike `type` there is no "drop it" failure mode to
-// design for.
+// this library's). `.passthrough()` keeps that panel's own control config
+// (`{ type: 'slider', snapTo: [...] }`) instead of stripping it, the same
+// contract the item itself has below.
+const bindingWidgetSchema = z
+  .object({
+    type: z.string().min(1),
+    step: z.number().optional(),
+    unit: z.string().optional(),
+  })
+  .passthrough();
+
+// Normalized like `type` and `options` are — *before* the item schema sees
+// it, so a malformed widget degrades this one field to widget-less instead of
+// failing `rawBindingItemSchema` and dropping the whole item. Authoring the
+// object form used to make the field disappear entirely.
 //
+// The bare-string form (`widget: 'slider'`) is what every document authored
+// before this object existed uses, and stays supported: it means the control
+// with no extra config.
+const sanitizeWidget = (value: unknown): BindingWidget | undefined => {
+  if (typeof value === 'string') {
+    return value ? { type: value } : undefined;
+  }
+
+  const parsed = bindingWidgetSchema.safeParse(value);
+
+  return parsed.success ? parsed.data : undefined;
+};
+
 // `.passthrough()` (rather than the default `.strip()`) keeps any key this
 // schema doesn't know about instead of silently discarding it — see #234.
-// A consumer's own metadata (`step`, `unit`, a widget hint, ...) survives
-// parsing and is surfaced separately as `meta` below, namespaced instead of
-// spread onto the item, so it can't collide with a future first-class field.
+// A consumer's own metadata survives parsing and is surfaced separately as
+// `meta` below, namespaced instead of spread onto the item, so it can't
+// collide with a future first-class field.
 const rawBindingItemSchema = z
   .object({
     label: z.string(),
     property: z.string().optional(),
     type: bindingTypeSchema.optional(),
-    widget: z.string().optional(),
+    widget: bindingWidgetSchema.optional(),
     options: z.array(bindingOptionSchema).optional(),
     min: z.number().optional(),
     max: z.number().optional(),
@@ -157,7 +184,9 @@ const buildBindingItems = (raw: unknown): BindingItem[] => {
       : sanitizedType.success
         ? sanitizedType.data
         : undefined;
-    const derivedWidget = isWidgetAlias ? sanitizedType.data : undefined;
+    const derivedWidget: BindingWidget | undefined = isWidgetAlias
+      ? { type: sanitizedType.data }
+      : undefined;
 
     // Drop individually malformed options instead of rejecting the whole
     // item — a select field with 3 valid options and 1 malformed one should
@@ -174,6 +203,7 @@ const buildBindingItems = (raw: unknown): BindingItem[] => {
     const parsed = rawBindingItemSchema.safeParse({
       ...rawItem,
       type: normalizedType,
+      widget: sanitizeWidget(rawItem.widget),
       options: sanitizedOptions?.length ? sanitizedOptions : undefined,
     });
 

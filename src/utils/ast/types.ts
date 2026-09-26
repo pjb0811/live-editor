@@ -52,6 +52,33 @@ export const BINDING_TYPES = [
 
 export type BindingType = (typeof BINDING_TYPES)[number];
 
+// Presentation config for one field, as opposed to `BindingItem.type`'s data
+// kind. Authored either as the bare control name (`widget: 'slider'`) or as
+// this object; `parseBinding` normalizes the string form into `{ type }`, so
+// consumers only ever see one shape.
+//
+// Value *constraints* deliberately stay on the item, not here: `min`/`max`/
+// `pattern`/`required` are enforced by `validateBindingValue` whether or not
+// a widget was declared, so a plain number input still range-checks. Putting
+// them here too would make the range unexpressible without a widget, and
+// give a slider a second, conflicting source for the same bounds.
+export interface BindingWidget {
+  // The control name. Open string, not an enum, for the reason in #236: the
+  // library cannot enumerate controls it doesn't implement.
+  // `'icon-picker'`/`'asset-picker'` are the built-in panel's own two;
+  // anything else (e.g. `'slider'`) is a custom panel's to switch on.
+  type: string;
+  // Presentation hints general enough to be worth typing. Both were already
+  // authorable before this object existed — they just landed in the untyped
+  // `meta` bag, where nothing checked their names or value types.
+  step?: number;
+  unit?: string;
+  // Any further widget-specific config the consumer declared. Open for the
+  // same reason `type` is: a custom control's options are not this library's
+  // to enumerate. See #234 on keeping unknown keys rather than stripping.
+  [key: string]: unknown;
+}
+
 export interface BindingRenderLeaf {
   // Optional, matching the top-level BindingItem.type — an unrecognized
   // leaf type degrades to untyped instead of dropping the entry (see
@@ -72,22 +99,20 @@ export interface BindingItem {
   // validation/coercion (validateBindingValue, parseValue) has to be able
   // to switch on it exhaustively.
   type?: BindingType;
-  // Presentation — how to *render* it. Deliberately an open string, not a
-  // closed enum: the library cannot enumerate controls it doesn't
-  // implement, and a custom panel owns presentation once they use
-  // it (see #234/#236). `'icon-picker'`/`'asset-picker'` are the built-in
-  // panel's own two widgets; anything else (e.g. `'slider'`) is free for a
-  // custom panel to switch on.
-  widget?: string;
+  // Presentation — how to *render* it, plus that control's own config. Always
+  // the object form here even when authored as a bare string; see
+  // BindingWidget.
+  widget?: BindingWidget;
   options?: BindingOption[];
   render?: BindingRenderMap;
   min?: number;
   max?: number;
   pattern?: string;
   required?: boolean;
-  // Consumer-defined keys that aren't one of the fields above (`step`,
-  // `unit`, a widget hint, ...) — namespaced here rather than spread onto
-  // the item itself so they can't collide with a future first-class field.
+  // Consumer-defined keys that aren't one of the fields above — namespaced
+  // here rather than spread onto the item itself so they can't collide with
+  // a future first-class field. Per-widget config belongs in `widget`, not
+  // here; this is for metadata about the field as a whole.
   // Undefined when nothing extra was authored, not an empty object. See
   // #234: `parseBinding` used to silently strip these.
   meta?: Record<string, unknown>;

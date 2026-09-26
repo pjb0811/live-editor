@@ -4,6 +4,7 @@ export type {
   BindingRenderLeaf,
   BindingRenderMap,
   BindingType,
+  BindingWidget,
   DataAttrNode,
   EditableNodeValueType,
   ExtractedNodeValue,

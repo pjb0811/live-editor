@@ -32,7 +32,7 @@ const fullBinding = `[{
   label: 'Title',
   property: 'innerText',
   type: 'string',
-  widget: 'slider',
+  widget: { type: 'slider', step: 4, unit: 'px' },
   options: [{ label: 'One', value: '1' }],
   render: { nested: { type: 'number' } },
   min: 2,
@@ -67,7 +67,7 @@ describe('resolvePanelBindings', () => {
       label: 'Title',
       property: 'innerText',
       type: 'string',
-      widget: 'slider',
+      widget: { type: 'slider', step: 4, unit: 'px' },
       options: [{ label: 'One', value: '1' }],
       render: { nested: { type: 'number' } },
       min: 2,
@@ -256,7 +256,7 @@ describe('panel paths agree on the same element', () => {
     // that dropped `meta`/`widget` in all three paths at once would still
     // satisfy an equality check (#234, #236).
     expect(fromItems.meta).toEqual({ group: 'content', order: 3 });
-    expect(fromNode.widget).toBe('slider');
+    expect(fromNode.widget).toEqual({ type: 'slider', step: 4, unit: 'px' });
   });
 
   it('commits through every path with the same id and property', () => {
