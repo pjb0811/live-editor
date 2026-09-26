@@ -108,11 +108,9 @@ export const transformCode = (code: string, isTypeScript = false): string => {
       filename: isTypeScript ? 'preview.tsx' : 'preview.jsx',
       presets: isTypeScript ? ['typescript', 'env', 'react'] : ['env', 'react'],
       sourceType: 'module',
-      plugins: [
-        [Babel.availablePlugins['transform-modules-commonjs']],
-        //
-      ],
+      plugins: [Babel.availablePlugins['transform-modules-commonjs']],
     }).code;
+
     return result || '';
   } catch (e) {
     console.error('❌ Babel transformation error:', e);
@@ -168,17 +166,20 @@ const compileModule = (
       return React;
     }
 
-    if (modules?.[name]) {
+    // Presence, not truthiness: a module may legitimately *be* a falsy
+    // primitive (`0`, `''`, `false`, `null`), which compile() supports and
+    // compares by value. A truthiness check reported those as missing.
+    if (name in modules) {
       return modules[name];
     }
 
-    throw new Error(`모듈을 찾을 수 없음: ${name}`);
+    throw new Error(`Module not found: ${name}`);
   };
 
   try {
     render(module.exports, customRequire, module, React);
   } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : '런타임 에러';
+    const errorMessage = e instanceof Error ? e.message : 'Runtime error';
     return { exports: {}, error: errorMessage };
   }
 
@@ -244,16 +245,29 @@ export const getCachedScriptBlob = async (src: string): Promise<string> => {
       const blobUrl = URL.createObjectURL(blob);
 
       scriptCache.set(src, blobUrl);
-      loadingScriptCache.delete(src);
+
       return blobUrl;
+    })
+    // Cleanup belongs on both paths, not just the successful one. A rejected
+    // promise left in this map is adopted by every later caller, so a single
+    // failed fetch made that script unloadable for the rest of the session
+    // even after the network recovered.
+    .finally(() => {
+      loadingScriptCache.delete(src);
     });
 
   loadingScriptCache.set(src, promise);
+
   return promise;
 };
 
 export const preloadScripts = (scripts: string[]): void => {
-  scripts.forEach(src => getCachedScriptBlob(src));
+  scripts.forEach(src => {
+    // Fire-and-forget by design, so the rejection is absorbed here rather
+    // than surfacing as an unhandled one. The retry now works (see above),
+    // and the real load path reports the failure to whoever awaits it.
+    getCachedScriptBlob(src).catch(() => {});
+  });
 };
 
 // Blob URLs are browser resources, not just memory, so dropping the entries

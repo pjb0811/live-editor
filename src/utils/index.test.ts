@@ -12,6 +12,7 @@ const {
   clearScriptCache,
   detectTypeScript,
   getCachedScriptBlob,
+  preloadScripts,
   registerEditorSession,
 } = await import('./index');
 const { clearDocumentParseCache, parseDocument } =
@@ -243,6 +244,21 @@ describe('compile module cache (#329)', () => {
     expect(read(compile(snapshotCode, { fixture }))).toBe(2);
   });
 
+  it('resolves a module whose value is a falsy primitive', () => {
+    const primitiveCode =
+      "import value from 'fixture'; export default () => value;";
+
+    // The require shim used to test truthiness, so a module that legitimately
+    // *is* `0`/`''`/`false`/`null` was reported as missing — even though the
+    // cache above compares primitive modules by value.
+    for (const fixture of [0, '', false, null]) {
+      const module = compile(primitiveCode, { fixture });
+
+      expect(module.error).toBeUndefined();
+      expect(read(module)).toBe(fixture);
+    }
+  });
+
   it('keeps only 50 module variants and refreshes recency on a hit', () => {
     const fixtures = Array.from({ length: 51 }, (_, value) => ({ value }));
     const results = fixtures
@@ -403,5 +419,81 @@ export default App;`;
     clearExtractCache();
 
     expect(extract(BINDING_CODE)).not.toBe(extracted);
+  });
+});
+
+describe('getCachedScriptBlob failure handling', () => {
+  const SRC = 'https://example.test/flaky.js';
+
+  let created = 0;
+
+  beforeEach(() => {
+    created = 0;
+
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: () => `blob:stub/${(created += 1)}`,
+      revokeObjectURL: () => {},
+    });
+
+    clearScriptCache();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('retries after a failed fetch instead of replaying the rejection', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValue({ text: () => Promise.resolve('export default 1;') });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getCachedScriptBlob(SRC)).rejects.toThrow('network down');
+
+    // The in-flight entry used to be dropped only on success, so this call
+    // adopted the rejected promise and never reached the network again.
+    await expect(getCachedScriptBlob(SRC)).resolves.toBe('blob:stub/1');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('still shares one in-flight request between concurrent callers', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ text: () => Promise.resolve('export default 1;') });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const [first, second] = await Promise.all([
+      getCachedScriptBlob(SRC),
+      getCachedScriptBlob(SRC),
+    ]);
+
+    expect(first).toBe(second);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not surface a failed preload as an unhandled rejection', async () => {
+    // Typed locally rather than via @types/node: this suite runs without node
+    // types, and the listener pair is all it needs from `process`.
+    const { process: nodeProcess } = globalThis as unknown as {
+      process: {
+        on: (event: string, listener: () => void) => void;
+        off: (event: string, listener: () => void) => void;
+      };
+    };
+    const unhandled = vi.fn();
+
+    nodeProcess.on('unhandledRejection', unhandled);
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+
+    preloadScripts([SRC]);
+
+    await new Promise(resolve => setTimeout(resolve, 0));
+    nodeProcess.off('unhandledRejection', unhandled);
+
+    expect(unhandled).not.toHaveBeenCalled();
   });
 });
