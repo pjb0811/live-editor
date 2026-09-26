@@ -1,4 +1,5 @@
 export type {
+  BindingFieldSpec,
   BindingItem,
   BindingOption,
   BindingRenderLeaf,

@@ -94,10 +94,10 @@ export const DRAGGABLE_ITEMS: Section[] = [
               // second, conflictable copy.
               min: 0,
               max: 40,
-              // The widget carries only what draws the control. slider is
-              // not one of the built-in panel's own widgets — it's here as
-              // the example a custom panel switches on, together with the
-              // per-control config it reads back out. See #236.
+              // The widget carries only what draws the control. The built-in
+              // panel ignores it (the library ships no widgets) — slider is
+              // here as the example a custom panel switches on, together
+              // with the per-control config it reads back out.
               widget: {
                 type: 'slider',
                 step: 4,

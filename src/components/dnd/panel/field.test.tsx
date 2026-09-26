@@ -197,3 +197,32 @@ describe('Field JSX editor lifecycle', () => {
     expect(focus).not.toHaveBeenCalled();
   });
 });
+
+// The object-valued branch builds a binding per key through the same
+// render-map resolution the items editor uses (#383), so a leaf's
+// constraints apply to a nested key too.
+describe('Field object values', () => {
+  it('validates a nested key against its render-map leaf', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <Field
+        binding={binding({
+          type: 'object',
+          value: { size: 12 },
+          rawValue: '{ size: 12 }',
+          render: { size: { type: 'number', min: 0 } },
+          onChange,
+        })}
+      />,
+    );
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="number"]',
+    )!;
+
+    fireEvent.change(input, { target: { value: '-1' } });
+    fireEvent.blur(input);
+
+    expect(screen.getByText('Must be at least 0.')).not.toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});

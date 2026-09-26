@@ -7,6 +7,7 @@ import {
   BINDING_TYPES,
   type BindingItem,
   type BindingOption,
+  type BindingRenderLeaf,
   type BindingRenderMap,
   type BindingType,
   type BindingWidget,
@@ -21,18 +22,10 @@ const bindingOptionSchema = z.object({
   value: z.string(),
 });
 
-// `type` is validated separately in sanitizeRenderMap (like the top-level
-// item's own type) so an unrecognized value degrades the leaf to untyped
-// instead of failing this whole schema — see #234.
-const bindingRenderLeafSchema = z.object({
-  property: z.string().optional(),
-});
-
-// `widget.type` is deliberately just `z.string()`, not an enum — see #236. An
-// unrecognized widget is expected (a custom panel author's own value, not
-// this library's). `.passthrough()` keeps that panel's own control config
-// (`{ type: 'slider', snapTo: [...] }`) instead of stripping it, the same
-// contract the item itself has below.
+// `widget.type` is deliberately just `z.string()`, not an enum — see #236. The
+// library implements no widgets, so every value is a custom panel author's
+// own. `.passthrough()` keeps that panel's own control config
+// (`{ type: 'slider', snapTo: [...] }`) instead of stripping it.
 const bindingWidgetSchema = z
   .object({
     type: z.string().min(1),
@@ -41,47 +34,45 @@ const bindingWidgetSchema = z
   })
   .passthrough();
 
-// Normalized like `type` and `options` are — *before* the item schema sees
-// it, so a malformed widget degrades this one field to widget-less instead of
-// failing `rawBindingItemSchema` and dropping the whole item. Authoring the
-// object form used to make the field disappear entirely.
-//
-// The bare-string form (`widget: 'slider'`) is what every document authored
-// before this object existed uses, and stays supported: it means the control
-// with no extra config.
+// Parse one field on its own, degrading a malformed value to absent instead
+// of failing the whole binding — a typo'd `min` or an unrecognized `type`
+// costs that one axis, not the field. See #234.
+const pick = <T>(schema: z.ZodType<T>, value: unknown): T | undefined => {
+  const parsed = schema.safeParse(value);
+
+  return parsed.success ? parsed.data : undefined;
+};
+
+// The bare-string form (`widget: 'slider'`) means the control with no extra
+// config; normalizing it to `{ type }` leaves consumers one shape to switch on.
 const sanitizeWidget = (value: unknown): BindingWidget | undefined => {
   if (typeof value === 'string') {
     return value ? { type: value } : undefined;
   }
 
-  const parsed = bindingWidgetSchema.safeParse(value);
-
-  return parsed.success ? parsed.data : undefined;
+  return pick(bindingWidgetSchema, value);
 };
 
-// `.passthrough()` (rather than the default `.strip()`) keeps any key this
-// schema doesn't know about instead of silently discarding it — see #234.
-// A consumer's own metadata survives parsing and is surfaced separately as
-// `meta` below, namespaced instead of spread onto the item, so it can't
-// collide with a future first-class field.
-const rawBindingItemSchema = z
-  .object({
-    label: z.string(),
-    property: z.string().optional(),
-    type: bindingTypeSchema.optional(),
-    widget: bindingWidgetSchema.optional(),
-    options: z.array(bindingOptionSchema).optional(),
-    min: z.number().optional(),
-    max: z.number().optional(),
-    pattern: z.string().optional(),
-    required: z.boolean().optional(),
-  })
-  .passthrough();
+// Drop individually malformed options instead of rejecting them all — a
+// select field with 3 valid options and 1 malformed one should still work
+// with the 3 valid ones.
+const sanitizeOptions = (value: unknown): BindingOption[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
 
-// Every key `rawBindingItemSchema` declares, plus `render` (handled by
-// `sanitizeRenderMap` separately, never through this schema) — anything
-// else surviving `.passthrough()` is consumer-defined and belongs in `meta`,
-// not treated as one of this library's own fields.
+  const options = value.flatMap(option => {
+    const parsed = pick(bindingOptionSchema, option);
+
+    return parsed ? [parsed] : [];
+  });
+
+  return options.length > 0 ? options : undefined;
+};
+
+// Every key this library reads off a binding — anything else authored on it
+// is consumer-defined and belongs in `meta`, not treated as one of this
+// library's own fields.
 const KNOWN_BINDING_KEYS = new Set([
   'label',
   'property',
@@ -95,19 +86,40 @@ const KNOWN_BINDING_KEYS = new Set([
   'required',
 ]);
 
-// The two BINDING_TYPES entries that describe a control, not a data kind —
-// see the type/widget split in #236. Normalized below into `widget` instead
-// of being passed through as `type` directly.
-const WIDGET_TYPE_ALIASES = new Set(['icon-picker', 'asset-picker']);
-
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+// The one sanitizer for what a binding declares about itself, shared by a
+// top-level item and a render-map leaf so a field added later reaches both.
+// Absent fields are left off rather than set to `undefined`.
+const sanitizeField = (raw: Record<string, unknown>): BindingRenderLeaf => {
+  const metaEntries = Object.entries(raw).filter(
+    ([key]) => !KNOWN_BINDING_KEYS.has(key),
+  );
+  const field: BindingRenderLeaf = {
+    label: pick(z.string(), raw.label),
+    property: pick(z.string(), raw.property),
+    type: pick(bindingTypeSchema, raw.type),
+    widget: sanitizeWidget(raw.widget),
+    options: sanitizeOptions(raw.options),
+    render: sanitizeRenderMap(raw.render),
+    min: pick(z.number(), raw.min),
+    max: pick(z.number(), raw.max),
+    pattern: pick(z.string(), raw.pattern),
+    required: pick(z.boolean(), raw.required),
+    meta: metaEntries.length > 0 ? Object.fromEntries(metaEntries) : undefined,
+  };
+
+  return Object.fromEntries(
+    Object.entries(field).filter(([, value]) => value !== undefined),
+  );
 };
 
 // A render map entry is either a "leaf" (has its own `type`) or a nested
 // map of further entries — recurse into whichever it looks like, and drop
 // anything that matches neither instead of failing the whole map.
-const sanitizeRenderMap = (value: unknown): BindingRenderMap | undefined => {
+function sanitizeRenderMap(value: unknown): BindingRenderMap | undefined {
   if (!isPlainObject(value)) {
     return undefined;
   }
@@ -120,25 +132,11 @@ const sanitizeRenderMap = (value: unknown): BindingRenderMap | undefined => {
     }
 
     if ('type' in raw) {
-      // Drop an unrecognized `type` down to untyped instead of dropping the
-      // whole entry — matches the top-level item's own behavior at
-      // `bindingTypeSchema.safeParse(rawItem.type)` above. Keeping the
-      // entry (rather than deleting the key) is what #234 asked for: a
+      // `type` is always set, even to `undefined` when it didn't survive
+      // sanitization, so `'type' in leaf` keeps identifying it as a leaf: a
       // typo'd/future leaf type still shows up as a plain field instead of
-      // vanishing, and `'type' in leaf` stays true either way since `type`
-      // is always set below, even to `undefined`.
-      const sanitizedType = bindingTypeSchema.safeParse(raw.type);
-      const leaf = bindingRenderLeafSchema.safeParse(raw);
-
-      if (leaf.success) {
-        const render = sanitizeRenderMap(raw.render);
-        const typedLeaf = {
-          ...leaf.data,
-          type: sanitizedType.success ? sanitizedType.data : undefined,
-        };
-
-        map[key] = render ? { ...typedLeaf, render } : typedLeaf;
-      }
+      // vanishing (#234).
+      map[key] = { type: undefined, ...sanitizeField(raw) };
       continue;
     }
 
@@ -150,7 +148,7 @@ const sanitizeRenderMap = (value: unknown): BindingRenderMap | undefined => {
   }
 
   return Object.keys(map).length > 0 ? map : undefined;
-};
+}
 
 // Shared tail of `parseBinding`/`parseBindingExpression`: turn the raw,
 // already-evaluated array literal into validated `BindingItem[]`. The two
@@ -161,97 +159,23 @@ const buildBindingItems = (raw: unknown): BindingItem[] => {
     return [];
   }
 
-  const items: BindingItem[] = [];
-
-  for (const rawItem of raw) {
+  return raw.flatMap(rawItem => {
     if (!isPlainObject(rawItem)) {
-      continue;
+      return [];
     }
 
-    // Drop an unrecognized `type` instead of rejecting the whole item — an
-    // authored binding with a typo'd/future type string still works as an
-    // untyped field rather than disappearing entirely.
-    const sanitizedType = bindingTypeSchema.safeParse(rawItem.type);
+    const { label, property, ...field } = sanitizeField(rawItem);
 
-    // `icon-picker`/`asset-picker` describe a widget, not a data kind
-    // (#236) — normalize them into `widget` instead of passing them
-    // through as `type`. An explicitly authored `widget` (checked below,
-    // once the schema has validated it) wins if both are somehow present.
-    const isWidgetAlias =
-      sanitizedType.success && WIDGET_TYPE_ALIASES.has(sanitizedType.data);
-    const normalizedType = isWidgetAlias
-      ? 'string'
-      : sanitizedType.success
-        ? sanitizedType.data
-        : undefined;
-    const derivedWidget: BindingWidget | undefined = isWidgetAlias
-      ? { type: sanitizedType.data }
-      : undefined;
-
-    // Drop individually malformed options instead of rejecting the whole
-    // item — a select field with 3 valid options and 1 malformed one should
-    // still work with the 3 valid ones.
-    const sanitizedOptions = Array.isArray(rawItem.options)
-      ? rawItem.options
-          .map(option => {
-            const parsed = bindingOptionSchema.safeParse(option);
-            return parsed.success ? parsed.data : null;
-          })
-          .filter((option): option is BindingOption => option !== null)
-      : undefined;
-
-    const parsed = rawBindingItemSchema.safeParse({
-      ...rawItem,
-      type: normalizedType,
-      widget: sanitizeWidget(rawItem.widget),
-      options: sanitizedOptions?.length ? sanitizedOptions : undefined,
-    });
-
-    if (!parsed.success) {
-      continue;
+    if (label === undefined) {
+      return [];
     }
 
-    const {
-      label,
-      property,
-      type,
-      widget: explicitWidget,
-      options,
-      min,
-      max,
-      pattern,
-      required,
-    } = parsed.data;
-    const widget = explicitWidget ?? derivedWidget;
-
-    if (property === undefined && type !== 'richtext') {
-      continue;
+    if (property === undefined && field.type !== 'richtext') {
+      return [];
     }
 
-    const render = sanitizeRenderMap(rawItem.render);
-
-    const metaEntries = Object.entries(parsed.data).filter(
-      ([key]) => !KNOWN_BINDING_KEYS.has(key),
-    );
-    const meta =
-      metaEntries.length > 0 ? Object.fromEntries(metaEntries) : undefined;
-
-    items.push({
-      label,
-      property: property ?? BINDING_PROP.INNER_HTML,
-      ...(type !== undefined && { type }),
-      ...(widget !== undefined && { widget }),
-      ...(options?.length && { options }),
-      ...(render && { render }),
-      ...(min !== undefined && { min }),
-      ...(max !== undefined && { max }),
-      ...(pattern !== undefined && { pattern }),
-      ...(required !== undefined && { required }),
-      ...(meta && { meta }),
-    });
-  }
-
-  return items;
+    return [{ label, property: property ?? BINDING_PROP.INNER_HTML, ...field }];
+  });
 };
 
 export const parseBinding = (bindingValue: string | null): BindingItem[] => {
@@ -351,8 +275,6 @@ export const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
   'color',
   'jsx',
   'richtext',
-  'icon-picker',
-  'asset-picker',
 ]);
 
 // Structured counterpart to `getCurrentValue`: returns the value as its real

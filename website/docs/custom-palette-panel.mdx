@@ -502,7 +502,7 @@ checks. Low-level callers can use `ChildrenEdit` and `getChildrenSignatures` fro
 | `label` | `string` | Human-readable label from the binding definition. |
 | `property` | `string` | The bound prop/attribute name. |
 | `type` | `BindingType?` | The declared data kind — what the value *is* (`string`, `number`, `boolean`, ...). `undefined` means a plain string binding. See the full list below. |
-| `widget` | `string?` | The declared presentation — how to *render* it. An open string, not `BindingType`: the library can't enumerate controls it doesn't implement, so a custom panel is free to declare and switch on any value it wants (e.g. `'slider'`). The built-in panel only recognizes `'icon-picker'`/`'asset-picker'`. |
+| `widget` | `BindingWidget?` | The declared presentation — how to *render* it, as `{ type, step?, unit?, ...config }`. `widget.type` is an open string, not `BindingType`: the library ships no widgets, so every value (e.g. `'slider'`) is yours to declare and switch on. Authored as a bare string (`widget: 'slider'`), it arrives as `{ type: 'slider' }`. The built-in panel ignores it and renders the default control for `type`. |
 | `options` | `BindingOption[]?` | Present when the binding defines a fixed option set (render a `<select>`). |
 | `render` | `BindingRenderMap?` | Present on `object`/`array` bindings whose nested keys/items declare their own types — walk it to type each nested field instead of treating the value as an opaque string. |
 | `min` | `number?` | Minimum value for a `number` binding. Compared against the real number `value` delivers — pass it straight to `validateBindingValue`. |
@@ -515,90 +515,77 @@ checks. Low-level callers can use `ChildrenEdit` and `getChildrenSignatures` fro
 | `canEditValue` | `boolean?` | `false` when reconstructing the modeled value could discard a reference, call, spread, hole, or computed property. Hide or disable the value control and direct the user to the code editor. `undefined` means the value is editable. |
 | `onChange` | `(value: unknown) => void` | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). Pass the value as its real type — it's serialized once, at the AST boundary, where the declared `type` is known, so no string quoting on your side. |
 
-`BindingType` is a closed union of 12 values: `array`, `object`, `string`,
-`number`, `boolean`, `color`, `jsx`, `richtext`, `date`, `url`,
-`icon-picker`, `asset-picker`. Switching on it alone is enough for the
-scalar types; for `object`/`array` values, see `flattenEditableValue`
-below rather than treating them as plain text.
+`BindingType` is a closed union of 10 data kinds: `array`, `object`,
+`string`, `number`, `boolean`, `color`, `jsx`, `richtext`, `date`, `url`.
+Switching on it alone is enough for the scalar types; for `object`/`array`
+values, see `flattenEditableValue` below rather than treating them as plain
+text.
 
 An authored `type` this library doesn't recognize (a typo, or a future
 value) doesn't reject the binding — it's dropped, so `binding.type` is
-simply `undefined` rather than the string you wrote. The same degrade,
-not delete, behavior applies one level down: an unrecognized `type`
-inside a `render` map leaves that leaf's own `type` `undefined` instead
-of removing the leaf entirely.
+simply `undefined` rather than the string you wrote. Every other field
+degrades the same way: a malformed `widget`, `options` entry, `min`, `max`,
+`pattern` or `required` is left off, and the rest of the binding survives.
 
-Any other key you author on a binding beyond the ones in the table
-above — one this library doesn't declare at all, like a step increment or
-a unit suffix — isn't dropped either; it survives under `binding.meta`,
-namespaced there instead of spread onto the binding itself so it can't
-collide with a future first-class field:
+### Choosing a control is the panel's job
 
-```tsx
-// data-binding={[{ label: 'Spacing', property: 'size', type: 'number', widget: 'slider', min: 0, max: 40, step: 4, unit: 'px' }]}
-
-bindings.map(binding => {
-  const step = typeof binding.meta?.step === 'number' ? binding.meta.step : 1;
-  const unit = typeof binding.meta?.unit === 'string' ? binding.meta.unit : '';
-
-  return binding.widget === 'slider' ? (
-    <input
-      type="range"
-      min={binding.min}
-      max={binding.max}
-      step={step}
-      defaultValue={binding.rawValue}
-      onChange={e => binding.onChange(e.target.value)}
-    />
-  ) : (
-    // ...
-    null
-  );
-});
-```
-
-`meta`'s values are typed `unknown` — the library can't know what shape a
-consumer's own metadata takes — so narrow them, as above, before use.
-The shipped Custom Palette & Panel demo's "Content Spacing" field does
-exactly this; drag it in the embedded demo above to see it live.
-
-`icon-picker` and `asset-picker` are kept in `BindingType` only so
-existing authored content (`data-binding={[{ type: 'icon-picker', ... }]}`)
-keeps parsing — they describe a control, not a data kind, so `parseBinding`
-normalizes them into `{ type: 'string', widget: 'icon-picker' }` /
-`{ type: 'string', widget: 'asset-picker' }` rather than passing them
-through as-is. A custom panel should switch on `binding.widget`
-for these, not `binding.type`. The built-in panel's icon set is exported
-as `ICON_MAP` (`name -> lucide-react component`), and the same
-label/value pairs it feeds its own `<select>` as `ICON_OPTIONS`, if you
-want to reuse either instead of building your own:
-
-```ts
-import { ICON_MAP, ICON_OPTIONS } from '@jbpark/live-editor';
-```
-
-Author a brand-new field with any other widget the same way — `type`
-still describes the data kind (so validation/coercion keeps working),
-`widget` is free text your own panel switches on:
+The library owns what a value *is* (`type`) and what it may be
+(`min`/`max`/`pattern`/`required`). How it is drawn is yours: `widget` is
+passed through untouched, and the built-in panel never reads it. Declare
+whatever control you want and the config it needs on `widget`, then switch
+on `widget.type`:
 
 ```tsx
-// data-binding={[{ label: 'Spacing', property: 'size', type: 'number', widget: 'slider', min: 0, max: 40 }]}
+// data-binding={[{ label: 'Spacing', property: 'size', type: 'number', min: 0, max: 40, widget: { type: 'slider', step: 4, unit: 'px' } }]}
 
 bindings.map(binding =>
-  binding.widget === 'slider' ? (
+  binding.widget?.type === 'slider' ? (
     <input
       type="range"
       min={binding.min}
       max={binding.max}
+      step={binding.widget.step ?? 1}
       defaultValue={binding.rawValue}
-      onChange={e => binding.onChange(e.target.value)}
+      onChange={e => binding.onChange(Number(e.target.value))}
     />
   ) : (
-    // ...fall back to type-based defaults
-    <input defaultValue={binding.rawValue} onBlur={e => binding.onChange(e.target.value)} />
+    // ...fall back to the built-in control
+    <Live.Dnd.Field binding={binding} />
   ),
 );
 ```
+
+`step` and `unit` are typed; any further key you put on `widget` passes
+through as `unknown`, so narrow it before use. The shipped Custom Palette &
+Panel demo's "Content Spacing" field does exactly this; drag it in the
+embedded demo above to see it live.
+
+Any key you author on a binding itself that isn't one of the fields in the
+table above — a group name, an ordering hint — isn't dropped either; it
+survives under `binding.meta`, namespaced there instead of spread onto the
+binding so it can't collide with a future first-class field. `meta`'s values
+are typed `unknown` for the same reason.
+
+### Nested fields
+
+A `render` map describes the keys inside an `object`/`array` value. An entry
+that declares `type` is a leaf, and a leaf accepts every field a top-level
+binding does — `label`, `widget`, `options`, constraints and `meta` — so a
+nested field can be named, drawn and validated like a flat one:
+
+```tsx
+// data-binding={[{
+//   label: 'Items', property: 'items', type: 'array',
+//   render: {
+//     size: { type: 'number', label: 'Size', min: 0, max: 40, widget: { type: 'slider', step: 4 } },
+//   },
+// }]}
+```
+
+`useItemsEditor` hands each key back as a `PanelBinding` carrying those
+fields. `label` and `property` fall back to the key when the leaf omits
+them, and `meta.valueType` is always set to the property's actual kind (an
+authored `valueType` is overridden).
 
 Constraints declared on a binding (`min`/`max`/`pattern`/`required`) aren't
 enforced automatically — call the exported `validateBindingValue(binding,

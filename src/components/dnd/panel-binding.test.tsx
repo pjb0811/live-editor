@@ -2,7 +2,7 @@
 import { render, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { type DataAttrNode, extract, fillIds } from '~/utils/ast';
+import { type DataAttrNode, extract, fillIds, parseBinding } from '~/utils/ast';
 
 import {
   type PanelBinding,
@@ -257,6 +257,58 @@ describe('panel paths agree on the same element', () => {
     // satisfy an equality check (#234, #236).
     expect(fromItems.meta).toEqual({ group: 'content', order: 3 });
     expect(fromNode.widget).toEqual({ type: 'slider', step: 4, unit: 'px' });
+  });
+
+  // The fourth path (#383): the same field spec declared as a render-map leaf
+  // of an `array` binding, rather than as a top-level binding. Its value comes
+  // from an array element, not an attribute, so only the declared fields are
+  // compared — those must arrive exactly as the direct path delivers them.
+  it('resolves a render-map leaf with the same declared fields', () => {
+    const direct = resolvePanelBindings(nodeOf(element, 't1'))!.bindings[0]!;
+    const spec = fullBinding.trim().slice(1, -1);
+    const [items] = parseBinding(
+      `[{ label: 'Rows', property: 'items', type: 'array', render: { title: ${spec} } }]`,
+    );
+    const { result } = renderHook(() =>
+      useItemsEditor(`[{ title: 'Open' }]`, { render: items!.render }),
+    );
+    const fromLeaf = result.current.items[0]!.properties[0]!;
+
+    const declared = (binding: PanelBindingData) => {
+      const {
+        id: _id,
+        value: _value,
+        rawValue: _rawValue,
+        canEditValue: _canEditValue,
+        meta,
+        ...fields
+      } = binding;
+
+      return { ...fields, meta: { ...meta, valueType: undefined } };
+    };
+
+    expect(declared(strip(fromLeaf))).toEqual(declared(strip(direct)));
+    expect(fromLeaf.meta).toEqual({
+      group: 'content',
+      order: 3,
+      valueType: 'string',
+    });
+  });
+
+  it("falls back to the key for a leaf's label and property", () => {
+    const [items] = parseBinding(
+      `[{ label: 'Rows', property: 'items', type: 'array', render: { size: { type: 'not-a-type', valueType: 'spoofed' } } }]`,
+    );
+    const { result } = renderHook(() =>
+      useItemsEditor(`[{ size: 12 }]`, { render: items!.render }),
+    );
+    const leaf = result.current.items[0]!.properties[0]!;
+
+    expect(leaf.label).toBe('size');
+    expect(leaf.property).toBe('size');
+    expect(leaf.type).toBeUndefined();
+    // The library's own `valueType` wins over an authored one.
+    expect(leaf.meta).toEqual({ valueType: 'number' });
   });
 
   it('commits through every path with the same id and property', () => {

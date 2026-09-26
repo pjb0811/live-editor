@@ -14,8 +14,6 @@ import {
   Input,
   RichTextEditor,
   Select,
-  Upload,
-  type UploadFile,
 } from '@jbpark/ui-kit';
 import { useDebounce } from '@jbpark/use-hooks';
 import type {
@@ -29,8 +27,8 @@ import { BINDING_PROP } from '~/constants';
 import { parseValue, validateBindingValue } from '~/utils/ast';
 
 import type { PanelBinding, PanelNodeChange } from '../dnd';
+import { resolveRenderEntry, toBindingFields } from '../panel-binding';
 import Children from './children';
-import { ICON_MAP, ICON_OPTIONS } from './icon-map';
 import Items from './items';
 
 // Exported as `Live.Dnd.Field` (see index.ts) so a custom panel can
@@ -240,7 +238,7 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
 
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // The text-like inputs below (url/asset/number/textarea) commit on blur, so
+  // The text-like inputs below (url/number/textarea) commit on blur, so
   // they need local live state to hold what the user is typing. Left
   // uncontrolled (`defaultValue`), they ignored later changes to the canonical
   // value — an undo/redo or another field touching the same binding — because
@@ -338,21 +336,8 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
             </label>
             <Field
               binding={{
+                ...toBindingFields(resolveRenderEntry(binding.render, key)),
                 id,
-                label: key,
-                property:
-                  binding.render?.[key] && 'type' in binding.render[key]
-                    ? (binding.render[key].type as string)
-                    : key,
-                type:
-                  binding.render?.[key] && 'type' in binding.render[key]
-                    ? (binding.render[key] as { type: PanelBinding['type'] })
-                        .type
-                    : undefined,
-                render:
-                  binding.render?.[key] && !('type' in binding.render[key])
-                    ? (binding.render[key] as PanelBinding['render'])
-                    : undefined,
                 value: val,
                 rawValue:
                   typeof val === 'object' && val !== null
@@ -446,81 +431,6 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
             }
 
             setValidationError(null);
-
-            commitIfChanged(next);
-          }}
-        />
-        {validationError && (
-          <p className="mt-1 text-xs text-red-500">{validationError}</p>
-        )}
-      </div>
-    );
-  }
-
-  // Checks `type` too, not just `widget`: a `type: 'icon-picker'` binding
-  // parsed by `parseBinding` is already normalized to
-  // `widget: { type: 'icon-picker' }` (see #236), but a hand-constructed
-  // BindingItem — e.g. the nested render-leaf case just above, which doesn't
-  // carry `widget` — can still arrive with the alias directly in `type`.
-  if (
-    binding.widget?.type === 'icon-picker' ||
-    binding.type === 'icon-picker'
-  ) {
-    const SelectedIcon = ICON_MAP[stringValue];
-
-    return (
-      <div className="flex items-center gap-2">
-        <Select
-          value={stringValue}
-          options={ICON_OPTIONS}
-          onChange={commitIfChanged}
-        />
-        {SelectedIcon && <SelectedIcon size={18} className="shrink-0" />}
-      </div>
-    );
-  }
-
-  if (
-    binding.widget?.type === 'asset-picker' ||
-    binding.type === 'asset-picker'
-  ) {
-    const defaultUploadValue: UploadFile[] = stringValue
-      ? [
-          {
-            uid: 'current',
-            name: stringValue.split('/').pop() || 'asset',
-            url: stringValue,
-          },
-        ]
-      : [];
-
-    return (
-      <div className="space-y-2">
-        <Input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder="Enter an image URL"
-          onBlur={e => {
-            const next = e.target.value.trim();
-            const result = validateBindingValue(binding, next);
-
-            if (!result.valid) {
-              setValidationError(result.message ?? 'Invalid value.');
-              return;
-            }
-
-            setValidationError(null);
-
-            commitIfChanged(next);
-          }}
-        />
-        <Upload
-          multiple={false}
-          maxCount={1}
-          accept="image/*"
-          defaultValue={defaultUploadValue}
-          onChange={files => {
-            const next = files[0]?.url ?? '';
 
             commitIfChanged(next);
           }}

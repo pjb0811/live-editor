@@ -223,3 +223,57 @@ describe('Items', () => {
     expect(movedView.hasFocus).toBe(true);
   });
 });
+
+// #383: a render-map leaf's label and constraints used to be dropped on the
+// way to the nested editor, so a nested field was never validated.
+describe('Items render-map leaves', () => {
+  const leaves = {
+    size: { type: 'number' as const, label: 'Size', min: 0, max: 40 },
+    title: { type: 'string' as const, required: true },
+  };
+
+  it('labels the nested field with the leaf label, falling back to the key', () => {
+    render(<Items value={`[{ size: 12, title: 'A' }]`} render={leaves} />);
+
+    expect(screen.getByText('Size')).not.toBeNull();
+    expect(screen.getByText('title')).not.toBeNull();
+  });
+
+  it('rejects an out-of-range number with the top-level message', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <Items
+        value={`[{ size: 12, title: 'A' }]`}
+        render={leaves}
+        onChange={onChange}
+      />,
+    );
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="number"]',
+    )!;
+
+    fireEvent.change(input, { target: { value: '99' } });
+    fireEvent.blur(input);
+
+    expect(screen.getByText('Must be at most 40.')).not.toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('blocks an empty commit for a required leaf', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <Items
+        value={`[{ size: 12, title: 'A' }]`}
+        render={leaves}
+        onChange={onChange}
+      />,
+    );
+    const textarea = container.querySelector('textarea')!;
+
+    fireEvent.change(textarea, { target: { value: '' } });
+    fireEvent.blur(textarea);
+
+    expect(screen.getByText('This field is required.')).not.toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});

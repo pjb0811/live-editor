@@ -24,7 +24,6 @@ import {
   useDndPanel,
 } from './layout-context';
 import Field, { type FieldProps } from './panel/field';
-import { ICON_MAP, ICON_OPTIONS } from './panel/icon-map';
 import {
   type ItemsEditor,
   type ItemsEditorActions,
@@ -96,11 +95,6 @@ export type {
   ChildrenEditorOptions,
 } from './panel/use-children-editor';
 export { useItemsEditor };
-// The built-in panel's own `widget: 'icon-picker'` icon set/options —
-// exported so a custom panel can reach icon-picker parity (name ->
-// lucide-react component, and the same label/value pairs fed to Select)
-// instead of reimplementing an icon library, per #236/#237.
-export { ICON_MAP, ICON_OPTIONS };
 export type {
   Props,
   DndPalette,
