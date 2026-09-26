@@ -91,10 +91,13 @@ describe('useChildrenEditor', () => {
     act(() => result.current.selection.toggle(1, false));
     act(() => result.current.actions.duplicateSelected());
     expect(result.current.items).toHaveLength(4);
-    expect(result.current.selection.selected.size).toBe(0);
+    // Copies are appended, so the original keeps its position and stays
+    // selected — the same rule Items follows (#342).
+    expect([...result.current.selection.selected]).toEqual([1]);
     expect(result.current.items[3]!.source).toMatch(
       /<p data-id="(?!b")[^"]+">B<\/p>/,
     );
+    act(() => result.current.selection.toggle(1, false));
     act(() => result.current.selection.toggle(3, false));
     act(() => result.current.actions.moveSelected('up'));
     expect(result.current.items[2]!.source).toContain('>B</p>');
