@@ -56,13 +56,18 @@ describe('Children panel integration', () => {
     fireEvent.click(screen.getAllByRole('checkbox')[1]!);
     fireEvent.click(screen.getByTitle('Move selected up'));
     await waitFor(() =>
-      expect(screen.queryByTitle('Duplicate selected')).toBeNull(),
+      expect(screen.getByTestId('source').textContent).toContain(
+        `${second}${gap}${first}`,
+      ),
     );
-    expect(screen.getByTestId('source').textContent).toContain(
-      `${second}${gap}${first}`,
-    );
+    // The moved child stays selected at its new position (#342), so the
+    // bulk actions stay available for it.
+    expect(
+      screen
+        .getAllByRole('checkbox')
+        .map(box => box.getAttribute('aria-checked')),
+    ).toEqual(['true', 'false']);
 
-    fireEvent.click(screen.getAllByRole('checkbox')[0]!);
     fireEvent.click(screen.getByTitle('Duplicate selected'));
     await waitFor(() => expect(screen.getAllByRole('textbox')).toHaveLength(3));
     fireEvent.click(screen.getAllByTitle('Delete item')[0]!);

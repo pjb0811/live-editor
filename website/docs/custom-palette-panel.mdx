@@ -466,9 +466,9 @@ What you don't have to reimplement:
 - Translating a visible item position (`index`) to its position in the
   array's elements (`elementIndex`), which is what every edit addresses.
   They differ whenever the array mixes objects and primitives.
-- Reconciling the selection after a move or delete. Positions shift while
-  the count stays the same, so the selection has to be cleared or replaced
-  or a later bulk action hits the wrong elements.
+- Keeping the selection pointed at the right items after every edit, so a
+  later bulk action never hits the wrong ones. See
+  [Selection after an edit](#selection-after-an-edit).
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -555,8 +555,8 @@ Structural edits preserve each subtree's original source. Text, comments, and
 expressions between children stay in their original slots. Copies are appended
 before the closing tag, with fresh `data-id` values on copied JSX elements.
 Add copies the first child, or inserts an empty `div` when the list is empty.
-Selection clears when the host supplies changed source, including undo and
-external edits; a rejected edit leaves the selection intact.
+The selection follows the rule in
+[Selection after an edit](#selection-after-an-edit).
 
 The AST layer refuses stale commands, invalid indices, unmodeled empty or
 expression-only fragments, and copies whose dynamic IDs or trailing spreads
@@ -571,6 +571,25 @@ source loss and the result introduces no duplicate static IDs. Prefer the hook
 for structural operations; retain the extracted `source` metadata for stale-edit
 checks. Low-level callers can use `ChildrenEdit` and `getChildrenSignatures` from
 `@jbpark/live-editor/utils/ast`.
+
+### Selection after an edit
+
+`useItemsEditor` and `useChildrenEditor` share one selection rule. Selection
+indices are positions, so whatever moves items has to move or clear the
+selection with them:
+
+| What changed the source | Selection afterwards |
+| --- | --- |
+| `add`, `duplicateSelected` | Unchanged. Both append at the end, so no existing item moves. |
+| `moveSelected` | The moved items, at their new positions, so the block can be moved again. |
+| `move`, `remove`, `removeSelected` | Cleared. Positions shifted under the selection. |
+| An item value edit (`useItemsEditor`) | Unchanged. |
+| Anything else: another field, undo, an external `value` | Cleared. The same positions may now hold different items. |
+| A refused edit | Unchanged. No new source was produced. |
+
+`useChildrenEditor` applies the result when the new source arrives, since the
+host's `onChange` decides whether the edit succeeds. `useItemsEditor` applies
+it immediately, because its own array edit has already succeeded by then.
 
 ### `PanelBinding`
 
