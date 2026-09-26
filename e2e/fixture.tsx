@@ -268,12 +268,110 @@ export const TransitionFixture = () => (
   </Live>
 );
 
+// A healthy section beside one that throws while rendering, in either frame
+// mode. The host drives two things a real frame has to get right: fixing the
+// broken section's code (recovery without tearing its frame down), and
+// adding, changing and removing a host stylesheet (`syncStyle`, #338).
+const framesCode = `const App = () => (
+  <main id="app-container">
+    <section data-id="s-healthy" data-name="Healthy">
+      <p id="themed" className="themed">themed text</p>
+    </section>
+    <section data-id="s-broken" data-name="Broken">
+      <p id="broken">{brokenValue}</p>
+    </section>
+  </main>
+);
+
+export default App;`;
+
+const HOST_STYLE_ID = 'host-theme';
+
+const setHostStyle = (color: string | null) => {
+  const existing = document.getElementById(HOST_STYLE_ID);
+
+  if (color === null) {
+    existing?.remove();
+
+    return;
+  }
+
+  const style = existing ?? document.createElement('style');
+
+  style.id = HOST_STYLE_ID;
+  style.textContent = `.themed { color: ${color}; }`;
+  document.head.append(style);
+};
+
+export const FramesFixture = () => {
+  const [code, setCode] = useState(framesCode);
+  const mode =
+    new URLSearchParams(window.location.search).get('mode') === 'shadow'
+      ? 'shadow'
+      : 'iframe';
+
+  return (
+    <Live>
+      <button
+        onClick={() =>
+          setCode(previous =>
+            previous.replace('{brokenValue}', 'fixed section'),
+          )
+        }
+      >
+        Fix broken section
+      </button>
+      <button onClick={() => setHostStyle('rgb(255, 0, 0)')}>
+        Add host style
+      </button>
+      <button onClick={() => setHostStyle('rgb(0, 0, 255)')}>
+        Change host style
+      </button>
+      <button onClick={() => setHostStyle(null)}>Remove host style</button>
+      <div style={{ height: 700 }}>
+        <Live.Dnd
+          value={code}
+          onChange={setCode}
+          frame={{ mode, syncStyle: true }}
+        >
+          <Live.Dnd.Canvas />
+        </Live.Dnd>
+      </div>
+    </Live>
+  );
+};
+
+// The real CodeMirror editor, so its own undo history is what's under test,
+// with the same probe panel as `SurfaceFixture` for the DnD side.
+export const HistoryFixture = () => {
+  const [code, setCode] = useState(documentCode);
+  const [mode, setMode] = useState<'dnd' | 'editor'>('editor');
+
+  return (
+    <Live>
+      <button onClick={() => setMode('dnd')}>DnD mode</button>
+      <button onClick={() => setMode('editor')}>Editor mode</button>
+      {mode === 'dnd' ? (
+        <Live.Dnd value={code} onChange={setCode}>
+          <Live.Dnd.Canvas />
+          <SurfacePanel />
+        </Live.Dnd>
+      ) : (
+        <Live.Editor value={code} onChange={setCode} debounce={0} />
+      )}
+      <output data-testid="source">{code}</output>
+    </Live>
+  );
+};
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
   surfaces: <SurfaceFixture />,
   autoheight: <AutoHeightFixture />,
   transitions: <TransitionFixture />,
+  frames: <FramesFixture />,
+  history: <HistoryFixture />,
 } as const;
 
 createRoot(document.getElementById('root')!).render(
