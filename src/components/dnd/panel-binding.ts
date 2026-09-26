@@ -3,6 +3,7 @@ import {
   type BindingOption,
   type BindingRenderMap,
   type BindingType,
+  type BindingWidget,
   type DataAttrNode,
   canLosslesslyEvaluateSource,
   getCurrentValue,
@@ -38,12 +39,17 @@ export interface PanelBinding {
   // (`string`/`url` -> <input>, `jsx`/`richtext` -> <textarea>, `boolean`
   // -> checkbox, ...). `undefined` means a plain string binding.
   type?: BindingType;
-  // Presentation, as opposed to `type`'s data kind — an open string, not a
-  // closed enum, since a custom panel can declare any widget it wants
-  // (e.g. `'slider'`) and switch on it itself. The built-in panel
-  // only recognizes `'icon-picker'`/`'asset-picker'`; anything else falls
-  // back to the `type`-appropriate default control. See #236.
-  widget?: string;
+  // Presentation, as opposed to `type`'s data kind — switch on `widget.type`,
+  // an open string rather than a closed enum, since a custom panel can
+  // declare any control it wants (e.g. `'slider'`) along with that control's
+  // own config (`step`, `unit`, ...). Always the object form even when
+  // authored as a bare string. The built-in panel only recognizes
+  // `'icon-picker'`/`'asset-picker'`; anything else falls back to the
+  // `type`-appropriate default control. See #236.
+  //
+  // Value constraints are *not* in here — `min`/`max`/`pattern`/`required`
+  // below apply with or without a widget.
+  widget?: BindingWidget;
   // Present when the binding defines a fixed option set (render a <select>).
   options?: BindingOption[];
   // Present for `object`/`array` bindings whose nested keys/items declare

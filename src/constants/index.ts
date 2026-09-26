@@ -88,15 +88,21 @@ export const DRAGGABLE_ITEMS: Section[] = [
               label: 'Content Spacing',
               property: 'size',
               type: 'number',
-              widget: 'slider',
+              // min/max stay on the item: they are value constraints that
+              // validateBindingValue enforces with or without a widget, so a
+              // slider reads its bounds from here rather than declaring a
+              // second, conflictable copy.
               min: 0,
               max: 40,
-              // step/unit aren't fields this library knows about — they
-              // survive parsing under binding.meta instead of being
-              // stripped, so a custom panel can read its own
-              // per-field configuration back out. See #234.
-              step: 4,
-              unit: 'px',
+              // The widget carries only what draws the control. slider is
+              // not one of the built-in panel's own widgets — it's here as
+              // the example a custom panel switches on, together with the
+              // per-control config it reads back out. See #236.
+              widget: {
+                type: 'slider',
+                step: 4,
+                unit: 'px',
+              },
             },
           ]}
           style={{

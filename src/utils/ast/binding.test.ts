@@ -87,18 +87,21 @@ describe('parseBinding', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]).toHaveProperty('type', 'string');
-      expect(result[0]).toHaveProperty('widget', typeValue);
+      expect(result[0]).toHaveProperty('widget', { type: typeValue });
     },
   );
 
-  it('passes through an arbitrary widget string alongside a real type', () => {
+  // The bare-string form predates `widget` being an object and is what every
+  // document authored before it uses, so it stays supported — normalized to
+  // the object so consumers only ever switch on `widget.type`.
+  it('normalizes a bare widget string into the object form', () => {
     const result = parseBinding(
       "[{label: 'X', property: 'y', type: 'number', widget: 'slider'}]",
     );
 
     expect(result).toHaveLength(1);
     expect(result[0]).toHaveProperty('type', 'number');
-    expect(result[0]).toHaveProperty('widget', 'slider');
+    expect(result[0]).toHaveProperty('widget', { type: 'slider' });
   });
 
   it('keeps an unrecognized widget value instead of dropping the item', () => {
@@ -107,7 +110,61 @@ describe('parseBinding', () => {
     );
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toHaveProperty('widget', 'not-a-real-widget');
+    expect(result[0]).toHaveProperty('widget', { type: 'not-a-real-widget' });
+  });
+
+  it('carries typed widget config and passes unknown control keys through', () => {
+    const result = parseBinding(`[{
+      label: 'X', property: 'y', type: 'number', min: 0, max: 40,
+      widget: { type: 'slider', step: 4, unit: 'px', snapTo: [0, 20, 40] },
+    }]`);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty('widget', {
+      type: 'slider',
+      step: 4,
+      unit: 'px',
+      snapTo: [0, 20, 40],
+    });
+    // Constraints stay on the item: `validateBindingValue` applies them with
+    // or without a widget, so the widget must not become a second home.
+    expect(result[0]).toHaveProperty('min', 0);
+    expect(result[0]).toHaveProperty('max', 40);
+    // Widget config is not consumer metadata about the field as a whole.
+    expect(result[0]?.meta).toBeUndefined();
+  });
+
+  it.each([
+    ['a missing type', 'widget: { step: 4 }'],
+    ['an empty type', "widget: { type: '' }"],
+    ['a non-string type', 'widget: { type: 4 }'],
+    ['a non-object, non-string value', 'widget: 42'],
+  ])(
+    'degrades the field to widget-less rather than dropping it for %s',
+    (_label, widgetSource) => {
+      const result = parseBinding(
+        `[{label: 'X', property: 'y', type: 'number', ${widgetSource}}]`,
+      );
+
+      // A malformed `widget` used to fail `rawBindingItemSchema` and take the
+      // whole item with it, so the field silently vanished from the panel.
+      // Same contract as a typo'd `type` now: degrade this one axis, keep the
+      // field (#234).
+      expect(result).toHaveLength(1);
+      expect(result[0]?.widget).toBeUndefined();
+      expect(result[0]).toHaveProperty('label', 'X');
+      expect(result[0]).toHaveProperty('type', 'number');
+    },
+  );
+
+  it('lets an explicitly authored widget win over a legacy type alias', () => {
+    const result = parseBinding(
+      "[{label: 'X', property: 'y', type: 'icon-picker', widget: { type: 'slider', step: 2 }}]",
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty('type', 'string');
+    expect(result[0]).toHaveProperty('widget', { type: 'slider', step: 2 });
   });
 
   it('extracts both type and property on nested render leaves', () => {

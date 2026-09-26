@@ -107,22 +107,22 @@ const ParsedValueEditor = ({
   </div>
 );
 
-// `binding.widget` is an open string (#236) — a custom panel switches
+// `binding.widget.type` is an open string (#236) — a custom panel switches
 // on it to render whatever control it wants; the built-in panel only knows
 // `icon-picker`/`asset-picker`, so anything else (like `'slider'` here) is
 // exclusively this demo's own choice, not a value the library defines.
 //
-// `step`/`unit` aren't fields PanelBinding declares either — they're
-// whatever this demo's own binding happened to author (see the Hero
-// section's "Content Spacing" field), carried through under `binding.meta`
-// instead of being stripped during parsing (#234). `meta`'s values are
-// `unknown` on purpose (the library can't know what shape a consumer's own
-// metadata takes), so narrow them before use rather than trusting the type.
+// `step`/`unit` are typed fields on `widget`, so they need no narrowing. Any
+// *further* control config this demo invented would arrive on `widget` too,
+// under the same passthrough contract as `meta` (#234) and with the same
+// `unknown` value type — narrow those before use.
+//
+// `min`/`max` are read off the binding itself, not the widget: they are value
+// constraints `validateBindingValue` applies with or without a widget, so the
+// slider's bounds and the validator's bounds cannot drift apart.
 const SliderField = ({ binding }: { binding: PanelBinding }) => {
-  const metaStep = binding.meta?.step;
-  const step = typeof metaStep === 'number' ? metaStep : 1;
-  const metaUnit = binding.meta?.unit;
-  const unit = typeof metaUnit === 'string' ? metaUnit : '';
+  const step = binding.widget?.step ?? 1;
+  const unit = binding.widget?.unit ?? '';
 
   return (
     <div className="flex items-center gap-2">
@@ -487,7 +487,7 @@ const MyPanel = ({ mode }: { mode: PanelMode }) => {
               )
             ) : entries ? (
               <ParsedValueEditor binding={binding} entries={entries} />
-            ) : binding.widget === 'slider' ? (
+            ) : binding.widget?.type === 'slider' ? (
               <SliderField binding={binding} />
             ) : binding.options ? (
               <select
