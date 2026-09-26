@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 
 import type { Module } from '~/types';
-import { baseModules, compile } from '~/utils';
+import { compile } from '~/utils';
+
+import { baseModules } from './base-modules';
 
 // Shared by `preview/client.tsx` and `dnd/renderer.tsx`, which both turn a
 // code string into a renderable component in exactly the same way. They used

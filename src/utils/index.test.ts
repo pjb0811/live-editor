@@ -1,23 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// utils/index.ts imports @jbpark/ui-kit for baseModules, which pulls in its
-// CSS — stub both out since detectTypeScript doesn't touch either.
-vi.mock('@jbpark/ui-kit', () => ({}));
-vi.mock('@jbpark/ui-kit/utils', () => ({}));
-
-const {
-  compile,
+import { clearDocumentParseCache, parseDocument } from './ast/document';
+import { clearExtractCache, extract } from './ast/extract';
+import {
   clearCompilationCache,
   clearEditorCaches,
   clearScriptCache,
+  compile,
   detectTypeScript,
   getCachedScriptBlob,
   preloadScripts,
   registerEditorSession,
-} = await import('./index');
-const { clearDocumentParseCache, parseDocument } =
-  await import('./ast/document');
-const { clearExtractCache, extract } = await import('./ast/extract');
+} from './index';
 
 describe('detectTypeScript', () => {
   it('does not flag the default template as TypeScript', () => {

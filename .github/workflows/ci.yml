@@ -61,6 +61,9 @@ jobs:
       - name: Check package types
         run: node .github/scripts/check-package-types.mjs
 
+      - name: Check non-UI entries load in Node
+        run: node .github/scripts/check-node-entries.mjs
+
       - name: Install website dependencies
         run: pnpm --dir website install
 

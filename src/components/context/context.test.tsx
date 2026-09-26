@@ -1,16 +1,11 @@
 // @vitest-environment jsdom
 import { render } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-// The provider reaches ~/utils, which imports @jbpark/ui-kit for baseModules
-// and so pulls in its CSS side effects. Stubbed out the same way
-// src/utils/index.test.ts does.
-vi.mock('@jbpark/ui-kit', () => ({}));
-vi.mock('@jbpark/ui-kit/utils', () => ({}));
+import { clearEditorCaches, compile } from '~/utils';
+import { parseDocument } from '~/utils/ast/document';
 
-const { default: ContextProvider } = await import('./context');
-const { clearEditorCaches, compile } = await import('~/utils');
-const { parseDocument } = await import('~/utils/ast/document');
+import ContextProvider from './context';
 
 const DOC = `const App = () => (
   <main id="app-container">
