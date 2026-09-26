@@ -16,7 +16,8 @@ export default defineConfig({
     // Match `.test.tsx` too — the previous `*.test.ts`-only glob silently
     // collected nothing for `.test.tsx`, so a component test would report
     // "0 failures" while never actually running (#277).
-    include: ['src/**/*.test.{ts,tsx}'],
+    // Plus the release tooling's own pure helpers under .github/scripts.
+    include: ['src/**/*.test.{ts,tsx}', '.github/scripts/**/*.test.mjs'],
     // @jbpark/ui-kit ships CSS side-effect imports (e.g. swiper.css). Left
     // externalized, Node's ESM loader throws "Unknown file extension .css";
     // inlining routes it through Vite so the CSS resolves to an empty module.

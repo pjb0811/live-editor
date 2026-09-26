@@ -7,10 +7,13 @@
 //
 // Uses NVIDIA's OpenAI-compatible API Catalog endpoint. Model selection and
 // fallback logic live in nvidia-chat.mjs.
-
 import { nvidiaChat, requireEnv } from './nvidia-chat.mjs';
+import { findMissingEntries } from './release-notes-coverage.mjs';
 
-const MAX_CHARS = 6000;
+// Over this, fail instead of sending a cut-down section: the caller then
+// publishes the raw changelog, which is complete. Truncating here is what
+// dropped six of 4.0.0's seven patch entries from its release notes.
+const MAX_CHARS = 20000;
 
 async function readStdin() {
   const chunks = [];
@@ -26,8 +29,11 @@ async function main() {
 
   if (!raw) throw new Error('No changelog content on stdin');
 
-  const truncated =
-    raw.length > MAX_CHARS ? `${raw.slice(0, MAX_CHARS)}\n... (truncated)` : raw;
+  if (raw.length > MAX_CHARS) {
+    throw new Error(
+      `Changelog section is ${raw.length} characters, over the ${MAX_CHARS} this sends; use the raw changelog`,
+    );
+  }
 
   const systemPrompt = [
     'You write GitHub Release notes for an open-source npm package',
@@ -39,6 +45,9 @@ async function main() {
     'naturally (you may keep Added/Changed/Fixed-style headings, or drop',
     'them if the release is small). Keep every factual detail from the',
     'input — do not invent features or fixes that are not mentioned.',
+    'Every input entry starts with a short commit hash (`- 8d6c841: ...`).',
+    'Cover every entry, and end each bullet with the hash of each entry it',
+    'covers in parentheses, e.g. (8d6c841) or (d6aa94f, a30b708).',
     'Respond with ONLY the Markdown release notes, no surrounding prose,',
     'no code fences.',
   ].join(' ');
@@ -47,9 +56,19 @@ async function main() {
     temperature: 0.3,
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: truncated },
+      { role: 'user', content: raw },
     ],
   });
+
+  // A rewrite that lost an entry (a cut-off response, or one the model
+  // skipped) must not become the release body.
+  const missing = findMissingEntries(raw, content);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Polished notes dropped ${missing.length} entries: ${missing.join(', ')}`,
+    );
+  }
 
   process.stdout.write(content);
 }
