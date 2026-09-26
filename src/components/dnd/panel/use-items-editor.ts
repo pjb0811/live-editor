@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import * as t from '@babel/types';
-import { Toast } from '@jbpark/ui-kit';
 import { useMultiSelect } from '@jbpark/use-hooks';
 import { nanoid } from 'nanoid';
 
@@ -26,6 +25,7 @@ import {
 } from '~/utils/ast';
 import { moveSelectedIndices } from '~/utils/selection';
 
+import { useDndEditOptions } from '../edit-options';
 import {
   type PanelBinding,
   type PanelNodeChange,
@@ -360,9 +360,22 @@ export const useItemsEditor = (
     [value],
   );
 
+  const { reportError } = useDndEditOptions();
+
+  // Read through a ref so the effect below fires once per parse failure, not
+  // again on every render a host passes a fresh inline `onEditError`.
+  const reportErrorRef = useRef(reportError);
+
+  useEffect(() => {
+    reportErrorRef.current = reportError;
+  });
+
   useEffect(() => {
     if (parseError) {
-      Toast.error('Failed to parse items', {
+      reportErrorRef.current({
+        type: 'parse',
+        target: 'items',
+        title: 'Failed to parse items',
         description: 'Check the console for details.',
       });
     }
@@ -389,7 +402,9 @@ export const useItemsEditor = (
   // `null` means the edit could not be applied.
   const commit = (next: string | null, nextIds?: string[]) => {
     if (next === null) {
-      Toast.error('Failed to update this item', {
+      reportError({
+        type: 'items',
+        title: 'Failed to update this item',
         description:
           'The source was preserved. Structural edits require a dense array without spreads; use the code editor for unsupported syntax.',
       });

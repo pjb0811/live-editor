@@ -9,6 +9,7 @@ import DraggableItem, {
   type DraggableItemDragState,
   type DraggableItemProps,
 } from './draggable';
+import type { DndEditError, DndRenderField } from './edit-options';
 import {
   Canvas,
   type DndLayoutProps,
@@ -105,6 +106,8 @@ export type {
   PanelBinding,
   PanelNodeChange,
   FieldProps,
+  DndEditError,
+  DndRenderField,
   ItemsEditor,
   ItemsEditorActions,
   ItemsEditorItem,

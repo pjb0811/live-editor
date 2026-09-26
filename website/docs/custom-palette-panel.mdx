@@ -323,6 +323,84 @@ positions before every edit. `Field` already does that. For a plain string,
 number or option binding there's little reason to reach for it — a bare
 `<input>` wired to `binding.onChange` is the simpler answer.
 
+### Replacing one control everywhere: `renderField`
+
+To keep the built-in panel and change only how some fields are drawn, pass
+`renderField` to `Live.Dnd`. It is called before the built-in control for
+every field, including the keys inside an `object` value and the properties
+of each array item, and in a custom panel's `Live.Dnd.Field` as well:
+
+```tsx
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  renderField={({ binding }, builtin) => {
+    if (binding.widget?.type === 'slider') {
+      return (
+        <input
+          type="range"
+          min={binding.min}
+          max={binding.max}
+          step={binding.widget.step ?? 1}
+          value={Number(binding.value)}
+          onChange={e => binding.onChange(Number(e.target.value))}
+        />
+      );
+    }
+
+    if (binding.type === 'color') {
+      return <MyColorPicker binding={binding} />;
+    }
+
+    // Anything else keeps the built-in control.
+    return undefined;
+  }}
+/>
+```
+
+What the function returns decides what renders:
+
+| Return | Result |
+| --- | --- |
+| `undefined` | The built-in control. |
+| a node | That node instead. |
+| `null` | Nothing. The field's heading still shows in the built-in panel. |
+
+The second argument, `builtin`, is the control that would have rendered, so
+you can wrap it instead of replacing it (`<Hint>{builtin}</Hint>`). Don't
+render `<Live.Dnd.Field>` from inside `renderField`: it calls `renderField`
+again.
+
+A replacement commits through `binding.onChange` like any other control, so
+validate first with `validateBindingValue(binding, value)` if the field
+declares constraints.
+
+### Handling edit errors: `onEditError`
+
+When an edit can't be applied, the editor shows a toast and leaves the source
+unchanged. Pass `onEditError` to handle it yourself instead. The toast is then
+not shown:
+
+```tsx
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  onEditError={error => {
+    notify(error.title, error.description);
+    logEditError(error);
+  }}
+/>
+```
+
+`title` and `description` are the toast's own messages. `type` says what
+failed:
+
+| `type` | When | Extra fields |
+| --- | --- | --- |
+| `'update'` | A field edit was rejected, usually because the element's `data-binding` names a `property` or `label` its markup doesn't have. | `id`, `label`, `property`, `failure` (with `failure.reason`) |
+| `'parse'` | The selected section, or an `items` value inside it, doesn't parse. | `target` (`'section'` or `'items'`), `error` |
+| `'items'` | An array edit would have lost source (a spread, a hole), so it was refused. | — |
+
 ### Your own markup for an array binding: `useItemsEditor`
 
 `Field` gives you the built-in *control*. When you want the same engine but
@@ -553,7 +631,8 @@ bindings.map(binding =>
 `step` and `unit` are typed; any further key you put on `widget` passes
 through as `unknown`, so narrow it before use. The shipped Custom Palette &
 Panel demo's "Content Spacing" field does exactly this; drag it in the
-embedded demo above to see it live.
+embedded demo above to see it live. To do the same without writing a whole
+panel, see [`renderField`](#replacing-one-control-everywhere-renderfield).
 
 Any key you author on a binding that the library doesn't define arrives
 under `binding.meta`, typed `unknown` for the same reason.
@@ -577,7 +656,7 @@ does.
 Two things a `data-binding` entry has to satisfy for its edits to actually
 commit, neither enforced at parse time:
 
-- **`property` must already exist as an attribute on the element.** `binding.onChange` writes through the same AST-update pipeline the built-in panel uses, which updates an existing JSX attribute — it doesn't add a new one. A binding whose `property` names something not already present in the markup (as a prop, or as the element's own `innerText`/`children`/etc.) parses fine and shows up in `bindings`, but every `onChange` call fails silently on the built-in panel's side (a "Failed to update this field" toast) or returns `success: false` if you're calling `update()` yourself.
+- **`property` must already exist as an attribute on the element.** `binding.onChange` writes through the same AST-update pipeline the built-in panel uses, which updates an existing JSX attribute — it doesn't add a new one. A binding whose `property` names something not already present in the markup (as a prop, or as the element's own `innerText`/`children`/etc.) parses fine and shows up in `bindings`, but every `onChange` call fails on the built-in panel's side (a "Failed to update" toast, or an `onEditError` call) or returns `success: false` if you're calling `update()` yourself.
 - **`label` must be unique per element.** `label` is a display string, not an identifier, but where a binding doesn't declare `property` it's still how the built-in AST utilities resolve *which* binding you mean. Two bindings on the same element sharing a label is an authoring mistake `update()` refuses to silently guess at — it returns `success: false` instead of writing whichever one happened to match first.
 
 ### Escaping the binding system entirely

@@ -27,6 +27,7 @@ import { BINDING_PROP } from '~/constants';
 import { parseValue, validateBindingValue } from '~/utils/ast';
 
 import type { PanelBinding, PanelNodeChange } from '../dnd';
+import { useDndEditOptions } from '../edit-options';
 import { resolveRenderEntry, toBindingFields } from '../panel-binding';
 import Children from './children';
 import Items from './items';
@@ -230,7 +231,7 @@ const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
   );
 };
 
-const Field = ({ binding, onNodeChange }: FieldProps) => {
+const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   // `value` is already structured (its real JS type); `rawValue` is the exact
   // source text used for the raw editors (Items/code/textarea) and as the
   // <input> defaultValue. See #238.
@@ -513,6 +514,23 @@ const Field = ({ binding, onNodeChange }: FieldProps) => {
       )}
     </div>
   );
+};
+
+// The public control: a consumer's `renderField` gets the first say, with the
+// built-in control as its fallback. Every field goes through here — nested
+// object keys and item properties render `Field` too — so an override
+// reaches them without any per-editor wiring.
+const Field = (props: FieldProps) => {
+  const { renderField } = useDndEditOptions();
+  const builtin = <BuiltinField {...props} />;
+
+  if (!renderField) {
+    return builtin;
+  }
+
+  const custom = renderField(props, builtin);
+
+  return custom === undefined ? builtin : <>{custom}</>;
 };
 
 export default Field;

@@ -37,9 +37,10 @@ built-in panel picks a default control from those and validates edits against
 them.
 
 How a field is **drawn** belongs to the panel. `widget` is carried through to
-your panel untouched; the built-in panel never reads it. See
-[Custom Palette & Panel](./custom-palette-panel.mdx#choosing-a-control-is-the-panels-job)
-for switching on it.
+your panel untouched; the built-in panel never reads it. Switch on it in
+[`renderField`](./custom-palette-panel.mdx#replacing-one-control-everywhere-renderfield)
+to replace individual controls while keeping the built-in panel, or in a
+[custom panel](./custom-palette-panel.mdx#choosing-a-control-is-the-panels-job).
 
 ## Fields
 
@@ -220,4 +221,4 @@ it:
 - Any key the library does not define (`group` above) arrives under
   `binding.meta.group`.
 
-The built-in panel shows the number input above and ignores both.
+The built-in panel shows a number input for this field and ignores both.
