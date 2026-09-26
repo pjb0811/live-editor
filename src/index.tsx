@@ -2,9 +2,11 @@ import './index.css';
 
 import Context from './components/context';
 import LiveDnd, {
+  type DndEditError,
   type DndLayout,
   type DndPalette,
   type DndPanel,
+  type DndRenderField,
   type FieldProps,
   type ItemsEditor,
   type ItemsEditorItem,
@@ -35,6 +37,8 @@ export {
 };
 
 export type {
+  DndEditError,
+  DndRenderField,
   DndPalette,
   DndPanel,
   DndLayout,

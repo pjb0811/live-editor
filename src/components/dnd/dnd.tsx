@@ -1,4 +1,4 @@
-import { Children, useEffect, useMemo, useState } from 'react';
+import { Children, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   DndContext,
@@ -17,7 +17,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Space, Toast, Typography } from '@jbpark/ui-kit';
+import { Space, Typography } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 
 import { DRAGGABLE_ITEMS } from '~/constants';
@@ -29,6 +29,12 @@ import { cn, preloadScripts } from '../../utils';
 import { usePreview } from '../context/states';
 import { type FrameProps } from '../frame';
 import Droppable from './droppable';
+import {
+  type DndEditError,
+  DndEditOptionsContext,
+  type DndRenderField,
+  toastEditError,
+} from './edit-options';
 import Layout from './layout';
 import { DndRegionContext } from './layout-context';
 import Overlay from './overlay';
@@ -167,6 +173,15 @@ export interface Props extends Omit<
   dynamicTailwind?: boolean;
   provider?: (children: React.ReactNode) => React.ReactNode;
   onChange?: (value: string) => void;
+  // Replaces the built-in control for any field, wherever it renders — the
+  // built-in panel, `Live.Dnd.Field` in a custom panel, nested object keys
+  // and array item properties. Return `undefined` to keep the built-in one.
+  // See `DndRenderField`.
+  renderField?: DndRenderField;
+  // Receives every edit the editor could not apply. When set, the built-in
+  // error toast is not shown; the payload carries the same title and
+  // description so a host can show them its own way.
+  onEditError?: (error: DndEditError) => void;
   // The single customization slot. Omit it for the built-in editor. Supply
   // it and you own the arrangement: compose `Live.Dnd.Palette` /
   // `Live.Dnd.Canvas` / `Live.Dnd.Panel` (each the built-in region, in the
@@ -204,6 +219,8 @@ const Dnd = ({
   frame,
   dynamicTailwind = false,
   provider,
+  renderField,
+  onEditError,
   children,
   ...restProps
 }: Props) => {
@@ -303,7 +320,7 @@ const Dnd = ({
       return {
         fields: [] as DataAttrNode[],
         updatedCode: '',
-        parseError: false,
+        parseError: null,
       };
     }
 
@@ -315,21 +332,35 @@ const Dnd = ({
       return {
         fields: filtered,
         updatedCode: updated !== selectedCode ? updated : selectedCode,
-        parseError: false,
+        parseError: null,
       };
     } catch (e) {
       console.warn('⚠️ Parsing error', e);
       return {
         fields: [] as DataAttrNode[],
         updatedCode: '',
-        parseError: true,
+        parseError: { error: e },
       };
     }
   }, [selectedCode]);
 
+  const reportError = onEditError ?? toastEditError;
+
+  // Read through a ref so the effect below fires once per parse failure, not
+  // again on every render a host passes a fresh inline `onEditError`.
+  const reportErrorRef = useRef(reportError);
+
+  useEffect(() => {
+    reportErrorRef.current = reportError;
+  });
+
   useEffect(() => {
     if (parseError) {
-      Toast.error('Failed to parse this section', {
+      reportErrorRef.current({
+        type: 'parse',
+        target: 'section',
+        error: parseError.error,
+        title: 'Failed to parse this section',
         description: 'Check the console for details.',
       });
     }
@@ -349,11 +380,14 @@ const Dnd = ({
     const result = update(updatedCode, id, label, fieldValue, property);
 
     if (!result.success) {
-      const { title, description } = describeUpdateFailure(
-        result.failure,
+      reportError({
+        type: 'update',
+        id,
         label,
-      );
-      Toast.error(title, description ? { description } : undefined);
+        property,
+        failure: result.failure,
+        ...describeUpdateFailure(result.failure, label),
+      });
       return;
     }
 
@@ -507,26 +541,28 @@ const Dnd = ({
           {/* Not memoized: `palette`, `panel` and `canvas` are all rebuilt
               each render anyway, so a memo would only add a dependency list
               to keep in sync. */}
-          <DndRegionContext.Provider
-            value={{
-              palette,
-              panel,
-              canvas,
-              isMobile,
-              selectedId,
-              clearSelection,
-              paletteOpen: mobilePaletteOpen,
-              setPaletteOpen: setMobilePaletteOpen,
-            }}
-          >
-            {/* `Children.toArray` rather than a plain `children ??`: a JSX
+          <DndEditOptionsContext.Provider value={{ renderField, reportError }}>
+            <DndRegionContext.Provider
+              value={{
+                palette,
+                panel,
+                canvas,
+                isMobile,
+                selectedId,
+                clearSelection,
+                paletteOpen: mobilePaletteOpen,
+                setPaletteOpen: setMobilePaletteOpen,
+              }}
+            >
+              {/* `Children.toArray` rather than a plain `children ??`: a JSX
                 comment, or a `{cond && <MyLayout />}` that fell through,
                 leaves `children` set but empty — and honouring that
                 literally renders an editor with no regions at all, which
                 looks like a broken build rather than a mistake in the
                 layout. Falling back keeps the failure legible. */}
-            {Children.toArray(children).length ? children : <Layout />}
-          </DndRegionContext.Provider>
+              {Children.toArray(children).length ? children : <Layout />}
+            </DndRegionContext.Provider>
+          </DndEditOptionsContext.Provider>
         </div>
         <DragOverlay>
           <Overlay
