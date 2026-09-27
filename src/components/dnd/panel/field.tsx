@@ -231,6 +231,14 @@ const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
   );
 };
 
+// `mb-0` is deliberate: `dist/style.css` ships without a preflight, so a bare
+// `<p>` keeps the UA's `margin-block: 1em` in a consumer that doesn't reset
+// it. That bottom margin collapses out of the field's wrapper and overrides
+// `FieldGroup`'s `space-y-1`, shifting every field below as the error toggles
+// (#409). `mt-1` already declares the top; this declares the bottom.
+const FieldError = ({ message }: { message: string | null }) =>
+  message ? <p className="mt-1 mb-0 text-xs text-red-500">{message}</p> : null;
+
 const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   // `value` is already structured (its real JS type); `rawValue` is the exact
   // source text used for the raw editors (Items/code/textarea) and as the
@@ -411,9 +419,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
             commitIfChanged(next);
           }}
         />
-        {validationError && (
-          <p className="mt-1 text-xs text-red-500">{validationError}</p>
-        )}
+        <FieldError message={validationError} />
       </div>
     );
   }
@@ -440,9 +446,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
             commitIfChanged(next);
           }}
         />
-        {validationError && (
-          <p className="mt-1 text-xs text-red-500">{validationError}</p>
-        )}
+        <FieldError message={validationError} />
       </div>
     );
   }
@@ -476,9 +480,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
             commitIfChanged(next);
           }}
         />
-        {validationError && (
-          <p className="mt-1 text-xs text-red-500">{validationError}</p>
-        )}
+        <FieldError message={validationError} />
       </div>
     );
   }
@@ -509,9 +511,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           commitIfChanged(next);
         }}
       />
-      {validationError && (
-        <p className="mt-1 text-xs text-red-500">{validationError}</p>
-      )}
+      <FieldError message={validationError} />
     </div>
   );
 };

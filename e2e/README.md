@@ -10,8 +10,9 @@ The scenarios cover keyboard item range selection (#320), CodeMirror
 focus/selection through a nested JSX item move (#359), preservation of
 panel, external, and code-editor changes across DnD/Editor transitions,
 `autoHeight` measurement of animated `position: fixed` content (#374), section
-error recovery and host style sync in both frame modes, and a code-editor undo
-followed by a panel edit (#344). The
+error recovery and host style sync in both frame modes, a code-editor undo
+followed by a panel edit (#344), and the panel's validation error keeping the
+declared field spacing on a page with no preflight (#409). The
 second uses `HTMLElement.click()` deliberately: a physical click on the move
 button is an intentional blur, whereas this test isolates the editor lifecycle
 caused by moving a focused item.
