@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { generateTailwindCSSFromDOM } from '~/utils/tailwind';
-
 // Compiles the Tailwind classes found in rendered output and returns them as
 // a CSS string for the caller to inject as a `<style>` tag. Shared by
 // `preview/client.tsx` and `dnd/renderer.tsx`, which previously carried
@@ -20,6 +18,10 @@ import { generateTailwindCSSFromDOM } from '~/utils/tailwind';
 // in a `[code, enabled]`-keyed effect would see `null` on that first pass and
 // never retry; making the element itself a dependency re-runs the scan once
 // it actually exists.
+//
+// The Tailwind compiler and its theme are imported on first use rather than
+// with this module: they only matter with `dynamicTailwind` on, and were
+// otherwise ~300 kB of every consumer's initial bundle (#332).
 export const useDynamicTailwind = (code: string, enabled: boolean) => {
   const [css, setCss] = useState('');
   const [element, setElement] = useState<HTMLDivElement | null>(null);
@@ -35,11 +37,15 @@ export const useDynamicTailwind = (code: string, enabled: boolean) => {
 
     let cancelled = false;
 
-    generateTailwindCSSFromDOM(element).then(next => {
-      if (!cancelled) {
-        setCss(next);
-      }
-    });
+    import('~/utils/tailwind')
+      .then(({ generateTailwindCSSFromDOM }) =>
+        generateTailwindCSSFromDOM(element),
+      )
+      .then(next => {
+        if (!cancelled) {
+          setCss(next);
+        }
+      });
 
     return () => {
       cancelled = true;
