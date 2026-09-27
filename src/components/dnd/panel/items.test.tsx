@@ -110,11 +110,16 @@ describe('Items', () => {
       structuralButtons.every(button => (button as HTMLButtonElement).disabled),
     ).toBe(true);
 
-    const checkboxes = [
-      ...container.querySelectorAll<HTMLInputElement>('[role="checkbox"]'),
-    ];
+    // Read the accessible state rather than a native `disabled` property:
+    // ui-kit's checkbox is not necessarily a native control (it is a Base UI
+    // `span` since ui-kit 10), but it always exposes `aria-disabled`.
+    const checkboxes = [...container.querySelectorAll('[role="checkbox"]')];
     expect(checkboxes).toHaveLength(2);
-    expect(checkboxes.every(checkbox => checkbox.disabled)).toBe(true);
+    expect(
+      checkboxes.every(
+        checkbox => checkbox.getAttribute('aria-disabled') === 'true',
+      ),
+    ).toBe(true);
 
     const valueEditors = container.querySelectorAll('textarea');
     expect(valueEditors).toHaveLength(2);
