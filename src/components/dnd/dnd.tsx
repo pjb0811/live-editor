@@ -28,6 +28,7 @@ import type { UpdateFailure } from '~/utils/ast';
 import { cn, preloadScripts } from '../../utils';
 import { usePreview } from '../context/states';
 import { type FrameProps } from '../frame';
+import { useStableModules } from '../preview/use-stable-modules';
 import Droppable from './droppable';
 import {
   type DndEditError,
@@ -231,7 +232,7 @@ const NO_MODULES: Record<string, unknown> = {};
 const Dnd = ({
   value: _value,
   props,
-  modules = NO_MODULES,
+  modules: _modules = NO_MODULES,
   onChange: _onChange,
   className,
   items = [],
@@ -245,6 +246,7 @@ const Dnd = ({
   children,
   ...restProps
 }: Props) => {
+  const modules = useStableModules(_modules);
   const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false);
 
   const { breakpoint } = useResponsiveSize();

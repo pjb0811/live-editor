@@ -46,9 +46,9 @@ const value = DEFAULT_TEMPLATE.replace(
   `<main id="app-container">${section('a')}${section('b')}</main>`,
 );
 
-const tree = (frame: FrameProps) => (
+const tree = (frame: FrameProps, modules?: Record<string, unknown>) => (
   <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
-    <Dnd value={value} onChange={vi.fn()} frame={frame}>
+    <Dnd value={value} onChange={vi.fn()} frame={frame} modules={modules}>
       <Canvas />
     </Dnd>
   </PreviewContext.Provider>
@@ -72,6 +72,36 @@ describe('canvas sections re-render only when their own inputs change', () => {
     const before = renders();
 
     act(() => rerender(tree({ mode: 'iframe', scripts: ['b.js'] })));
+
+    expect(renders()).toBeGreaterThan(before);
+  });
+});
+
+// #397: the same, for a host's inline `modules={{ ... }}`.
+describe('an inline modules object', () => {
+  const Chart = () => null;
+  const Table = () => null;
+  const frame = { mode: 'iframe' } as const;
+
+  it('skips sections when only a fresh but equal modules object is passed', () => {
+    const { rerender } = render(tree(frame, { Chart }));
+    const before = renders();
+
+    act(() => rerender(tree(frame, { Chart })));
+
+    expect(before).toBeGreaterThan(0);
+    expect(renders()).toBe(before);
+  });
+
+  it.each([
+    ['a module is replaced', { Chart: Table }],
+    ['a module is added', { Chart, Table }],
+    ['a module is removed', {}],
+  ])('re-renders sections when %s', (_case, next) => {
+    const { rerender } = render(tree(frame, { Chart }));
+    const before = renders();
+
+    act(() => rerender(tree(frame, next)));
 
     expect(renders()).toBeGreaterThan(before);
   });
