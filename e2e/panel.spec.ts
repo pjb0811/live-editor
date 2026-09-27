@@ -82,3 +82,33 @@ test('external and panel edits survive switching between DnD and Editor', async 
     2,
   );
 });
+
+test('a validation error keeps the declared field spacing without a preflight', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixture.html?scenario=field-error');
+
+  const next = page.getByRole('textbox').nth(1);
+  const topBefore = await next.evaluate(el => el.getBoundingClientRect().top);
+
+  const link = page.getByRole('textbox').first();
+
+  await link.fill('not a url');
+  await link.blur();
+
+  const error = page.locator('p.text-red-500');
+
+  await expect(error).toBeVisible();
+  await expect(error).toHaveCSS('margin-bottom', '0px');
+
+  // The error's own height (plus its `mt-1`) is the only shift allowed —
+  // no UA bottom margin collapsing into the gap before the next field.
+  const errorBox = await error.evaluate(el => {
+    const rect = el.getBoundingClientRect();
+
+    return rect.height + parseFloat(getComputedStyle(el).marginTop);
+  });
+  const topAfter = await next.evaluate(el => el.getBoundingClientRect().top);
+
+  expect(topAfter - topBefore).toBeCloseTo(errorBox, 0);
+});

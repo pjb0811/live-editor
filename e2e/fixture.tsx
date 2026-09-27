@@ -5,6 +5,7 @@ import { EditorView } from '@uiw/react-codemirror';
 
 import Live from '../src';
 import { useDndPanel } from '../src/components/dnd';
+import FieldGroup from '../src/components/dnd/panel/field-group';
 import Items from '../src/components/dnd/panel/items';
 
 const selectionItems = `[{ label: 'A' }, { label: 'B' }, { label: 'C' }]`;
@@ -364,6 +365,34 @@ export const HistoryFixture = () => {
   );
 };
 
+// #409: the built-in panel's validation error, rendered with only the
+// library's own stylesheet — no preflight, as in a consumer that doesn't run
+// Tailwind's base layer. The field below it shows whether the error's margin
+// leaks past `FieldGroup`'s `space-y-1`.
+const fieldErrorBindings = [
+  {
+    id: 'link',
+    label: 'Link',
+    property: 'href',
+    type: 'url' as const,
+    value: 'https://example.com',
+    rawValue: 'https://example.com',
+    onChange: () => {},
+  },
+  {
+    id: 'link',
+    label: 'Text',
+    property: 'innerText',
+    value: 'Next',
+    rawValue: 'Next',
+    onChange: () => {},
+  },
+];
+
+export const FieldErrorFixture = () => (
+  <FieldGroup bindings={fieldErrorBindings} />
+);
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
@@ -372,6 +401,7 @@ const fixtures = {
   transitions: <TransitionFixture />,
   frames: <FramesFixture />,
   history: <HistoryFixture />,
+  'field-error': <FieldErrorFixture />,
 } as const;
 
 createRoot(document.getElementById('root')!).render(
