@@ -1,4 +1,4 @@
-import { cn } from '~/utils';
+import { cn } from '~/utils/cn';
 
 export interface Props extends React.ComponentPropsWithRef<'div'> {
   message?: string | null;

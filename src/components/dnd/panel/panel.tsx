@@ -2,7 +2,7 @@ import { Button, Typography } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
 import type { Section } from '~/types';
-import { cn } from '~/utils';
+import { cn } from '~/utils/cn';
 
 import type { PanelBinding, PanelNodeChange } from '../dnd';
 import FieldGroup from './field-group';

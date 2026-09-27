@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { DEFAULT_TEMPLATE } from '~/constants';
-import { registerEditorSession } from '~/utils';
+import { registerEditorSession } from '~/utils/editor-caches';
 
 import type { ErrorContextType, PreviewContextType } from './states';
 import { ErrorContext, PreviewContext } from './states';

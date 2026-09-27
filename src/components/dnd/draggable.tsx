@@ -2,7 +2,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { Card } from '@jbpark/ui-kit';
 
 import type { Section } from '~/types';
-import { cn } from '~/utils';
+import { cn } from '~/utils/cn';
 
 export interface DraggableItemDragState {
   ref: (node: HTMLElement | null) => void;

@@ -2,7 +2,7 @@ import { useDndContext } from '@dnd-kit/core';
 
 import type { FrameProps } from '~/components/frame';
 import type { Section } from '~/types';
-import { generateSection } from '~/utils';
+import { generateSection } from '~/utils/sections';
 
 import { DefaultDraggableItem } from './draggable';
 import Renderer from './renderer';

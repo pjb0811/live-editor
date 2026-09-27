@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 
 import { BINDING_PROP, CONFIG, DATA_ATTR } from '../../constants';
 import { createBoundedCache } from '../cache';
+import { registerEditorCache } from '../editor-caches';
 import { parseBinding, parseBindingExpression } from './binding';
 import { traverse } from './document';
 import { attrValue, generateCode, wrap } from './helpers';
@@ -592,3 +593,5 @@ function extractFromNode(
 export function clearExtractCache() {
   extractCache.clear();
 }
+
+registerEditorCache(clearExtractCache);

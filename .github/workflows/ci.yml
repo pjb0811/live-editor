@@ -64,6 +64,9 @@ jobs:
       - name: Check non-UI entries load in Node
         run: node .github/scripts/check-node-entries.mjs
 
+      - name: Check which entries reach Babel
+        run: node .github/scripts/check-entry-babel.mjs
+
       - name: Install website dependencies
         run: pnpm --dir website install
 

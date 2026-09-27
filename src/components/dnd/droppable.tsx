@@ -1,7 +1,7 @@
 import { useDroppable } from '@dnd-kit/core';
 import { Typography } from '@jbpark/ui-kit';
 
-import { cn } from '~/utils';
+import { cn } from '~/utils/cn';
 
 const Droppable = ({
   children,

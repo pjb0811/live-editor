@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button, Space } from '@jbpark/ui-kit';
 import { Copy, Trash } from 'lucide-react';
 
-import { cn } from '~/utils';
+import { cn } from '~/utils/cn';
 
 interface Props {
   id: string;

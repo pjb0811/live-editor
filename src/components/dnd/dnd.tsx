@@ -25,7 +25,8 @@ import type { Section } from '~/types';
 import { type DataAttrNode, extract, fillIds, update } from '~/utils/ast';
 import type { UpdateFailure } from '~/utils/ast';
 
-import { cn, preloadScripts } from '../../utils';
+import { cn } from '../../utils/cn';
+import { preloadScripts } from '../../utils/scripts';
 import { usePreview } from '../context/states';
 import { type FrameProps } from '../frame';
 import { useStableModules } from '../preview/use-stable-modules';
