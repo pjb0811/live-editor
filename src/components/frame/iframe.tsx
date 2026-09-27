@@ -8,7 +8,7 @@ import {
   useResizeObserver,
 } from '@jbpark/use-hooks';
 
-import { getCachedScriptBlob } from '~/utils';
+import { getCachedScriptBlob } from '~/utils/scripts';
 
 import {
   FALLBACK_PROBE_HEIGHT,

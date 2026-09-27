@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import type { Module } from '~/types';
-import { compile } from '~/utils';
+import { compile } from '~/utils/compile';
 
 import { baseModules } from './base-modules';
 import { useStableModules } from './use-stable-modules';

@@ -1,7 +1,7 @@
 import { Button, Drawer, Space, Splitter } from '@jbpark/ui-kit';
 import { LayoutGrid } from 'lucide-react';
 
-import { cn } from '~/utils';
+import { cn } from '~/utils/cn';
 
 import { DefaultDraggableItem } from './draggable';
 import { useDndRegions } from './layout-context';

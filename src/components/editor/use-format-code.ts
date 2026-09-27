@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
-import { detectTypeScript } from '~/utils';
+import { detectTypeScript } from '~/utils/detect-typescript';
 
 // prettier is an optional peer dependency (#282): the editor subpath is the
 // only thing that needs it, so consumers who don't use format-on-save

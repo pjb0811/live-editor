@@ -4,7 +4,7 @@ import CodeEditor from '@jbpark/ui-kit/CodeEditor';
 import { vscodeLight } from '@uiw/codemirror-theme-vscode';
 import { type Extension } from '@uiw/react-codemirror';
 
-import { cn } from '~/utils';
+import { cn } from '~/utils/cn';
 
 import { useFormatCode } from './use-format-code';
 

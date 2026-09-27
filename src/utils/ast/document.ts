@@ -7,6 +7,7 @@ import { nanoid } from 'nanoid';
 import { CONFIG, DATA_ATTR } from '../../constants';
 import type { Section } from '../../types';
 import { createBoundedCache } from '../cache';
+import { registerEditorCache } from '../editor-caches';
 
 // @babel/traverse's own CJS build re-exports itself as `{ default: traverse,
 // ...everything else }` for ESM interop. Vite's dev-server dependency
@@ -160,6 +161,8 @@ export const parseDocument = (code: string): DocumentTree | undefined => {
 export const clearDocumentParseCache = () => {
   documentCache.clear();
 };
+
+registerEditorCache(clearDocumentParseCache);
 
 // `id` prefers the section's own `data-id`, falling back to its position.
 //

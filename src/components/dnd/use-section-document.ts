@@ -3,12 +3,12 @@ import { useCallback, useMemo, useState } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
 
 import type { Section } from '~/types';
+import { fillSectionIds, replaceIds } from '~/utils/ast';
 import {
   createSectionPreviewCache,
   extractSections,
   replaceSections,
-} from '~/utils';
-import { fillSectionIds, replaceIds } from '~/utils/ast';
+} from '~/utils/sections';
 
 import { usePreview } from '../context/states';
 
