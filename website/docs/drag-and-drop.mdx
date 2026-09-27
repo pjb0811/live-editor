@@ -98,3 +98,44 @@ const retired = new Set(['Legacy Banner']);
 - Fixing a section's code recovers it automatically.
 - If your fallback itself throws, that section falls back to the built-in
   error box. The canvas keeps working.
+
+## Keeping edits fast
+
+Each canvas section re-renders only when its own inputs change, so an edit to
+one section doesn't redraw the rest. Two props are compared by reference,
+because the library can't tell whether a new function or object does the same
+thing as the old one:
+
+- **`provider`**: an inline arrow function is a new function on every render.
+- **Objects and functions inside `props`**: `props={{ theme: { dark: true } }}`
+  creates a new `theme` object on every render. Strings, numbers and booleans
+  are fine.
+
+Written inline, either one re-renders every section on every edit. In a large
+document that's slow: at 90 sections it made each edit take over a second.
+Define them outside the component, or keep them stable with `useCallback` or
+`useMemo`:
+
+```tsx
+// Outside the component: the same function on every render.
+const withTheme = (children: React.ReactNode) => (
+  <ThemeProvider>{children}</ThemeProvider>
+);
+
+export default function Page() {
+  const [value, setValue] = useState('');
+
+  return (
+    <Live>
+      <Live.Dnd value={value} onChange={setValue} provider={withTheme} />
+    </Live>
+  );
+}
+```
+
+A provider that depends on state still works; pass it through `useCallback`
+with that state as a dependency, and sections re-render when the state
+changes.
+
+`frame` and `modules` don't need this. They are compared by value, so writing
+them inline is fine.
