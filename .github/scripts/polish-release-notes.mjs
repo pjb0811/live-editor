@@ -48,6 +48,8 @@ async function main() {
     'Every input entry starts with a short commit hash (`- 8d6c841: ...`).',
     'Cover every entry, and end each bullet with the hash of each entry it',
     'covers in parentheses, e.g. (8d6c841) or (d6aa94f, a30b708).',
+    'Several entries can share a hash; cite it once for each of them,',
+    'e.g. (abe85ff, abe85ff) for a bullet covering two such entries.',
     'Respond with ONLY the Markdown release notes, no surrounding prose,',
     'no code fences.',
   ].join(' ');
