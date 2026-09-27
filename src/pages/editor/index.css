@@ -1,0 +1,81 @@
+/*
+ * The preflight this demo app is missing.
+ *
+ * `src/index.css` deliberately ships without Tailwind's base layer so
+ * `dist/style.css` doesn't reset a consumer's whole page (see the comment
+ * there), and ui-kit's stylesheet scopes its own reset to
+ * `:where([data-slot], [data-slot] *)`. Nothing in this Vite app supplies the
+ * rest, so UA defaults leak into ui-kit's chrome. This file fills that gap for
+ * the app only.
+ *
+ * Everything here goes in `base`, the layer preflight itself would occupy, so
+ * that every utility still overrides it. Unlayered rules beat *all* layered
+ * ones regardless of specificity, so an unlayered `* { box-sizing: border-box }`
+ * here would quietly defeat ui-kit's own `.box-content`, and an unlayered
+ * `p { margin: 0 }` would defeat `.space-y-*` (emitted as a zero-specificity
+ * `:where(.space-y-1 > :not(:last-child))`).
+ *
+ * The `@layer` line pins the two names in the order `src/index.css` declares
+ * them. A layer's position is fixed by its first appearance anywhere in the
+ * document, and this file is imported before that one (the editor page imports
+ * its own stylesheet above `Live`, which pulls that one in) — without this
+ * line, the `base` block below was the first mention of any layer and put
+ * `base` ahead of `theme`, reordering the cascade for every stylesheet in the
+ * app.
+ */
+@layer theme, base;
+
+@layer base {
+  /*
+   * ui-kit's `Layout.Header` pairs `w-full` with its own padding, and
+   * `Splitter` pairs it with a border. Neither carries the `data-slot` that
+   * ui-kit's reset keys off, so both stayed `content-box` and overflowed their
+   * container by exactly that padding/border. That was the horizontal
+   * scrollbar.
+   */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /*
+   * Full-height chain so `h-full` resolves anywhere below `#root`. The app
+   * shell itself uses `h-dvh`, so this is only for descendants asking for
+   * `h-full`.
+   */
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  /*
+   * No base layer means no `margin: 0` on body either — its default 8px pushed
+   * the `min-h-screen` layout past the viewport. The shell is viewport-sized
+   * and scrolls inside its own panels, so the document never scrolls.
+   */
+  body {
+    margin: 0;
+    overflow: hidden;
+  }
+
+  /*
+   * ui-kit's `Toast` renders its title and description as bare `<p>`, and the
+   * toast root carries no `data-slot`, so the UA's `p { margin-block: 1em }`
+   * survives. The toast is `flex items-start`, so those 16px pushed the text
+   * down while the status icon stayed pinned at the top, leaving the title
+   * looking vertically centered against it.
+   *
+   * Scoped to the notification region rather than written as a bare-tag reset
+   * because `frame.syncStyle` copies every `<style>`/`<link rel="stylesheet">`
+   * in `document.head` into the preview iframe and shadow root (see
+   * components/frame/style-sync.ts) — a document-wide `p` rule here would land
+   * on the previewed document and flatten the user's own paragraphs. The
+   * selector matches ui-kit's portal root, which `Toast` appends to
+   * `document.body`, outside `#root`.
+   */
+  [role='region'][aria-label='Notifications'] p {
+    margin: 0;
+  }
+}

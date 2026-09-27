@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Button, Radio, Space, Splitter, Toast } from '@jbpark/ui-kit';
+import { Button, Layout, Radio, Space, Splitter, Toast } from '@jbpark/ui-kit';
 import {
   useDebounce,
   useHistoryState,
@@ -9,6 +9,8 @@ import {
   useResponsiveSize,
 } from '@jbpark/use-hooks';
 import { Redo2, Save, Undo2 } from 'lucide-react';
+
+import './index.css';
 
 import Live from '../../';
 import { DEFAULT_TEMPLATE, STORAGE_KEY } from '../../constants';
@@ -64,6 +66,7 @@ const App = () => {
   // during render" pattern) instead of an effect, so it lands in the same
   // render `historyValue` changes rather than the render after.
   const [prevHistoryValue, setPrevHistoryValue] = useState(historyValue);
+
   if (historyValue !== prevHistoryValue) {
     setPrevHistoryValue(historyValue);
     setValue(historyValue);
@@ -79,9 +82,17 @@ const App = () => {
 
   return (
     <>
-      <div className="flex h-full flex-col gap-4">
-        <div className="flex justify-end">
-          <Space className="p-2">
+      {/*
+        A viewport-sized app shell: `h-dvh` caps the height ui-kit's Layout
+        would otherwise only floor (its root is `min-h-screen`, so the
+        content's intrinsic height used to grow the document instead), and
+        `overflow-hidden` keeps a stray child from scrolling the shell. This
+        replaces the old `calc(100vh - 80px)` on the content box — the header
+        height no longer has to be hard-coded anywhere.
+      */}
+      <Layout className="h-dvh overflow-hidden">
+        <Layout.Header position="static" className="h-12 justify-end p-2">
+          <Space>
             <Radio.Group
               size="small"
               value={type}
@@ -107,13 +118,15 @@ const App = () => {
               onClick={() => setDiffModalOpen(true)}
             />
           </Space>
-        </div>
-        <div
-          className="flex"
-          style={{
-            height: 'calc(100vh - 72px)',
-          }}
-        >
+        </Layout.Header>
+
+        {/*
+          `min-h-0` lets this flex child shrink below its content's intrinsic
+          height, so the leftover space after the header is a definite height
+          the Splitter and the DnD canvas can fill with `h-full` — and their
+          own panes take the overflow instead of the document.
+        */}
+        <Layout.Content className="min-h-0 p-2">
           <Live>
             {editable ? (
               <Splitter
@@ -142,8 +155,8 @@ const App = () => {
               />
             )}
           </Live>
-        </div>
-      </div>
+        </Layout.Content>
+      </Layout>
       <DiffModal
         open={diffModalOpen}
         original={savedValue}
