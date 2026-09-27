@@ -7,6 +7,7 @@ import LiveError from '~/components/error';
 import Frame, { type FrameProps } from '~/components/frame';
 import { cn } from '~/utils';
 
+import { NO_MODULES, NO_PROPS } from './defaults';
 import { type Props } from './preview';
 import { useCompiledModule } from './use-compiled-module';
 import { useDynamicTailwind } from './use-dynamic-tailwind';
@@ -15,8 +16,8 @@ const Client = ({
   code: _code,
   className,
   showError,
-  props = {},
-  modules = {},
+  props = NO_PROPS,
+  modules = NO_MODULES,
   frame,
   dynamicTailwind = false,
   provider,

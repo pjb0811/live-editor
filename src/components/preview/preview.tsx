@@ -2,6 +2,7 @@ import type React from 'react';
 
 import type { FrameProps } from '../frame';
 import Client from './client';
+import { NO_MODULES, NO_PROPS } from './defaults';
 
 export interface Props extends React.ComponentPropsWithRef<'div'> {
   code?: string;
@@ -22,8 +23,8 @@ export interface Props extends React.ComponentPropsWithRef<'div'> {
 // context when absent) and `frame`, so there is only one render path now.
 const Preview = ({
   code,
-  props = {},
-  modules = {},
+  props = NO_PROPS,
+  modules = NO_MODULES,
   dynamicTailwind = false,
   provider,
   ...restProps

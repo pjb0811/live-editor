@@ -160,4 +160,70 @@ const Renderer = ({
   );
 };
 
-export default memo(Renderer);
+// `frame` is configuration — strings, flags, string arrays, a style object —
+// and callers usually write it inline (`frame={{ mode: 'iframe' }}`), so it is
+// a new object on every render. Compared by identity, that alone re-rendered
+// every section on every edit (#348). Compare it by value instead: arrays by
+// their entries, objects (`style`) shallowly, anything else — a callback
+// included — by identity, so a changed `onLoaded` still re-renders.
+const sameValue = (a: unknown, b: unknown): boolean => {
+  if (Object.is(a, b)) {
+    return true;
+  }
+
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((item, i) => Object.is(item, b[i]));
+  }
+
+  if (
+    a &&
+    b &&
+    typeof a === 'object' &&
+    typeof b === 'object' &&
+    Object.getPrototypeOf(a) === Object.prototype &&
+    Object.getPrototypeOf(b) === Object.prototype
+  ) {
+    const aKeys = Object.keys(a);
+
+    return (
+      aKeys.length === Object.keys(b).length &&
+      aKeys.every(key =>
+        Object.is(
+          (a as Record<string, unknown>)[key],
+          (b as Record<string, unknown>)[key],
+        ),
+      )
+    );
+  }
+
+  return false;
+};
+
+const sameFrame = (a?: FrameProps, b?: FrameProps): boolean => {
+  if (a === b) {
+    return true;
+  }
+
+  if (!a || !b) {
+    return false;
+  }
+
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+
+  return [...keys].every(key =>
+    sameValue(a[key as keyof FrameProps], b[key as keyof FrameProps]),
+  );
+};
+
+// Every other prop is compared by identity, as `memo` does by default.
+const arePropsEqual = (prev: Props, next: Props): boolean => {
+  const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+
+  return [...keys].every(key =>
+    key === 'frame'
+      ? sameFrame(prev.frame, next.frame)
+      : Object.is(prev[key as keyof Props], next[key as keyof Props]),
+  );
+};
+
+export default memo(Renderer, arePropsEqual);

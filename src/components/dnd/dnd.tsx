@@ -221,10 +221,17 @@ const conditionalModifiers: Modifier = args => {
   return restrictToVerticalAxis(args);
 };
 
+// Shared, not `= {}` in the parameter list: a fresh object on every render
+// is a new `modules` prop for every section, which defeats `Renderer`'s memo
+// (#97) and re-runs `compile()` for every section on every edit. Past the
+// compilation cache's limit that meant recompiling most sections with Babel
+// per keystroke-commit — 1.4 s per edit at 90 sections (#348).
+const NO_MODULES: Record<string, unknown> = {};
+
 const Dnd = ({
   value: _value,
   props,
-  modules = {},
+  modules = NO_MODULES,
   onChange: _onChange,
   className,
   items = [],
