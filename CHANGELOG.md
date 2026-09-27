@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.1.1
+
+### Patch Changes
+
+- e30c148: Stop loading Babel where it isn't needed. `Live.Editor`, `Live.Error` and the `Live` provider no longer bundle `@babel/standalone` or Babel's AST packages, and `Live.Preview` no longer bundles the AST packages, which only the drag-and-drop editor and `./utils/ast` use. Measured in a minified consumer build: a provider plus `Live.Editor` drops from 1,151 KB to 190 KB gzipped, and a provider plus `Live.Preview` from 1,354 KB to 1,074 KB. The full editor and `./utils/ast` are unchanged, and so is every export of `./utils`.
+- 560109f: Passing `modules` inline (`modules={{ Chart }}`) no longer re-renders and recompiles every canvas section on each edit. A fresh `modules` object with the same entries is now treated as unchanged by `Live.Dnd` and `Live.Preview`; replacing, adding, or removing a module still recompiles. At 90 sections this took an edit from 90 Babel runs to one.
+
 ## 4.1.0
 
 ### Minor Changes
