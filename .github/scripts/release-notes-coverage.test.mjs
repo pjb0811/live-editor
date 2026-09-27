@@ -22,6 +22,17 @@ const released = readFileSync(
   'utf8',
 ).match(/^## 4\.0\.0\n[\s\S]*?(?=^## )/m)[0];
 
+// 4.1.0: two of its three changesets came from the same squash commit.
+const sharedHash = `### Minor Changes
+
+- abe85ff: Update \`@jbpark/ui-kit\` to 10.
+
+### Patch Changes
+
+- abe85ff: Load the Tailwind compiler only when \`dynamicTailwind\` is on.
+- 18ab6cc: Stop re-rendering every canvas section on every edit.
+`;
+
 describe('entryHashes', () => {
   it('reads the commit hash of every changeset entry', () => {
     expect(entryHashes(raw)).toEqual(['8d6c841', 'd6aa94f', 'a30b708']);
@@ -54,5 +65,35 @@ describe('findMissingEntries', () => {
     expect(findMissingEntries(released, released.slice(0, 6000))).toHaveLength(
       6,
     );
+  });
+
+  describe('when entries share a commit hash', () => {
+    it('counts one entry per changeset, not per hash', () => {
+      expect(entryHashes(sharedHash)).toEqual([
+        'abe85ff',
+        'abe85ff',
+        '18ab6cc',
+      ]);
+    });
+
+    it('reports an entry the rewrite dropped though its hash still appears', () => {
+      const polished =
+        '- ui-kit 10 (abe85ff)\n- Sections re-render less (18ab6cc)';
+
+      expect(findMissingEntries(sharedHash, polished)).toEqual(['abe85ff']);
+    });
+
+    it('passes notes that cite the hash once per entry', () => {
+      const polished =
+        '- ui-kit 10, and Tailwind loads lazily (abe85ff, abe85ff)\n- Sections re-render less (18ab6cc)';
+
+      expect(findMissingEntries(sharedHash, polished)).toEqual([]);
+    });
+
+    it('reports every dropped entry when none of them is cited', () => {
+      expect(
+        findMissingEntries(sharedHash, '- Sections re-render less (18ab6cc)'),
+      ).toEqual(['abe85ff', 'abe85ff']);
+    });
   });
 });
