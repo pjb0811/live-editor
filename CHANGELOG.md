@@ -1,5 +1,51 @@
 # Changelog
 
+## 4.1.0
+
+### Minor Changes
+
+- abe85ff: Update `@jbpark/ui-kit` to 10. live-editor's own API is unchanged, but the
+  `ui-kit` module that previewed code imports (`import * as ui from 'ui-kit'`)
+  is now ui-kit 10, so a stored document can need updating if it relies on what
+  10.0 changed:
+
+  - `Button` (and `Container`, `Layout.Content`) no longer take `asChild`. Pass
+    the element as `render={<a href="…" />}` and keep the content as children;
+    for `Button`, add `nativeButton={false}` when that element is not a button.
+  - `Drawer` no longer takes `draggable`, and bottom drawers can no longer be
+    dragged to dismiss.
+  - `Checkbox`, `Switch`, `Radio`, `Select`, `Slider`, `Progress`, `Collapse`
+    and the dialogs are rebuilt on Base UI. Their documented props are kept, but
+    their DOM is different: a `Checkbox` or `Switch` is no longer a native
+    control, so read `aria-checked` / `aria-disabled` rather than the `checked` /
+    `disabled` DOM properties.
+
+  The built-in panel follows the same change: its selection checkboxes report
+  `aria-disabled` instead of a native `disabled` property.
+
+### Patch Changes
+
+- abe85ff: Load the Tailwind compiler only when `dynamicTailwind` is on. It and its theme
+  used to be part of every consumer's initial bundle, about 300 kB before
+  compression, whether or not a preview ever compiled a class. It is now fetched
+  the first time a preview with `dynamicTailwind` renders, and never otherwise.
+- 18ab6cc: Stop re-rendering every canvas section on every edit. `Live.Dnd` without a
+  `modules` prop created a new empty object each render, and a `frame` written
+  inline (`frame={{ mode: 'iframe' }}`) was a new object each render too; either
+  one defeated the per-section memo, so each edit re-rendered and re-looked-up
+  the compiled module of every section. Past the compilation cache's 50 entries
+  that became a Babel recompile of most sections per edit.
+
+  `modules` now defaults to one shared object, in `Live.Preview` as well, and a
+  section compares `frame` by value. Measured from committing a panel edit to
+  the canvas showing it, in Chromium with an inline `frame`:
+
+  | Sections | Before   | After  |
+  | -------- | -------- | ------ |
+  | 9        | 78 ms    | 54 ms  |
+  | 45       | 177 ms   | 79 ms  |
+  | 90       | 1,379 ms | 127 ms |
+
 ## 4.0.1
 
 ### Patch Changes
