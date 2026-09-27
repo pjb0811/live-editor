@@ -34,6 +34,21 @@ options passed.
 
 <PreviewModesEmbed />
 
+The two samples run the same code, yet on a wide screen the shadow sample's
+title is larger. The title's classes are responsive
+(`text-xl sm:text-2xl lg:text-3xl`), and the two modes measure breakpoints
+against different widths:
+
+- **`iframe`**: media queries, and so Tailwind's `sm:`/`md:`/`lg:` classes,
+  follow the **iframe's own width**. The preview lays out as it would on a
+  screen that size.
+- **`shadow`**: a shadow root has no viewport of its own, so they follow the
+  **browser window's width**, however narrow the preview box is.
+
+Narrow the window below 640px and both titles come out the same size. Use
+`iframe` when the preview has to show how a layout responds to its own width,
+as when previewing a mobile layout in a narrow column.
+
 ```tsx
 import Live from '@jbpark/live-editor';
 
