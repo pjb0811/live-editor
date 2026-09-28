@@ -550,28 +550,44 @@ const WrappedPanel = () => (
 // the two Drawers) along with the built-in Splitter; a layout that needs them
 // either builds its own from `useDndLayout()` or goes back to
 // `Live.Dnd.Layout` and replaces one region through its slots.
+//
+// This one builds its own, and the smallest kind: on a phone a fixed side
+// rail would leave the canvas a sliver, so `isMobile` moves the panel under
+// the canvas at full width instead. It's the same signal the built-in layout
+// switches on, so both layouts change at the same width.
 const StackedLayout = ({
   palette,
   panel,
 }: {
   palette: React.ReactNode;
   panel: React.ReactNode;
-}) => (
-  <div className="flex h-full min-h-0 w-full flex-col">
-    <div
-      className={cn(
-        'max-h-32 shrink-0 overflow-y-auto',
-        'border-b border-gray-200 p-2',
-      )}
-    >
-      {palette}
+}) => {
+  const { isMobile } = useDndLayout();
+
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <div
+        className={cn(
+          'max-h-32 shrink-0 overflow-y-auto',
+          'border-b border-gray-200 p-2',
+        )}
+      >
+        {palette}
+      </div>
+      <div className={cn('flex min-h-0 flex-1', isMobile && 'flex-col')}>
+        <Dnd.Canvas className="min-h-0 min-w-0 flex-1" />
+        <div
+          className={cn(
+            'shrink-0 border-gray-200',
+            isMobile ? 'h-2/5 border-t' : 'w-72 border-l',
+          )}
+        >
+          {panel}
+        </div>
+      </div>
     </div>
-    <div className="flex min-h-0 flex-1">
-      <Dnd.Canvas className="min-w-0 flex-1" />
-      <div className="w-72 shrink-0 border-l border-gray-200">{panel}</div>
-    </div>
-  </div>
-);
+  );
+};
 
 // Custom Palette & Panel demo. Mirrors the app's `pages/docs/dnd-custom-render`:
 // `Live.Dnd` renders its built-in layout until you give it children, and every
@@ -601,49 +617,56 @@ const CustomPalettePanelDemo = () => {
   return (
     <Context>
       <div className="flex h-screen flex-col">
+        {/* Wraps instead of overflowing: a right-aligned row that's too wide
+            spills off the left edge, where it can't be scrolled back into
+            view, and on a phone that hid the first two panel modes. */}
         <div
           className={cn(
-            'flex items-center justify-end gap-2',
+            'flex flex-wrap items-center justify-end gap-x-4 gap-y-2',
             'border-b border-gray-200 px-4 py-2',
           )}
         >
-          <span className="text-xs text-gray-600">Panel</span>
-          <Button
-            size="small"
-            type={mode === 'custom' ? 'primary' : 'default'}
-            onClick={() => setMode('custom')}
-          >
-            Custom fields
-          </Button>
-          <Button
-            size="small"
-            type={mode === 'wrap' ? 'primary' : 'default'}
-            onClick={() => setMode('wrap')}
-          >
-            Wrap built-in
-          </Button>
-          <Button
-            size="small"
-            type={mode === 'headless' ? 'primary' : 'default'}
-            onClick={() => setMode('headless')}
-          >
-            Headless items
-          </Button>
-          <span className="ml-4 text-xs text-gray-600">Layout</span>
-          <Button
-            size="small"
-            type={layout === 'built-in' ? 'primary' : 'default'}
-            onClick={() => setLayout('built-in')}
-          >
-            Built-in
-          </Button>
-          <Button
-            size="small"
-            type={layout === 'stacked' ? 'primary' : 'default'}
-            onClick={() => setLayout('stacked')}
-          >
-            Stacked
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className="text-xs text-gray-600">Panel</span>
+            <Button
+              size="small"
+              type={mode === 'custom' ? 'primary' : 'default'}
+              onClick={() => setMode('custom')}
+            >
+              Custom fields
+            </Button>
+            <Button
+              size="small"
+              type={mode === 'wrap' ? 'primary' : 'default'}
+              onClick={() => setMode('wrap')}
+            >
+              Wrap built-in
+            </Button>
+            <Button
+              size="small"
+              type={mode === 'headless' ? 'primary' : 'default'}
+              onClick={() => setMode('headless')}
+            >
+              Headless items
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className="text-xs text-gray-600">Layout</span>
+            <Button
+              size="small"
+              type={layout === 'built-in' ? 'primary' : 'default'}
+              onClick={() => setLayout('built-in')}
+            >
+              Built-in
+            </Button>
+            <Button
+              size="small"
+              type={layout === 'stacked' ? 'primary' : 'default'}
+              onClick={() => setLayout('stacked')}
+            >
+              Stacked
+            </Button>
+          </div>
         </div>
         <Dnd
           value={value}
