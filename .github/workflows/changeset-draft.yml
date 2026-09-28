@@ -99,7 +99,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add .changeset/*.md
-            git commit -m "📝 docs: draft changeset for PR #${{ github.event.pull_request.number }}"
+            git commit -m "docs: draft changeset for PR #${{ github.event.pull_request.number }}"
             git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
           else
             echo "No changeset produced (no changes outside the demo app, or model found no user-facing change) — skipping commit."
