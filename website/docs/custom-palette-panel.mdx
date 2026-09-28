@@ -287,6 +287,8 @@ of them, `Live.Dnd.Field` renders the built-in control for a single
 binding:
 
 ```tsx
+import { getFieldKind, isStructuralFieldKind } from '@jbpark/live-editor/dnd';
+
 const MyPanel = () => {
   const { bindings, onNodeChange } = useDndPanel();
 
@@ -295,7 +297,7 @@ const MyPanel = () => {
       {bindings.map(binding => (
         <label key={`${binding.id}-${binding.property}`}>
           <span>{binding.label}</span>
-          {binding.type === 'array' || binding.property === 'children' ? (
+          {isStructuralFieldKind(getFieldKind(binding)) ? (
             <Live.Dnd.Field binding={binding} onNodeChange={onNodeChange} />
           ) : (
             <MyOwnControl binding={binding} />
@@ -322,6 +324,60 @@ editor means re-parsing the value's JSX, walking it for `data-id` /
 positions before every edit. `Field` already does that. For a plain string,
 number or option binding there's little reason to reach for it — a bare
 `<input>` wired to `binding.onChange` is the simpler answer.
+
+### Which control `Field` picks: `getFieldKind`
+
+`getFieldKind(binding)` returns the built-in control `Field` would render
+for a binding. `Field` makes its choice with this same function, so routing
+on it can't drift from the built-in panel:
+
+| Kind | Built-in control | Chosen when (first match wins) |
+| --- | --- | --- |
+| `'readonly'` | Preserved source with a note to use the code editor | `canEditValue` is `false` |
+| `'items'` | Items editor (`useDndItems` for your own markup) | `property` is `items` or `data`, or `type` is `array` |
+| `'richtext'` | Rich text editor | `type` is `richtext` |
+| `'html'` | Code editor, HTML mode | `property` is `innerHTML` |
+| `'jsx'` | Code editor | `type` is `jsx` |
+| `'children'` | Children editor (`useDndChildren` for your own markup) | `property` is `children` and `value` is an array of nodes |
+| `'object'` | One nested field per key | `value` is a plain object |
+| `'boolean'` | Checkbox | `type` is `boolean`, or `value` is a boolean |
+| `'select'` | Select | `options` is set |
+| `'color'` | Color picker | `type` is `color`, or `property` contains `color` |
+| `'date'` | Date picker | `type` is `date` |
+| `'url'` | URL input | `type` is `url` |
+| `'number'` | Number input | `type` is `number`, or `value` is a number |
+| `'text'` | Text area | anything else |
+
+`isStructuralFieldKind(kind)` is `true` for `'items'` and `'children'`. Those
+are the two kinds whose value holds further data-bound elements, which a flat
+input can't edit. A `children` binding whose value is plain text is `'text'`,
+not `'children'`.
+
+The kind describes the built-in control only. `renderField` runs first and
+can draw something else, and `widget` doesn't affect the kind.
+
+Switching on the kind also lets a headless panel recurse. The fields inside
+an item or child can be structural too. For example, Stats' "Stats Cards"
+`children` binding sits inside a "Stats Items" entry. Route those through the
+same switch so they get your markup at every depth:
+
+```tsx
+const StructuralField = ({ binding, onNodeChange }) =>
+  getFieldKind(binding) === 'children' ? (
+    <MyChildren binding={binding} onNodeChange={onNodeChange} />
+  ) : (
+    <MyItems binding={binding} onNodeChange={onNodeChange} />
+  );
+
+// Inside MyItems / MyChildren, for each nested binding:
+isStructuralFieldKind(getFieldKind(nested)) ? (
+  <StructuralField binding={nested} onNodeChange={onNodeChange} />
+) : (
+  <Live.Dnd.Field binding={nested} onNodeChange={onNodeChange} />
+);
+```
+
+The Custom Palette & Panel demo's "Headless" mode is built this way.
 
 ### Replacing one control everywhere: `renderField`
 

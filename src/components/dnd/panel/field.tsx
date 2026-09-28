@@ -23,13 +23,17 @@ import type {
 } from '@uiw/react-codemirror';
 
 import CoreEditor from '~/components/editor/core';
-import { BINDING_PROP } from '~/constants';
-import { parseValue, validateBindingValue } from '~/utils/ast';
+import {
+  type DataAttrNode,
+  parseValue,
+  validateBindingValue,
+} from '~/utils/ast';
 
 import type { PanelBinding, PanelNodeChange } from '../dnd';
 import { useDndEditOptions } from '../edit-options';
 import { resolveRenderEntry, toBindingFields } from '../panel-binding';
 import Children from './children';
+import { getFieldKind } from './field-kind';
 import Items from './items';
 
 // Exported as `Live.Dnd.Field` (see index.ts) so a custom panel can
@@ -50,11 +54,6 @@ export interface FieldProps {
   // instead (#308). Omit it and nested array/children edits won't commit.
   onNodeChange?: PanelNodeChange;
 }
-
-const isColorProperty = (propertyName: string): boolean => {
-  const name = propertyName.toLowerCase();
-  return name.includes('color');
-};
 
 const normalizeToHex = (value: string): string => {
   const trimmed = value.trim();
@@ -265,7 +264,9 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     setText(rawValue);
   }
 
-  if (binding.canEditValue === false) {
+  const kind = getFieldKind(binding);
+
+  if (kind === 'readonly') {
     return (
       <div
         className="space-y-1 rounded border border-dashed border-amber-200 p-3
@@ -290,11 +291,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     }
   };
 
-  if (
-    binding.property === 'items' ||
-    binding.property === 'data' ||
-    binding.type === 'array'
-  ) {
+  if (kind === 'items') {
     return (
       <Items
         value={rawValue}
@@ -305,7 +302,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  if (binding.type === 'richtext') {
+  if (kind === 'richtext') {
     return (
       <RichTextEditor
         value={rawValue}
@@ -315,25 +312,27 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  if (binding.property === BINDING_PROP.INNER_HTML || binding.type === 'jsx') {
-    const isHTML = binding.property === BINDING_PROP.INNER_HTML;
-
+  if (kind === 'html' || kind === 'jsx') {
     return (
       <JSXEditorField
         value={rawValue}
-        isHTML={isHTML}
+        isHTML={kind === 'html'}
         onSave={commitIfChanged}
       />
     );
   }
 
-  if (binding.property === 'children' && Array.isArray(value)) {
+  if (kind === 'children') {
     return (
-      <Children value={value} onChange={onChange} onNodeChange={onNodeChange} />
+      <Children
+        value={value as DataAttrNode[]}
+        onChange={onChange}
+        onNodeChange={onNodeChange}
+      />
     );
   }
 
-  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+  if (kind === 'object') {
     const objectValue = value as Record<string, unknown>;
 
     return (
@@ -368,7 +367,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  if (binding.type === 'boolean' || typeof value === 'boolean') {
+  if (kind === 'boolean') {
     return (
       <Checkbox
         checked={value === true || value === 'true'}
@@ -381,17 +380,17 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
 
   const stringValue = rawValue;
 
-  if (binding.options && Array.isArray(binding.options)) {
+  if (kind === 'select') {
     return (
       <Select
         value={stringValue}
-        options={binding.options}
+        options={binding.options ?? []}
         onChange={commitIfChanged}
       />
     );
   }
 
-  if (binding.type === 'color' || isColorProperty(binding.property)) {
+  if (kind === 'color') {
     return (
       <ColorPickerField
         value={normalizeToHex(stringValue)}
@@ -400,7 +399,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  if (binding.type === 'date') {
+  if (kind === 'date') {
     return (
       <div>
         <DatePicker
@@ -424,7 +423,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  if (binding.type === 'url') {
+  if (kind === 'url') {
     return (
       <div>
         <Input
@@ -451,7 +450,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  if (binding.type === 'number' || typeof value === 'number') {
+  if (kind === 'number') {
     return (
       <div>
         <Input
