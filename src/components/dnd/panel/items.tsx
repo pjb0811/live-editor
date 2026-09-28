@@ -6,10 +6,7 @@ import type { BindingRenderMap } from '~/utils/ast';
 import type { PanelNodeChange } from '../dnd';
 import BulkActionsBar from './bulk-actions-bar';
 import Field from './field';
-import {
-  type ItemsEditorNestedGroup,
-  useItemsEditor,
-} from './use-items-editor';
+import { type DndItemsNestedGroup, useDndItems } from './use-dnd-items';
 
 interface Props {
   value: string;
@@ -24,7 +21,7 @@ const NestedGroup = ({
   group,
   onNodeChange,
 }: {
-  group: ItemsEditorNestedGroup;
+  group: DndItemsNestedGroup;
   onNodeChange?: PanelNodeChange;
 }) => {
   if (group.fallback) {
@@ -75,12 +72,12 @@ const NestedGroup = ({
   );
 };
 
-// Presentation for `useItemsEditor`. Everything that reads or writes the
+// Presentation for `useDndItems`. Everything that reads or writes the
 // array source lives in that hook, which is exported so a consumer can put
 // their own markup over the same engine — see its doc comment (#237/#308).
 const Items = ({ value, render, onChange, onChildChange }: Props) => {
   const { kind, items, selection, actions, canEditStructure, parseError } =
-    useItemsEditor(value, {
+    useDndItems(value, {
       render,
       onChange,
       onNodeChange: onChildChange,

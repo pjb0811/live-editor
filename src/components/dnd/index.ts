@@ -26,14 +26,19 @@ import {
 } from './layout-context';
 import Field, { type FieldProps } from './panel/field';
 import {
-  type ItemsEditor,
-  type ItemsEditorActions,
-  type ItemsEditorItem,
-  type ItemsEditorNestedElement,
-  type ItemsEditorNestedGroup,
-  type ItemsEditorOptions,
-  useItemsEditor,
-} from './panel/use-items-editor';
+  type DndChildren,
+  type DndChildrenOptions,
+  useDndChildren,
+} from './panel/use-dnd-children';
+import {
+  type DndItems,
+  type DndItemsActions,
+  type DndItemsItem,
+  type DndItemsNestedElement,
+  type DndItemsNestedGroup,
+  type DndItemsOptions,
+  useDndItems,
+} from './panel/use-dnd-items';
 import type {
   DndRenderSectionFallback,
   DndSectionFallbackArgs,
@@ -94,12 +99,35 @@ export { useDndPalette, useDndPanel, useDndLayout };
 // (`Field` covers the latter). Everything it returns is `PanelBinding`s, so
 // the two compose: render the hook's own layout and hand individual
 // bindings to `Field` where the built-in control is good enough.
-export { useChildrenEditor } from './panel/use-children-editor';
-export type {
-  ChildrenEditor,
-  ChildrenEditorOptions,
-} from './panel/use-children-editor';
-export { useItemsEditor };
+export { useDndChildren };
+export type { DndChildren, DndChildrenOptions };
+export { useDndItems };
+
+// The names these hooks and types shipped under before they joined the
+// `useDnd*` family. Kept as aliases so existing imports keep compiling; drop
+// them in the next major. Each maps mechanically: `useItemsEditor` →
+// `useDndItems`, `useChildrenEditor` → `useDndChildren`, `ItemsEditor*` →
+// `DndItems*`, `ChildrenEditor*` → `DndChildren*`.
+/** @deprecated Renamed to `useDndItems`. */
+export const useItemsEditor = useDndItems;
+/** @deprecated Renamed to `useDndChildren`. */
+export const useChildrenEditor = useDndChildren;
+/** @deprecated Renamed to `DndItems`. */
+export type ItemsEditor = DndItems;
+/** @deprecated Renamed to `DndItemsActions`. */
+export type ItemsEditorActions = DndItemsActions;
+/** @deprecated Renamed to `DndItemsItem`. */
+export type ItemsEditorItem = DndItemsItem;
+/** @deprecated Renamed to `DndItemsNestedElement`. */
+export type ItemsEditorNestedElement = DndItemsNestedElement;
+/** @deprecated Renamed to `DndItemsNestedGroup`. */
+export type ItemsEditorNestedGroup = DndItemsNestedGroup;
+/** @deprecated Renamed to `DndItemsOptions`. */
+export type ItemsEditorOptions = DndItemsOptions;
+/** @deprecated Renamed to `DndChildren`. */
+export type ChildrenEditor = DndChildren;
+/** @deprecated Renamed to `DndChildrenOptions`. */
+export type ChildrenEditorOptions = DndChildrenOptions;
 export type {
   Props,
   DndPalette,
@@ -114,12 +142,12 @@ export type {
   DndRenderField,
   DndRenderSectionFallback,
   DndSectionFallbackArgs,
-  ItemsEditor,
-  ItemsEditorActions,
-  ItemsEditorItem,
-  ItemsEditorNestedElement,
-  ItemsEditorNestedGroup,
-  ItemsEditorOptions,
+  DndItems,
+  DndItemsActions,
+  DndItemsItem,
+  DndItemsNestedElement,
+  DndItemsNestedGroup,
+  DndItemsOptions,
   DraggableItemProps,
   DraggableItemDragState,
 };

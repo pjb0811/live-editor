@@ -6,14 +6,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { extract, update } from '~/utils/ast';
 
-import { useChildrenEditor } from './use-children-editor';
+import { useDndChildren } from './use-dnd-children';
 
 const source = `<div data-id="parent" data-binding={[{label:'Children',property:'children'}]}><p data-id="a">A</p>{flag && <em>keep</em>}<p data-id="b">B</p><p data-id="c">C</p></div>`;
 const nodes = (code: string) => extract(code)[0]!.children ?? [];
 
 const useHarness = () => {
   const [code, setCode] = useState(source);
-  const editor = useChildrenEditor(nodes(code), {
+  const editor = useDndChildren(nodes(code), {
     onChange: value => {
       const result = update(code, 'parent', 'Children', value, 'children');
 
@@ -26,7 +26,7 @@ const useHarness = () => {
   return { code, setCode, ...editor };
 };
 
-describe('useChildrenEditor', () => {
+describe('useDndChildren', () => {
   it.each(['move', 'remove'] as const)(
     'clears stale selection after single-row %s and prevents a later bulk delete from removing another child',
     action => {
@@ -55,7 +55,7 @@ describe('useChildrenEditor', () => {
   it('keeps selection on rejected edits or until a controlled host accepts the result', () => {
     const onChange = vi.fn();
     const { result, rerender } = renderHook(
-      ({ code }) => useChildrenEditor(nodes(code), { onChange }),
+      ({ code }) => useDndChildren(nodes(code), { onChange }),
       { initialProps: { code: source } },
     );
 

@@ -401,16 +401,27 @@ failed:
 | `'parse'` | The selected section, or an `items` value inside it, doesn't parse. | `target` (`'section'` or `'items'`), `error` |
 | `'items'` | An array edit would have lost source (a spread, a hole), so it was refused. | — |
 
-### Your own markup for an array binding: `useItemsEditor`
+### Your own markup for an array binding: `useDndItems`
+
+:::note Renamed hooks
+
+Earlier releases called these two hooks `useItemsEditor` and
+`useChildrenEditor`, with types named `ItemsEditor*` and `ChildrenEditor*`.
+The old names still work as deprecated aliases and will be removed in the
+next major. To migrate, rename `useItemsEditor` → `useDndItems`,
+`useChildrenEditor` → `useDndChildren`, `ItemsEditor` → `DndItems` and
+`ChildrenEditor` → `DndChildren` wherever they appear.
+
+:::
 
 `Field` gives you the built-in *control*. When you want the same engine but
-a different layout, `useItemsEditor` is that engine on its own:
+a different layout, `useDndItems` is that engine on its own:
 
 ```tsx
-import { useItemsEditor } from '@jbpark/live-editor/dnd';
+import { useDndItems } from '@jbpark/live-editor/dnd';
 
 const MyItems = ({ binding, onNodeChange }) => {
-  const { items, selection, actions, canEditStructure } = useItemsEditor(binding.rawValue, {
+  const { items, selection, actions, canEditStructure } = useDndItems(binding.rawValue, {
     render: binding.render,
     onChange: binding.onChange,
     onNodeChange,
@@ -473,9 +484,9 @@ What you don't have to reimplement:
 | Field | Type | Description |
 | --- | --- | --- |
 | `kind` | `'object' \| 'primitive'` | Which kind the array is being edited as. An array holding both is treated as objects; the primitives are left untouched rather than dropped. |
-| `items` | `ItemsEditorItem[]` | One entry per item. `properties` holds an object item's plain fields, `nested` its JSX-valued ones, `value` a primitive item's own binding. |
+| `items` | `DndItemsItem[]` | One entry per item. `properties` holds an object item's plain fields, `nested` its JSX-valued ones, `value` a primitive item's own binding. |
 | `selection` | multi-select state | `selected`, `toggle`, `isSelected`, `clear`, `replace`. Indices are item `index` values; the actions translate. |
-| `actions` | `ItemsEditorActions` | `add`, `move`, `remove`, plus `duplicateSelected` / `moveSelected` / `removeSelected`. |
+| `actions` | `DndItemsActions` | `add`, `move`, `remove`, plus `duplicateSelected` / `moveSelected` / `removeSelected`. |
 | `canEditStructure` | `boolean` | Uses the same dense-array syntax gate as the mutation helpers. Keep value controls available when false, but disable move, copy, add, and delete and direct the user to the code editor. |
 | `parseError` | `boolean` | The source didn't parse as an array. `items` is empty. |
 
@@ -508,16 +519,16 @@ selection unchanged, and displays an error through the built-in hook. Public
 helper signatures are unchanged. Formatting of returned code now follows the
 original source rather than Babel's whole-array formatting.
 
-### Your own controls for a children binding: `useChildrenEditor`
+### Your own controls for a children binding: `useDndChildren`
 
-Pass the structured `binding.value` to `useChildrenEditor`. It sends structural
+Pass the structured `binding.value` to `useDndChildren`. It sends structural
 commands through the existing `binding.onChange` callback:
 
 ```tsx
-import { useChildrenEditor } from '@jbpark/live-editor/dnd';
+import { useDndChildren } from '@jbpark/live-editor/dnd';
 
 const MyChildren = ({ binding }) => {
-  const { items, selection, actions } = useChildrenEditor(binding.value, {
+  const { items, selection, actions } = useDndChildren(binding.value, {
     onChange: binding.onChange,
   });
 
@@ -574,7 +585,7 @@ checks. Low-level callers can use `ChildrenEdit` and `getChildrenSignatures` fro
 
 ### Selection after an edit
 
-`useItemsEditor` and `useChildrenEditor` share one selection rule. Selection
+`useDndItems` and `useDndChildren` share one selection rule. Selection
 indices are positions, so whatever moves items has to move or clear the
 selection with them:
 
@@ -583,12 +594,12 @@ selection with them:
 | `add`, `duplicateSelected` | Unchanged. Both append at the end, so no existing item moves. |
 | `moveSelected` | The moved items, at their new positions, so the block can be moved again. |
 | `move`, `remove`, `removeSelected` | Cleared. Positions shifted under the selection. |
-| An item value edit (`useItemsEditor`) | Unchanged. |
+| An item value edit (`useDndItems`) | Unchanged. |
 | Anything else: another field, undo, an external `value` | Cleared. The same positions may now hold different items. |
 | A refused edit | Unchanged. No new source was produced. |
 
-`useChildrenEditor` applies the result when the new source arrives, since the
-host's `onChange` decides whether the edit succeeds. `useItemsEditor` applies
+`useDndChildren` applies the result when the new source arrives, since the
+host's `onChange` decides whether the edit succeeds. `useDndItems` applies
 it immediately, because its own array edit has already succeeded by then.
 
 ### `PanelBinding`
@@ -666,7 +677,7 @@ under `binding.meta`, typed `unknown` for the same reason.
 ### Nested fields
 
 A render-map leaf accepts every field a top-level binding does (see
-[Nested fields](./data-binding.mdx#nested-fields)). `useItemsEditor` hands
+[Nested fields](./data-binding.mdx#nested-fields)). `useDndItems` hands
 each key of an item back as a `PanelBinding` carrying those fields, so switch
 on `widget` and validate against constraints exactly as for a flat binding.
 `label` and `property` fall back to the key, and `meta.valueType` is always

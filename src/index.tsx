@@ -3,6 +3,9 @@ import './index.css';
 import Context from './components/context';
 import LiveDnd, {
   type DndEditError,
+  type DndItems,
+  type DndItemsItem,
+  type DndItemsOptions,
   type DndLayout,
   type DndPalette,
   type DndPanel,
@@ -49,6 +52,10 @@ export type {
   PanelBinding,
   PanelNodeChange,
   FieldProps,
+  DndItems,
+  DndItemsItem,
+  DndItemsOptions,
+  // Deprecated aliases of the three above, kept until the next major.
   ItemsEditor,
   ItemsEditorItem,
   ItemsEditorOptions,

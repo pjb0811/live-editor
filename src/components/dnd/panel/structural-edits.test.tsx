@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { extract, update } from '~/utils/ast';
 
 import { DndEditOptionsContext } from '../edit-options';
-import { useChildrenEditor } from './use-children-editor';
-import { useItemsEditor } from './use-items-editor';
+import { useDndChildren } from './use-dnd-children';
+import { useDndItems } from './use-dnd-items';
 
 // One contract for both structural editors (#342): after a command succeeds,
 // the selection is whatever that command's rule says; after anything else
@@ -36,7 +36,7 @@ interface Harness {
 
 const useChildrenHarness = (): Harness => {
   const [code, setCode] = useState(childrenSource);
-  const editor = useChildrenEditor(childrenOf(code), {
+  const editor = useDndChildren(childrenOf(code), {
     onChange: value => {
       const result = update(code, 'parent', 'Children', value, 'children');
 
@@ -64,7 +64,7 @@ const useChildrenHarness = (): Harness => {
 
 const useItemsHarness = (): Harness => {
   const [code, setCode] = useState(itemsSource);
-  const editor = useItemsEditor(code, { onChange: setCode });
+  const editor = useDndItems(code, { onChange: setCode });
 
   return {
     code,
@@ -178,7 +178,7 @@ describe('items value edits', () => {
     const { result } = renderHook(() => {
       const [code, setCode] = useState(itemsSource);
 
-      return { code, editor: useItemsEditor(code, { onChange: setCode }) };
+      return { code, editor: useDndItems(code, { onChange: setCode }) };
     });
 
     act(() => result.current.editor.selection.toggle(2, false));

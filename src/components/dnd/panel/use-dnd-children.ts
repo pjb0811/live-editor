@@ -13,7 +13,7 @@ import {
   useStructuralSelection,
 } from './use-structural-selection';
 
-export interface ChildrenEditorOptions {
+export interface DndChildrenOptions {
   onChange?: (value: string) => void;
 }
 
@@ -54,9 +54,9 @@ const producedBy = (
 // Domain adapter: serializes a structural command for the existing binding
 // onChange/update path. The AST layer owns source validation and mutation;
 // selection follows the shared rule in useStructuralSelection.
-export const useChildrenEditor = (
+export const useDndChildren = (
   items: DataAttrNode[],
-  { onChange }: ChildrenEditorOptions = {},
+  { onChange }: DndChildrenOptions = {},
 ) => {
   const expected = useMemo(() => getChildrenSignatures(items), [items]);
   const revision = JSON.stringify(expected);
@@ -97,4 +97,4 @@ export const useChildrenEditor = (
   };
 };
 
-export type ChildrenEditor = ReturnType<typeof useChildrenEditor>;
+export type DndChildren = ReturnType<typeof useDndChildren>;

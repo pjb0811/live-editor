@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { DataAttrNode } from '~/utils/ast';
 
-import { useItemsEditor } from './use-items-editor';
+import { useDndItems } from './use-dnd-items';
 
 const objects = `[
   { key: 'a', label: 'Alpha' },
@@ -35,9 +35,9 @@ const fallbacks = `[
   { key: 'b', children: <div>B content</div> },
 ]`;
 
-describe('useItemsEditor derivation', () => {
+describe('useDndItems derivation', () => {
   it('resolves object items to PanelBindings, no AST types leaking out', () => {
-    const { result } = renderHook(() => useItemsEditor(objects));
+    const { result } = renderHook(() => useDndItems(objects));
 
     expect(result.current.kind).toBe('object');
     expect(result.current.items).toHaveLength(3);
@@ -49,7 +49,7 @@ describe('useItemsEditor derivation', () => {
   });
 
   it('exposes a primitive array as one binding per item', () => {
-    const { result } = renderHook(() => useItemsEditor(primitives));
+    const { result } = renderHook(() => useDndItems(primitives));
 
     expect(result.current.kind).toBe('primitive');
     expect(result.current.items.map(i => i.value!.rawValue)).toEqual([
@@ -62,7 +62,7 @@ describe('useItemsEditor derivation', () => {
 
   it('keeps unsupported item expressions visible but code-editor-only', () => {
     const { result } = renderHook(() =>
-      useItemsEditor(`[getValue(), \`hello ${'${name}'}\`, theme.value]`),
+      useDndItems(`[getValue(), \`hello ${'${name}'}\`, theme.value]`),
     );
 
     expect(result.current.items.map(item => item.value!.rawValue)).toEqual([
@@ -79,7 +79,7 @@ describe('useItemsEditor derivation', () => {
 
   it('marks partially modeled object properties as code-editor-only', () => {
     const { result } = renderHook(() =>
-      useItemsEditor(`[{ config: { ...defaults, label: getLabel() } }]`),
+      useDndItems(`[{ config: { ...defaults, label: getLabel() } }]`),
     );
     const config = result.current.items[0]!.properties[0]!;
 
@@ -88,7 +88,7 @@ describe('useItemsEditor derivation', () => {
   });
 
   it('finds data-bound elements nested inside a JSX-valued property', () => {
-    const { result } = renderHook(() => useItemsEditor(nested));
+    const { result } = renderHook(() => useDndItems(nested));
 
     const groups = result.current.items[0]!.nested;
     expect(groups.map(g => g.property)).toEqual(['children']);
@@ -102,9 +102,7 @@ describe('useItemsEditor derivation', () => {
 
   it('commits a nested binding through onNodeChange, keyed by data-id', () => {
     const onNodeChange = vi.fn();
-    const { result } = renderHook(() =>
-      useItemsEditor(nested, { onNodeChange }),
-    );
+    const { result } = renderHook(() => useDndItems(nested, { onNodeChange }));
 
     result.current.items[0]!.nested[0]!.elements[0]!.bindings[0]!.onChange(
       'next',
@@ -119,7 +117,7 @@ describe('useItemsEditor derivation', () => {
   });
 
   it('reports a parse error instead of throwing on a non-array source', () => {
-    const { result } = renderHook(() => useItemsEditor('not an array'));
+    const { result } = renderHook(() => useDndItems('not an array'));
 
     expect(result.current.parseError).toBe(true);
     expect(result.current.canEditStructure).toBe(false);
@@ -134,17 +132,17 @@ describe('useItemsEditor derivation', () => {
   ])(
     'reports structural edit support from the mutation syntax gate: $source',
     ({ source, supported }) => {
-      const { result } = renderHook(() => useItemsEditor(source));
+      const { result } = renderHook(() => useDndItems(source));
 
       expect(result.current.canEditStructure).toBe(supported);
     },
   );
 });
 
-describe('useItemsEditor mutations', () => {
+describe('useDndItems mutations', () => {
   it('adds, removes and moves through the array source', () => {
     const onChange = vi.fn();
-    const { result } = renderHook(() => useItemsEditor(objects, { onChange }));
+    const { result } = renderHook(() => useDndItems(objects, { onChange }));
 
     act(() => result.current.actions.add());
     expect(onChange).toHaveBeenCalledTimes(1);
@@ -161,7 +159,7 @@ describe('useItemsEditor mutations', () => {
   it('clears the selection after a move, so a later bulk action can not target stale positions', () => {
     // Positions shift but the count doesn't, so useMultiSelect never
     // reconciles the set on its own. See #285.
-    const { result } = renderHook(() => useItemsEditor(objects));
+    const { result } = renderHook(() => useDndItems(objects));
 
     act(() => result.current.selection.toggle(0, false));
     expect(result.current.selection.selected.size).toBe(1);
@@ -171,7 +169,7 @@ describe('useItemsEditor mutations', () => {
   });
 
   it('clears the selection after a delete', () => {
-    const { result } = renderHook(() => useItemsEditor(objects));
+    const { result } = renderHook(() => useDndItems(objects));
 
     act(() => result.current.selection.toggle(2, false));
     act(() => result.current.actions.remove(0));
@@ -181,7 +179,7 @@ describe('useItemsEditor mutations', () => {
 
   it('translates selection indices to element positions for bulk actions', () => {
     const onChange = vi.fn();
-    const { result } = renderHook(() => useItemsEditor(objects, { onChange }));
+    const { result } = renderHook(() => useDndItems(objects, { onChange }));
 
     act(() => result.current.selection.toggle(1, false));
     act(() => result.current.actions.removeSelected());
@@ -196,7 +194,7 @@ describe('useItemsEditor mutations', () => {
   });
 
   it('replaces the selection with the moved positions on a bulk move', () => {
-    const { result } = renderHook(() => useItemsEditor(objects));
+    const { result } = renderHook(() => useDndItems(objects));
 
     act(() => result.current.selection.toggle(1, false));
     act(() => result.current.actions.moveSelected('up'));
@@ -208,7 +206,7 @@ describe('useItemsEditor mutations', () => {
   it('moves a JSX fallback binding identity with its item', () => {
     const onChange = vi.fn();
     const { result, rerender } = renderHook(
-      ({ source }) => useItemsEditor(source, { onChange }),
+      ({ source }) => useDndItems(source, { onChange }),
       { initialProps: { source: fallbacks } },
     );
     const bindingId = result.current.items[0]!.nested[0]!.fallback!.id;
@@ -224,11 +222,11 @@ describe('useItemsEditor mutations', () => {
   });
 });
 
-describe('useItemsEditor source fidelity', () => {
+describe('useDndItems source fidelity', () => {
   it('uses original indices for value edits in a sparse array with a spread', () => {
     const source = `[, ...rows, {label:'A'}, /* keep */ {label:'B'},]`;
     const onChange = vi.fn();
-    const { result } = renderHook(() => useItemsEditor(source, { onChange }));
+    const { result } = renderHook(() => useDndItems(source, { onChange }));
 
     expect(result.current.items.map(item => item.elementIndex)).toEqual([2, 3]);
     act(() => result.current.items[0]!.properties[0]!.onChange('Changed'));
@@ -239,7 +237,7 @@ describe('useItemsEditor source fidelity', () => {
     const onChange = vi.fn();
     const toast = vi.spyOn(Toast, 'error').mockImplementation(() => 'test');
     const { result } = renderHook(() =>
-      useItemsEditor(`[, {label:'A'}, {label:'B'}]`, { onChange }),
+      useDndItems(`[, {label:'A'}, {label:'B'}]`, { onChange }),
     );
 
     try {
@@ -263,7 +261,7 @@ describe('useItemsEditor source fidelity', () => {
   it('maps bulk move selection back to visible indices in mixed arrays', () => {
     const onChange = vi.fn();
     const { result, rerender } = renderHook(
-      ({ source }) => useItemsEditor(source, { onChange }),
+      ({ source }) => useDndItems(source, { onChange }),
       { initialProps: { source: `[0, {label:'A'}, {label:'B'}]` } },
     );
 
@@ -281,7 +279,7 @@ describe('useItemsEditor source fidelity', () => {
     const raw = `[, /* gap */ {label:'A'},]`;
     const jsx = `<p data-id='p' data-binding={[{label:'Children',property:'children'}]}><b data-id='b'>{value}</b></p>`;
     const { result } = renderHook(() =>
-      useItemsEditor(`[{ nested: ${raw}, children: ${jsx} }]`),
+      useDndItems(`[{ nested: ${raw}, children: ${jsx} }]`),
     );
 
     expect(result.current.items[0]!.properties[0]!.rawValue).toBe(raw);

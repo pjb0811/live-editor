@@ -671,7 +671,7 @@ describe('bulkUpdate', () => {
 
 // The reported break, end to end on the shipped sections: the panel's array
 // editors (built-in `Items`, or a consumer's own markup over
-// `useItemsEditor`) re-serialize the whole array and commit it as source
+// `useDndItems`) re-serialize the whole array and commit it as source
 // text, so a single "+ Add" has to survive the round trip through `update`.
 // Neither shipped `items` binding declares a `type`, which is exactly the
 // case #238's gate missed.

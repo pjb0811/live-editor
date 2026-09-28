@@ -8,7 +8,7 @@ import { type DataAttrNode, findEditableChildren } from '~/utils/ast';
 import type { PanelNodeChange } from '../dnd';
 import BulkActionsBar from './bulk-actions-bar';
 import Node from './node';
-import { useChildrenEditor } from './use-children-editor';
+import { useDndChildren } from './use-dnd-children';
 
 interface Props {
   value: DataAttrNode[];
@@ -19,7 +19,7 @@ interface Props {
 const Children = ({ value, onChange, onNodeChange }: Props) => {
   const items = useMemo(() => (Array.isArray(value) ? value : []), [value]);
 
-  const { selection, actions } = useChildrenEditor(items, { onChange });
+  const { selection, actions } = useDndChildren(items, { onChange });
 
   const editableChildrenMap = useMemo(() => {
     const map = new Map<number, DataAttrNode[]>();
