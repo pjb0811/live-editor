@@ -9,6 +9,8 @@ import Dnd, {
   Field,
   type PanelBinding,
   type PanelNodeChange,
+  getFieldKind,
+  isStructuralFieldKind,
   resolvePanelBindings,
   useDndChildren,
   useDndItems,
@@ -184,14 +186,13 @@ const ValidatedField = ({ binding }: { binding: PanelBinding }) => {
   );
 };
 
-// An `items`/`children`/array binding holds nested data-bound JSX that
-// `bindings` alone can't reach (see #308), so it gets a structural editor
-// rather than a flat input.
+// An `items`/`children` binding holds nested data-bound JSX that `bindings`
+// alone can't reach (see #308), so it gets a structural editor rather than a
+// flat input. `getFieldKind` is the same rule `Field` picks its control by,
+// so this can't disagree with the built-in panel about which bindings those
+// are (a `children` binding holding plain text, for one, is not).
 const isStructuralBinding = (binding: PanelBinding) =>
-  binding.type === 'array' ||
-  binding.property === 'items' ||
-  binding.property === 'data' ||
-  binding.property === 'children';
+  isStructuralFieldKind(getFieldKind(binding));
 
 // Same binding, two ways to render it: the built-in control, or your own
 // markup over the same engine. Each kind has its own hook: `useDndChildren`
@@ -216,7 +217,7 @@ const StructuralField = ({
     return <Field binding={binding} onNodeChange={onNodeChange} />;
   }
 
-  return binding.property === 'children' && Array.isArray(binding.value) ? (
+  return getFieldKind(binding) === 'children' ? (
     <HeadlessChildren binding={binding} onNodeChange={onNodeChange} />
   ) : (
     <HeadlessItems binding={binding} onNodeChange={onNodeChange} />

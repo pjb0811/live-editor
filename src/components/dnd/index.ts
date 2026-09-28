@@ -109,6 +109,11 @@ export { useDndItems };
 // `onNodeChange`. Together they produce `PanelBinding`s ready for `Field`.
 export { resolvePanelBindings, withPanelCommit } from './panel-binding';
 export type { PanelBindingData, PanelBindingSource } from './panel-binding';
+// The rule `Field` uses to pick its built-in control, so a custom panel that
+// routes some bindings to `Field` or a hook (most often the structural
+// `items`/`children` ones) asks the library instead of copying the checks.
+export { getFieldKind, isStructuralFieldKind } from './panel/field-kind';
+export type { FieldKind, FieldKindBinding } from './panel/field-kind';
 
 // The names these hooks and types shipped under before they joined the
 // `useDnd*` family. Kept as aliases so existing imports keep compiling; drop
