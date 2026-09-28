@@ -9,6 +9,7 @@ import Dnd, {
   Field,
   type PanelBinding,
   type PanelNodeChange,
+  useDndChildren,
   useDndItems,
   useDndLayout,
   useDndPalette,
@@ -17,9 +18,13 @@ import Dnd, {
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { cn } from '~/utils';
 import {
+  type DataAttrNode,
   type EditablePrimitive,
   type EditableValueEntry,
+  findEditableChildren,
   flattenEditableValue,
+  getCurrentValue,
+  parseBinding,
   setEditableValue,
   validateBindingValue,
 } from '~/utils/ast';
@@ -334,6 +339,166 @@ const HeadlessItems = ({
   );
 };
 
+// The same idea for a `children` binding, built on `useDndChildren`. Its
+// value isn't an array literal but the element's child nodes, already
+// extracted (`binding.value` is a `DataAttrNode[]`; `rawValue` is only their
+// JSON), so it can't go through `useDndItems`: that hook would parse the JSON
+// into the right number of items with nothing editable in them.
+//
+// The hook owns the structure (add, move, remove, duplicate) and sends each
+// command through `binding.onChange`. The fields inside each child are
+// ordinary data-bound elements, found with `findEditableChildren` and
+// committed by id through `onNodeChange`, like any nested element.
+const HeadlessChildren = ({
+  binding,
+  onNodeChange,
+}: {
+  binding: PanelBinding;
+  onNodeChange: PanelNodeChange;
+}) => {
+  const nodes = binding.value as DataAttrNode[];
+  const { items, selection, actions } = useDndChildren(nodes, {
+    onChange: binding.onChange,
+  });
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-gray-500">{items.length} child(ren)</span>
+        <div className="flex gap-1">
+          {selection.selected.size > 0 && (
+            <>
+              <button
+                type="button"
+                className="rounded bg-gray-100 px-2 py-0.5 text-xs"
+                onClick={actions.duplicateSelected}
+              >
+                Duplicate {selection.selected.size}
+              </button>
+              <button
+                type="button"
+                className="rounded bg-red-50 px-2 py-0.5 text-xs text-red-600"
+                onClick={actions.removeSelected}
+              >
+                Delete {selection.selected.size}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="rounded bg-green-50 px-2 py-0.5 text-xs text-green-700"
+            onClick={actions.add}
+          >
+            + Add
+          </button>
+        </div>
+      </div>
+
+      {items.map((child, index) => (
+        <details
+          key={child.id || index}
+          open
+          className="rounded border border-gray-200 px-2 py-1"
+        >
+          <summary className="flex cursor-pointer items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={selection.isSelected(index)}
+              onChange={() => selection.toggle(index, false)}
+              onClick={e => e.stopPropagation()}
+            />
+            <span className="font-medium">
+              #{index + 1} &lt;{child.tagName || 'fragment'}&gt;
+            </span>
+            <span className="ml-auto flex gap-1">
+              <button
+                type="button"
+                disabled={index === 0}
+                className="disabled:opacity-30"
+                onClick={e => {
+                  e.preventDefault();
+                  actions.move(index, index - 1);
+                }}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                disabled={index === items.length - 1}
+                className="disabled:opacity-30"
+                onClick={e => {
+                  e.preventDefault();
+                  actions.move(index, index + 1);
+                }}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                className="text-red-500"
+                onClick={e => {
+                  e.preventDefault();
+                  actions.remove(index);
+                }}
+              >
+                remove
+              </button>
+            </span>
+          </summary>
+
+          <div className="space-y-1 py-1">
+            {findEditableChildren(child).map(node => {
+              const id = node.dataAttributes.find(
+                attribute => attribute.name === 'data-id',
+              )?.value;
+              const bindingAttr = node.dataAttributes.find(
+                attribute => attribute.name === 'data-binding',
+              )?.value;
+
+              if (!id || !bindingAttr) {
+                return null;
+              }
+
+              return (node.bindings ?? parseBinding(bindingAttr)).map(
+                nested => {
+                  const current = getCurrentValue(node, nested.property);
+
+                  return (
+                    <label
+                      // Keyed on the value too, so an uncontrolled input
+                      // picks up the new text after a move or an undo.
+                      key={`${id}-${nested.property}-${current}`}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="w-16 shrink-0 text-xs text-gray-500">
+                        {nested.label}
+                      </span>
+                      <input
+                        className="w-full rounded border border-gray-300 px-2
+                          py-1 text-sm"
+                        defaultValue={current}
+                        onBlur={e =>
+                          e.target.value !== current &&
+                          onNodeChange({
+                            id,
+                            label: nested.label,
+                            property: nested.property,
+                            value: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  );
+                },
+              );
+            })}
+          </div>
+        </details>
+      ))}
+    </div>
+  );
+};
+
 type PanelMode = 'custom' | 'wrap' | 'headless';
 
 type LayoutMode = 'built-in' | 'stacked';
@@ -476,10 +641,22 @@ const MyPanel = ({ mode }: { mode: PanelMode }) => {
             </span>
             {isStructural ? (
               // Same binding, two ways to render it: the built-in control,
-              // or your own markup over the same engine via
-              // `useDndItems`.
+              // or your own markup over the same engine. Each kind has its
+              // own hook: `useDndChildren` for sibling elements,
+              // `useDndItems` for an array literal.
               mode === 'headless' ? (
-                <HeadlessItems binding={binding} onNodeChange={onNodeChange} />
+                binding.property === 'children' &&
+                Array.isArray(binding.value) ? (
+                  <HeadlessChildren
+                    binding={binding}
+                    onNodeChange={onNodeChange}
+                  />
+                ) : (
+                  <HeadlessItems
+                    binding={binding}
+                    onNodeChange={onNodeChange}
+                  />
+                )
               ) : (
                 // Renders the control only — the label above is ours, which
                 // is why `Field` doesn't draw one.
@@ -600,8 +777,10 @@ const StackedLayout = ({
 // The "Wrap built-in" mode shows the other end of the range: keep
 // `Live.Dnd.Panel` and only add around it (see `WrappedPanel`).
 //
-// "Headless items" is the third option: keep your own markup but reuse the
-// array-editing engine through `useDndItems` (see `HeadlessItems`).
+// "Headless" is the third option: keep your own markup but reuse the
+// structural editing engines, `useDndItems` for an array binding (see
+// `HeadlessItems`) and `useDndChildren` for a children binding (see
+// `HeadlessChildren`).
 //
 // The Layout toggle is the outer layer. "Built-in" keeps the shipped 3-pane
 // Splitter and mobile chrome and only fills its `palette`/`panel` slots;
@@ -647,7 +826,7 @@ const CustomPalettePanelDemo = () => {
               type={mode === 'headless' ? 'primary' : 'default'}
               onClick={() => setMode('headless')}
             >
-              Headless items
+              Headless
             </Button>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
