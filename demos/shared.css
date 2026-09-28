@@ -21,3 +21,18 @@ body,
   height: 100%;
   margin: 0;
 }
+
+/*
+ * The demos are light-only: nothing tells a demo the docs site's theme, since
+ * the sandboxed iframe can't be reached from the page. Say so explicitly, or
+ * the result depends on the browser. Chromium paints an opaque white canvas
+ * behind an iframe whose color scheme differs from its dark parent; a browser
+ * that doesn't leaves the canvas transparent, so DemoFrame's dark surface
+ * shows through behind text that still inherits black — e.g. a preview's
+ * `Typography.Title`, which sets no color of its own.
+ */
+html {
+  color-scheme: light;
+  background-color: #fff;
+  color: #000;
+}
