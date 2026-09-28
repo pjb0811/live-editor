@@ -9,11 +9,13 @@ import Dnd, {
   Field,
   type PanelBinding,
   type PanelNodeChange,
+  resolvePanelBindings,
   useDndChildren,
   useDndItems,
   useDndLayout,
   useDndPalette,
   useDndPanel,
+  withPanelCommit,
 } from '~/components/dnd';
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { cn } from '~/utils';
@@ -23,8 +25,6 @@ import {
   type EditableValueEntry,
   findEditableChildren,
   flattenEditableValue,
-  getCurrentValue,
-  parseBinding,
   setEditableValue,
   validateBindingValue,
 } from '~/utils/ast';
@@ -346,9 +346,10 @@ const HeadlessItems = ({
 // into the right number of items with nothing editable in them.
 //
 // The hook owns the structure (add, move, remove, duplicate) and sends each
-// command through `binding.onChange`. The fields inside each child are
-// ordinary data-bound elements, found with `findEditableChildren` and
-// committed by id through `onNodeChange`, like any nested element.
+// command through `binding.onChange`. It hands back raw nodes, so the fields
+// inside each child go through the same two steps as `useDndPanel().bindings`:
+// `resolvePanelBindings` reads a node's bindings and `withPanelCommit` wires
+// them to `onNodeChange`, which leaves ordinary `PanelBinding`s for `Field`.
 const HeadlessChildren = ({
   binding,
   onNodeChange,
@@ -448,48 +449,28 @@ const HeadlessChildren = ({
 
           <div className="space-y-1 py-1">
             {findEditableChildren(child).map(node => {
-              const id = node.dataAttributes.find(
-                attribute => attribute.name === 'data-id',
-              )?.value;
-              const bindingAttr = node.dataAttributes.find(
-                attribute => attribute.name === 'data-binding',
-              )?.value;
+              const source = resolvePanelBindings(node);
 
-              if (!id || !bindingAttr) {
+              if (!source) {
                 return null;
               }
 
-              return (node.bindings ?? parseBinding(bindingAttr)).map(
-                nested => {
-                  const current = getCurrentValue(node, nested.property);
-
-                  return (
-                    <label
-                      // Keyed on the value too, so an uncontrolled input
-                      // picks up the new text after a move or an undo.
-                      key={`${id}-${nested.property}-${current}`}
-                      className="flex items-center gap-2"
-                    >
-                      <span className="w-16 shrink-0 text-xs text-gray-500">
-                        {nested.label}
-                      </span>
-                      <input
-                        className="w-full rounded border border-gray-300 px-2
-                          py-1 text-sm"
-                        defaultValue={current}
-                        onBlur={e =>
-                          e.target.value !== current &&
-                          onNodeChange({
-                            id,
-                            label: nested.label,
-                            property: nested.property,
-                            value: e.target.value,
-                          })
-                        }
-                      />
-                    </label>
-                  );
-                },
+              // Bound during render, not memoized: `onNodeChange` closes
+              // over the current document.
+              return withPanelCommit(source.bindings, onNodeChange).map(
+                nested => (
+                  <label
+                    key={`${nested.id}-${nested.property}`}
+                    className="flex items-center gap-2"
+                  >
+                    <span className="w-16 shrink-0 text-xs text-gray-500">
+                      {nested.label}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <Field binding={nested} onNodeChange={onNodeChange} />
+                    </div>
+                  </label>
+                ),
               );
             })}
           </div>

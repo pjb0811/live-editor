@@ -102,6 +102,13 @@ export { useDndPalette, useDndPanel, useDndLayout };
 export { useDndChildren };
 export type { DndChildren, DndChildrenOptions };
 export { useDndItems };
+// The two steps behind `useDndPanel().bindings`, for an element the panel
+// doesn't hand over itself — most often a child's fields under
+// `useDndChildren`, which returns raw `DataAttrNode`s. `resolvePanelBindings`
+// reads a node into bindings without a commit; `withPanelCommit` attaches
+// `onNodeChange`. Together they produce `PanelBinding`s ready for `Field`.
+export { resolvePanelBindings, withPanelCommit } from './panel-binding';
+export type { PanelBindingData, PanelBindingSource } from './panel-binding';
 
 // The names these hooks and types shipped under before they joined the
 // `useDnd*` family. Kept as aliases so existing imports keep compiling; drop
