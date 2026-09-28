@@ -560,7 +560,45 @@ const MyChildren = ({ binding }) => {
 `selected`, `toggle`, `isSelected`, `clear`, and `replace`. Actions are `add`,
 `move(from, to)`, `remove(index)`, `duplicateSelected`, `moveSelected('up' | 'down')`,
 and `removeSelected`. All indices refer to the current extracted list.
-For nested field controls, use `Live.Dnd.Field` with `onNodeChange` as shown above.
+
+The fields inside each child are ordinary data-bound elements, but the hook
+hands you raw nodes, not `PanelBinding`s. Turn them into bindings with the
+same two steps `useDndPanel().bindings` goes through, then render each with
+`Live.Dnd.Field` (or your own control):
+
+```tsx
+import {
+  Field,
+  resolvePanelBindings,
+  withPanelCommit,
+} from '@jbpark/live-editor/dnd';
+import { findEditableChildren } from '@jbpark/live-editor/utils/ast';
+
+const ChildFields = ({ child, onNodeChange }) =>
+  findEditableChildren(child).map(node => {
+    const source = resolvePanelBindings(node);
+
+    if (!source) {
+      return null;
+    }
+
+    return withPanelCommit(source.bindings, onNodeChange).map(binding => (
+      <label key={`${binding.id}-${binding.property}`}>
+        {binding.label}
+        <Field binding={binding} onNodeChange={onNodeChange} />
+      </label>
+    ));
+  });
+```
+
+- `resolvePanelBindings(node)` reads one element's `data-id` and
+  `data-binding` into `{ id, tagName, bindings }`, or returns `null` when the
+  element isn't editable. Its bindings carry everything a `PanelBinding` does
+  except `onChange`.
+- `withPanelCommit(bindings, onNodeChange)` adds that `onChange`, committing
+  each edit by the element's id. Call it during render, not inside a memo:
+  `onNodeChange` closes over the current document, and a stale one would write
+  an older source back.
 
 Structural edits preserve each subtree's original source. Text, comments, and
 expressions between children stay in their original slots. Copies are appended
