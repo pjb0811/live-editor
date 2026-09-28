@@ -155,6 +155,7 @@ pnpm test:watch    # Vitest watch 모드
 pnpm bench         # Vitest 벤치마크
 pnpm build:demo    # 로컬 앱을 dist-demo에 빌드
 pnpm exec vite preview --outDir dist-demo # 로컬 앱 빌드 미리보기
+pnpm --dir website start # 라이브러리·데모 빌드와 캐시 정리 후 문서 개발 서버 실행 (라이브러리 변경은 재실행해야 반영)
 pnpm --dir website typecheck # 문서 타입 검사
 pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌드
 ```
