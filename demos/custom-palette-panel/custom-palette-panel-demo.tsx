@@ -184,6 +184,71 @@ const ValidatedField = ({ binding }: { binding: PanelBinding }) => {
   );
 };
 
+// An `items`/`children`/array binding holds nested data-bound JSX that
+// `bindings` alone can't reach (see #308), so it gets a structural editor
+// rather than a flat input.
+const isStructuralBinding = (binding: PanelBinding) =>
+  binding.type === 'array' ||
+  binding.property === 'items' ||
+  binding.property === 'data' ||
+  binding.property === 'children';
+
+// Same binding, two ways to render it: the built-in control, or your own
+// markup over the same engine. Each kind has its own hook: `useDndChildren`
+// for sibling elements, `useDndItems` for an array literal.
+//
+// The headless editors render their nested fields through `NestedField`,
+// which comes back here, so a structural binding inside an item or child
+// (Stats' "Stats Cards" inside "Stats Items") stays headless too instead of
+// dropping to the built-in editor one level down.
+const StructuralField = ({
+  binding,
+  onNodeChange,
+  headless,
+}: {
+  binding: PanelBinding;
+  onNodeChange: PanelNodeChange;
+  headless: boolean;
+}) => {
+  if (!headless) {
+    // Renders the control only — the label is the caller's, which is why
+    // `Field` doesn't draw one.
+    return <Field binding={binding} onNodeChange={onNodeChange} />;
+  }
+
+  return binding.property === 'children' && Array.isArray(binding.value) ? (
+    <HeadlessChildren binding={binding} onNodeChange={onNodeChange} />
+  ) : (
+    <HeadlessItems binding={binding} onNodeChange={onNodeChange} />
+  );
+};
+
+// One field inside a headless item or child. Leaves keep the built-in
+// control in a compact row — the hook and `Field` compose. A structural
+// binding gets the full width, with its label above it, and recurses.
+const NestedField = ({
+  binding,
+  onNodeChange,
+}: {
+  binding: PanelBinding;
+  onNodeChange: PanelNodeChange;
+}) =>
+  isStructuralBinding(binding) ? (
+    <div className="space-y-1">
+      <span className="text-xs text-gray-500">{binding.label}</span>
+      <StructuralField binding={binding} onNodeChange={onNodeChange} headless />
+    </div>
+  ) : (
+    <label className="flex items-center gap-2">
+      <span className="w-16 shrink-0 text-xs text-gray-500">
+        {binding.label}
+      </span>
+      <div className="min-w-0 flex-1">
+        <Field binding={binding} onNodeChange={onNodeChange} />
+      </div>
+    </label>
+  );
+
 // A deliberately different layout for an `items` binding, built on the
 // exported `useDndItems`. Nothing here parses JSX or touches Babel: the
 // hook hands back `PanelBinding`s and position-translated actions, so this
@@ -313,20 +378,11 @@ const HeadlessItems = ({
                       {group.property} › &lt;{element.tagName}&gt;
                     </div>
                     {element.bindings.map(nestedBinding => (
-                      <label
+                      <NestedField
                         key={nestedBinding.label}
-                        className="flex items-center gap-2"
-                      >
-                        <span className="w-16 shrink-0 text-xs text-gray-500">
-                          {nestedBinding.label}
-                        </span>
-                        {/* Structural bindings still get the built-in
-                            control — the hook and `Field` compose. */}
-                        <Field
-                          binding={nestedBinding}
-                          onNodeChange={onNodeChange}
-                        />
-                      </label>
+                        binding={nestedBinding}
+                        onNodeChange={onNodeChange}
+                      />
                     ))}
                   </div>
                 ))
@@ -459,17 +515,11 @@ const HeadlessChildren = ({
               // over the current document.
               return withPanelCommit(source.bindings, onNodeChange).map(
                 nested => (
-                  <label
+                  <NestedField
                     key={`${nested.id}-${nested.property}`}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="w-16 shrink-0 text-xs text-gray-500">
-                      {nested.label}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <Field binding={nested} onNodeChange={onNodeChange} />
-                    </div>
-                  </label>
+                    binding={nested}
+                    onNodeChange={onNodeChange}
+                  />
                 ),
               );
             })}
@@ -579,17 +629,13 @@ const MyPanel = ({ mode }: { mode: PanelMode }) => {
           whatever control you want. onChange commits through the same AST
           pipeline as the built-in panel. */}
       {bindings.map((binding, index) => {
-        // An `items`/`children`/array binding holds nested data-bound JSX
-        // that `bindings` alone can't reach (see #308). Flattening it gives
-        // a wall of tiny inputs at best, a raw source textarea at worst — so
-        // hand these back to the built-in control and keep the hand-rolled
-        // ones for the simple types. This is the point of `Live.Dnd.Field`:
-        // the choice is per binding, not all-or-nothing.
-        const isStructural =
-          binding.type === 'array' ||
-          binding.property === 'items' ||
-          binding.property === 'data' ||
-          binding.property === 'children';
+        // Flattening a structural binding gives a wall of tiny inputs at
+        // best, a raw source textarea at worst — so hand these to
+        // `StructuralField` (the built-in control, or the headless editors
+        // in "Headless" mode) and keep the hand-rolled ones for the simple
+        // types. This is the point of `Live.Dnd.Field`: the choice is per
+        // binding, not all-or-nothing.
+        const isStructural = isStructuralBinding(binding);
 
         const isMultiline =
           binding.type === 'jsx' || binding.type === 'richtext';
@@ -621,28 +667,11 @@ const MyPanel = ({ mode }: { mode: PanelMode }) => {
               {binding.label}
             </span>
             {isStructural ? (
-              // Same binding, two ways to render it: the built-in control,
-              // or your own markup over the same engine. Each kind has its
-              // own hook: `useDndChildren` for sibling elements,
-              // `useDndItems` for an array literal.
-              mode === 'headless' ? (
-                binding.property === 'children' &&
-                Array.isArray(binding.value) ? (
-                  <HeadlessChildren
-                    binding={binding}
-                    onNodeChange={onNodeChange}
-                  />
-                ) : (
-                  <HeadlessItems
-                    binding={binding}
-                    onNodeChange={onNodeChange}
-                  />
-                )
-              ) : (
-                // Renders the control only — the label above is ours, which
-                // is why `Field` doesn't draw one.
-                <Field binding={binding} onNodeChange={onNodeChange} />
-              )
+              <StructuralField
+                binding={binding}
+                onNodeChange={onNodeChange}
+                headless={mode === 'headless'}
+              />
             ) : entries ? (
               <ParsedValueEditor binding={binding} entries={entries} />
             ) : binding.widget?.type === 'slider' ? (
