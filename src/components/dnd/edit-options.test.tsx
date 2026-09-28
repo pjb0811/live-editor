@@ -22,7 +22,7 @@ import { Canvas } from './layout';
 import { useDndPanel } from './layout-context';
 import Field from './panel/field';
 import Items from './panel/items';
-import { useItemsEditor } from './panel/use-items-editor';
+import { useDndItems } from './panel/use-dnd-items';
 
 vi.mock('./renderer', () => ({
   default: () => <div data-testid="renderer" />,
@@ -282,7 +282,7 @@ describe('onEditError', () => {
     const reportError = vi.fn();
     const onChange = vi.fn();
     const { result } = renderHook(
-      () => useItemsEditor("[, { label: 'A' }, { label: 'B' }]", { onChange }),
+      () => useDndItems("[, { label: 'A' }, { label: 'B' }]", { onChange }),
       {
         wrapper: ({ children }) => (
           <DndEditOptionsContext.Provider value={{ reportError }}>

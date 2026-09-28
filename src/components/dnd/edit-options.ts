@@ -65,7 +65,7 @@ export const toastEditError = (error: DndEditError) => {
 // A context rather than props threaded through every editor: `Field` renders
 // itself recursively and inside `Items`/`Children`, and a custom panel
 // renders it directly, so this is the one way every field sees the same
-// options. The default keeps `Field`/`useItemsEditor` working outside
+// options. The default keeps `Field`/`useDndItems` working outside
 // `Live.Dnd`, reporting through the toast as before.
 export const DndEditOptionsContext = createContext<DndEditOptions>({
   reportError: toastEditError,

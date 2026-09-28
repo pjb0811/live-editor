@@ -43,24 +43,24 @@ import {
 // These are the elements the top-level `bindings` array can't reach —
 // `extract()` doesn't walk into an attribute expression, so they're found
 // by re-extracting the property's own JSX here (#308).
-export interface ItemsEditorNestedElement {
+export interface DndItemsNestedElement {
   // The element's `data-id`, which is what commits address it by.
   id: string;
   tagName: string;
   bindings: PanelBinding[];
 }
 
-export interface ItemsEditorNestedGroup {
+export interface DndItemsNestedGroup {
   // The item property holding this JSX (e.g. `children`, `label`).
   property: string;
-  elements: ItemsEditorNestedElement[];
+  elements: DndItemsNestedElement[];
   // Set instead of `elements` when the JSX parsed but declared no binding
   // at all. Editing the property's raw source is the only thing left to
   // offer, so this is a `jsx`-typed binding over that source (#298).
   fallback?: PanelBinding;
 }
 
-export interface ItemsEditorItem {
+export interface DndItemsItem {
   // Stable while this hook can prove the same item survived a source edit.
   // Structural actions update this identity alongside the source patch, so
   // React keys follow moved/duplicated/deleted rows instead of their positions.
@@ -76,12 +76,12 @@ export interface ItemsEditorItem {
   // the binding `render` map.
   properties: PanelBinding[];
   // An object item's JSX-valued properties.
-  nested: ItemsEditorNestedGroup[];
+  nested: DndItemsNestedGroup[];
   // A primitive item's own value. Absent on object items.
   value?: PanelBinding;
 }
 
-export interface ItemsEditorActions {
+export interface DndItemsActions {
   // Appends a copy of the first item of the current `kind`. An array
   // binding stays editable only while it holds at least one item: the shape
   // of a new item comes from its siblings, never from a guess. On an empty
@@ -98,17 +98,17 @@ export interface ItemsEditorActions {
   removeSelected: () => void;
 }
 
-export interface ItemsEditor {
+export interface DndItems {
   // Which kind the array is being edited as. The panel shows one kind at a
   // time; an array holding both is treated as objects, and the primitives
   // stay untouched rather than being dropped.
   kind: 'object' | 'primitive';
-  items: ItemsEditorItem[];
+  items: DndItemsItem[];
   // `@jbpark/use-hooks`' multi-select state, re-exposed as-is: `selected`,
   // `toggle`, `isSelected`, `clear`, `replace`. Its indices are item
   // `index` values, not `elementIndex` — the actions below translate.
   selection: ReturnType<typeof useMultiSelect>;
-  actions: ItemsEditorActions;
+  actions: DndItemsActions;
   // Whether the current source can be moved, copied, removed or appended
   // without losing syntax. Value/property edits can remain available when
   // this is false. Every action revalidates the source before committing.
@@ -118,7 +118,7 @@ export interface ItemsEditor {
   parseError: boolean;
 }
 
-export interface ItemsEditorOptions {
+export interface DndItemsOptions {
   render?: BindingRenderMap;
   // Commits a whole new array source. Every mutation here goes through
   // `~/utils/ast`'s item functions, which re-parse the source and hand back
@@ -150,7 +150,7 @@ interface RawPrimitiveItem {
 
 interface ItemIdentityState {
   value: string;
-  kind: ItemsEditor['kind'];
+  kind: DndItems['kind'];
   ids: string[];
   signatures: string[];
 }
@@ -278,7 +278,7 @@ const parseSource = (value: string) => {
 
 const createIdentityState = (
   value: string,
-  kind: ItemsEditor['kind'],
+  kind: DndItems['kind'],
   items: Array<RawObjectItem | RawPrimitiveItem>,
   ids: string[] = items.map(item => item.id),
 ): ItemIdentityState => ({
@@ -291,7 +291,7 @@ const createIdentityState = (
 const reconcileIdentityState = (
   current: ItemIdentityState | null,
   value: string,
-  kind: ItemsEditor['kind'],
+  kind: DndItems['kind'],
   items: Array<RawObjectItem | RawPrimitiveItem>,
 ): ItemIdentityState => {
   if (
@@ -351,10 +351,10 @@ const removeIds = (ids: string[], indices: Set<number>) => {
 // reconciling the selection after a move or delete (#285). Everything comes
 // back as `PanelBinding`s, the same currency `useDndPanel()` and
 // `Live.Dnd.Field` already speak, so nothing here requires touching Babel.
-export const useItemsEditor = (
+export const useDndItems = (
   value: string,
-  { render, onChange, onNodeChange }: ItemsEditorOptions = {},
-): ItemsEditor => {
+  { render, onChange, onNodeChange }: DndItemsOptions = {},
+): DndItems => {
   const { objectItems, primitiveItems, parseError } = useMemo(
     () => parseSource(value),
     [value],
@@ -468,7 +468,7 @@ export const useItemsEditor = (
     );
   };
 
-  const actions: ItemsEditorActions = {
+  const actions: DndItemsActions = {
     add: () => {
       const next = appendArrayItem(value, kind);
 
@@ -578,7 +578,7 @@ export const useItemsEditor = (
   // Built fresh each render rather than inside the memo above: these close
   // over `onChange`/`onNodeChange`, and the work is a plain walk of the
   // already-parsed result — no Babel.
-  const items: ItemsEditorItem[] = isPrimitive
+  const items: DndItemsItem[] = isPrimitive
     ? primitiveItems.map(item => ({
         id: identity.ids[item.index] ?? item.id,
         index: item.index,
@@ -627,7 +627,7 @@ export const useItemsEditor = (
           };
         });
 
-        const nested: ItemsEditorNestedGroup[] = [
+        const nested: DndItemsNestedGroup[] = [
           ...Object.entries(item.jsxBindings).map(([property, nodes]) => ({
             property,
             elements: nodes.flatMap(node => {

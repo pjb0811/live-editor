@@ -451,7 +451,7 @@ const Dnd = ({
   );
 
   // Bound fresh each render on top of the memo above — the same split
-  // `useItemsEditor` uses for its `items`. This is a plain walk of an
+  // `useDndItems` uses for its `items`. This is a plain walk of an
   // already-parsed result with no Babel in it, and it's what guarantees a
   // commit reads the current `updatedCode`/`selectedItem`/`onChange`.
   //

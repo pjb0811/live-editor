@@ -11,7 +11,7 @@ import {
   withPanelCommit,
 } from './panel-binding';
 import Node from './panel/node';
-import { useItemsEditor } from './panel/use-items-editor';
+import { useDndItems } from './panel/use-dnd-items';
 
 // Captures what `Node` hands to the built-in control, which is the only way
 // to read the custom-panel path's binding without asserting on rendered
@@ -241,7 +241,7 @@ describe('panel paths agree on the same element', () => {
     // The nested path: the same element inside an item's JSX-valued
     // property, which `extract()` never walks into (#308).
     const { result } = renderHook(() =>
-      useItemsEditor(`[{ key: 'row', children: (<div>${element}</div>) }]`),
+      useDndItems(`[{ key: 'row', children: (<div>${element}</div>) }]`),
     );
 
     const nested = result.current.items[0]!.nested.find(
@@ -270,7 +270,7 @@ describe('panel paths agree on the same element', () => {
       `[{ label: 'Rows', property: 'items', type: 'array', render: { title: ${spec} } }]`,
     );
     const { result } = renderHook(() =>
-      useItemsEditor(`[{ title: 'Open' }]`, { render: items!.render }),
+      useDndItems(`[{ title: 'Open' }]`, { render: items!.render }),
     );
     const fromLeaf = result.current.items[0]!.properties[0]!;
 
@@ -300,7 +300,7 @@ describe('panel paths agree on the same element', () => {
       `[{ label: 'Rows', property: 'items', type: 'array', render: { size: { type: 'not-a-type', valueType: 'spoofed' } } }]`,
     );
     const { result } = renderHook(() =>
-      useItemsEditor(`[{ size: 12 }]`, { render: items!.render }),
+      useDndItems(`[{ size: 12 }]`, { render: items!.render }),
     );
     const leaf = result.current.items[0]!.properties[0]!;
 

@@ -9,10 +9,10 @@ import Dnd, {
   Field,
   type PanelBinding,
   type PanelNodeChange,
+  useDndItems,
   useDndLayout,
   useDndPalette,
   useDndPanel,
-  useItemsEditor,
 } from '~/components/dnd';
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { cn } from '~/utils';
@@ -180,7 +180,7 @@ const ValidatedField = ({ binding }: { binding: PanelBinding }) => {
 };
 
 // A deliberately different layout for an `items` binding, built on the
-// exported `useItemsEditor`. Nothing here parses JSX or touches Babel: the
+// exported `useDndItems`. Nothing here parses JSX or touches Babel: the
 // hook hands back `PanelBinding`s and position-translated actions, so this
 // only has to decide what it looks like. Compare with the built-in Items
 // panel ("Wrap built-in") — same engine, different markup.
@@ -191,7 +191,7 @@ const HeadlessItems = ({
   binding: PanelBinding;
   onNodeChange: PanelNodeChange;
 }) => {
-  const { items, selection, actions } = useItemsEditor(binding.rawValue, {
+  const { items, selection, actions } = useDndItems(binding.rawValue, {
     render: binding.render,
     onChange: binding.onChange,
     onNodeChange,
@@ -376,7 +376,7 @@ const MyPalette = () => {
 
 // The panel, replaced end to end. Being a component rather than a callback is
 // what lets the fields below hold their own state — `ValidatedField` keeps a
-// validation message, `useItemsEditor` keeps a selection — without this
+// validation message, `useDndItems` keeps a selection — without this
 // having to hoist any of it.
 const MyPanel = ({ mode }: { mode: PanelMode }) => {
   const {
@@ -477,7 +477,7 @@ const MyPanel = ({ mode }: { mode: PanelMode }) => {
             {isStructural ? (
               // Same binding, two ways to render it: the built-in control,
               // or your own markup over the same engine via
-              // `useItemsEditor`.
+              // `useDndItems`.
               mode === 'headless' ? (
                 <HeadlessItems binding={binding} onNodeChange={onNodeChange} />
               ) : (
@@ -601,7 +601,7 @@ const StackedLayout = ({
 // `Live.Dnd.Panel` and only add around it (see `WrappedPanel`).
 //
 // "Headless items" is the third option: keep your own markup but reuse the
-// array-editing engine through `useItemsEditor` (see `HeadlessItems`).
+// array-editing engine through `useDndItems` (see `HeadlessItems`).
 //
 // The Layout toggle is the outer layer. "Built-in" keeps the shipped 3-pane
 // Splitter and mobile chrome and only fills its `palette`/`panel` slots;

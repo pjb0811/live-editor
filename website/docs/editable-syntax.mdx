@@ -37,7 +37,7 @@ For example, changing `label` in
 unchanged. Moving or deleting that item is disabled because the visible panel
 indices do not represent every runtime array entry.
 
-`useItemsEditor()` exposes this decision as `canEditStructure`. It is computed
+`useDndItems()` exposes this decision as `canEditStructure`. It is computed
 with the same dense-array check used again by every mutation helper, so custom
 panels can disable controls up front without weakening commit-time validation.
 Likewise, `PanelBinding.canEditValue === false` means a partial value editor
