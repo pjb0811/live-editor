@@ -46,18 +46,18 @@ to replace individual controls while keeping the built-in panel, or in a
 
 ## Fields
 
-| Field           | Type                                                              | Meaning                                                                                                                    |
-| --------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `label`         | `string`                                                          | **Required.** The field's heading in the panel. Must be unique within one element.                                         |
-| `property`      | `string`                                                          | The prop to edit. See [Properties](#properties). Can be omitted only for `type: 'richtext'`, which then edits `innerHTML`. |
-| `type`          | `BindingType`                                                     | The data kind. Picks the default control and how the value is validated and written back. See [Types](#types).             |
-| `options`       | `{ label: string; value: string }[]`                              | A fixed set of values. The built-in panel shows a select.                                                                  |
-| `min` / `max`   | `number`                                                          | Range for a number value.                                                                                                  |
-| `pattern`       | `string`                                                          | A regular expression (as a string) a text value must match.                                                                |
-| `required`      | `boolean`                                                         | An empty value is rejected.                                                                                                |
-| `render`        | `BindingRenderMap`                                                | Types the keys inside an `object` or `array` value. See [Nested fields](#nested-fields).                                   |
-| `widget`        | `string` or `{ type: string; step?: number; unit?: string; ... }` | A control name **you** define, for your own panel to draw. Not a built-in option; ignored by the built-in panel.           |
-| _any other key_ | `unknown`                                                         | Kept as-is under `binding.meta` for your own panel (a group name, a hint, ...).                                            |
+| Field           | Type                                        | Meaning                                                                                                                                                                          |
+| --------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `label`         | `string`                                    | **Required.** The field's heading in the panel. Must be unique within one element.                                                                                               |
+| `property`      | `string`                                    | The prop to edit. See [Properties](#properties). Can be omitted only for `type: 'richtext'`, which then edits `innerHTML`.                                                       |
+| `type`          | `BindingType`                               | The data kind. Picks the default control and how the value is validated and written back. See [Types](#types).                                                                   |
+| `options`       | `{ label: string; value: string }[]`        | A fixed set of values. The built-in panel shows a select.                                                                                                                        |
+| `min` / `max`   | `number`                                    | Range for a number value.                                                                                                                                                        |
+| `pattern`       | `string`                                    | A regular expression (as a string) a text value must match.                                                                                                                      |
+| `required`      | `boolean`                                   | An empty value is rejected.                                                                                                                                                      |
+| `render`        | `BindingRenderMap`                          | Types the keys inside an `object` or `array` value. See [Nested fields](#nested-fields).                                                                                         |
+| `widget`        | `string` or `{ type: string; ...settings }` | A control name **you** define, plus any settings your control needs. Not a built-in option; ignored by the built-in panel. See [`widget`](#widget-a-hint-for-your-own-controls). |
+| _any other key_ | `unknown`                                   | Kept as-is under `binding.meta` for your own panel (a group name, a hint, ...).                                                                                                  |
 
 A malformed value never removes the field. An unknown `type`, a `min` that is
 not a number, or an invalid `widget` is dropped on its own, and the rest of the
@@ -221,6 +221,14 @@ it:
 - Any key the library does not define (`group` above) arrives under
   `binding.meta.group`.
 
+Both reach your code the same way, so you could put the control name in
+`meta` too (`control: 'slider'` arrives as `binding.meta.control`). Use
+`widget` for it anyway. It's a reserved field, so it keeps its place if the
+library adds new fields later, while a `meta` key that becomes a library
+field moves out of `meta`. It's also the one name `renderField`, custom
+panels and nested fields all check for the control. Use `meta` for the other
+information about a field, such as a group or help text.
+
 The built-in panel shows a number input for this field and ignores both.
 
 ### `widget`: a hint for your own controls
@@ -256,14 +264,20 @@ carries the control's own settings:
 
 ```tsx
 widget: 'slider'                                // arrives as { type: 'slider' }
-widget: { type: 'slider', step: 4, unit: 'px' } // step and unit are typed
-widget: { type: 'textarea', rows: 6 }           // other keys arrive as unknown
+widget: { type: 'slider', step: 4, unit: 'px' } // settings for your slider
+widget: { type: 'textarea', rows: 6 }           // settings for your textarea
 ```
 
 The bare string is normalized to `{ type }`, so your code always checks
-`widget.type`. `step` and `unit` are typed because many controls need them;
-any other key you add (`rows` above) passes through as `unknown`, so check
-its type before using it.
+`widget.type`.
+
+The settings are yours too; the library reads none of them. `step` and
+`unit` are the only two that come typed. That isn't because the library uses
+them. They're common enough that your code gets them as `number` and
+`string` instead of `unknown`. Every other setting (`rows` above) arrives as
+`unknown`, so check its type before using it. A typed setting with the wrong
+type (`step: '4'`) drops the whole `widget`, so your code sees
+no widget on that field and draws its default control.
 
 Keep value rules out of `widget`. `min`, `max`, `pattern` and `required`
 belong on the binding itself, where the library enforces them whatever

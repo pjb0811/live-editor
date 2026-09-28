@@ -599,7 +599,7 @@ it immediately, because its own array edit has already succeeded by then.
 | `label` | `string` | Human-readable label from the binding definition. |
 | `property` | `string` | The bound prop/attribute name. |
 | `type` | `BindingType?` | The declared data kind — what the value *is* (`string`, `number`, `boolean`, ...). `undefined` means a plain string binding. See the full list below. |
-| `widget` | `BindingWidget?` | The declared presentation — how to *render* it, as `{ type, step?, unit?, ...config }`. `widget.type` is an open string, not `BindingType`: the library ships no widgets, so every value (e.g. `'slider'`) is a name you make up and handle yourself. Authored as a bare string (`widget: 'slider'`), it arrives as `{ type: 'slider' }`. The built-in panel ignores it and renders the default control for `type`. |
+| `widget` | `BindingWidget?` | The declared presentation — how to *render* it, as `{ type, ...settings }`. `widget.type` is an open string, not `BindingType`: the library ships no widgets, so every value (e.g. `'slider'`) is a name you make up and handle yourself. Authored as a bare string (`widget: 'slider'`), it arrives as `{ type: 'slider' }`. The built-in panel ignores it and renders the default control for `type`. |
 | `options` | `BindingOption[]?` | Present when the binding defines a fixed option set (render a `<select>`). |
 | `render` | `BindingRenderMap?` | Present on `object`/`array` bindings whose nested keys/items declare their own types — walk it to type each nested field instead of treating the value as an opaque string. |
 | `min` | `number?` | Minimum value for a `number` binding. Compared against the real number `value` delivers — pass it straight to `validateBindingValue`. |
@@ -652,8 +652,10 @@ bindings.map(binding =>
 );
 ```
 
-`step` and `unit` are typed; any further key you put on `widget` passes
-through as `unknown`, so narrow it before use. The shipped Custom Palette &
+`step` and `unit` are the widget's settings, and the library reads neither.
+They're the only two that come typed, as a convenience; any other setting
+you put on `widget` passes through as `unknown`, so narrow it before use (see
+[`widget`](./data-binding.mdx#widget-a-hint-for-your-own-controls)). The shipped Custom Palette &
 Panel demo's "Content Spacing" field does exactly this; drag it in the
 embedded demo above to see it live. To do the same without writing a whole
 panel, see [`renderField`](#replacing-one-control-everywhere-renderfield).
