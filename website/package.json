@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
+    "prestart": "pnpm --dir .. build && pnpm build:demos && docusaurus clear",
     "start": "docusaurus start",
     "build:demos": "pnpm --dir .. build:demos",
     "prebuild": "pnpm --dir .. build && pnpm build:demos",

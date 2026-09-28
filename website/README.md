@@ -13,10 +13,12 @@ npm install
 ## Local Development
 
 ```bash
-npm run start
+pnpm start
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+This command builds the library (`pnpm --dir .. build`) and the iframe demos (`pnpm build:demos`), clears the Docusaurus cache, then starts a local development server and opens up a browser window.
+
+Changes under `docs/` and `src/` are reflected live. Changes to the library itself (`../src`) are not: the site consumes the built `../dist` through `link:..`, and the bundler neither watches it nor invalidates its persistent cache for it. Stop the server and run `pnpm start` again. For demo-only changes (`../demos`), `pnpm build:demos` and a browser refresh are enough.
 
 ## Build
 
