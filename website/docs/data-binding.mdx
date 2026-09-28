@@ -37,7 +37,9 @@ built-in panel picks a default control from those and validates edits against
 them.
 
 How a field is **drawn** belongs to the panel. `widget` is carried through to
-your panel untouched; the built-in panel never reads it. Switch on it in
+your panel untouched; the built-in panel never reads it. The library ships no
+widgets, so a `widget` value does nothing until your own code handles it (see
+[`widget`](#widget-a-hint-for-your-own-controls)). Switch on it in
 [`renderField`](./custom-palette-panel.mdx#replacing-one-control-everywhere-renderfield)
 to replace individual controls while keeping the built-in panel, or in a
 [custom panel](./custom-palette-panel.mdx#choosing-a-control-is-the-panels-job).
@@ -54,7 +56,7 @@ to replace individual controls while keeping the built-in panel, or in a
 | `pattern`       | `string`                                                          | A regular expression (as a string) a text value must match.                                                                |
 | `required`      | `boolean`                                                         | An empty value is rejected.                                                                                                |
 | `render`        | `BindingRenderMap`                                                | Types the keys inside an `object` or `array` value. See [Nested fields](#nested-fields).                                   |
-| `widget`        | `string` or `{ type: string; step?: number; unit?: string; ... }` | A presentation hint for **your own** panel. Ignored by the built-in panel.                                                 |
+| `widget`        | `string` or `{ type: string; step?: number; unit?: string; ... }` | A control name **you** define, for your own panel to draw. Not a built-in option; ignored by the built-in panel.           |
 | _any other key_ | `unknown`                                                         | Kept as-is under `binding.meta` for your own panel (a group name, a hint, ...).                                            |
 
 A malformed value never removes the field. An unknown `type`, a `min` that is
@@ -215,10 +217,54 @@ it:
 }
 ```
 
-- `widget` describes the control. A bare string (`widget: 'slider'`) arrives as
-  `{ type: 'slider' }`, so your panel always switches on `widget.type`. `step`
-  and `unit` are typed; anything else you add to it arrives as `unknown`.
+- `widget` names the control your panel should draw. See below.
 - Any key the library does not define (`group` above) arrives under
   `binding.meta.group`.
 
 The built-in panel shows a number input for this field and ignores both.
+
+### `widget`: a hint for your own controls
+
+`widget` is not a list of built-in controls to choose from. The library ships
+no widgets, and `'slider'` is not a built-in option either; it's just the name
+these docs and the demos use. Nothing happens to a `widget` value until your
+own code reads it:
+
+1. You pick a name for the control you want and write it on the binding.
+2. Your code checks `binding.widget.type` in
+   [`renderField`](./custom-palette-panel.mdx#replacing-one-control-everywhere-renderfield)
+   or in a [custom panel](./custom-palette-panel.mdx#choosing-a-control-is-the-panels-job)
+   and draws that control.
+3. Anywhere the name isn't handled, including the built-in panel, the field
+   gets the default control for its `type`.
+
+Any string works, so name controls after what your panel actually draws. For
+example:
+
+| `widget`        | On a field with   | Your panel might draw                           |
+| --------------- | ----------------- | ----------------------------------------------- |
+| `'slider'`      | `type: 'number'`  | A range slider using `min`, `max` and `step`    |
+| `'switch'`      | `type: 'boolean'` | A toggle switch instead of a checkbox           |
+| `'radio'`       | `options`         | Radio buttons instead of a select               |
+| `'textarea'`    | `type: 'string'`  | A multi-line text box with a given height       |
+| `'icon-picker'` | `type: 'string'`  | Your own icon set, writing the chosen icon name |
+
+None of these are built in; they only show the kind of names that fit.
+
+`widget` is authored either as a bare string or as an object that also
+carries the control's own settings:
+
+```tsx
+widget: 'slider'                                // arrives as { type: 'slider' }
+widget: { type: 'slider', step: 4, unit: 'px' } // step and unit are typed
+widget: { type: 'textarea', rows: 6 }           // other keys arrive as unknown
+```
+
+The bare string is normalized to `{ type }`, so your code always checks
+`widget.type`. `step` and `unit` are typed because many controls need them;
+any other key you add (`rows` above) passes through as `unknown`, so check
+its type before using it.
+
+Keep value rules out of `widget`. `min`, `max`, `pattern` and `required`
+belong on the binding itself, where the library enforces them whatever
+control draws the field.
