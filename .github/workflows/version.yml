@@ -42,7 +42,11 @@ jobs:
         uses: changesets/action@v1
         with:
           version: pnpm exec changeset version
-          commit: '🔖 chore: version packages'
-          title: '🔖 chore: version packages'
+          # No emoji prefix — the PR template asks for conventional-commit
+          # style with no gitmoji. These strings become a real commit on the
+          # release branch and the PR title that lands on main, so they
+          # follow the same `type: summary` shape as a hand-written commit.
+          commit: 'chore: version packages'
+          title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

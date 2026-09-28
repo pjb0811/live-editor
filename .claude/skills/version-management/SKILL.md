@@ -23,7 +23,7 @@ npm view @jbpark/live-editor version    # 레지스트리에 실제로 올라가
 ## 릴리스 흐름
 
 1. **changeset 추가**: 사용자 대상 변경이 있는 PR에는 `.changeset/*.md`가 필요하다. `pnpm changeset`으로 수동 생성하거나, `changeset-draft.yml`(필수 상태 체크 `draft`)이 PR별로 초안을 자동 생성/갱신해준다.
-2. **Version Packages PR**: main에 push될 때마다 `version.yml`이 돌면서, 누적된 changeset들로 `changeset-release/main` 브랜치에 "🔖 chore: version packages" PR을 열고 유지한다. `package.json` 버전 bump + `CHANGELOG.md` 갱신.
+2. **Version Packages PR**: main에 push될 때마다 `version.yml`이 돌면서, 누적된 changeset들로 `changeset-release/main` 브랜치에 "chore: version packages" PR을 열고 유지한다. `package.json` 버전 bump + `CHANGELOG.md` 갱신.
 3. **머지 시 동작 (publish.yml)**: 이 PR을 머지하면 그 자체가 main push이므로 `publish.yml`이 실행된다.
    - `already_tagged` 확인 — 현재 `package.json`의 버전이 이미 `vX.Y.Z` 태그로 있으면 아무것도 안 한다. 대부분의 main push(일반 PR 머지)가 여기서 걸러지고, 버전이 막 올라간 직후에만 통과한다.
    - install → build
