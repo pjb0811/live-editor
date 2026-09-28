@@ -12,7 +12,7 @@ import * as ui from 'ui-kit';
 
 const App = () => {
   return (
-    <div className="p-6 space-y-2">
+    <div className="flex flex-col items-start gap-2 p-6">
       <ui.Typography.Title level={3}>Hello from the editor</ui.Typography.Title>
       <ui.Button type="primary">Edit me</ui.Button>
     </div>

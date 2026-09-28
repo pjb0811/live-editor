@@ -68,7 +68,7 @@ const SAMPLE = `
 import * as ui from 'ui-kit';
 
 const App = () => (
-  <div className="p-6 space-y-2">
+  <div className="flex flex-col items-start gap-2 p-6">
     <ui.Typography.Title level={3}>Hello</ui.Typography.Title>
     <ui.Button type="primary">Edit me</ui.Button>
   </div>
@@ -92,11 +92,12 @@ export default function Example() {
 ## How Tailwind reaches the preview
 
 Every sample on this site uses Tailwind utility classes
-(`className="p-6 space-y-2"`), and none of them work for free — the code a
-reader types is compiled and rendered at runtime, so there's no build step
-that could have generated CSS for classes that don't exist yet when the app
-first loads. There are three ways to make them actually apply, and the first
-two are complementary — use both together to cover each other's gaps.
+(`className="flex flex-col items-start gap-2 p-6"`), and none of them work
+for free — the code a reader types is compiled and rendered at runtime, so
+there's no build step that could have generated CSS for classes that don't
+exist yet when the app first loads. There are three ways to make them actually
+apply, and the first two are complementary — use both together to cover each
+other's gaps.
 
 **`syncStyle`** — clones the host document's already-compiled
 `<link>`/`<style>` tags in (into the iframe document, or directly into the
