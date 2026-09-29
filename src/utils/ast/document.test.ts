@@ -9,6 +9,7 @@ import {
   generateSectionPreview,
   generateSectionPreviews,
   getSections,
+  inspectDocument,
   parseDocument,
   replaceDocumentSections,
 } from './document';
@@ -54,6 +55,54 @@ describe('parseDocument', () => {
   it('returns undefined for unparsable code instead of throwing', () => {
     expect(() => parseDocument('<main id="app-container">')).not.toThrow();
     expect(parseDocument('<main id="app-container">')).toBeUndefined();
+  });
+});
+
+// A document built around a container id other than `app-container` used to
+// have no sections at all, and nothing said why (#449).
+describe('containerId and inspectDocument', () => {
+  const ROOT_CODE = FULL_CODE.replace('id="app-container"', 'id="root"');
+
+  it('finds the container by the given id', () => {
+    const doc = parseDocument(ROOT_CODE, { containerId: 'root' });
+
+    expect(getSections(doc!).map(section => section.name)).toEqual([
+      'Hero',
+      'Features',
+    ]);
+  });
+
+  it('caches per container id, not just per source', () => {
+    expect(parseDocument(ROOT_CODE)).toBeUndefined();
+    expect(parseDocument(ROOT_CODE, { containerId: 'root' })).toBeDefined();
+    expect(parseDocument(FULL_CODE, { containerId: 'root' })).toBeUndefined();
+    expect(parseDocument(FULL_CODE)).toBeDefined();
+  });
+
+  it('says the container is missing, and which one', () => {
+    expect(inspectDocument(ROOT_CODE)).toEqual({
+      ok: false,
+      reason: 'container-not-found',
+      containerId: 'app-container',
+    });
+    expect(inspectDocument('')).toMatchObject({
+      ok: false,
+      reason: 'container-not-found',
+    });
+  });
+
+  it('tells a parse error apart from a missing container', () => {
+    expect(inspectDocument('<main id="app-container">')).toMatchObject({
+      ok: false,
+      reason: 'parse-error',
+      error: expect.any(Error),
+    });
+  });
+
+  it('hands back the document when it has the container', () => {
+    const inspection = inspectDocument(FULL_CODE);
+
+    expect(inspection.ok && inspection.doc).toBe(parseDocument(FULL_CODE));
   });
 });
 

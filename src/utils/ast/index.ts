@@ -49,6 +49,9 @@ export {
 } from './items';
 export { clearExtractCache, extract } from './extract';
 export type {
+  DocumentInspection,
+  DocumentOptions,
+  DocumentProblem,
   DocumentTree,
   SectionOptions,
   SectionPreviewCache,
@@ -61,6 +64,7 @@ export {
   generateSectionPreview,
   generateSectionPreviews,
   getSections,
+  inspectDocument,
   parseDocument,
   replaceDocumentSections,
 } from './document';

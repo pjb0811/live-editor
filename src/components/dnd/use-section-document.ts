@@ -43,7 +43,7 @@ export interface SectionDocument {
 export const useSectionDocument = (
   value: string,
   onChange?: (value: string) => void,
-  { sectionNameFallback }: SectionOptions = {},
+  { containerId, sectionNameFallback }: SectionOptions = {},
 ): SectionDocument => {
   const { setCode } = usePreview();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -51,8 +51,9 @@ export const useSectionDocument = (
   // Every read of a document into sections goes through here, so a section
   // without `data-name` is named the same way wherever it's read (#448).
   const readSections = useCallback(
-    (code: string) => extractSections(code, { sectionNameFallback }),
-    [sectionNameFallback],
+    (code: string) =>
+      extractSections(code, { containerId, sectionNameFallback }),
+    [containerId, sectionNameFallback],
   );
 
   // Sections identify themselves by `data-id`; `getSections` falls back to a
@@ -64,7 +65,10 @@ export const useSectionDocument = (
   // fillIds for field ids, the filled document only reaches
   // `onChange`/`setCode` when a real mutation commits, so merely opening a
   // document never rewrites the author's code.
-  const document = useMemo(() => fillSectionIds(value), [value]);
+  const document = useMemo(
+    () => fillSectionIds(value, undefined, { containerId }),
+    [containerId, value],
+  );
   const sections = useMemo(
     () => readSections(document),
     [document, readSections],
@@ -79,8 +83,8 @@ export const useSectionDocument = (
   // `ref.current` is.
   const [previewCache] = useState(() => createSectionPreviewCache());
   const previews = useMemo(
-    () => previewCache.compute(document, sections),
-    [previewCache, sections, document],
+    () => previewCache.compute(document, sections, { containerId }),
+    [containerId, previewCache, sections, document],
   );
 
   const selectedIndex = sections.findIndex(s => s.id === selectedId);
@@ -131,7 +135,10 @@ export const useSectionDocument = (
         replaceSections(
           latestDocument(),
           nextSections.map(s => s.code),
+          { containerId },
         ),
+        undefined,
+        { containerId },
       );
 
       pendingRef.current = { from: document, code: nextCode };
@@ -140,7 +147,7 @@ export const useSectionDocument = (
 
       return readSections(nextCode);
     },
-    [document, latestDocument, onChange, readSections, setCode],
+    [containerId, document, latestDocument, onChange, readSections, setCode],
   );
 
   const getCommittedSection = useCallback(

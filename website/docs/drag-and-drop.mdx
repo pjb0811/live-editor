@@ -26,9 +26,10 @@ by [`@dnd-kit`](https://dndkit.com/).
 import { useState } from 'react';
 
 import Live from '@jbpark/live-editor';
+import { createDocument } from '@jbpark/live-editor/utils';
 
 export default function DragAndDrop() {
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(() => createDocument());
 
   return (
     <Live>
@@ -44,7 +45,9 @@ export default function DragAndDrop() {
 ```
 
 - `value` / `onChange` hold the generated source — drops and property edits are
-  applied through the same AST pipeline, so the code stays canonical.
+  applied through the same AST pipeline, so the code stays canonical. Start
+  from `createDocument()`, not an empty string: see
+  [Document structure](#document-structure).
 - `frame` configures the preview surface (see [Preview Modes](./preview-modes.mdx)).
 - Use `items` to customize the palette's available sections. Mark what the
   panel can edit in each section with `data-binding` — see
@@ -61,6 +64,47 @@ export default function DragAndDrop() {
 The embedded demo above runs the real `Live.Dnd` component, isolated with
 `shadow` mode inside a sandboxed iframe (see
 [Preview Modes](./preview-modes.mdx)).
+
+## Document structure
+
+`Live.Dnd` edits one component's source. Its sections are the `<section>`
+elements inside a container element, found by its `id`:
+
+```tsx
+const App = () => {
+  return (
+    <main id="app-container">
+      <section data-name="Hero" data-id="a1b2c3">
+        {/* ... */}
+      </section>
+      <section data-name="Features" data-id="d4e5f6">
+        {/* ... */}
+      </section>
+    </main>
+  );
+};
+
+export default App;
+```
+
+- The container is the element whose `id` is `app-container`. The tag doesn't
+  matter. To use another id, pass it as `containerId`, both to `Live.Dnd` and
+  to `createDocument({ containerId })`.
+- Each `<section>` inside the container is one section on the canvas, in
+  source order, even when it's wrapped in other elements. A `<section>` nested
+  inside another belongs to its parent.
+- `data-name` is the section's name; see `sectionNameFallback` above for
+  sections without one. `data-id` identifies the section across edits.
+  `Live.Dnd` gives every section that lacks one an id the next time it commits
+  an edit, so you don't need to write it by hand.
+- `createDocument()` from `@jbpark/live-editor/utils` returns an empty
+  document in this shape. Without a `value`, `Live.Dnd` starts from the same
+  document.
+
+A document without the container has no sections, and nothing added from the
+palette can land in it. `Live.Dnd` reports this once through `onEditError`, or
+a toast by default, with `type: 'parse'`, `target: 'document'` and
+`reason: 'container-not-found'`. The canvas names the missing id too.
 
 ## Sections that fail
 
@@ -127,7 +171,7 @@ const withTheme = (children: React.ReactNode) => (
 );
 
 export default function Page() {
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(() => createDocument());
 
   return (
     <Live>

@@ -32,6 +32,17 @@ export type DndEditError =
       description?: string;
     }
   | {
+      // The document has no element with the container id, so it has no
+      // sections and nothing added from the palette can land. Reported once
+      // each time a document reaches this state, not on every edit (#449).
+      type: 'parse';
+      target: 'document';
+      reason: 'container-not-found';
+      containerId: string;
+      title: string;
+      description?: string;
+    }
+  | {
       // An array edit could not be applied without losing source (a spread,
       // a hole, unsupported syntax). The source was left unchanged.
       type: 'items';

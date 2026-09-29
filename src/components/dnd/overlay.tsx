@@ -13,6 +13,7 @@ interface Props {
   isForced?: (section: Section) => boolean;
   renderProps: {
     fullCode: string;
+    containerId?: string;
     modules: Record<string, unknown>;
     frame?: FrameProps;
     dynamicTailwind?: boolean;
@@ -35,7 +36,9 @@ const Overlay = ({ sections, isForced, renderProps }: Props) => {
   const section = sections.find(s => s.id === active.id);
 
   if (section) {
-    const preview = generateSection(section.code, renderProps.fullCode);
+    const preview = generateSection(section.code, renderProps.fullCode, {
+      containerId: renderProps.containerId,
+    });
 
     return (
       <Sortable id={section.id} name={section.name}>

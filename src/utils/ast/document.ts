@@ -4,7 +4,7 @@ import type { TraverseOptions } from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
-import { CONFIG, DATA_ATTR } from '../../constants';
+import { CONFIG, DATA_ATTR, DEFAULT_CONTAINER_ID } from '../../constants';
 import type { Section } from '../../types';
 import { createBoundedCache } from '../cache';
 import { registerEditorCache } from '../editor-caches';
@@ -29,15 +29,33 @@ export const traverse: Traverse =
     ? _traverse
     : (_traverse as unknown as { default: typeof _traverse }).default;
 
-const APP_CONTAINER_ID = 'app-container';
 const SECTION_TAG = 'section';
 const DATA_NAME_ATTR = 'data-name';
 
-export interface SectionOptions {
+export interface DocumentOptions {
+  // The `id` of the element whose `<section>` children are the document's
+  // sections. Defaults to `app-container`, the id `DEFAULT_TEMPLATE` and
+  // `createDocument()` use. It used to be fixed, so a document built around
+  // any other id had no sections and every edit silently did nothing (#449).
+  containerId?: string;
+}
+
+export interface SectionOptions extends DocumentOptions {
   // Names a section that has no `data-name`, given its 0-based position
   // among the document's sections.
   sectionNameFallback?: (index: number) => string;
 }
+
+// Why a source isn't a usable document. Kept apart because they call for
+// different responses: a parse error is usually a transient state while
+// the source is being edited, a missing container is a structural mistake
+// nothing will fix on its own (#449, and #433 for the parse-error side).
+export type DocumentProblem =
+  | { reason: 'parse-error'; error: unknown }
+  | { reason: 'container-not-found'; containerId: string };
+
+export type DocumentInspection =
+  { ok: true; doc: DocumentTree } | ({ ok: false } & DocumentProblem);
 
 export const defaultSectionName = (index: number) => `Section ${index + 1}`;
 
@@ -70,12 +88,15 @@ const getAttrValue = (
 const isSectionElement = (node: t.Node): node is t.JSXElement =>
   t.isJSXElement(node) && getJSXTagName(node.openingElement) === SECTION_TAG;
 
-const findContainer = (ast: t.File): t.JSXElement | undefined => {
+const findContainer = (
+  ast: t.File,
+  containerId: string,
+): t.JSXElement | undefined => {
   let container: t.JSXElement | undefined;
 
   traverse(ast, {
     JSXElement(path) {
-      if (getAttrValue(path.node, 'id') === APP_CONTAINER_ID) {
+      if (getAttrValue(path.node, 'id') === containerId) {
         container = path.node;
         path.stop();
       }
@@ -108,32 +129,59 @@ const findOutermostSections = (
   return sections;
 };
 
-// Caches the outcome for a source string, success or failure — `null` marks
-// a cached failure (bad syntax, or no app-container), distinct from
-// `undefined` meaning "not looked up yet" (createBoundedCache.get()'s own
-// miss signal). Without this, an in-progress syntax error (the document
-// mid-edit, before the next keystroke fixes it) would get re-parsed from
-// scratch by every one of the N call sites that ask for it on every render
-// (#97) — parsing determines nothing here except whether it throws, so
-// there's no separate "did it parse" fact to cache apart from the result.
-const documentCache = createBoundedCache<string, DocumentTree | null>(
+// Caches the outcome for a source string, success or failure, keyed by the
+// container id as well as the code: the same source can have a container
+// under one id and not another. Without this, an in-progress syntax error
+// (the document mid-edit, before the next keystroke fixes it) would get
+// re-parsed from scratch by every one of the N call sites that ask for it
+// on every render (#97).
+const documentCache = createBoundedCache<string, DocumentInspection>(
   CONFIG.DOCUMENT_CACHE_LIMIT,
 );
 
-const buildDocument = (code: string): DocumentTree | undefined => {
+const buildDocument = (
+  code: string,
+  containerId: string,
+): DocumentInspection => {
+  let ast: t.File;
+
   try {
-    const ast = parse(code, {
+    ast = parse(code, {
       sourceType: 'module',
       plugins: ['jsx', 'typescript'],
     });
+  } catch (error) {
+    console.warn('⚠️ Failed to parse document', error);
 
-    const container = findContainer(ast);
-
-    return container ? { code, ast, container } : undefined;
-  } catch (e) {
-    console.warn('⚠️ Failed to parse document', e);
-    return undefined;
+    return { ok: false, reason: 'parse-error', error };
   }
+
+  const container = findContainer(ast, containerId);
+
+  return container
+    ? { ok: true, doc: { code, ast, container } }
+    : { ok: false, reason: 'container-not-found', containerId };
+};
+
+// `parseDocument`, plus why it failed when it did. `Live.Dnd` uses it to
+// tell an author their document has no container, instead of every edit
+// quietly returning the source unchanged.
+export const inspectDocument = (
+  code: string,
+  { containerId = DEFAULT_CONTAINER_ID }: DocumentOptions = {},
+): DocumentInspection => {
+  const key = `${containerId}\0${code}`;
+  const cached = documentCache.get(key);
+
+  if (cached) {
+    return cached;
+  }
+
+  const inspection = buildDocument(code, containerId);
+
+  documentCache.set(key, inspection);
+
+  return inspection;
 };
 
 // Parses the whole source once into a single Babel AST — the shared "document
@@ -148,18 +196,13 @@ const buildDocument = (code: string): DocumentTree | undefined => {
 // the parsed tree, so every caller can safely share the same cached
 // DocumentTree: unlike an approach that hands out a tree for the caller to
 // edit in place, a cache hit here needs no clone at all.
-export const parseDocument = (code: string): DocumentTree | undefined => {
-  const cached = documentCache.get(code);
+export const parseDocument = (
+  code: string,
+  options?: DocumentOptions,
+): DocumentTree | undefined => {
+  const inspection = inspectDocument(code, options);
 
-  if (cached !== undefined) {
-    return cached ?? undefined;
-  }
-
-  const doc = buildDocument(code);
-
-  documentCache.set(code, doc ?? null);
-
-  return doc;
+  return inspection.ok ? inspection.doc : undefined;
 };
 
 export const clearDocumentParseCache = () => {
@@ -219,8 +262,9 @@ export const getSections = (
 export const fillSectionIds = (
   code: string,
   generateId: () => string = () => nanoid(6),
+  options?: DocumentOptions,
 ): string => {
-  const doc = parseDocument(code);
+  const doc = parseDocument(code, options);
 
   if (!doc) {
     return code;
@@ -353,8 +397,9 @@ const commonSuffixLength = (
 export const replaceDocumentSections = (
   fullCode: string,
   sectionCodes: string[],
+  options?: DocumentOptions,
 ): string => {
-  const doc = parseDocument(fullCode);
+  const doc = parseDocument(fullCode, options);
 
   if (!doc) {
     return fullCode;
@@ -420,7 +465,8 @@ export const replaceDocumentSections = (
 export const generateSectionPreview = (
   fullCode: string,
   sectionCode: string,
-): string => generateSectionPreviews(fullCode, [sectionCode])[0]!;
+  options?: DocumentOptions,
+): string => generateSectionPreviews(fullCode, [sectionCode], options)[0]!;
 
 // Same as generateSectionPreview, but for every section in one call —
 // parses `fullCode` once and reuses the same container span for each,
@@ -434,8 +480,9 @@ export const generateSectionPreview = (
 export const generateSectionPreviews = (
   fullCode: string,
   sectionCodes: string[],
+  options?: DocumentOptions,
 ): string[] => {
-  const doc = parseDocument(fullCode);
+  const doc = parseDocument(fullCode, options);
   const span = doc && getContainerInnerSpan(doc.container);
 
   if (!span) {
@@ -455,6 +502,7 @@ export interface SectionPreviewCache {
   compute: (
     fullCode: string,
     sections: { id: string; code: string }[],
+    options?: DocumentOptions,
   ) => string[];
 }
 
@@ -497,8 +545,9 @@ export const createSectionPreviewCache = (): SectionPreviewCache => {
   const compute = (
     fullCode: string,
     sections: { id: string; code: string }[],
+    options?: DocumentOptions,
   ): string[] => {
-    const doc = parseDocument(fullCode);
+    const doc = parseDocument(fullCode, options);
     const span = doc && getContainerInnerSpan(doc.container);
 
     if (!span) {

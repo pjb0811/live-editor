@@ -5,9 +5,9 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/constants';
 
 import { PreviewContext } from '../context/states';
-import Dnd, { type DndPanel } from './dnd';
+import Dnd, { type DndPalette, type DndPanel } from './dnd';
 import { Canvas } from './layout';
-import { useDndPanel } from './layout-context';
+import { useDndPalette, useDndPanel } from './layout-context';
 import Field from './panel/field';
 import { type DndItems, useDndItems } from './panel/use-dnd-items';
 
@@ -666,6 +666,90 @@ describe('section names', () => {
       renderUnnamed({ sectionNameFallback: index => `Block ${index + 1}` }).item
         ?.name,
     ).toBe('Block 1');
+  });
+});
+
+// A document without the container element used to take every addition and
+// hand back the source unchanged, with nothing to say why (#449).
+describe('document container', () => {
+  const renderWithPalette = (
+    value: string,
+    props: { containerId?: string; onEditError?: (error: unknown) => void },
+  ) => {
+    const onChange = vi.fn();
+    let palette: DndPalette | undefined;
+
+    const Probe = () => {
+      palette = useDndPalette();
+
+      return <div data-testid="palette" />;
+    };
+
+    const tree = (next: string) => (
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd value={next} onChange={onChange} {...props}>
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>
+    );
+
+    const utils = render(tree(value));
+
+    return {
+      ...utils,
+      onChange,
+      add: () => act(() => palette!.onAdd(stats)),
+      rerenderWith: (next: string) => utils.rerender(tree(next)),
+    };
+  };
+
+  it('adds sections inside a container with a custom id', () => {
+    const { onChange, add } = renderWithPalette(
+      DEFAULT_TEMPLATE.replace('app-container', 'root'),
+      { containerId: 'root' },
+    );
+
+    add();
+
+    expect(onChange.mock.calls.at(-1)![0]).toContain('data-name="Stats"');
+  });
+
+  it('reports a missing container once, with its id', () => {
+    const onEditError = vi.fn();
+    const { rerenderWith } = renderWithPalette('', { onEditError });
+
+    expect(onEditError).toHaveBeenCalledTimes(1);
+    expect(onEditError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'parse',
+        target: 'document',
+        reason: 'container-not-found',
+        containerId: 'app-container',
+      }),
+    );
+
+    // Still missing after another edit: not reported again.
+    act(() => rerenderWith('// still no container'));
+
+    expect(onEditError).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not report a document that has the container', () => {
+    const onEditError = vi.fn();
+
+    renderWithPalette(DEFAULT_TEMPLATE, { onEditError });
+
+    expect(onEditError).not.toHaveBeenCalled();
+  });
+
+  it('says on the canvas which container is missing', () => {
+    // Scoped to this render: the file doesn't clean up between tests.
+    const { container } = renderWithPalette('', { onEditError: vi.fn() });
+
+    expect(container.textContent).toContain(
+      'No #app-container element in the document',
+    );
   });
 });
 
