@@ -8,7 +8,7 @@ import {
   useResizeObserver,
 } from '@jbpark/use-hooks';
 
-import { getCachedScriptBlob } from '~/utils/scripts';
+import { withScriptBlobs } from '~/utils/scripts';
 
 import {
   FALLBACK_PROBE_HEIGHT,
@@ -286,7 +286,7 @@ const IFrame = ({
       if (pendingScripts.length) {
         pendingScripts.forEach(src => loadedScriptsRef.current.add(src));
 
-        Promise.all(pendingScripts.map(getCachedScriptBlob)).then(blobUrls => {
+        withScriptBlobs(pendingScripts, blobUrls => {
           if (!doc.head) {
             return;
           }
