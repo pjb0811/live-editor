@@ -148,6 +148,37 @@ interface RawPrimitiveItem {
   type: ReturnType<typeof extractNodeValue>['type'];
 }
 
+// What an edit reads: this render's array, or the one a same-tick commit
+// left behind (#451), with the item identity and selection that go with it.
+interface Snapshot {
+  value: string;
+  items: Array<RawObjectItem | RawPrimitiveItem>;
+  ids: string[];
+  selected: Set<number>;
+}
+
+interface PendingCommit {
+  // The render `value` the commit was built on.
+  from: string;
+  value: string;
+  ids: string[];
+  selected: Set<number>;
+}
+
+const createPendingCommit = () => {
+  let current: PendingCommit | null = null;
+
+  return {
+    read: () => current,
+    write: (next: PendingCommit) => {
+      current = next;
+    },
+    clear: () => {
+      current = null;
+    },
+  };
+};
+
 interface ItemIdentityState {
   value: string;
   kind: DndItems['kind'];
@@ -404,11 +435,72 @@ export const useDndItems = (
     value,
   );
 
+  // The array the last commit produced, with the identity and selection that
+  // go with it, tagged with the render `value` it was built on. Every edit
+  // below computes a whole new array from a snapshot, and the host only
+  // hands the result back as `value` on the next render, so two edits in the
+  // same tick both started from this render's array and the second dropped
+  // the first (#451). Edits read `latest()` instead.
+  //
+  // Dropped after each render, as `useSectionDocument` does for the document
+  // (#450): from then on the rendered `value` is the source of truth again,
+  // including when the host didn't accept the commit.
+  //
+  // Held in a `useState` box rather than a ref: the item bindings below are
+  // built during render and close over `latest()`, which the compiler reads
+  // as a ref access in render even though only their `onChange` calls it —
+  // the same reason `useSectionDocument` keeps its preview cache this way.
+  const [pending] = useState(createPendingCommit);
+
+  useEffect(() => {
+    pending.clear();
+  });
+
+  const latest = (): Snapshot => {
+    const last = pending.read();
+
+    if (last?.from !== value) {
+      return {
+        value,
+        items: rawItems,
+        ids: identity.ids,
+        selected: selection.selected,
+      };
+    }
+
+    const parsed = parseSource(last.value);
+
+    return {
+      value: last.value,
+      items: isPrimitive ? parsed.primitiveItems : parsed.objectItems,
+      ids: last.ids,
+      selected: last.selected,
+    };
+  };
+
+  // Where the item this render showed at `elementIndex` is in `snapshot`,
+  // followed by identity so an edit lands on the same item after a
+  // same-tick move. `null` when a same-tick edit removed it; `undefined`
+  // when this render has no such item, so the caller keeps the position it
+  // was given.
+  const locate = (snapshot: Snapshot, elementIndex: number) => {
+    const shown = rawItems.find(item => item.elementIndex === elementIndex);
+
+    if (!shown) {
+      return undefined;
+    }
+
+    const index = snapshot.ids.indexOf(identity.ids[shown.index]!);
+
+    return index >= 0 ? snapshot.items[index] : null;
+  };
+
   // `null` means the edit could not be applied. `nextSelection` is where the
   // selection stands once it is: applied now, since a non-null `next` means
   // the edit succeeded, and again when this exact source comes back as
   // `value`. Any other new `value` clears it (useStructuralSelection).
   const commit = (
+    snapshot: Snapshot,
     next: string | null,
     nextIds: string[] | undefined,
     nextSelection: Set<number>,
@@ -427,15 +519,15 @@ export const useDndItems = (
     const parsed = parseSource(next);
     const nextItems =
       kind === 'primitive' ? parsed.primitiveItems : parsed.objectItems;
+    const ids = nextIds ?? snapshot.ids;
 
-    if (nextIds) {
-      setIdentityState(createIdentityState(next, kind, nextItems, nextIds));
-    } else {
-      setIdentityState(
-        createIdentityState(next, kind, nextItems, identity.ids),
-      );
-    }
-
+    pending.write({
+      from: value,
+      value: next,
+      ids,
+      selected: nextSelection,
+    });
+    setIdentityState(createIdentityState(next, kind, nextItems, ids));
     record(nextSelection, revision => revision === next, { now: true });
     onChange?.(next);
 
@@ -445,44 +537,81 @@ export const useDndItems = (
   // Selection indices are positions among the visible items; every AST
   // function addresses element positions. Keeping the two apart is what
   // stops an edit from dropping the items that aren't on screen.
-  const elementIndicesOf = (indices: Set<number>) => {
-    const items = isPrimitive ? primitiveItems : objectItems;
-
-    return new Set(
-      items
+  const elementIndicesOf = (snapshot: Snapshot, indices: Set<number>) =>
+    new Set(
+      snapshot.items
         .filter(item => indices.has(item.index))
         .map(item => item.elementIndex),
     );
-  };
 
   const updateProperty = (
     elementIndex: number,
     propertyKey: string,
     next: unknown,
   ) => {
+    const snapshot = latest();
+    const item = locate(snapshot, elementIndex);
+
+    if (item === null) {
+      return;
+    }
+
     // A value edit moves nothing, so the selection stands.
     commit(
-      updateArrayItemProperty(value, elementIndex, propertyKey, next, render),
+      snapshot,
+      updateArrayItemProperty(
+        snapshot.value,
+        item?.elementIndex ?? elementIndex,
+        propertyKey,
+        next,
+        render,
+      ),
       undefined,
-      new Set(selection.selected),
+      new Set(snapshot.selected),
+    );
+  };
+
+  const updateValue = (elementIndex: number, next: unknown) => {
+    const snapshot = latest();
+    const item = locate(snapshot, elementIndex);
+
+    if (item === null) {
+      return;
+    }
+
+    commit(
+      snapshot,
+      updateArrayItemValue(
+        snapshot.value,
+        item?.elementIndex ?? elementIndex,
+        next,
+      ),
+      undefined,
+      new Set(snapshot.selected),
     );
   };
 
   const actions: DndItemsActions = {
     add: () => {
-      const next = appendArrayItem(value, kind);
+      const snapshot = latest();
+      const next = appendArrayItem(snapshot.value, kind);
 
       commit(
+        snapshot,
         next,
-        next ? [...identity.ids, nanoid(6)] : undefined,
-        selectionAfter({ type: 'append' }, selection.selected, rawItems.length),
+        next ? [...snapshot.ids, nanoid(6)] : undefined,
+        selectionAfter(
+          { type: 'append' },
+          snapshot.selected,
+          snapshot.items.length,
+        ),
       );
     },
 
     move: (elementIndex, toIndex) => {
-      const items = isPrimitive ? primitiveItems : objectItems;
-      const from = items.find(item => item.elementIndex === elementIndex);
-      const target = items.find(item => item.index === toIndex);
+      const snapshot = latest();
+      const from = locate(snapshot, elementIndex);
+      const target = snapshot.items.find(item => item.index === toIndex);
 
       if (!from || !target) {
         return;
@@ -491,56 +620,70 @@ export const useDndItems = (
       // Positions shift after a move but the count doesn't, so the
       // selection is cleared rather than left on the wrong items (#285).
       commit(
-        moveArrayItem(value, elementIndex, target.elementIndex),
-        moveId(identity.ids, from.index, target.index),
+        snapshot,
+        moveArrayItem(snapshot.value, from.elementIndex, target.elementIndex),
+        moveId(snapshot.ids, from.index, target.index),
         new Set(),
       );
     },
 
     remove: elementIndex => {
-      const items = isPrimitive ? primitiveItems : objectItems;
-      const removed = items.find(item => item.elementIndex === elementIndex);
+      const snapshot = latest();
+      const removed = locate(snapshot, elementIndex);
+
+      if (removed === null) {
+        return;
+      }
+
       // Removing an item shifts every position after it; same reasoning.
       commit(
-        removeArrayItems(value, new Set([elementIndex]), kind),
-        removed ? removeIds(identity.ids, new Set([removed.index])) : undefined,
+        snapshot,
+        removeArrayItems(
+          snapshot.value,
+          new Set([removed?.elementIndex ?? elementIndex]),
+          kind,
+        ),
+        removed ? removeIds(snapshot.ids, new Set([removed.index])) : undefined,
         new Set(),
       );
     },
 
     duplicateSelected: () => {
-      const selected = elementIndicesOf(selection.selected);
-      const next = duplicateArrayItems(value, selected);
-      const copied = rawItems
+      const snapshot = latest();
+      const selected = elementIndicesOf(snapshot, snapshot.selected);
+      const next = duplicateArrayItems(snapshot.value, selected);
+      const copied = snapshot.items
         .filter(item => selected.has(item.elementIndex))
         .sort((a, b) => a.elementIndex - b.elementIndex)
         .map(() => nanoid(6));
 
       commit(
+        snapshot,
         next,
-        next ? [...identity.ids, ...copied] : undefined,
+        next ? [...snapshot.ids, ...copied] : undefined,
         selectionAfter(
-          { type: 'duplicate', indices: [...selection.selected] },
-          selection.selected,
-          rawItems.length,
+          { type: 'duplicate', indices: [...snapshot.selected] },
+          snapshot.selected,
+          snapshot.items.length,
         ),
       );
     },
 
     moveSelected: direction => {
+      const snapshot = latest();
       const nextIdentity = moveSelectedIndices(
-        identity.ids,
-        selection.selected,
+        snapshot.ids,
+        snapshot.selected,
         direction,
       );
       const result = moveArrayItems(
-        value,
-        elementIndicesOf(selection.selected),
+        snapshot.value,
+        elementIndicesOf(snapshot, snapshot.selected),
         direction,
       );
 
       if (!result) {
-        commit(null, undefined, selection.selected);
+        commit(snapshot, null, undefined, snapshot.selected);
         return;
       }
 
@@ -556,6 +699,7 @@ export const useDndItems = (
       // array a step can pass a hidden element, so this is not the same as
       // shifting the visible indices.
       commit(
+        snapshot,
         result.code,
         nextIdentity.items,
         new Set(
@@ -567,9 +711,16 @@ export const useDndItems = (
     },
 
     removeSelected: () => {
+      const snapshot = latest();
+
       commit(
-        removeArrayItems(value, elementIndicesOf(selection.selected), kind),
-        removeIds(identity.ids, selection.selected),
+        snapshot,
+        removeArrayItems(
+          snapshot.value,
+          elementIndicesOf(snapshot, snapshot.selected),
+          kind,
+        ),
+        removeIds(snapshot.ids, snapshot.selected),
         new Set(),
       );
     },
@@ -593,12 +744,7 @@ export const useDndItems = (
           rawValue:
             item.type === 'unknown' ? item.source : String(item.value ?? ''),
           canEditValue: canLosslesslyEvaluateSource(item.source),
-          onChange: next =>
-            commit(
-              updateArrayItemValue(value, item.elementIndex, next),
-              undefined,
-              new Set(selection.selected),
-            ),
+          onChange: next => updateValue(item.elementIndex, next),
         },
       }))
     : objectItems.map(item => {
