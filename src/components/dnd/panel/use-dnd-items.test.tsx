@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { DataAttrNode } from '~/utils/ast';
 
-import { useDndItems } from './use-dnd-items';
+import { type DndItemsItem, useDndItems } from './use-dnd-items';
 
 const objects = `[
   { key: 'a', label: 'Alpha' },
@@ -286,5 +286,136 @@ describe('useDndItems source fidelity', () => {
     const children = result.current.items[0]!.nested[0]!.elements[0]!
       .bindings[0]!.value as DataAttrNode[];
     expect(children[0]!.source).toBe("<b data-id='b'>{value}</b>");
+  });
+});
+
+// Every edit computes a whole new array, and the host only hands it back as
+// `value` on the next render. Two edits in one tick used to both start from
+// the rendered array, so the second dropped the first (#451).
+describe('useDndItems edits in the same tick', () => {
+  const labelOf = (item: DndItemsItem) =>
+    item.properties.find(property => property.label === 'label')!;
+
+  it('keeps both of two adds', () => {
+    const onChange = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ source }) => useDndItems(source, { onChange }),
+      { initialProps: { source: objects } },
+    );
+
+    act(() => {
+      result.current.actions.add();
+      result.current.actions.add();
+    });
+
+    const last = onChange.mock.calls.at(-1)![0] as string;
+
+    // An appended item copies the first one, under a fresh key.
+    expect(last.match(/label: 'Alpha'/g)).toHaveLength(3);
+
+    rerender({ source: last });
+
+    const ids = result.current.items.map(item => item.id);
+
+    expect(ids).toHaveLength(5);
+    expect(new Set(ids).size).toBe(5);
+  });
+
+  it('keeps property edits to two different items', () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useDndItems(objects, { onChange }));
+    const [alpha, beta] = result.current.items;
+
+    act(() => {
+      labelOf(alpha!).onChange('Alpha 2');
+      labelOf(beta!).onChange('Beta 2');
+    });
+
+    const last = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(last).toContain('Alpha 2');
+    expect(last).toContain('Beta 2');
+  });
+
+  it('keeps value edits to two different primitive items', () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useDndItems(primitives, { onChange }));
+    const [one, two] = result.current.items;
+
+    act(() => {
+      one!.value!.onChange('ONE');
+      two!.value!.onChange('TWO');
+    });
+
+    const last = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(last).toContain('ONE');
+    expect(last).toContain('TWO');
+    expect(last).toContain('three');
+  });
+
+  // The binding was handed out before the move, so it names the item by
+  // where it used to be. The edit has to follow the item, not the position.
+  it('edits the moved item, not whatever took its place', () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useDndItems(objects, { onChange }));
+    const alpha = result.current.items[0]!;
+
+    act(() => {
+      result.current.actions.move(alpha.elementIndex, 1);
+      labelOf(alpha).onChange('Alpha 2');
+    });
+
+    const last = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(last).toMatch(/key: 'a', label: ["']Alpha 2["']/);
+    expect(last).toContain("{ key: 'b', label: 'Beta' }");
+    expect(last.indexOf("key: 'b'")).toBeLessThan(last.indexOf("key: 'a'"));
+  });
+
+  it('drops an edit to an item removed earlier in the tick', () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useDndItems(objects, { onChange }));
+    const alpha = result.current.items[0]!;
+
+    act(() => {
+      result.current.actions.remove(alpha.elementIndex);
+      labelOf(alpha).onChange('Alpha 2');
+    });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.calls[0]![0]).not.toContain("key: 'a'");
+  });
+
+  it('keeps an add made before a bulk removal of the selection', () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useDndItems(objects, { onChange }));
+
+    act(() => result.current.selection.toggle(1, false));
+    act(() => {
+      result.current.actions.add();
+      result.current.actions.removeSelected();
+    });
+
+    const last = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(last).not.toContain("key: 'b'");
+    expect(last.match(/label: 'Alpha'/g)).toHaveLength(2);
+    expect(last).toContain("key: 'c'");
+  });
+
+  // Once a render has happened, the rendered `value` wins again, even when
+  // the host didn't take the earlier commit.
+  it('drops an unaccepted commit once the next render arrives', () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useDndItems(objects, { onChange }));
+
+    act(() => result.current.actions.add());
+    act(() => result.current.actions.add());
+
+    // Each add is one copy on top of the rendered three, not two in a row.
+    for (const [next] of onChange.mock.calls) {
+      expect((next as string).match(/label: 'Alpha'/g)).toHaveLength(2);
+    }
   });
 });

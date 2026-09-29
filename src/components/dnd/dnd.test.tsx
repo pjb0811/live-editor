@@ -9,6 +9,7 @@ import Dnd, { type DndPanel } from './dnd';
 import { Canvas } from './layout';
 import { useDndPanel } from './layout-context';
 import Field from './panel/field';
+import { type DndItems, useDndItems } from './panel/use-dnd-items';
 
 // The canvas isn't what's under test here, and each section renders a
 // compiled component inside an iframe — none of which jsdom needs to do for
@@ -561,6 +562,64 @@ describe('commits in the same tick', () => {
     expect(lastCommit()).toContain('Old title');
     expect(lastCommit()).not.toContain('Rejected title');
   });
+});
+
+// The hook side of #451 end to end: each `useDndItems` edit commits the
+// whole array through the same binding, so the second one has to carry the
+// first, and the panel commit has to build on the first commit's document.
+it('keeps two `useDndItems` edits to one binding in the same tick', () => {
+  const onChange = vi.fn();
+  let editor: DndItems | undefined;
+
+  const Probe = () => {
+    const { bindings } = useDndPanel();
+    // No binding until the section is selected; the hook still has to run.
+    const binding = bindings.find(candidate => candidate.label === 'Items');
+
+    editor = useDndItems(binding?.rawValue ?? '[]', {
+      render: binding?.render,
+      onChange: binding?.onChange,
+    });
+
+    return <div data-testid="panel" />;
+  };
+
+  const { container } = render(
+    <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+      <Dnd
+        value={documentWith(`
+          <section data-id="s1" data-name="List">
+            <ul
+              data-id="list"
+              data-binding={[{ label: 'Items', property: 'items', type: 'array' }]}
+              items={[{ label: 'Alpha' }, { label: 'Beta' }]}
+            />
+          </section>`)}
+        onChange={onChange}
+      >
+        <Canvas />
+        <Probe />
+      </Dnd>
+    </PreviewContext.Provider>,
+  );
+
+  act(() =>
+    container
+      .querySelector<HTMLElement>('[aria-roledescription="sortable"]')!
+      .click(),
+  );
+
+  act(() => {
+    const [alpha, beta] = editor!.items;
+
+    alpha!.properties[0]!.onChange('Alpha 2');
+    beta!.properties[0]!.onChange('Beta 2');
+  });
+
+  const last = onChange.mock.calls.at(-1)![0] as string;
+
+  expect(last).toContain('Alpha 2');
+  expect(last).toContain('Beta 2');
 });
 
 describe('Field, exported for per-binding reuse', () => {
