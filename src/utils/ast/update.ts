@@ -1,7 +1,11 @@
 import { parse, parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 
-import { BINDING_PROP, DATA_ATTR } from '../../constants';
+import {
+  BINDING_PROP,
+  DATA_ATTR,
+  RESERVED_BINDING_PROPERTIES,
+} from '../../constants';
 import { STRING_VALUED_TYPES, parseBinding } from './binding';
 import { editChildrenSource } from './children';
 import { traverse } from './document';
@@ -416,6 +420,9 @@ const canEditAttributeValue = (
 export type UpdateFailure =
   | { reason: 'element-not-found'; dataId: string }
   | { reason: 'no-binding'; dataId: string }
+  // The binding targets an attribute the editor owns (`data-id`,
+  // `data-name`, `data-binding`), which a panel edit must not rewrite.
+  | { reason: 'reserved-property'; dataId: string; property: string }
   | {
       reason: 'binding-not-declared';
       dataId: string;
@@ -556,6 +563,11 @@ export const update = (
 
         const propertyBinding = matches[0]!;
         const prop = propertyBinding.property;
+
+        if (RESERVED_BINDING_PROPERTIES.includes(prop)) {
+          failure = { reason: 'reserved-property', dataId, property: prop };
+          return;
+        }
 
         switch (prop) {
           case BINDING_PROP.INNER_TEXT: {

@@ -715,3 +715,53 @@ describe('adding an item to a shipped section', () => {
     );
   });
 });
+
+// The editor owns `data-id`, `data-name` and `data-binding`. A binding that
+// targets one used to rewrite it, which would break the canvas mapping, a
+// section's name, or the declaration the edit was checked against (#429).
+describe('update: reserved attributes', () => {
+  const SECTION = `<section data-id="s1" data-name="Hero" data-binding="[{label:'Id',property:'data-id'},{label:'Name',property:'data-name'},{label:'Schema',property:'data-binding'},{label:'Pad',property:'className'}]" className="py-8"><p>x</p></section>`;
+
+  it.each([
+    ['Id', 'data-id'],
+    ['Name', 'data-name'],
+    ['Schema', 'data-binding'],
+  ])('refuses a binding on %s (%s)', (label, property) => {
+    const result = update(SECTION, 's1', label, 'changed', property);
+
+    expect(result.success).toBe(false);
+    expect(result.failure).toEqual({
+      reason: 'reserved-property',
+      dataId: 's1',
+      property,
+    });
+    expect(result.code).toBe(SECTION);
+  });
+
+  it('refuses when the binding is found by label alone', () => {
+    const result = update(SECTION, 's1', 'Name', 'changed');
+
+    expect(result.failure).toMatchObject({ reason: 'reserved-property' });
+  });
+
+  it('still edits an ordinary attribute on the same element', () => {
+    const result = update(SECTION, 's1', 'Pad', 'py-16', 'className');
+
+    expect(result.success).toBe(true);
+    expect(result.code).toContain('className="py-16"');
+    expect(result.code).toContain('data-id="s1"');
+  });
+
+  it('reports a refused entry in a bulk update and applies the rest', () => {
+    const result = bulkUpdate(SECTION, [
+      { dataId: 's1', label: 'Id', value: 'x', property: 'data-id' },
+      { dataId: 's1', label: 'Pad', value: 'py-16', property: 'className' },
+    ]);
+
+    expect(result.success).toBe(false);
+    expect(result.failures).toEqual([
+      { reason: 'reserved-property', dataId: 's1', property: 'data-id' },
+    ]);
+    expect(result.code).toContain('className="py-16"');
+  });
+});

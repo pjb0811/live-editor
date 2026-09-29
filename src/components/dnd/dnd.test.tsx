@@ -878,6 +878,107 @@ describe('document that stops parsing', () => {
   });
 });
 
+// A `<section>` carrying its own `data-binding` used to be dropped from the
+// panel's fields, so a background or padding on the section itself couldn't
+// be edited (#429).
+describe('section root bindings', () => {
+  const rooted = documentWith(`
+    <section
+      data-id="s1"
+      data-name="Hero"
+      className="py-8"
+      data-binding={[
+        { label: 'Padding', property: 'className' },
+        { label: 'Name', property: 'data-name' },
+      ]}
+    >
+      <h1
+        data-id="s1-title"
+        data-binding={[{ label: 'Title', property: 'innerText' }]}
+      >
+        Hello
+      </h1>
+    </section>`);
+
+  const renderRooted = () => {
+    const onChange = vi.fn();
+    const onEditError = vi.fn();
+    let panel: DndPanel | undefined;
+
+    const Probe = () => {
+      panel = useDndPanel();
+
+      return <div data-testid="panel" />;
+    };
+
+    const { container } = render(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd value={rooted} onChange={onChange} onEditError={onEditError}>
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>,
+    );
+
+    act(() =>
+      container
+        .querySelector<HTMLElement>('[aria-roledescription="sortable"]')!
+        .click(),
+    );
+
+    return { onChange, onEditError, getPanel: () => panel! };
+  };
+
+  it("lists the section's own bindings ahead of its children's", () => {
+    const { getPanel } = renderRooted();
+
+    expect(
+      getPanel().bindings.map(b => [b.id, b.label, b.canEditValue]),
+    ).toEqual([
+      ['s1', 'Padding', undefined],
+      ['s1', 'Name', false],
+      ['s1-title', 'Title', undefined],
+    ]);
+  });
+
+  it('edits the section root through its binding', () => {
+    const { onChange, getPanel } = renderRooted();
+
+    act(() => getPanel().bindings[0]!.onChange('py-16'));
+
+    const committed = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(committed).toContain('className="py-16"');
+    expect(committed).toContain('data-name="Hero"');
+    expect(committed).toContain('data-id="s1"');
+  });
+
+  it('refuses to rewrite data-name, and says why', () => {
+    const { onChange, onEditError, getPanel } = renderRooted();
+
+    act(() => getPanel().bindings[1]!.onChange('Renamed'));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onEditError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'update',
+        property: 'data-name',
+        failure: expect.objectContaining({ reason: 'reserved-property' }),
+      }),
+    );
+  });
+
+  it('adds nothing for a section without a data-binding', () => {
+    const { getData } = renderWithPanel();
+    const rootId = getData()!.item!.id;
+
+    expect(getData()!.bindings.length).toBeGreaterThan(0);
+    expect(getData()!.bindings.some(binding => binding.id === rootId)).toBe(
+      false,
+    );
+  });
+});
+
 describe('Field, exported for per-binding reuse', () => {
   // The point of exporting it: everything it needs is public render data, so
   // a custom panel can delegate one binding without adopting the whole

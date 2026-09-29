@@ -102,6 +102,11 @@ const describeUpdateFailure = (
             : `label "${label}"`
         } on this element — remove the duplicate in its data-binding.`,
       };
+    case 'reserved-property':
+      return {
+        title: `Cannot edit "${label}" in the panel`,
+        description: `"${failure.property}" is managed by the editor, so a binding can't change it.`,
+      };
     case 'no-binding':
       return {
         title: `Failed to update "${label}"`,
@@ -436,11 +441,14 @@ const Dnd = ({
 
     try {
       const updated = fillIds(selectedCode);
+      // Every element, the section's own root included: a `<section>` with a
+      // `data-binding` is editable like any other element, and one without
+      // resolves to no bindings below. It used to be dropped here, so a
+      // binding written on the section itself was silently ignored (#429).
       const allNodes = extract(updated);
-      const filtered = allNodes.filter(node => node.tagName !== 'section');
 
       return {
-        fields: filtered,
+        fields: allNodes,
         updatedCode: updated !== selectedCode ? updated : selectedCode,
         parseError: null,
       };

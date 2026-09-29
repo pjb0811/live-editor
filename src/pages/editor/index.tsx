@@ -13,8 +13,17 @@ import { Redo2, Save, Undo2 } from 'lucide-react';
 import './index.css';
 
 import Live from '../../';
-import { DEFAULT_TEMPLATE, STORAGE_KEY } from '../../constants';
+import {
+  DEFAULT_TEMPLATE,
+  DRAGGABLE_ITEMS,
+  STORAGE_KEY,
+} from '../../constants';
 import DiffModal from './diff-modal';
+import { SECTION_ROOT_EXAMPLE } from './section-root-example';
+
+// The default palette plus a Banner whose own `<section>` carries a
+// `data-binding`, to try section-root bindings (#429) by hand.
+const PALETTE = [...DRAGGABLE_ITEMS, SECTION_ROOT_EXAMPLE];
 
 const options = [
   { label: 'Drag & Drop', value: 'dnd' },
@@ -150,6 +159,7 @@ const App = () => {
             ) : (
               <Live.Dnd
                 frame={previewFrame}
+                items={PALETTE}
                 value={value}
                 onChange={setValue}
               />
