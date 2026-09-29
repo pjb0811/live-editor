@@ -397,6 +397,172 @@ describe('panel commits against the latest document', () => {
   });
 });
 
+// The selected section has two bound elements, so two commits in one tick
+// can write to different elements of the same section.
+const twoFields = documentWith(`
+  <section data-id="s1" data-name="First">
+    <h1 data-id="s1-title" data-binding={[{ label: 'Title', property: 'innerText' }]}>
+      Old title
+    </h1>
+    <p data-id="s1-body" data-binding={[{ label: 'Body', property: 'innerText' }]}>
+      Old body
+    </p>
+  </section>
+  <section data-id="s2" data-name="Second">
+    <p>Sibling</p>
+  </section>`);
+
+const renderTwoFields = (initial = twoFields) => {
+  const onChange = vi.fn();
+  let data: DndPanel | undefined;
+
+  const Probe = () => {
+    data = useDndPanel();
+
+    return <div data-testid="panel" />;
+  };
+
+  const tree = (value: string) => (
+    <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+      <Dnd value={value} onChange={onChange}>
+        <Canvas />
+        <Probe />
+      </Dnd>
+    </PreviewContext.Provider>
+  );
+
+  const { container, rerender } = render(tree(initial));
+
+  act(() =>
+    container
+      .querySelector<HTMLElement>('[aria-roledescription="sortable"]')!
+      .click(),
+  );
+
+  return {
+    onChange,
+    getData: () => data!,
+    rerenderWith: (value: string) => rerender(tree(value)),
+    lastCommit: () => onChange.mock.calls.at(-1)![0] as string,
+  };
+};
+
+// Every commit used to start from the render's snapshot, and the host only
+// hands the new document back on the next render, so the second of two
+// commits in one tick wrote the first one's element back as it was (#450).
+describe('commits in the same tick', () => {
+  it('keeps both of two binding edits', () => {
+    const { onChange, getData, lastCommit } = renderTwoFields();
+    const [title, body] = getData().bindings;
+
+    act(() => {
+      title!.onChange('New title');
+      body!.onChange('New body');
+    });
+
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(lastCommit()).toContain('New title');
+    expect(lastCommit()).toContain('New body');
+  });
+
+  it('keeps both of two `onNodeChange` edits', () => {
+    const { getData, lastCommit } = renderTwoFields();
+
+    act(() => {
+      const { onNodeChange } = getData();
+
+      onNodeChange({
+        id: 's1-title',
+        label: 'Title',
+        property: 'innerText',
+        value: 'New title',
+      });
+      onNodeChange({
+        id: 's1-body',
+        label: 'Body',
+        property: 'innerText',
+        value: 'New body',
+      });
+    });
+
+    expect(lastCommit()).toContain('New title');
+    expect(lastCommit()).toContain('New body');
+  });
+
+  it('keeps a binding edit made before a section move', () => {
+    const { getData, lastCommit } = renderTwoFields();
+
+    act(() => {
+      getData().bindings[0]!.onChange('New title');
+      getData().onMoveDown();
+    });
+
+    expect(lastCommit()).toContain('New title');
+    expect(lastCommit().indexOf('data-id="s2"')).toBeLessThan(
+      lastCommit().indexOf('data-id="s1"'),
+    );
+  });
+
+  // The move leaves the selected section's source as it was, so the edit
+  // has to come from this render's parse (the one its ids point at) and land
+  // in the moved document.
+  it('keeps a section move made before a binding edit', () => {
+    const { getData, lastCommit } = renderTwoFields();
+
+    act(() => {
+      getData().onMoveDown();
+      getData().bindings[0]!.onChange('New title');
+    });
+
+    expect(lastCommit()).toContain('New title');
+    expect(lastCommit().indexOf('data-id="s2"')).toBeLessThan(
+      lastCommit().indexOf('data-id="s1"'),
+    );
+  });
+
+  // A bound element authored with an empty `data-id` only gets its id from
+  // this render's `fillIds`, and the binding points at that id. A committed
+  // section the move didn't touch still has the empty id, so building on it
+  // would miss the element.
+  it('keeps an edit to an element whose id this render filled in', () => {
+    const { getData, lastCommit } = renderTwoFields(
+      twoFields.replace('data-id="s1-title"', 'data-id=""'),
+    );
+
+    act(() => {
+      getData().onMoveDown();
+      getData().bindings[0]!.onChange('New title');
+    });
+
+    expect(lastCommit()).toContain('New title');
+    expect(lastCommit().indexOf('data-id="s2"')).toBeLessThan(
+      lastCommit().indexOf('data-id="s1"'),
+    );
+  });
+
+  // Once a render has handed in a value, that value wins, even when the
+  // host didn't take the earlier commit.
+  it('drops an unaccepted commit once the next render arrives', () => {
+    const { getData, rerenderWith, lastCommit } = renderTwoFields();
+
+    act(() => {
+      getData().bindings[0]!.onChange('Rejected title');
+    });
+
+    act(() => {
+      rerenderWith(twoFields);
+    });
+
+    act(() => {
+      getData().bindings[1]!.onChange('New body');
+    });
+
+    expect(lastCommit()).toContain('New body');
+    expect(lastCommit()).toContain('Old title');
+    expect(lastCommit()).not.toContain('Rejected title');
+  });
+});
+
 describe('Field, exported for per-binding reuse', () => {
   // The point of exporting it: everything it needs is public render data, so
   // a custom panel can delegate one binding without adopting the whole

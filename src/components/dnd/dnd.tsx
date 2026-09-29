@@ -304,6 +304,7 @@ const Dnd = ({
     move: moveSection,
     reorder,
     patch,
+    getCommittedSection,
   } = useSectionDocument(value, _onChange);
 
   const onDragStart = (_: DragStartEvent) => {};
@@ -413,7 +414,17 @@ const Dnd = ({
     property: string;
     value: unknown;
   }) => {
-    const result = update(updatedCode, id, label, fieldValue, property);
+    // Builds on an earlier commit from this same tick when that commit
+    // changed this section: `updatedCode` is this render's snapshot, so a
+    // second commit made from it would write the first one's edit back out
+    // (#450). A section the earlier commit left alone (a sibling was added,
+    // say) still reads as `selectedCode`, whose empty `data-id`s haven't been
+    // filled yet — `updatedCode` holds the ids the bindings point at.
+    const committed =
+      selectedItem && getCommittedSection(selectedItem.id)?.code;
+    const base =
+      committed && committed !== selectedCode ? committed : updatedCode;
+    const result = update(base, id, label, fieldValue, property);
 
     if (!result.success) {
       reportError({
