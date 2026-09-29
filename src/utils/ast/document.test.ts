@@ -71,16 +71,42 @@ describe('getSections', () => {
     expect(sections[1]).toMatchObject({ id: '1', name: 'Features' });
   });
 
+  // An English default rather than the fixed Korean label it used to be,
+  // since the name reaches every consumer (#448).
   it('falls back to a positional name when data-name is missing', () => {
     const doc = parseDocument(`
       const App = () => (
         <main id="app-container">
           <section><p>x</p></section>
+          <section data-name="Named"><p>y</p></section>
+          <section><p>z</p></section>
         </main>
       );
     `)!;
 
-    expect(getSections(doc)[0]!.name).toBe('1번째 컴포넌트');
+    expect(getSections(doc).map(section => section.name)).toEqual([
+      'Section 1',
+      'Named',
+      'Section 3',
+    ]);
+  });
+
+  it('names unnamed sections with `sectionNameFallback`', () => {
+    const doc = parseDocument(`
+      const App = () => (
+        <main id="app-container">
+          <section><p>x</p></section>
+          <section data-name="Named"><p>y</p></section>
+        </main>
+      );
+    `)!;
+    const sectionNameFallback = vi.fn((index: number) => `Block ${index}`);
+
+    expect(
+      getSections(doc, { sectionNameFallback }).map(section => section.name),
+    ).toEqual(['Block 0', 'Named']);
+    // Only asked for the section that needs it.
+    expect(sectionNameFallback).toHaveBeenCalledTimes(1);
   });
 
   it('returns an empty list for an empty container', () => {

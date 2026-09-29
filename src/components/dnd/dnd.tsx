@@ -196,6 +196,11 @@ export interface Props extends Omit<
   // compiling it (so none of its top-level code runs) and render the
   // fallback with reason `forced`.
   shouldForceSectionFallback?: (section: Section) => boolean;
+  // Names a section whose `<section>` has no `data-name`, from its 0-based
+  // position on the canvas. The name shows on the canvas, in the panel and
+  // in `renderSectionFallback`'s `section`. Defaults to "Section 1",
+  // "Section 2", ...
+  sectionNameFallback?: (index: number) => string;
   // The single customization slot. Omit it for the built-in editor. Supply
   // it and you own the arrangement: compose `Live.Dnd.Palette` /
   // `Live.Dnd.Canvas` / `Live.Dnd.Panel` (each the built-in region, in the
@@ -244,6 +249,7 @@ const Dnd = ({
   onEditError,
   renderSectionFallback,
   shouldForceSectionFallback,
+  sectionNameFallback,
   children,
   ...restProps
 }: Props) => {
@@ -305,7 +311,7 @@ const Dnd = ({
     reorder,
     patch,
     getCommittedSection,
-  } = useSectionDocument(value, _onChange);
+  } = useSectionDocument(value, _onChange, { sectionNameFallback });
 
   const onDragStart = (_: DragStartEvent) => {};
 
