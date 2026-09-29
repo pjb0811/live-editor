@@ -75,6 +75,51 @@ entry still works.
 | `items` / `data` | An array prop, as a list of items you can add, move, duplicate and delete.                         |
 | any other name   | That JSX attribute, e.g. `size`, `href`, `style`. The attribute must already exist on the element. |
 
+`data-id`, `data-name` and `data-binding` are managed by the editor, so a
+binding can't target them. A field on one of these is shown as read-only, and
+an edit to it is refused with an error naming the property.
+
+## Binding the section itself
+
+The `<section>` element takes a `data-binding` like any other element, which is
+how a panel edits the section's own background, padding or spacing. Its fields
+come first in the panel, ahead of the elements inside it.
+
+```tsx
+<section
+  data-name="Banner"
+  data-binding={[
+    {
+      label: 'Section Style',
+      property: 'style',
+      type: 'object',
+      render: {
+        backgroundColor: { type: 'color', label: 'Background' },
+        paddingBlock: {
+          type: 'number',
+          label: 'Vertical Padding',
+          min: 0,
+          max: 160,
+          widget: 'slider',
+        },
+      },
+    },
+  ]}
+  style={{ backgroundColor: '#4f46e5', paddingBlock: 64 }}
+>
+  {/* ... */}
+</section>
+```
+
+Try it in the [Drag & Drop](./drag-and-drop.mdx) demo: the **Banner (bound
+section)** at the end of the palette is this section. Add it, select it, and
+change its background or padding from the panel.
+
+The library ships no bindings on the default sections: which properties of a
+section are editable, and what they're called, is up to you. Because the
+binding is part of the section's source, it's copied and moved along with the
+section, and each copy stays editable.
+
 ## Types
 
 | `type`     | Built-in control                           | Validation                       |

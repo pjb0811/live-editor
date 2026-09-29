@@ -1,3 +1,4 @@
+import { RESERVED_BINDING_PROPERTIES } from '~/constants';
 import {
   type BindingItem,
   type BindingOption,
@@ -108,6 +109,11 @@ const readAttribute = (node: DataAttrNode, name: string) =>
   node.dataAttributes.find(attribute => attribute.name === name)?.value;
 
 const canEditBindingValue = (node: DataAttrNode, binding: BindingItem) => {
+  // The editor owns these attributes; `update()` refuses them too (#429).
+  if (RESERVED_BINDING_PROPERTIES.includes(binding.property)) {
+    return false;
+  }
+
   if (
     binding.property === 'children' ||
     binding.property === 'innerText' ||
