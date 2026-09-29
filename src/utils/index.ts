@@ -12,10 +12,15 @@ export {
   preloadScripts,
 } from './scripts';
 export {
+  createDocument,
   createSectionPreviewCache,
   extractSections,
   generateSection,
   generateSections,
   replaceSections,
 } from './sections';
-export type { SectionOptions, SectionPreviewCache } from './ast/document';
+export type {
+  DocumentOptions,
+  SectionOptions,
+  SectionPreviewCache,
+} from './ast/document';

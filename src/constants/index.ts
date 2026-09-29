@@ -52,18 +52,27 @@ export const BINDING_PROP = {
   ITEMS: 'items',
 } as const;
 
-export const DEFAULT_TEMPLATE = `
+// The element whose `<section>` children are a document's sections, unless
+// `Live.Dnd`'s `containerId` says otherwise (#449).
+export const DEFAULT_CONTAINER_ID = 'app-container';
+
+// A new, empty document built around `containerId`. `createDocument()` in
+// `@jbpark/live-editor/utils` is the public way in; this is the template
+// behind it and behind `DEFAULT_TEMPLATE`.
+export const documentTemplate = (containerId: string) => `
 import * as ui from 'ui-kit';
 import { cn } from 'ui-kit/utils';
 
 const App = () => {
   return (
-    <main id="app-container"></main>
+    <main id="${containerId}"></main>
   )
 }
 
 export default App;
 `;
+
+export const DEFAULT_TEMPLATE = documentTemplate(DEFAULT_CONTAINER_ID);
 
 export const DRAGGABLE_ITEMS: Section[] = [
   {

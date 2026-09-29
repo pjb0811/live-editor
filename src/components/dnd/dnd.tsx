@@ -22,7 +22,13 @@ import { useResponsiveSize } from '@jbpark/use-hooks';
 
 import { DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
-import { type DataAttrNode, extract, fillIds, update } from '~/utils/ast';
+import {
+  type DataAttrNode,
+  extract,
+  fillIds,
+  inspectDocument,
+  update,
+} from '~/utils/ast';
 import type { UpdateFailure } from '~/utils/ast';
 
 import { cn } from '../../utils/cn';
@@ -201,6 +207,14 @@ export interface Props extends Omit<
   // in `renderSectionFallback`'s `section`. Defaults to "Section 1",
   // "Section 2", ...
   sectionNameFallback?: (index: number) => string;
+  // The `id` of the element whose `<section>` children are the document's
+  // sections. Defaults to `app-container`. A document without that element
+  // has no sections, and `onEditError` (or the toast) says so. Start a new
+  // document with `createDocument({ containerId })` from
+  // `@jbpark/live-editor/utils`. Without a `value`, `Live.Dnd` starts from
+  // the default template, which uses `app-container`, so pass a `value`
+  // when you change this.
+  containerId?: string;
   // The single customization slot. Omit it for the built-in editor. Supply
   // it and you own the arrangement: compose `Live.Dnd.Palette` /
   // `Live.Dnd.Canvas` / `Live.Dnd.Panel` (each the built-in region, in the
@@ -250,6 +264,7 @@ const Dnd = ({
   renderSectionFallback,
   shouldForceSectionFallback,
   sectionNameFallback,
+  containerId,
   children,
   ...restProps
 }: Props) => {
@@ -311,7 +326,21 @@ const Dnd = ({
     reorder,
     patch,
     getCommittedSection,
-  } = useSectionDocument(value, _onChange, { sectionNameFallback });
+  } = useSectionDocument(value, _onChange, {
+    containerId,
+    sectionNameFallback,
+  });
+
+  // The container id the document is missing, or `null`. A document that
+  // doesn't parse isn't reported here: that is usually the source mid-edit,
+  // and it has no container to look for yet (#433).
+  const missingContainer = useMemo(() => {
+    const inspection = inspectDocument(value, { containerId });
+
+    return !inspection.ok && inspection.reason === 'container-not-found'
+      ? inspection.containerId
+      : null;
+  }, [containerId, value]);
 
   const onDragStart = (_: DragStartEvent) => {};
 
@@ -396,6 +425,21 @@ const Dnd = ({
   useEffect(() => {
     reportErrorRef.current = reportError;
   });
+
+  // Keyed on the missing id alone, so it fires when a document reaches this
+  // state and not again for every edit that leaves it there.
+  useEffect(() => {
+    if (missingContainer !== null) {
+      reportErrorRef.current({
+        type: 'parse',
+        target: 'document',
+        reason: 'container-not-found',
+        containerId: missingContainer,
+        title: `No #${missingContainer} element in the document`,
+        description: `Sections are the <section> elements inside the element with id="${missingContainer}". Start from createDocument(), or set containerId to match your document.`,
+      });
+    }
+  }, [missingContainer]);
 
   useEffect(() => {
     if (parseError) {
@@ -530,14 +574,28 @@ const Dnd = ({
               'text-gray-500',
             )}
           >
-            <Space orientation="vertical" align="center">
-              <Typography.Paragraph>No sections available</Typography.Paragraph>
-              <Typography.Text>
-                {isMobile
-                  ? 'Tap a component to add it'
-                  : 'Drag a component from the left to add it'}
-              </Typography.Text>
-            </Space>
+            {missingContainer !== null ? (
+              <Space orientation="vertical" align="center">
+                <Typography.Paragraph>
+                  No #{missingContainer} element in the document
+                </Typography.Paragraph>
+                <Typography.Text>
+                  Sections go inside the element with id=&quot;
+                  {missingContainer}&quot;
+                </Typography.Text>
+              </Space>
+            ) : (
+              <Space orientation="vertical" align="center">
+                <Typography.Paragraph>
+                  No sections available
+                </Typography.Paragraph>
+                <Typography.Text>
+                  {isMobile
+                    ? 'Tap a component to add it'
+                    : 'Drag a component from the left to add it'}
+                </Typography.Text>
+              </Space>
+            )}
           </div>
         ) : (
           <SortableContext
@@ -631,6 +689,9 @@ const Dnd = ({
               frame,
               dynamicTailwind,
               ...props,
+              // After the spread, so a preview prop with the same name can't
+              // point the overlay at a different container.
+              containerId,
             }}
           />
         </DragOverlay>
