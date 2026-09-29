@@ -103,6 +103,12 @@ const MyLayout = () => {
 };
 ```
 
+`useDndLayout()` also returns `documentError`: `'parse-error'` while the
+source doesn't parse and the canvas shows the last version that did,
+`'container-not-found'` when the document has no container, and `null`
+otherwise. A custom layout can use it to show its own notice. See
+[Document structure](./drag-and-drop.mdx#document-structure).
+
 ### Keeping the built-in layout and swapping one region
 
 Replacing the palette or the panel usually doesn't mean you want a different
@@ -186,6 +192,7 @@ const MyPalette = () => {
 | `canMoveUp` | `boolean` | Whether `onMoveUp` would do anything right now — disable your move-up control when `false`. |
 | `canMoveDown` | `boolean` | Whether `onMoveDown` would do anything right now — disable your move-down control when `false`. |
 | `onNodeChange` | `(params: { id: string; label: string; property: string; value: unknown }) => void` | Commit an edit to an element addressed by its own `data-id`, rather than through a binding you were handed. Needed for the nested elements `bindings` can't reach — pass it to `Live.Dnd.Field` along with the binding. See [below](#reusing-the-built-in-control-for-one-binding). |
+| `readOnly` | `boolean` | `true` while the document doesn't parse. `item` and `bindings` are from the last version that did, and every commit is refused and reported through `onEditError` until it parses again. Disable your controls, or say why edits aren't landing. |
 
 `bindings` carries each field's `type`, current `value`, `options` (when
 present), and an `onChange` wired straight into the same AST-update pipeline

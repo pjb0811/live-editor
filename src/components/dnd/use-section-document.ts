@@ -3,7 +3,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
 
 import type { Section } from '~/types';
-import { type SectionOptions, fillSectionIds, replaceIds } from '~/utils/ast';
+import {
+  type DocumentProblem,
+  type SectionOptions,
+  fillSectionIds,
+  inspectDocument,
+  replaceIds,
+} from '~/utils/ast';
 import {
   createSectionPreviewCache,
   extractSections,
@@ -31,7 +37,34 @@ export interface SectionDocument {
   // it. Lets a caller that edits inside a section build on a same-tick
   // commit instead of this render's `sections` (#450).
   getCommittedSection: (id: string) => Section | undefined;
+  // Why `value` isn't a usable document, or `null` when it is (#433, #449).
+  problem: DocumentProblem | null;
+  // True while `value` doesn't parse and `sections`/`previews` are the last
+  // ones that did. Every mutation is refused then, through `onBlockedEdit`:
+  // the only ranges to edit are from a different source (#433).
+  stale: boolean;
 }
+
+export interface SectionDocumentOptions extends SectionOptions {
+  // Called instead of committing when a mutation is refused because the
+  // document doesn't parse. Pass a stable function.
+  onBlockedEdit?: (problem: DocumentProblem) => void;
+}
+
+// The last document that parsed, per container id. A box held in `useState`
+// and written from the derivation below, like `createSectionPreviewCache`:
+// it only remembers a value, it never decides what renders on its own.
+const createLastParsed = () => {
+  let last: { containerId?: string; document: string } | null = null;
+
+  return {
+    read: (containerId?: string) =>
+      last && last.containerId === containerId ? last.document : undefined,
+    write: (containerId: string | undefined, document: string) => {
+      last = { containerId, document };
+    },
+  };
+};
 
 // Owns the document side of the DnD canvas: deriving sections from the code
 // string, tracking which one is selected, and committing every mutation.
@@ -43,7 +76,11 @@ export interface SectionDocument {
 export const useSectionDocument = (
   value: string,
   onChange?: (value: string) => void,
-  { containerId, sectionNameFallback }: SectionOptions = {},
+  {
+    containerId,
+    sectionNameFallback,
+    onBlockedEdit,
+  }: SectionDocumentOptions = {},
 ): SectionDocument => {
   const { setCode } = usePreview();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -69,9 +106,39 @@ export const useSectionDocument = (
     () => fillSectionIds(value, undefined, { containerId }),
     [containerId, value],
   );
+
+  // What the canvas and panel show. Normally `document` itself. While the
+  // source doesn't parse, which is usually the moment an author is typing in
+  // the code editor, it's the last version that did, so the canvas and panel
+  // keep their content instead of emptying on every keystroke (#433). A
+  // missing container isn't covered: that isn't a passing state, and the
+  // canvas says what's wrong instead (#449).
+  //
+  // Not a regex scan of the broken source: section ranges are where every
+  // commit writes back, and a guessed range could put an edit in the wrong
+  // place. The last parsed version is shown read-only instead.
+  const [lastParsed] = useState(createLastParsed);
+  const view = useMemo(() => {
+    const inspection = inspectDocument(document, { containerId });
+
+    if (inspection.ok) {
+      lastParsed.write(containerId, document);
+
+      return { document, problem: null, stale: false };
+    }
+
+    const { ok: _ok, ...problem } = inspection;
+    const last =
+      problem.reason === 'parse-error'
+        ? lastParsed.read(containerId)
+        : undefined;
+
+    return { document: last ?? document, problem, stale: last !== undefined };
+  }, [containerId, document, lastParsed]);
+
   const sections = useMemo(
-    () => readSections(document),
-    [document, readSections],
+    () => readSections(view.document),
+    [readSections, view.document],
   );
 
   // One cache per hook instance (lazy `useState` initializer, never
@@ -83,8 +150,8 @@ export const useSectionDocument = (
   // `ref.current` is.
   const [previewCache] = useState(() => createSectionPreviewCache());
   const previews = useMemo(
-    () => previewCache.compute(document, sections, { containerId }),
-    [containerId, previewCache, sections, document],
+    () => previewCache.compute(view.document, sections, { containerId }),
+    [containerId, previewCache, sections, view.document],
   );
 
   const selectedIndex = sections.findIndex(s => s.id === selectedId);
@@ -163,6 +230,21 @@ export const useSectionDocument = (
     [document, readSections],
   );
 
+  // Every mutation starts here. Refusing up front, rather than letting the
+  // edit reach `replaceSections`, matters: on a source that doesn't parse
+  // that returns the source unchanged, so the edit used to "commit" nothing
+  // and say nothing.
+  const { problem, stale } = view;
+  const refuse = useCallback(() => {
+    if (!stale || !problem) {
+      return false;
+    }
+
+    onBlockedEdit?.(problem);
+
+    return true;
+  }, [onBlockedEdit, problem, stale]);
+
   const select = useCallback((id: string) => {
     setSelectedId(prev => (prev === id ? null : id));
   }, []);
@@ -171,6 +253,10 @@ export const useSectionDocument = (
 
   const add = useCallback(
     (item: Pick<Section, 'name' | 'code'>, atIndex?: number) => {
+      if (refuse()) {
+        return;
+      }
+
       const current = latestSections();
       const next = { code: item.code };
 
@@ -180,11 +266,15 @@ export const useSectionDocument = (
           : [...current.slice(0, atIndex), next, ...current.slice(atIndex)],
       );
     },
-    [commit, latestSections],
+    [commit, refuse, latestSections],
   );
 
   const remove = useCallback(
     (id: string) => {
+      if (refuse()) {
+        return;
+      }
+
       const current = latestSections();
 
       // Removes by position, not by predicate: `fillSectionIds` keeps ids
@@ -206,11 +296,15 @@ export const useSectionDocument = (
 
       commit(current.filter((_, i) => i !== index));
     },
-    [commit, latestSections, selectedId],
+    [commit, refuse, latestSections, selectedId],
   );
 
   const copy = useCallback(
     (id: string) => {
+      if (refuse()) {
+        return;
+      }
+
       const current = latestSections();
 
       const index = current.findIndex(s => s.id === id);
@@ -234,11 +328,15 @@ export const useSectionDocument = (
       // after a copy (#245).
       setSelectedId(committed[index + 1]?.id ?? null);
     },
-    [commit, latestSections],
+    [commit, refuse, latestSections],
   );
 
   const move = useCallback(
     (id: string | null, direction: 'up' | 'down') => {
+      if (refuse()) {
+        return;
+      }
+
       const current = latestSections();
 
       const index = current.findIndex(s => s.id === id);
@@ -252,11 +350,15 @@ export const useSectionDocument = (
       // the section's own markup, so the selection follows it across a move.
       commit(arrayMove(current, index, targetIndex));
     },
-    [commit, latestSections],
+    [commit, refuse, latestSections],
   );
 
   const reorder = useCallback(
     (activeId: string, overId: string) => {
+      if (refuse()) {
+        return;
+      }
+
       const current = latestSections();
 
       const prevIndex = current.findIndex(s => s.id === activeId);
@@ -268,16 +370,20 @@ export const useSectionDocument = (
 
       commit(arrayMove(current, prevIndex, nextIndex));
     },
-    [commit, latestSections],
+    [commit, refuse, latestSections],
   );
 
   const patch = useCallback(
     (next: Partial<Section> & { id: string }) => {
+      if (refuse()) {
+        return;
+      }
+
       const current = latestSections();
 
       commit(current.map(s => (s.id === next.id ? { ...s, ...next } : s)));
     },
-    [commit, latestSections],
+    [commit, refuse, latestSections],
   );
 
   return {
@@ -295,5 +401,7 @@ export const useSectionDocument = (
     reorder,
     patch,
     getCommittedSection,
+    problem,
+    stale,
   };
 };

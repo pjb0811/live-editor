@@ -106,6 +106,13 @@ palette can land in it. `Live.Dnd` reports this once through `onEditError`, or
 a toast by default, with `type: 'parse'`, `target: 'document'` and
 `reason: 'container-not-found'`. The canvas names the missing id too.
 
+A document that doesn't parse is usually one being typed in the code editor.
+The canvas and panel keep showing the last version that parsed, with a notice
+that it's out of date, and stay read-only until the source parses again. An
+edit tried in the meantime isn't applied: it's reported through
+`onEditError` with `reason: 'parse-error'`. If the document has never parsed,
+the canvas says it has a syntax error.
+
 ## Sections that fail
 
 A section that fails to compile, or throws while rendering, shows an error box

@@ -51,6 +51,7 @@ const PanelFields = ({ subject }: { subject: string }) => {
       canMoveDown,
       bindings,
       onNodeChange,
+      readOnly,
     },
   } = useDndRegions(subject);
 
@@ -64,6 +65,7 @@ const PanelFields = ({ subject }: { subject: string }) => {
       canMoveDown={canMoveDown}
       bindings={bindings}
       onNodeChange={onNodeChange}
+      readOnly={readOnly}
     />
   );
 };
