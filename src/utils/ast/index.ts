@@ -48,7 +48,11 @@ export {
   updateArrayItemValue,
 } from './items';
 export { clearExtractCache, extract } from './extract';
-export type { DocumentTree, SectionPreviewCache } from './document';
+export type {
+  DocumentTree,
+  SectionOptions,
+  SectionPreviewCache,
+} from './document';
 export {
   clearDocumentParseCache,
   createSectionPreviewCache,

@@ -18,4 +18,4 @@ export {
   generateSections,
   replaceSections,
 } from './sections';
-export type { SectionPreviewCache } from './ast/document';
+export type { SectionOptions, SectionPreviewCache } from './ast/document';

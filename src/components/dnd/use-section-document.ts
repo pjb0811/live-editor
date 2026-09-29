@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
 
 import type { Section } from '~/types';
-import { fillSectionIds, replaceIds } from '~/utils/ast';
+import { type SectionOptions, fillSectionIds, replaceIds } from '~/utils/ast';
 import {
   createSectionPreviewCache,
   extractSections,
@@ -43,9 +43,17 @@ export interface SectionDocument {
 export const useSectionDocument = (
   value: string,
   onChange?: (value: string) => void,
+  { sectionNameFallback }: SectionOptions = {},
 ): SectionDocument => {
   const { setCode } = usePreview();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Every read of a document into sections goes through here, so a section
+  // without `data-name` is named the same way wherever it's read (#448).
+  const readSections = useCallback(
+    (code: string) => extractSections(code, { sectionNameFallback }),
+    [sectionNameFallback],
+  );
 
   // Sections identify themselves by `data-id`; `getSections` falls back to a
   // positional id for documents predating that (see #245). Filling the gap
@@ -57,7 +65,10 @@ export const useSectionDocument = (
   // `onChange`/`setCode` when a real mutation commits, so merely opening a
   // document never rewrites the author's code.
   const document = useMemo(() => fillSectionIds(value), [value]);
-  const sections = useMemo(() => extractSections(document), [document]);
+  const sections = useMemo(
+    () => readSections(document),
+    [document, readSections],
+  );
 
   // One cache per hook instance (lazy `useState` initializer, never
   // replaced) — see createSectionPreviewCache (#131). It's stateful by
@@ -100,8 +111,8 @@ export const useSectionDocument = (
   // `extractSections` goes through the document parse cache, so re-reading
   // an unchanged document here costs a cache hit, not a parse.
   const latestSections = useCallback(
-    () => extractSections(latestDocument()),
-    [latestDocument],
+    () => readSections(latestDocument()),
+    [latestDocument, readSections],
   );
 
   // The single place a set of sections becomes a new document. Takes only
@@ -127,9 +138,9 @@ export const useSectionDocument = (
       onChange?.(nextCode);
       setCode(nextCode);
 
-      return extractSections(nextCode);
+      return readSections(nextCode);
     },
-    [document, latestDocument, onChange, setCode],
+    [document, latestDocument, onChange, readSections, setCode],
   );
 
   const getCommittedSection = useCallback(
@@ -140,9 +151,9 @@ export const useSectionDocument = (
         return undefined;
       }
 
-      return extractSections(pending.code).find(s => s.id === id);
+      return readSections(pending.code).find(s => s.id === id);
     },
-    [document],
+    [document, readSections],
   );
 
   const select = useCallback((id: string) => {

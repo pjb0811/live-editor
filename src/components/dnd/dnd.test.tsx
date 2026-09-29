@@ -622,6 +622,53 @@ it('keeps two `useDndItems` edits to one binding in the same tick', () => {
   expect(last).toContain('Beta 2');
 });
 
+// A `<section>` without `data-name` gets a generated name, which the canvas
+// and panel show. It used to be a fixed Korean label (#448).
+describe('section names', () => {
+  const unnamed = documentWith(`
+    <section data-id="s1"><p>First</p></section>`);
+
+  const renderUnnamed = (props: {
+    sectionNameFallback?: (index: number) => string;
+  }) => {
+    let data: DndPanel | undefined;
+
+    const Probe = () => {
+      data = useDndPanel();
+
+      return <div data-testid="panel" />;
+    };
+
+    const { container } = render(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd value={unnamed} onChange={vi.fn()} {...props}>
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>,
+    );
+
+    act(() =>
+      container
+        .querySelector<HTMLElement>('[aria-roledescription="sortable"]')!
+        .click(),
+    );
+
+    return data!;
+  };
+
+  it('defaults to "Section N"', () => {
+    expect(renderUnnamed({}).item?.name).toBe('Section 1');
+  });
+
+  it('uses `sectionNameFallback` when given', () => {
+    expect(
+      renderUnnamed({ sectionNameFallback: index => `Block ${index + 1}` }).item
+        ?.name,
+    ).toBe('Block 1');
+  });
+});
+
 describe('Field, exported for per-binding reuse', () => {
   // The point of exporting it: everything it needs is public render data, so
   // a custom panel can delegate one binding without adopting the whole

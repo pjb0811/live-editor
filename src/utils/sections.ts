@@ -1,6 +1,7 @@
 import type { Section } from '~/types';
 
 import {
+  type SectionOptions,
   createSectionPreviewCache,
   generateSectionPreview,
   generateSectionPreviews,
@@ -9,10 +10,13 @@ import {
   replaceDocumentSections,
 } from './ast/document';
 
-export const extractSections = (code: string): Section[] => {
+export const extractSections = (
+  code: string,
+  options?: SectionOptions,
+): Section[] => {
   const doc = parseDocument(code);
 
-  return doc ? getSections(doc) : [];
+  return doc ? getSections(doc, options) : [];
 };
 
 export const replaceSections = (code: string, sections: string[]): string => {
@@ -40,4 +44,4 @@ export const generateSections = (
 // where the caller can keep it alive across renders (e.g. Dnd holds one via
 // `useState(() => createSectionPreviewCache())`).
 export { createSectionPreviewCache };
-export type { SectionPreviewCache } from './ast/document';
+export type { SectionOptions, SectionPreviewCache } from './ast/document';

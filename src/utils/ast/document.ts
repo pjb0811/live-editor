@@ -33,6 +33,14 @@ const APP_CONTAINER_ID = 'app-container';
 const SECTION_TAG = 'section';
 const DATA_NAME_ATTR = 'data-name';
 
+export interface SectionOptions {
+  // Names a section that has no `data-name`, given its 0-based position
+  // among the document's sections.
+  sectionNameFallback?: (index: number) => string;
+}
+
+export const defaultSectionName = (index: number) => `Section ${index + 1}`;
+
 export interface DocumentTree {
   code: string;
   ast: t.File;
@@ -172,10 +180,18 @@ registerEditorCache(clearDocumentParseCache);
 // `data-id` (localStorage, existing user code, hand-written JSX). Those keep
 // exactly the old behaviour until `fillSectionIds` gives them real ids, so
 // this is additive rather than a breaking change to the document format.
-export const getSections = (doc: DocumentTree): Section[] =>
+//
+// `name` is the section's `data-name`. A section without one is named by
+// `sectionNameFallback`, from its 0-based position; the default gives
+// "Section 1", "Section 2", ... It used to be a fixed Korean label, which
+// reached every consumer whatever their locale (#448).
+export const getSections = (
+  doc: DocumentTree,
+  { sectionNameFallback = defaultSectionName }: SectionOptions = {},
+): Section[] =>
   findOutermostSections(doc.container.children).map((node, index) => ({
     id: getAttrValue(node, DATA_ATTR.ID) || `${index}`,
-    name: getAttrValue(node, DATA_NAME_ATTR) || `${index + 1}번째 컴포넌트`,
+    name: getAttrValue(node, DATA_NAME_ATTR) || sectionNameFallback(index),
     code: doc.code.slice(node.start!, node.end!),
   }));
 

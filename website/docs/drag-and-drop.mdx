@@ -49,6 +49,10 @@ export default function DragAndDrop() {
 - Use `items` to customize the palette's available sections. Mark what the
   panel can edit in each section with `data-binding` — see
   [Data Binding](./data-binding.mdx).
+- A section's name, shown on the canvas and in the panel, comes from its
+  `data-name`. A `<section>` without one is named by `sectionNameFallback`,
+  which gets the section's 0-based position. The default gives `Section 1`,
+  `Section 2`, and so on.
 - Use `children` to replace the built-in UI — a region of it
   (`<Live.Dnd.Layout panel={...} />`) or the whole arrangement, driven from
   the `useDndPalette()` / `useDndPanel()` / `useDndLayout()` hooks — see
