@@ -20,12 +20,12 @@ export const FALLBACK_PROBE_HEIGHT = 812;
 // this instead of the iframe's own height, which is what breaks the old
 // approach's fold-to-0px-then-measure circularity (#132 problem 1).
 //
-// `clientHeight` already excludes the scroll container's own border, but
-// not any padding/border on wrapper elements *between* the iframe and
-// that container (this codebase's own Sortable/Renderer/Frame don't add
-// any today, but a consumer's own `provider` or custom-panel wrapper
-// could) — `wrapperInsets` is the sum of those, added up by the caller
-// while walking from the iframe to the scroll container.
+// `clientHeight` excludes the scroll container's own border, but not its
+// padding, nor anything between the iframe and that container. The caller
+// adds all of that up into `wrapperInsets` (see `verticalInsets`) while
+// walking from the iframe to the scroll container. This codebase's own
+// Sortable/Renderer/Frame add little (the Droppable's border and padding),
+// but a consumer's CSS, `provider` or `Canvas` className can add more.
 //
 // Returns `null` (not a guessed fallback) when the container hasn't been
 // laid out yet (`clientHeight` still 0, e.g. mid-transition) — the
@@ -33,6 +33,34 @@ export const FALLBACK_PROBE_HEIGHT = 812;
 // number that has nothing to do with the actual available space and
 // that no future event would ever correct (see the issue's own
 // reasoning for why a `window.innerHeight` fallback here was wrong).
+// The vertical space one element takes around the box inside it: margin,
+// border and padding, top and bottom. Margin counts too (#440): a 100vh
+// section in a wrapper with a vertical margin would otherwise be as tall as
+// the container and overflow it by that margin.
+//
+// Summed per element, so a margin that collapses through a parent with no
+// border or padding is counted twice. That errs on the side of a slightly
+// smaller probe, which fits, rather than a larger one, which scrolls.
+export const verticalInsets = (
+  style: Pick<
+    CSSStyleDeclaration,
+    | 'marginTop'
+    | 'marginBottom'
+    | 'borderTopWidth'
+    | 'borderBottomWidth'
+    | 'paddingTop'
+    | 'paddingBottom'
+  >,
+): number =>
+  [
+    style.marginTop,
+    style.marginBottom,
+    style.borderTopWidth,
+    style.borderBottomWidth,
+    style.paddingTop,
+    style.paddingBottom,
+  ].reduce((sum, value) => sum + (parseFloat(value) || 0), 0);
+
 export const computeProbeHeight = (
   scrollContainerClientHeight: number,
   wrapperInsets: number,

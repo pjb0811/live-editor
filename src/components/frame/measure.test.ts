@@ -6,6 +6,7 @@ import {
   isAnimationActive,
   isVisuallyHidden,
   parseTranslateY,
+  verticalInsets,
 } from './measure';
 
 describe('computeProbeHeight (#132 stage 2)', () => {
@@ -21,6 +22,42 @@ describe('computeProbeHeight (#132 stage 2)', () => {
   it('returns null when wrapper insets consume the entire client height', () => {
     expect(computeProbeHeight(50, 50)).toBeNull();
     expect(computeProbeHeight(50, 80)).toBeNull();
+  });
+});
+
+describe('verticalInsets (#440)', () => {
+  const none = {
+    marginTop: '0px',
+    marginBottom: '0px',
+    borderTopWidth: '0px',
+    borderBottomWidth: '0px',
+    paddingTop: '0px',
+    paddingBottom: '0px',
+  };
+
+  it('adds margin, border and padding on both sides', () => {
+    expect(
+      verticalInsets({
+        marginTop: '12px',
+        marginBottom: '8px',
+        borderTopWidth: '2px',
+        borderBottomWidth: '2px',
+        paddingTop: '4px',
+        paddingBottom: '4px',
+      }),
+    ).toBe(32);
+  });
+
+  it('counts a margin on its own', () => {
+    expect(verticalInsets({ ...none, marginTop: '12px' })).toBe(12);
+  });
+
+  it('keeps fractional values', () => {
+    expect(verticalInsets({ ...none, marginBottom: '0.5px' })).toBe(0.5);
+  });
+
+  it('treats a value that does not parse as zero', () => {
+    expect(verticalInsets({ ...none, marginTop: 'auto' })).toBe(0);
   });
 });
 

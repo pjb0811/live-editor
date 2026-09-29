@@ -16,6 +16,7 @@ import {
   estimatePositionedElementHeight,
   isAnimationActive,
   isVisuallyHidden,
+  verticalInsets,
 } from './measure';
 import { createStyleSyncManager, reconcileStyles } from './style-sync';
 import {
@@ -509,18 +510,18 @@ const IFrame = ({
       // the "container exists but isn't laid out yet" case below.
       probeHeight = FALLBACK_PROBE_HEIGHT;
     } else {
-      let wrapperInsets = 0;
-      let node = iframe.parentElement;
+      // Starts at the iframe itself, whose own margin, border and padding
+      // take space the same way a wrapper's do, and stops before the scroll
+      // container, which only contributes its padding: `clientHeight`
+      // already leaves out its border and margin (#440).
+      const scrollParentStyle = win.getComputedStyle(scrollParent);
+      let wrapperInsets =
+        (parseFloat(scrollParentStyle.paddingTop) || 0) +
+        (parseFloat(scrollParentStyle.paddingBottom) || 0);
+      let node: HTMLElement | null = iframe;
 
       while (node && node !== scrollParent) {
-        const style = win.getComputedStyle(node);
-
-        wrapperInsets +=
-          parseFloat(style.borderTopWidth) +
-          parseFloat(style.borderBottomWidth) +
-          parseFloat(style.paddingTop) +
-          parseFloat(style.paddingBottom);
-
+        wrapperInsets += verticalInsets(win.getComputedStyle(node));
         node = node.parentElement;
       }
 
