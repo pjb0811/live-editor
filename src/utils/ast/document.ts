@@ -8,6 +8,7 @@ import { CONFIG, DATA_ATTR } from '../../constants';
 import type { Section } from '../../types';
 import { createBoundedCache } from '../cache';
 import { registerEditorCache } from '../editor-caches';
+import { getJSXTagName } from './jsx-name';
 
 // @babel/traverse's own CJS build re-exports itself as `{ default: traverse,
 // ...everything else }` for ESM interop. Vite's dev-server dependency
@@ -38,11 +39,6 @@ export interface DocumentTree {
   container: t.JSXElement;
 }
 
-const getTagName = (element: t.JSXElement): string => {
-  const name = element.openingElement.name;
-  return t.isJSXIdentifier(name) ? name.name : '';
-};
-
 const getAttr = (
   element: t.JSXElement,
   attrName: string,
@@ -64,7 +60,7 @@ const getAttrValue = (
 };
 
 const isSectionElement = (node: t.Node): node is t.JSXElement =>
-  t.isJSXElement(node) && getTagName(node) === SECTION_TAG;
+  t.isJSXElement(node) && getJSXTagName(node.openingElement) === SECTION_TAG;
 
 const findContainer = (ast: t.File): t.JSXElement | undefined => {
   let container: t.JSXElement | undefined;

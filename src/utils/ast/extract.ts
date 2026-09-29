@@ -8,6 +8,7 @@ import { registerEditorCache } from '../editor-caches';
 import { parseBinding, parseBindingExpression } from './binding';
 import { traverse } from './document';
 import { attrValue, generateCode, wrap } from './helpers';
+import { getJSXTagName } from './jsx-name';
 import type { Attribute, BindingItem, DataAttrNode } from './types';
 import { unwrapExpression } from './value';
 
@@ -25,44 +26,6 @@ const collectText = (
     .map(c => (c as t.JSXText).value.trim())
     .filter(v => v.length)
     .join(' ');
-};
-
-const getTagName = (opening: t.JSXOpeningElement): string => {
-  if (t.isJSXIdentifier(opening.name)) {
-    return opening.name.name;
-  }
-
-  if (t.isJSXMemberExpression(opening.name)) {
-    return resolveMemberName(opening.name);
-  }
-
-  return '';
-};
-
-const resolveMemberName = (expr: t.JSXMemberExpression): string => {
-  const parts: string[] = [];
-
-  const collectMemberParts = (
-    node: t.JSXMemberExpression['object'] | t.JSXMemberExpression['property'],
-  ): void => {
-    if (t.isJSXIdentifier(node)) {
-      parts.push(node.name);
-    } else if (t.isJSXMemberExpression(node)) {
-      collectMemberParts(node.object);
-
-      if (t.isJSXIdentifier(node.property)) {
-        parts.push(node.property.name);
-      }
-    }
-  };
-
-  collectMemberParts(expr.object);
-
-  if (t.isJSXIdentifier(expr.property)) {
-    parts.push(expr.property.name);
-  }
-
-  return parts.join('.');
 };
 
 const parseJSXName = (
@@ -412,7 +375,7 @@ const readNodeBindingInfo = (
   source?: string,
 ): NodeBindingInfo => {
   const opening = node.openingElement;
-  const tagName = getTagName(opening);
+  const tagName = getJSXTagName(opening);
   const { allAttrs, dataAttrs } = extractAttributes(opening.attributes, source);
 
   const bindingAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING);

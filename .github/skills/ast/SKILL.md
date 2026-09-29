@@ -10,16 +10,17 @@ description: 'Babel AST 변환 코드를 작성하거나 src/utils/ast/ 모듈�
 
 ## 모듈 맵 — 무엇을 고칠 때 어디를 보나
 
-| 상황                                                                                      | 파일                                                                                    |
-| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| 새 `BindingType` 추가/바인딩 속성(label, property, options, render) 파싱 방식 변경        | `types.ts` (`BINDING_TYPES`) 및 `binding.ts` (`parseBinding`)                           |
-| 특정 property에서 "현재 값"을 읽는 방식 변경 (예: richtext처럼 특수 속성에서 읽기)        | `binding.ts` (`getCurrentValue`)                                                        |
-| raw JSX 문자열 → `DataAttrNode` 트리 변환 로직 (children/items 바인딩, fragment 처리 등)  | `extract.ts`                                                                            |
-| 패널에서 입력한 값을 AST에 반영(write-back)하는 로직, 새 property 타입별 update 분기 추가 | `update.ts` (`update()`의 속성 분기 및 편집 헬퍼)                                       |
-| JS 값 ↔ AST 리터럴(`t.StringLiteral` 등) 상호 변환                                        | `value.ts`                                                                              |
-| `data-id` 재발급, 노드 clone                                                              | `tree.ts`                                                                               |
-| 여러 파이프라인 단계가 공유하는 저수준 헬퍼 (`wrap`/`unwrap`/`attrValue`/`generateCode`)  | `helpers.ts` — 두 곳 이상에서 쓰지 않는 헬퍼는 여기 넣지 말고 사용처 파일에 로컬로 둔다 |
-| 타입/인터페이스 정의                                                                      | `types.ts`                                                                              |
+| 상황                                                                                               | 파일                                                                                                       |
+| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 새 `BindingType` 추가/바인딩 속성(label, property, options, render) 파싱 방식 변경                 | `types.ts` (`BINDING_TYPES`) 및 `binding.ts` (`parseBinding`)                                              |
+| 특정 property에서 "현재 값"을 읽는 방식 변경 (예: richtext처럼 특수 속성에서 읽기)                 | `binding.ts` (`getCurrentValue`)                                                                           |
+| raw JSX 문자열 → `DataAttrNode` 트리 변환 로직 (children/items 바인딩, fragment 처리 등)           | `extract.ts`                                                                                               |
+| 패널에서 입력한 값을 AST에 반영(write-back)하는 로직, 새 property 타입별 update 분기 추가          | `update.ts` (`update()`의 속성 분기 및 편집 헬퍼)                                                          |
+| JS 값 ↔ AST 리터럴(`t.StringLiteral` 등) 상호 변환                                                 | `value.ts`                                                                                                 |
+| `data-id` 재발급, 노드 clone                                                                       | `tree.ts`                                                                                                  |
+| 여러 파이프라인 단계가 공유하는 저수준 헬퍼 (`wrap`/`unwrap`/`attrValue`/`generateCode`)           | `helpers.ts` — 두 곳 이상에서 쓰지 않는 헬퍼는 여기 넣지 말고 사용처 파일에 로컬로 둔다                    |
+| JSX 태그 이름 해석 (`section`, `ui.Space` 같은 멤버 경로) — 섹션 탐색과 추출이 함께 쓰는 단일 구현 | `jsx-name.ts` (`getJSXTagName`) — `document.ts`가 `@babel/generator`를 끌어오지 않도록 `helpers.ts`와 분리 |
+| 타입/인터페이스 정의                                                                               | `types.ts`                                                                                                 |
 
 ## 새 바인딩 타입을 추가하는 절차 (예: `richtext`)
 
@@ -36,7 +37,8 @@ description: 'Babel AST 변환 코드를 작성하거나 src/utils/ast/ 모듈�
 ```text
 value → helpers, types
 binding → value, types
-extract → binding, document, helpers, types, value
+document → jsx-name
+extract → binding, document, helpers, jsx-name, types, value
 children → extract, helpers, patch, types
 update → binding, children, document, helpers, patch, types, value
 tree → helpers
