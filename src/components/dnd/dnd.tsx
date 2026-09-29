@@ -1,4 +1,11 @@
-import { Children, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Children,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   DndContext,
@@ -24,9 +31,9 @@ import { DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
 import {
   type DataAttrNode,
+  type DocumentProblem,
   extract,
   fillIds,
-  inspectDocument,
   update,
 } from '~/utils/ast';
 import type { UpdateFailure } from '~/utils/ast';
@@ -123,6 +130,17 @@ const describeUpdateFailure = (
   }
 };
 
+// An edit refused because the document doesn't parse (#433).
+const blockedEditError = (error: unknown): DndEditError => ({
+  type: 'parse',
+  target: 'document',
+  reason: 'parse-error',
+  error,
+  title: 'The document has a syntax error',
+  description:
+    'The canvas shows the last version that parsed. Fix the error in the code, then edit here again.',
+});
+
 // What `useDndPalette()` returns. Deliberately just data: the drag wiring is
 // a component (`Live.Dnd.DraggableItem`) and the breakpoint belongs to
 // `useDndLayout()`, so a custom palette takes each from where it lives
@@ -171,6 +189,11 @@ export interface DndPanel {
   // to `Live.Dnd.Field` along with the binding, otherwise nested
   // array/children edits inside it silently don't commit (#308).
   onNodeChange: PanelNodeChange;
+  // True while the document doesn't parse: `item` and `bindings` are from the
+  // last version that did, and every commit is refused (and reported through
+  // `onEditError`) until the source parses again. Disable your controls, or
+  // say why edits aren't landing (#433).
+  readOnly: boolean;
 }
 
 export interface Props extends Omit<
@@ -311,6 +334,25 @@ const Dnd = ({
   // ContextProvider supplies DEFAULT_TEMPLATE for a fresh document.
   const value = _value === undefined ? code : _value;
 
+  const reportError = onEditError ?? toastEditError;
+
+  // Read through a ref so the effects below fire once per failure, not again
+  // on every render a host passes a fresh inline `onEditError`.
+  const reportErrorRef = useRef(reportError);
+
+  useEffect(() => {
+    reportErrorRef.current = reportError;
+  });
+
+  // Reported only when an author tries to edit, not whenever the source
+  // stops parsing: that happens on most keystrokes in the code editor, and
+  // the canvas already says it's showing the last valid version (#433).
+  const onBlockedEdit = useCallback((problem: DocumentProblem) => {
+    if (problem.reason === 'parse-error') {
+      reportErrorRef.current(blockedEditError(problem.error));
+    }
+  }, []);
+
   const {
     sections,
     previews,
@@ -326,21 +368,17 @@ const Dnd = ({
     reorder,
     patch,
     getCommittedSection,
+    problem,
+    stale,
   } = useSectionDocument(value, _onChange, {
     containerId,
     sectionNameFallback,
+    onBlockedEdit,
   });
 
-  // The container id the document is missing, or `null`. A document that
-  // doesn't parse isn't reported here: that is usually the source mid-edit,
-  // and it has no container to look for yet (#433).
-  const missingContainer = useMemo(() => {
-    const inspection = inspectDocument(value, { containerId });
-
-    return !inspection.ok && inspection.reason === 'container-not-found'
-      ? inspection.containerId
-      : null;
-  }, [containerId, value]);
+  // The container id the document is missing, or `null`.
+  const missingContainer =
+    problem?.reason === 'container-not-found' ? problem.containerId : null;
 
   const onDragStart = (_: DragStartEvent) => {};
 
@@ -416,16 +454,6 @@ const Dnd = ({
     }
   }, [selectedCode]);
 
-  const reportError = onEditError ?? toastEditError;
-
-  // Read through a ref so the effect below fires once per parse failure, not
-  // again on every render a host passes a fresh inline `onEditError`.
-  const reportErrorRef = useRef(reportError);
-
-  useEffect(() => {
-    reportErrorRef.current = reportError;
-  });
-
   // Keyed on the missing id alone, so it fires when a document reaches this
   // state and not again for every edit that leaves it there.
   useEffect(() => {
@@ -464,6 +492,13 @@ const Dnd = ({
     property: string;
     value: unknown;
   }) => {
+    // The fields show the last version that parsed while the source doesn't,
+    // and their ids point into that version, not the current source (#433).
+    if (stale && problem?.reason === 'parse-error') {
+      reportError(blockedEditError(problem.error));
+      return;
+    }
+
     // Builds on an earlier commit from this same tick when that commit
     // changed this section: `updatedCode` is this render's snapshot, so a
     // second commit made from it would write the first one's edit back out
@@ -553,6 +588,7 @@ const Dnd = ({
     canMoveDown: selectedIndex >= 0 && selectedIndex < sections.length - 1,
     bindings,
     onNodeChange: onFieldChange,
+    readOnly: stale,
   };
 
   // Content only — the frame container that wraps this (`data-frame-container`
@@ -560,6 +596,19 @@ const Dnd = ({
   // layout can't accidentally drop it while still placing the canvas.
   const canvas = (
     <>
+      {stale && (
+        <div
+          role="status"
+          className={cn(
+            'sticky top-0 z-70',
+            'border-b border-amber-200 bg-amber-50 px-3 py-2',
+            'text-sm text-amber-900',
+          )}
+        >
+          Showing the last version that parsed. Fix the syntax error in the code
+          to edit here again.
+        </div>
+      )}
       <Droppable
         className={cn(
           !sections.length && 'h-full',
@@ -574,7 +623,16 @@ const Dnd = ({
               'text-gray-500',
             )}
           >
-            {missingContainer !== null ? (
+            {problem?.reason === 'parse-error' ? (
+              <Space orientation="vertical" align="center">
+                <Typography.Paragraph>
+                  The document has a syntax error
+                </Typography.Paragraph>
+                <Typography.Text>
+                  Fix it in the code to see its sections
+                </Typography.Text>
+              </Space>
+            ) : missingContainer !== null ? (
               <Space orientation="vertical" align="center">
                 <Typography.Paragraph>
                   No #{missingContainer} element in the document
@@ -667,6 +725,7 @@ const Dnd = ({
                 clearSelection,
                 paletteOpen: mobilePaletteOpen,
                 setPaletteOpen: setMobilePaletteOpen,
+                documentError: problem?.reason ?? null,
               }}
             >
               {/* `Children.toArray` rather than a plain `children ??`: a JSX

@@ -32,6 +32,18 @@ export type DndEditError =
       description?: string;
     }
   | {
+      // An edit was refused because the document doesn't parse. The canvas
+      // and panel show the last version that did, and nothing can be
+      // committed against it (#433). Reported when an edit is attempted, not
+      // whenever the source stops parsing.
+      type: 'parse';
+      target: 'document';
+      reason: 'parse-error';
+      error: unknown;
+      title: string;
+      description?: string;
+    }
+  | {
       // The document has no element with the container id, so it has no
       // sections and nothing added from the palette can land. Reported once
       // each time a document reaches this state, not on every edit (#449).

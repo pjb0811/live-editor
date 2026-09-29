@@ -36,6 +36,9 @@ export interface PanelProps {
   // it from DataAttrNode a second time (#237).
   bindings: PanelBinding[];
   onNodeChange?: PanelNodeChange;
+  // The document doesn't parse, so these fields are from the last version
+  // that did and edits are refused (#433).
+  readOnly?: boolean;
 }
 
 // `bindings` is flat (one entry per bound property, across every editable
@@ -74,6 +77,7 @@ const Panel = ({
   canMoveDown = false,
   bindings,
   onNodeChange,
+  readOnly = false,
 }: PanelProps) => {
   const groups = groupBindingsById(bindings);
 
@@ -129,6 +133,12 @@ const Panel = ({
           )}
         </div>
       </div>
+      {readOnly && (
+        <Typography.Text role="status" className="block text-xs text-amber-700">
+          The document has a syntax error. These fields are from the last
+          version that parsed, and can&apos;t be edited until it parses again.
+        </Typography.Text>
+      )}
       {!groups.length && (
         <Typography.Text className="text-xs text-gray-400">
           No editable elements.

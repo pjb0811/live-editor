@@ -7,7 +7,8 @@ import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/constants';
 import { PreviewContext } from '../context/states';
 import Dnd, { type DndPalette, type DndPanel } from './dnd';
 import { Canvas } from './layout';
-import { useDndPalette, useDndPanel } from './layout-context';
+import type { DndLayout } from './layout-context';
+import { useDndLayout, useDndPalette, useDndPanel } from './layout-context';
 import Field from './panel/field';
 import { type DndItems, useDndItems } from './panel/use-dnd-items';
 
@@ -750,6 +751,130 @@ describe('document container', () => {
     expect(container.textContent).toContain(
       'No #app-container element in the document',
     );
+  });
+});
+
+// A source that doesn't parse, which is what the code editor holds for most
+// of a keystroke, used to empty the canvas and the panel until it parsed
+// again (#433). Now they keep the last version that parsed, read-only.
+describe('document that stops parsing', () => {
+  const broken = twoFields.replace('</main>', '<div </main>');
+
+  const renderParsing = (initial: string) => {
+    const onChange = vi.fn();
+    const onEditError = vi.fn();
+    let panel: DndPanel | undefined;
+    let layout: DndLayout | undefined;
+
+    const Probe = () => {
+      panel = useDndPanel();
+      layout = useDndLayout();
+
+      return <div data-testid="panel" />;
+    };
+
+    const tree = (value: string) => (
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd value={value} onChange={onChange} onEditError={onEditError}>
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>
+    );
+
+    const utils = render(tree(initial));
+    const sortables = () =>
+      utils.container.querySelectorAll<HTMLElement>(
+        '[aria-roledescription="sortable"]',
+      );
+
+    return {
+      ...utils,
+      onChange,
+      onEditError,
+      sortables,
+      getPanel: () => panel!,
+      getLayout: () => layout!,
+      rerenderWith: (value: string) => act(() => utils.rerender(tree(value))),
+    };
+  };
+
+  const selectFirst = (sortables: () => NodeListOf<HTMLElement>) =>
+    act(() => sortables()[0]!.click());
+
+  it('keeps the last parsed sections and selection, read-only', () => {
+    const view = renderParsing(twoFields);
+
+    selectFirst(view.sortables);
+    view.rerenderWith(broken);
+
+    expect(view.sortables()).toHaveLength(2);
+    expect(view.getPanel().item?.id).toBe('s1');
+    expect(view.getPanel().bindings.map(b => b.label)).toEqual([
+      'Title',
+      'Body',
+    ]);
+    expect(view.getPanel().readOnly).toBe(true);
+    expect(view.getLayout().documentError).toBe('parse-error');
+    expect(view.container.textContent).toContain(
+      'Showing the last version that parsed',
+    );
+    // Not reported just for being broken: that's every other keystroke.
+    expect(view.onEditError).not.toHaveBeenCalled();
+  });
+
+  it('refuses edits while stale, and says why', () => {
+    const view = renderParsing(twoFields);
+
+    selectFirst(view.sortables);
+    view.rerenderWith(broken);
+
+    act(() => view.getPanel().bindings[0]!.onChange('New title'));
+    act(() => view.getPanel().onMoveDown());
+    act(() => view.getPanel().onDelete('s1'));
+
+    expect(view.onChange).not.toHaveBeenCalled();
+    expect(view.onEditError).toHaveBeenCalledTimes(3);
+    expect(view.onEditError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'parse',
+        target: 'document',
+        reason: 'parse-error',
+      }),
+    );
+  });
+
+  it('edits again once the source parses', () => {
+    const view = renderParsing(twoFields);
+
+    selectFirst(view.sortables);
+    view.rerenderWith(broken);
+    view.rerenderWith(twoFields);
+
+    expect(view.getPanel().readOnly).toBe(false);
+    expect(view.getLayout().documentError).toBeNull();
+
+    act(() => view.getPanel().bindings[0]!.onChange('New title'));
+
+    expect(view.onChange.mock.calls.at(-1)![0]).toContain('New title');
+  });
+
+  it('says so when the source has never parsed', () => {
+    const view = renderParsing(broken);
+
+    expect(view.sortables()).toHaveLength(0);
+    expect(view.getLayout().documentError).toBe('parse-error');
+    expect(view.getPanel().readOnly).toBe(false);
+    expect(view.container.textContent).toContain(
+      'The document has a syntax error',
+    );
+  });
+
+  it('is not stale for a missing container', () => {
+    const view = renderParsing('');
+
+    expect(view.getLayout().documentError).toBe('container-not-found');
+    expect(view.getPanel().readOnly).toBe(false);
   });
 });
 

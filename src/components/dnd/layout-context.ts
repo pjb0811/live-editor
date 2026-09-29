@@ -21,6 +21,11 @@ export interface DndLayout {
   // closes the Drawer; a layout only opens it.
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
+  // Why the document can't be edited right now, or `null`. `'parse-error'`
+  // while the source doesn't parse: the canvas shows the last version that
+  // did, read-only (#433). `'container-not-found'` when it has no container
+  // element, so it has no sections (#449).
+  documentError: 'parse-error' | 'container-not-found' | null;
 }
 
 // Everything `Live.Dnd` publishes to its children, read back through the
