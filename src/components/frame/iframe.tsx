@@ -751,6 +751,11 @@ const IFrame = ({
     <iframe
       ref={iframeRef}
       style={{
+        // An iframe is inline-level by default, so it sits on a text
+        // baseline and leaves the descender gap (~4px) below it. With one
+        // auto-height frame per canvas section, those gaps stacked into
+        // height no content accounted for (#439).
+        display: 'block',
         width: '100%',
         height: '100%',
         border: 'none',
