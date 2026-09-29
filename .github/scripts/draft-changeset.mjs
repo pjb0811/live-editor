@@ -12,6 +12,7 @@
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import { capDraftBump, reportCappedBump } from './draft-bump.mjs';
 import { nvidiaChat, requireEnv } from './nvidia-chat.mjs';
 
 const MAX_DIFF_CHARS = 12000;
@@ -130,9 +131,10 @@ async function main() {
   }
 
   const filePath = `.changeset/${branchSlug}.md`;
+  const { bump, capped } = capDraftBump(result.bump);
   const fileContent = [
     '---',
-    `'${PACKAGE_NAME}': ${result.bump}`,
+    `'${PACKAGE_NAME}': ${bump}`,
     '---',
     '',
     result.summary.trim(),
@@ -140,7 +142,11 @@ async function main() {
   ].join('\n');
 
   fs.writeFileSync(filePath, fileContent);
-  console.log(`Wrote ${filePath} (${result.bump}): ${result.summary}`);
+  console.log(`Wrote ${filePath} (${bump}): ${result.summary}`);
+
+  if (capped) {
+    reportCappedBump(filePath);
+  }
 }
 
 main().catch(err => {
