@@ -42,6 +42,7 @@ live-editor/
 │  │  ├─ ast/               # Babel AST 조작 유틸 (파이프라인 단계별 분리, index.ts는 재수출 배럴)
 │  │  │  ├─ types.ts        # DataAttrNode, BindingItem 등 타입 정의
 │  │  │  ├─ helpers.ts      # wrap/unwrap/attrValue/generateCode (여러 단계 공용)
+│  │  │  ├─ jsx-name.ts     # getJSXTagName() — JSX 태그 이름 해석 (섹션 탐색·추출 공용)
 │  │  │  ├─ binding.ts      # parseBinding(), getCurrentValue(), findEditableChildren()
 │  │  │  ├─ value.ts        # JS 값 ↔ AST 리터럴 변환 (extractNodeValue 등)
 │  │  │  ├─ extract.ts      # raw JSX 문자열 → DataAttrNode 트리 (extract())
