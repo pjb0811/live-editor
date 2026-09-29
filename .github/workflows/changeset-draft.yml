@@ -84,6 +84,7 @@ jobs:
           fi
 
       - name: Draft changeset via NVIDIA API
+        id: draft
         if: steps.existing.outputs.exists == 'false'
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
@@ -99,7 +100,10 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add .changeset/*.md
-            git commit -m "docs: draft changeset for PR #${{ github.event.pull_request.number }}"
+            # `capped` is set by draft-bump.mjs when the model's `major` was
+            # lowered to `minor`, so the lowered bump shows in the PR's
+            # commit list and isn't taken as the model's own call.
+            git commit -m "docs: draft changeset for PR #${{ github.event.pull_request.number }}${{ steps.draft.outputs.capped == 'true' && ' (model suggested major; capped at minor)' || '' }}"
             git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
           else
             echo "No changeset produced (no changes outside the demo app, or model found no user-facing change) — skipping commit."
