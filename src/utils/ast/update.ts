@@ -386,6 +386,80 @@ const editAttribute = (
   ];
 };
 
+// Removes an attribute along with the whitespace before it, so no gap or
+// blank line is left where it was. `undefined` is how a caller asks for this:
+// to React an `undefined` prop and a missing one are the same, and writing it
+// used to leave the literal text `"undefined"` in the source (#426).
+const removeAttribute = (
+  source: string,
+  attribute: t.JSXAttribute,
+): EditResult => {
+  if (attribute.start == null || attribute.end == null) {
+    return null;
+  }
+
+  let start = attribute.start;
+
+  while (start > 0 && /\s/.test(source[start - 1]!)) {
+    start -= 1;
+  }
+
+  return [{ start, end: attribute.end, content: '' }];
+};
+
+// Adds an attribute the element doesn't have yet, after its last attribute.
+// Only for a real value: an empty string or `undefined` for a missing
+// attribute leaves the element as it is, so clearing a field never creates
+// the attribute it was clearing (#426).
+//
+// Follows the tag's own layout: when its last attribute sits on a line of its
+// own, the new one goes on the next line with the same indentation, instead
+// of trailing the last one.
+const addAttribute = (
+  source: string,
+  opening: t.JSXOpeningElement,
+  propertyName: string,
+  value: unknown,
+  type?: BindingType,
+): EditResult => {
+  const insertAt = attributeInsertPoint(opening);
+
+  if (insertAt == null) {
+    return null;
+  }
+
+  // `indent: true` below re-indents every line after the first to the
+  // indentation of the line the edit starts on, so a bare newline is enough
+  // to line the new attribute up under the last one.
+  const lastStart = opening.attributes[opening.attributes.length - 1]?.start;
+  const lineStart =
+    lastStart == null ? -1 : source.lastIndexOf('\n', lastStart - 1) + 1;
+  const ownLine =
+    lastStart != null &&
+    lineStart > 0 &&
+    /^\s*$/.test(source.slice(lineStart, lastStart));
+  const separator = ownLine ? '\n' : ' ';
+
+  const content =
+    type === 'jsx'
+      ? `${propertyName}={${String(value).trim()}}`
+      : generateCode(
+          t.jsxAttribute(
+            t.jsxIdentifier(propertyName),
+            buildAttributeValue(value, type),
+          ),
+        );
+
+  return [
+    {
+      start: insertAt,
+      end: insertAt,
+      content: `${separator}${content}`,
+      indent: true,
+    },
+  ];
+};
+
 const canEditAttributeValue = (
   attribute: t.JSXAttribute,
   value: unknown,
@@ -423,6 +497,8 @@ export type UpdateFailure =
   // The binding targets an attribute the editor owns (`data-id`,
   // `data-name`, `data-binding`), which a panel edit must not rewrite.
   | { reason: 'reserved-property'; dataId: string; property: string }
+  // Asked to remove (`undefined`) a property whose binding is `required`.
+  | { reason: 'required-property'; dataId: string; property: string }
   | {
       reason: 'binding-not-declared';
       dataId: string;
@@ -569,20 +645,32 @@ export const update = (
           return;
         }
 
+        // `undefined` asks for the property to go: an attribute is removed,
+        // content is emptied. A `required` binding can't be removed (#426).
+        const unset = value === undefined;
+
+        if (unset && propertyBinding.required) {
+          failure = { reason: 'required-property', dataId, property: prop };
+          return;
+        }
+
         switch (prop) {
           case BINDING_PROP.INNER_TEXT: {
-            collect(editInnerText(wrapped, path.node, String(value)), () => ({
-              reason: 'parse-error',
-              error: new Error(`could not update "${prop}"`),
-            }));
+            collect(
+              editInnerText(wrapped, path.node, unset ? '' : String(value)),
+              () => ({
+                reason: 'parse-error',
+                error: new Error(`could not update "${prop}"`),
+              }),
+            );
             break;
           }
 
           case BINDING_PROP.INNER_HTML: {
             collect(
               propertyBinding.type === 'richtext'
-                ? editRichtext(path.node, String(value))
-                : editInnerHTML(path.node, String(value)),
+                ? editRichtext(path.node, unset ? '' : String(value))
+                : editInnerHTML(path.node, unset ? '' : String(value)),
               () => ({
                 reason: 'parse-error',
                 error: new Error(`could not update "${prop}"`),
@@ -592,6 +680,17 @@ export const update = (
           }
 
           case BINDING_PROP.CHILDREN: {
+            // Children are edited as a structure (move, add, remove one), so
+            // there is no whole-value removal to map `undefined` onto.
+            if (unset) {
+              failure = {
+                reason: 'unsupported-syntax',
+                dataId,
+                property: prop,
+              };
+              break;
+            }
+
             collect(editChildrenSource(wrapped, path.node, value), () => ({
               reason: 'parse-error',
               error: new Error(
@@ -602,9 +701,42 @@ export const update = (
           }
 
           default: {
-            // The declared `property` names a JSX attribute that isn't on
-            // this element — the binding declaration is wrong, not the value.
             const attribute = findAttribute(opening, prop);
+
+            if (unset) {
+              // Already absent: nothing to remove, and nothing went wrong.
+              collect(
+                attribute ? removeAttribute(wrapped, attribute) : [],
+                () => ({
+                  reason: 'parse-error',
+                  error: new Error(`could not remove "${prop}"`),
+                }),
+              );
+              break;
+            }
+
+            // A declared property the element doesn't have yet is added when
+            // it's given a real value, so a field that was switched off can be
+            // switched on again. An empty string leaves it absent (#426).
+            if (!attribute) {
+              collect(
+                value === ''
+                  ? []
+                  : addAttribute(
+                      wrapped,
+                      opening,
+                      prop,
+                      value,
+                      propertyBinding.type,
+                    ),
+                () => ({
+                  reason: 'attribute-not-found',
+                  dataId,
+                  property: prop,
+                }),
+              );
+              break;
+            }
 
             if (
               attribute &&

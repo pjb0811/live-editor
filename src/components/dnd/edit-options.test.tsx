@@ -54,7 +54,7 @@ const section = `
           type: 'object',
           render: { color: { type: 'color', widget: 'swatch' } },
         },
-        { label: 'Missing', property: 'missing' },
+        { label: 'Required', property: 'missing', required: true },
       ]}
       size={16}
       style={{ color: '#000000' }}
@@ -210,21 +210,21 @@ describe('onEditError', () => {
     const onEditError = vi.fn();
     const { getData } = renderDnd({ onEditError });
     const missing = getData().bindings.find(
-      binding => binding.label === 'Missing',
+      binding => binding.label === 'Required',
     )!;
 
-    act(() => missing.onChange('value'));
+    act(() => missing.onChange(undefined));
 
     expect(onEditError).toHaveBeenCalledTimes(1);
     expect(onEditError).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'update',
         id: 'box',
-        label: 'Missing',
+        label: 'Required',
         property: 'missing',
-        failure: expect.objectContaining({ reason: 'attribute-not-found' }),
-        title: 'Failed to update "Missing"',
-        description: expect.stringContaining('"missing" attribute'),
+        failure: expect.objectContaining({ reason: 'required-property' }),
+        title: 'Cannot remove "Required"',
+        description: expect.stringContaining('marked required'),
       }),
     );
     expect(toast).not.toHaveBeenCalled();
@@ -234,13 +234,13 @@ describe('onEditError', () => {
     const toast = vi.spyOn(Toast, 'error').mockImplementation(() => 'test');
     const { getData } = renderDnd({});
     const missing = getData().bindings.find(
-      binding => binding.label === 'Missing',
+      binding => binding.label === 'Required',
     )!;
 
-    act(() => missing.onChange('value'));
+    act(() => missing.onChange(undefined));
 
     expect(toast).toHaveBeenCalledWith(
-      'Failed to update "Missing"',
+      'Cannot remove "Required"',
       expect.objectContaining({ description: expect.any(String) }),
     );
   });

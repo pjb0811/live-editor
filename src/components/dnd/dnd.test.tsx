@@ -760,6 +760,66 @@ describe('document container', () => {
 // again (#433). Now they keep the last version that parsed, read-only.
 // One interaction that writes several bindings should reach the host as one
 // change, and never half of one (#425).
+// `onChange(undefined)` removes an attribute and a value adds it back, from
+// the panel as from `update()` (#426).
+describe('removing and adding attributes from the panel', () => {
+  const optional = documentWith(`
+    <section data-id="s1" data-name="First">
+      <a
+        data-id="link"
+        data-binding={[
+          { label: 'Title', property: 'title' },
+          { label: 'Target', property: 'target' },
+        ]}
+        title="Hi"
+        target="_blank"
+      >
+        Link
+      </a>
+    </section>`);
+
+  const renderOptional = () => renderTwoFields(optional);
+
+  it('removes an attribute with undefined', () => {
+    const { getData, lastCommit } = renderOptional();
+
+    act(() => getData().bindings[0]!.onChange(undefined));
+
+    expect(lastCommit()).not.toContain('title=');
+    expect(lastCommit()).not.toContain('undefined');
+    expect(lastCommit()).toContain('target="_blank"');
+  });
+
+  it('removes several attributes as one change', () => {
+    const { onChange, getData, lastCommit } = renderOptional();
+
+    act(() =>
+      getData().onNodesChange([
+        { id: 'link', label: 'Title', property: 'title', value: undefined },
+        { id: 'link', label: 'Target', property: 'target', value: undefined },
+      ]),
+    );
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(lastCommit()).not.toMatch(/title=|target=/);
+  });
+
+  it('reports a removed attribute as absent, and adds it back on a value', () => {
+    const view = renderOptional();
+
+    act(() => view.getData().bindings[0]!.onChange(undefined));
+    view.rerenderWith(view.lastCommit());
+
+    const title = view.getData().bindings[0]!;
+
+    expect(title.present).toBe(false);
+
+    act(() => title.onChange('Back'));
+
+    expect(view.lastCommit()).toContain('title="Back"');
+  });
+});
+
 describe('onNodesChange', () => {
   const title = { id: 's1-title', label: 'Title', property: 'innerText' };
   const body = { id: 's1-body', label: 'Body', property: 'innerText' };
