@@ -51,7 +51,7 @@ live-editor/
 │  │  │  ├─ array-source.ts # 밀집 배열 구간/쉼표 보존 편집
 │  │  │  ├─ items.ts        # 배열 아이템 편집 (추가/이동/삭제)
 │  │  │  ├─ patch.ts        # 소스 스팬 기반 부분 편집 적용 (applyEdits)
-│  │  │  ├─ update.ts       # 값 → AST 반영 (update(), bulkUpdate())
+│  │  │  ├─ update.ts       # 값 → AST 반영 (update(), updateAll(); bulkUpdate()는 deprecated)
 │  │  │  ├─ validate.ts     # 바인딩 값 검증
 │  │  │  └─ tree.ts         # replaceIds()/fillIds()/clone()
 │  │  └─ tailwind/          # Tailwind 관련 유틸
@@ -79,7 +79,7 @@ live-editor/
   → 호스트의 new Function()으로 모듈 실행
   → React 렌더링 (iframe/Shadow DOM/호스트 DOM 선택)
   → 사용자가 DnD/패널로 요소 편집
-  → AST 변환 (update()/bulkUpdate() 등) → 새 코드 문자열
+  → AST 변환 (update()/updateAll() 등) → 새 코드 문자열
   → PreviewContext 업데이트 → 미리보기 재렌더링
 ```
 
@@ -87,15 +87,15 @@ live-editor/
 
 ## 🏗️ 주요 파일 요약
 
-| 파일                                | 역할                                                                                                                                                |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/utils/index.ts`                | `compile()`, `cn()`, `getCachedScriptBlob()`. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                            |
-| `src/utils/ast/`                    | `extract()`, `update()`/`bulkUpdate()`, `parseBinding()`, `getCurrentValue()`, `clone()` — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
-| `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                         |
-| `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                            |
-| `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                      |
-| `src/components/preview/client.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                             |
-| `src/components/frame/iframe.tsx`   | iframe DOM/CSS 격리 + 스타일 동기화 + 자동 높이                                                                                                     |
+| 파일                                | 역할                                                                                                                                               |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/utils/index.ts`                | `compile()`, `cn()`, `getCachedScriptBlob()`. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                           |
+| `src/utils/ast/`                    | `extract()`, `update()`/`updateAll()`, `parseBinding()`, `getCurrentValue()`, `clone()` — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
+| `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                        |
+| `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                           |
+| `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                     |
+| `src/components/preview/client.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                            |
+| `src/components/frame/iframe.tsx`   | iframe DOM/CSS 격리 + 스타일 동기화 + 자동 높이                                                                                                    |
 
 ---
 

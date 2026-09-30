@@ -192,6 +192,7 @@ const MyPalette = () => {
 | `canMoveUp` | `boolean` | Whether `onMoveUp` would do anything right now — disable your move-up control when `false`. |
 | `canMoveDown` | `boolean` | Whether `onMoveDown` would do anything right now — disable your move-down control when `false`. |
 | `onNodeChange` | `(params: { id: string; label: string; property: string; value: unknown }) => void` | Commit an edit to an element addressed by its own `data-id`, rather than through a binding you were handed. Needed for the nested elements `bindings` can't reach — pass it to `Live.Dnd.Field` along with the binding. See [below](#reusing-the-built-in-control-for-one-binding). |
+| `onNodesChange` | `(changes: { id: string; label: string; property: string; value: unknown }[]) => void` | Commit several node-level edits as one change. They apply in array order, all or none: if any is refused, nothing is committed and the error names the one that failed. See [below](#writing-several-bindings-at-once). |
 | `readOnly` | `boolean` | `true` while the document doesn't parse. `item` and `bindings` are from the last version that did, and every commit is refused and reported through `onEditError` until it parses again. Disable your controls, or say why edits aren't landing. |
 
 `bindings` carries each field's `type`, current `value`, `options` (when
@@ -285,6 +286,41 @@ Most shipped sections are affected: in `stats`, 9 of the section's 10
 editable elements are only reachable this way. Drop `onNodeChange` and those
 edits are silent no-ops — the fields still render and accept typing, but
 nothing commits.
+
+### Writing several bindings at once
+
+A control that owns more than one binding, an image picker that sets `src` and
+`alt` for example, can call `onChange` on each. That works, and the edits
+don't overwrite each other. But each call reaches `Live.Dnd`'s `onChange` as
+its own change, and if the second one is refused the first stays applied.
+
+`onNodesChange` commits them together:
+
+```tsx
+const { onNodesChange } = useDndPanel();
+
+const pick = (image) =>
+  onNodesChange([
+    { id: 'hero-image', label: 'Image', property: 'src', value: image.url },
+    { id: 'hero-image', label: 'Alt', property: 'alt', value: image.title },
+  ]);
+```
+
+- The edits apply **in array order**, each on the source the one before it
+  left. Later edits to the same property win.
+- It's **all or none**. If any edit is refused, nothing is committed and
+  `onEditError` (or the toast) reports the first one that failed.
+- On success `Live.Dnd`'s `onChange` is called **once**.
+- An empty array does nothing.
+- The edits can target any element of the selected section, by `data-id`. To
+  write several keys of one object, pass the whole object to one binding's
+  `onChange`: the key order you send is the order written.
+
+`updateAll(code, entries)` in `@jbpark/live-editor/utils/ast` is the same
+operation on a source string. It returns `{ success: true, code }`, or
+`{ success: false, code, failure, index }` with the original source. The older
+`bulkUpdate` is deprecated: it applies the entries that succeed even when
+another fails.
 
 ### Reusing the built-in control for one binding
 

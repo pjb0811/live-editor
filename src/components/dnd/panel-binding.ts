@@ -25,6 +25,16 @@ export interface PanelNodeChange {
   }): void;
 }
 
+// Several `PanelNodeChange`s committed as one edit (#425). They apply in array
+// order, all or none: if any is refused nothing is committed and the error
+// names the one that failed. That is what makes it worth using over calling
+// `PanelNodeChange` in a row, which lands as one document change per call and
+// leaves the earlier ones applied when a later one fails. An empty array does
+// nothing.
+export interface PanelNodesChange {
+  (changes: Parameters<PanelNodeChange>[0][]): void;
+}
+
 // One editable data-binding, flattened out of the selected section for a
 // custom panel. Exposes just what a consumer needs to render its own
 // control — the declared `type`, the current `value`, and an `onChange`

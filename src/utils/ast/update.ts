@@ -443,9 +443,9 @@ export type UpdateFailure =
 export interface UpdateResult {
   code: string;
   success: boolean;
-  // Present iff `success === false`. `bulkUpdate` reports per-entry failures
-  // via `failures` instead, since one boolean can't say how many of several
-  // entries failed or which ones.
+  // Present iff `success === false`. The deprecated `bulkUpdate` reports
+  // per-entry failures via `failures` instead, since one boolean can't say
+  // how many of several entries failed or which ones.
   failure?: UpdateFailure;
   failures?: UpdateFailure[];
 }
@@ -653,14 +653,69 @@ export const update = (
   }
 };
 
+export interface UpdateEntry {
+  dataId: string;
+  label: string;
+  value: unknown;
+  property?: string;
+}
+
+// The result of `updateAll`: every entry applied, or none. On failure `code`
+// is the source as it came in, `index` says which entry was refused, and
+// `failure` says why.
+export type UpdateAllResult =
+  | { success: true; code: string }
+  | { success: false; code: string; failure: UpdateFailure; index: number };
+
+// Applies several edits as one: all of them, in array order, or none. The
+// first entry that fails stops the run and the source comes back untouched,
+// so a caller can commit the result as a single change (#425). An entry sees
+// the source the earlier ones left, and a later entry for the same
+// `dataId`/`property` wins.
+//
+// Each entry re-parses the source the one before it produced, so every offset
+// is fresh, and the outcome matches applying the entries one at a time (#239).
+export const updateAll = (
+  raw: string,
+  entries: UpdateEntry[],
+): UpdateAllResult => {
+  let current = raw;
+
+  for (const [index, entry] of entries.entries()) {
+    const result = update(
+      current,
+      entry.dataId,
+      entry.label,
+      entry.value,
+      entry.property,
+    );
+
+    if (!result.success) {
+      return {
+        success: false,
+        code: raw,
+        failure: result.failure ?? {
+          reason: 'element-not-found',
+          dataId: entry.dataId,
+        },
+        index,
+      };
+    }
+
+    current = result.code;
+  }
+
+  return { success: true, code: current };
+};
+
+/**
+ * @deprecated Not atomic: when an entry fails, the ones before and after it
+ * are still applied, and the returned `code` carries them. Use `updateAll`,
+ * which applies every entry or none. Will be removed in the next major.
+ */
 export const bulkUpdate = (
   raw: string,
-  entries: {
-    dataId: string;
-    label: string;
-    value: unknown;
-    property?: string;
-  }[],
+  entries: UpdateEntry[],
 ): UpdateResult => {
   let current = raw;
   const failures: UpdateFailure[] = [];

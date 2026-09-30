@@ -18,6 +18,7 @@ import LiveDnd, {
   type ItemsEditorOptions,
   type PanelBinding,
   type PanelNodeChange,
+  type PanelNodesChange,
 } from './components/dnd';
 import LiveEditor, { type EditorRenderData } from './components/editor';
 import LiveError from './components/error';
@@ -51,6 +52,7 @@ export type {
   DndLayout,
   PanelBinding,
   PanelNodeChange,
+  PanelNodesChange,
   FieldProps,
   DndItems,
   DndItemsItem,

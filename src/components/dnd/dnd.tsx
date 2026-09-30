@@ -34,7 +34,7 @@ import {
   type DocumentProblem,
   extract,
   fillIds,
-  update,
+  updateAll,
 } from '~/utils/ast';
 import type { UpdateFailure } from '~/utils/ast';
 
@@ -56,6 +56,7 @@ import Overlay from './overlay';
 import {
   type PanelBinding,
   type PanelNodeChange,
+  type PanelNodesChange,
   resolvePanelBindings,
   withPanelCommit,
 } from './panel-binding';
@@ -160,7 +161,11 @@ export interface DndPalette {
 // `PanelNodeChange`/`PanelBinding` live in `./panel-binding` alongside the
 // DataAttrNode -> PanelBinding conversion they describe, and are re-exported
 // here so `Live.Dnd`'s public types keep their original import path (#340).
-export type { PanelBinding, PanelNodeChange } from './panel-binding';
+export type {
+  PanelBinding,
+  PanelNodeChange,
+  PanelNodesChange,
+} from './panel-binding';
 
 // What `useDndPanel()` returns — everything the built-in property panel runs
 // on, so a custom panel starts from the same place rather than re-deriving
@@ -194,6 +199,11 @@ export interface DndPanel {
   // to `Live.Dnd.Field` along with the binding, otherwise nested
   // array/children edits inside it silently don't commit (#308).
   onNodeChange: PanelNodeChange;
+  // Several node-level edits as one commit: applied in array order, all or
+  // none. Reach for it when one interaction writes more than one binding (an
+  // image picker setting `src` and `alt`, say), so the host sees a single
+  // `onChange` and a failure can't leave half of it behind (#425).
+  onNodesChange: PanelNodesChange;
   // True while the document doesn't parse: `item` and `bindings` are from the
   // last version that did, and every commit is refused (and reported through
   // `onEditError`) until the source parses again. Disable your controls, or
@@ -489,17 +499,14 @@ const Dnd = ({
     }
   }, [parseError]);
 
-  const onFieldChange = ({
-    id,
-    label,
-    property,
-    value: fieldValue,
-  }: {
-    id: string;
-    label: string;
-    property: string;
-    value: unknown;
-  }) => {
+  // The one commit path for panel edits, whether one node or several. A single
+  // `PanelNodeChange` is a batch of one, so the guards and the base document
+  // below can't drift between the two (#425).
+  const commitChanges = (changes: Parameters<PanelNodeChange>[0][]) => {
+    if (changes.length === 0) {
+      return;
+    }
+
     // The fields show the last version that parsed while the source doesn't,
     // and their ids point into that version, not the current source (#433).
     if (stale && problem?.reason === 'parse-error') {
@@ -517,9 +524,19 @@ const Dnd = ({
       selectedItem && getCommittedSection(selectedItem.id)?.code;
     const base =
       committed && committed !== selectedCode ? committed : updatedCode;
-    const result = update(base, id, label, fieldValue, property);
+    const result = updateAll(
+      base,
+      changes.map(({ id, label, property, value: changeValue }) => ({
+        dataId: id,
+        label,
+        property,
+        value: changeValue,
+      })),
+    );
 
     if (!result.success) {
+      const { id, label, property } = changes[result.index]!;
+
       reportError({
         type: 'update',
         id,
@@ -535,6 +552,8 @@ const Dnd = ({
       onChange({ ...selectedItem, code: result.code });
     }
   };
+
+  const onFieldChange: PanelNodeChange = change => commitChanges([change]);
 
   // Flattens the extracted `fields` (one DataAttrNode per element) down to
   // one descriptor per bound property — the same walk the built-in
@@ -596,6 +615,7 @@ const Dnd = ({
     canMoveDown: selectedIndex >= 0 && selectedIndex < sections.length - 1,
     bindings,
     onNodeChange: onFieldChange,
+    onNodesChange: commitChanges,
     readOnly: stale,
   };
 
