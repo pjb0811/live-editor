@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
-import { act, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/constants';
+import type { Section } from '~/types';
 
 import { PreviewContext } from '../context/states';
 import Dnd, { type DndPalette, type DndPanel } from './dnd';
-import { Canvas } from './layout';
+import { Canvas, Palette } from './layout';
 import type { DndLayout } from './layout-context';
 import { useDndLayout, useDndPalette, useDndPanel } from './layout-context';
 import Field from './panel/field';
@@ -1071,6 +1072,196 @@ describe('section root bindings', () => {
     expect(getData()!.bindings.some(binding => binding.id === rootId)).toBe(
       false,
     );
+  });
+});
+
+// Sections and palette cards are `role="button"` and reachable with Tab, but
+// did nothing on Enter, so the keyboard could reach them and not use them
+// (#435).
+describe('keyboard', () => {
+  const renderKeyboard = () => {
+    const onChange = vi.fn();
+    let panel: DndPanel | undefined;
+
+    const Probe = () => {
+      panel = useDndPanel();
+
+      return <div data-testid="panel" />;
+    };
+
+    const utils = render(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd
+          value={twoSections('Original title', 'Sibling')}
+          onChange={onChange}
+        >
+          <Palette />
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>,
+    );
+
+    const sortables = () =>
+      utils.container.querySelectorAll<HTMLElement>(
+        '[aria-roledescription="sortable"]',
+      );
+
+    return { ...utils, onChange, sortables, getPanel: () => panel! };
+  };
+
+  it('selects a focused section with Enter', () => {
+    const { sortables, getPanel } = renderKeyboard();
+
+    expect(getPanel().item).toBeUndefined();
+
+    act(() => {
+      fireEvent.keyDown(sortables()[1]!, { key: 'Enter', code: 'Enter' });
+    });
+
+    expect(getPanel().item?.id).toBe('s2');
+  });
+
+  it('ignores Enter that reaches the section from a button inside it', () => {
+    const { sortables, getPanel, container } = renderKeyboard();
+
+    act(() => sortables()[0]!.click());
+
+    const button = container.querySelector<HTMLElement>(
+      '[aria-roledescription="sortable"] button',
+    )!;
+
+    act(() => {
+      fireEvent.keyDown(button, { key: 'Enter', code: 'Enter' });
+    });
+
+    // Still selected: a bubbled Enter didn't toggle the selection off.
+    expect(getPanel().item?.id).toBe('s1');
+  });
+
+  it('adds a focused palette card with Enter', () => {
+    const { onChange, container } = renderKeyboard();
+    const card = container.querySelector<HTMLElement>(
+      '[aria-roledescription="draggable"]',
+    )!;
+
+    act(() => {
+      fireEvent.keyDown(card, { key: 'Enter', code: 'Enter' });
+    });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(
+      (onChange.mock.calls[0]![0] as string).match(/<section/g),
+    ).toHaveLength(3);
+  });
+});
+
+describe('onBeforeDelete', () => {
+  const renderDeletable = (onBeforeDelete?: (section: Section) => unknown) => {
+    const onChange = vi.fn();
+    let panel: DndPanel | undefined;
+
+    const Probe = () => {
+      panel = useDndPanel();
+
+      return <div data-testid="panel" />;
+    };
+
+    const tree = (value: string) => (
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd
+          value={value}
+          onChange={onChange}
+          onBeforeDelete={
+            onBeforeDelete as (section: Section) => boolean | Promise<boolean>
+          }
+        >
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>
+    );
+
+    const utils = render(tree(twoSections('Original title', 'Sibling')));
+
+    return {
+      onChange,
+      getPanel: () => panel!,
+      rerenderWith: (value: string) => act(() => utils.rerender(tree(value))),
+    };
+  };
+
+  it('deletes when it returns true, and is given the section', () => {
+    const onBeforeDelete = vi.fn(() => true);
+    const { onChange, getPanel } = renderDeletable(onBeforeDelete);
+
+    act(() => getPanel().onDelete('s2'));
+
+    expect(onBeforeDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 's2', name: 'Second' }),
+    );
+    expect(onChange.mock.calls.at(-1)![0]).not.toContain('data-id="s2"');
+  });
+
+  it('keeps the section when it returns false', () => {
+    const { onChange, getPanel } = renderDeletable(() => false);
+
+    act(() => getPanel().onDelete('s2'));
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('waits for a promise', async () => {
+    let answer!: (value: boolean) => void;
+    const { onChange, getPanel } = renderDeletable(
+      () => new Promise<boolean>(resolve => (answer = resolve)),
+    );
+
+    act(() => getPanel().onDelete('s2'));
+
+    expect(onChange).not.toHaveBeenCalled();
+
+    await act(async () => answer(true));
+
+    expect(onChange.mock.calls.at(-1)![0]).not.toContain('data-id="s2"');
+  });
+
+  // While the host's confirmation is open the document can change. The
+  // delete has to land on the document as it is then, not as it was when
+  // the question was asked.
+  it('deletes from the document as it is when the promise settles', async () => {
+    let answer!: (value: boolean) => void;
+    const { onChange, getPanel, rerenderWith } = renderDeletable(
+      () => new Promise<boolean>(resolve => (answer = resolve)),
+    );
+
+    act(() => getPanel().onDelete('s2'));
+    rerenderWith(twoSections('Edited meanwhile', 'Sibling'));
+
+    await act(async () => answer(true));
+
+    const committed = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(committed).toContain('Edited meanwhile');
+    expect(committed).not.toContain('data-id="s2"');
+  });
+
+  it('keeps the section when it throws or rejects', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const throwing = renderDeletable(() => {
+      throw new Error('no');
+    });
+
+    act(() => throwing.getPanel().onDelete('s2'));
+
+    const rejecting = renderDeletable(() => Promise.reject(new Error('no')));
+
+    await act(async () => rejecting.getPanel().onDelete('s2'));
+
+    expect(throwing.onChange).not.toHaveBeenCalled();
+    expect(rejecting.onChange).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledTimes(2);
+    error.mockRestore();
   });
 });
 
