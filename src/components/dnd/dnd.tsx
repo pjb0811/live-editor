@@ -112,6 +112,11 @@ const describeUpdateFailure = (
         title: `Cannot edit "${label}" in the panel`,
         description: `"${failure.property}" is managed by the editor, so a binding can't change it.`,
       };
+    case 'required-property':
+      return {
+        title: `Cannot remove "${label}"`,
+        description: `"${failure.property}" is marked required in its data-binding, so it can't be removed.`,
+      };
     case 'no-binding':
       return {
         title: `Failed to update "${label}"`,

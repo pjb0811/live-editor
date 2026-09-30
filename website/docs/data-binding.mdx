@@ -73,7 +73,32 @@ entry still works.
 | `innerHTML`      | The element's HTML content. Used by `type: 'richtext'`.                                            |
 | `children`       | The element's JSX children, as a reorderable list.                                                 |
 | `items` / `data` | An array prop, as a list of items you can add, move, duplicate and delete.                         |
-| any other name   | That JSX attribute, e.g. `size`, `href`, `style`. The attribute must already exist on the element. |
+| any other name   | That JSX attribute, e.g. `size`, `href`, `style`. It doesn't have to be on the element yet: see below. |
+
+### Optional attributes
+
+A binding can name an attribute the element doesn't carry. Committing a value
+adds it, after the element's last attribute. Committing `undefined` removes an
+attribute, and to React a prop that's `undefined` and one that's missing are
+the same. So one binding can switch an optional prop off and on:
+
+```tsx
+onChange(undefined); // <a title="Docs" target="_blank"> → <a title="Docs">
+onChange('_blank'); //  <a title="Docs"> → <a title="Docs" target="_blank">
+```
+
+- An empty string writes `prop=""` on an attribute that's there, and leaves a
+  missing one missing.
+- For `innerText` and `innerHTML`, `undefined` empties the content.
+  `children` can't be removed as a whole.
+- A binding with `required: true` can't be removed. The edit is refused.
+- `PanelBinding.present` is `false` while the attribute is missing, which is
+  what a custom panel reads to draw an on/off switch. `prop=""` counts as
+  present.
+
+Because a missing attribute is added instead of reported, a typo in
+`property` shows up as an unexpected attribute in the source rather than as an
+error.
 
 `data-id`, `data-name` and `data-binding` are managed by the editor, so a
 binding can't target them. A field on one of these is shown as read-only, and

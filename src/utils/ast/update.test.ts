@@ -321,17 +321,15 @@ describe('update', () => {
   // #270: every failure used to collapse into a bare `success: false` with an
   // empty console. Each path now reports a distinct, structured reason.
   describe('failure reasons (#270)', () => {
-    it('A: attribute-not-found when the declared property has no matching attribute', () => {
+    // Before #426 this was a failure. A declared property the element
+    // doesn't carry is now added when it's given a real value; see the
+    // "removing and adding attributes" suite.
+    it('A: adds a declared attribute the element does not have yet', () => {
       const code = `<div data-id="a" data-binding="[{label:'Title',property:'nonexistent'}]" title="hi">x</div>`;
       const result = update(code, 'a', 'Title', 'new', 'nonexistent');
 
-      expect(result.success).toBe(false);
-      expect(result.code).toBe(code);
-      expect(result.failure).toEqual({
-        reason: 'attribute-not-found',
-        dataId: 'a',
-        property: 'nonexistent',
-      });
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('title="hi" nonexistent="new"');
     });
 
     it('B: binding-not-declared when the requested binding is not on the element', () => {
@@ -854,5 +852,134 @@ describe('update: reserved attributes', () => {
       { reason: 'reserved-property', dataId: 's1', property: 'data-id' },
     ]);
     expect(result.code).toContain('className="py-16"');
+  });
+});
+
+// `undefined` removes a property and a real value adds a missing one, so an
+// optional attribute can be switched off and on again. Writing `undefined`
+// used to leave the text "undefined" in the source (#426).
+describe('update: removing and adding attributes', () => {
+  const EL = `<a
+  data-id="a"
+  data-binding={[
+    { label: 'Title', property: 'title' },
+    { label: 'Size', property: 'size', type: 'number' },
+    { label: 'Open', property: 'open', type: 'boolean' },
+    { label: 'Alt', property: 'alt' },
+    { label: 'Needed', property: 'href', required: true },
+    { label: 'Text', property: 'innerText' },
+    { label: 'Html', property: 'innerHTML' },
+    { label: 'Kids', property: 'children' },
+    { label: 'Style', property: 'style', type: 'object' },
+    { label: 'Icon', property: 'icon', type: 'jsx' },
+  ]}
+  title="Hi"
+  size={2}
+  open
+  href="/x"
+>
+  Hello
+</a>`;
+
+  it.each([
+    ['Title', 'title', 'title="Hi"'],
+    ['Size', 'size', 'size={2}'],
+    ['Open', 'open', '  open\n'],
+  ])(
+    'removes %s with undefined, and the line it was on',
+    (label, property, gone) => {
+      const result = update(EL, 'a', label, undefined, property);
+
+      expect(result.success).toBe(true);
+      expect(result.code).not.toContain(gone);
+      expect(result.code).not.toContain('undefined');
+      // Only that attribute went; its neighbors are byte-for-byte the same.
+      expect(result.code.replace(/\n\s*\n/g, '\n')).toBe(result.code);
+    },
+  );
+
+  it('leaves the source alone when removing an attribute that is already absent', () => {
+    const result = update(EL, 'a', 'Alt', undefined, 'alt');
+
+    expect(result).toEqual({ code: EL, success: true });
+  });
+
+  it('adds a missing attribute when given a real value', () => {
+    const result = update(EL, 'a', 'Alt', 'A picture', 'alt');
+
+    expect(result.success).toBe(true);
+    // On its own line, indented like the attribute before it.
+    expect(result.code).toContain('  href="/x"\n  alt="A picture"\n>');
+  });
+
+  it('adds a missing attribute on the same line when the tag is on one line', () => {
+    const img = `<img data-id="i" data-binding={[{ label: 'Alt', property: 'alt' }]} src="x.png" />`;
+
+    expect(update(img, 'i', 'Alt', 'New', 'alt').code).toBe(
+      `<img data-id="i" data-binding={[{ label: 'Alt', property: 'alt' }]} src="x.png" alt="New" />`,
+    );
+  });
+
+  it('adds a missing attribute with its declared type', () => {
+    const result = update(EL, 'a', 'Style', { color: 'red' }, 'style');
+
+    expect(result.code).toMatch(/style=\{\{[\s\S]*color[\s\S]*red[\s\S]*\}\}/);
+    expect(update(EL, 'a', 'Icon', '<Star />', 'icon').code).toContain(
+      'icon={<Star />}',
+    );
+  });
+
+  it('does not add a missing attribute for an empty string', () => {
+    expect(update(EL, 'a', 'Alt', '', 'alt')).toEqual({
+      code: EL,
+      success: true,
+    });
+  });
+
+  it('switches an attribute off and on again', () => {
+    const off = update(EL, 'a', 'Title', undefined, 'title').code;
+    const on = update(off, 'a', 'Title', 'Back', 'title');
+
+    expect(on.success).toBe(true);
+    expect(on.code).toContain('title="Back"');
+  });
+
+  it('empties text and HTML content instead of writing "undefined"', () => {
+    const text = update(EL, 'a', 'Text', undefined, 'innerText');
+    const html = update(EL, 'a', 'Html', undefined, 'innerHTML');
+
+    expect(text.code).not.toContain('undefined');
+    expect(text.code).not.toContain('Hello');
+    expect(html.code).toMatch(/>\s*<\/a>$/);
+  });
+
+  it('refuses to remove children as a whole', () => {
+    expect(update(EL, 'a', 'Kids', undefined, 'children').failure).toEqual({
+      reason: 'unsupported-syntax',
+      dataId: 'a',
+      property: 'children',
+    });
+  });
+
+  it('refuses to remove a required property', () => {
+    const result = update(EL, 'a', 'Needed', undefined, 'href');
+
+    expect(result).toEqual({
+      code: EL,
+      success: false,
+      failure: { reason: 'required-property', dataId: 'a', property: 'href' },
+    });
+  });
+
+  it('removes several attributes as one edit through updateAll', () => {
+    const result = updateAll(EL, [
+      { dataId: 'a', label: 'Title', value: undefined, property: 'title' },
+      { dataId: 'a', label: 'Size', value: undefined, property: 'size' },
+    ]);
+
+    expect(result.success).toBe(true);
+    expect(result.code).not.toContain('title=');
+    expect(result.code).not.toContain('size=');
+    expect(result.code).toContain('href="/x"');
   });
 });

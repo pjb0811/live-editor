@@ -95,3 +95,35 @@ describe('resolvePanelBindings on a section root', () => {
     expect(resolvePanelBindings(plain[0]!)).toBeNull();
   });
 });
+
+// What a panel reads to draw an on/off control for an optional attribute
+// (#426).
+describe('present', () => {
+  const el = `<a data-id="a" data-binding={[
+    { label: 'Title', property: 'title' },
+    { label: 'Alt', property: 'alt' },
+    { label: 'Empty', property: 'rel' },
+    { label: 'Text', property: 'innerText' },
+  ]} title="Hi" rel="">x</a>`;
+
+  const bindings = () => resolvePanelBindings(extract(el)[0]!)!.bindings;
+  const byLabel = (label: string) => bindings().find(b => b.label === label)!;
+
+  it('is false for an attribute the element does not carry', () => {
+    expect(byLabel('Alt').present).toBe(false);
+  });
+
+  it('is left out for an attribute that is there, even an empty one', () => {
+    expect(byLabel('Title').present).toBeUndefined();
+    expect(byLabel('Empty').present).toBeUndefined();
+  });
+
+  it('is left out for content, which is always there', () => {
+    expect(byLabel('Text').present).toBeUndefined();
+  });
+
+  it('lets an absent attribute be edited, since a value adds it', () => {
+    expect(byLabel('Alt')).toMatchObject({ value: '', rawValue: '' });
+    expect(byLabel('Alt').canEditValue).not.toBe(false);
+  });
+});

@@ -91,6 +91,12 @@ export interface PanelBinding {
   // literal and could discard an expression, spread, hole or reference.
   // Raw array/JSX editors retain their own narrower source-safe contracts.
   canEditValue?: boolean;
+  // `false` when the binding names an attribute the element doesn't carry.
+  // Absent otherwise, including for content (`innerText`, `innerHTML`,
+  // `children`), which is always there. `onChange(undefined)` removes an
+  // attribute and `onChange(value)` adds one back, so this is what a panel
+  // reads to draw an on/off control. `prop=""` counts as present (#426).
+  present?: boolean;
   // Commit a new value through the same AST-update pipeline the built-in
   // panel uses (including the error Toast on a bad edit). Pass the value as
   // its real type; it's serialized once, at the AST boundary, where the
@@ -141,8 +147,13 @@ const canEditBindingValue = (node: DataAttrNode, binding: BindingItem) => {
     candidate => candidate.name === binding.property,
   );
 
+  // Not in the source yet: nothing to lose, and a value adds it (#426).
+  if (!attribute) {
+    return true;
+  }
+
   return (
-    attribute?.isStringLiteral === true ||
+    attribute.isStringLiteral === true ||
     canLosslesslyEvaluateSource(attribute?.value ?? '')
   );
 };
@@ -192,6 +203,14 @@ export const resolveRenderEntry = (
   return { label: key, property: key, render: entry as BindingRenderMap };
 };
 
+// Properties that are the element's content rather than one of its
+// attributes, so there's nothing to be absent.
+const CONTENT_PROPERTIES = new Set(['innerText', 'innerHTML', 'children']);
+
+const isAttributeAbsent = (node: DataAttrNode, binding: BindingItem) =>
+  !CONTENT_PROPERTIES.has(binding.property) &&
+  !node.attributes.some(candidate => candidate.name === binding.property);
+
 const toPanelBindingData = (
   node: DataAttrNode,
   id: string,
@@ -202,6 +221,7 @@ const toPanelBindingData = (
   value: getStructuredValue(node, binding.property, binding.type),
   rawValue: getCurrentValue(node, binding.property),
   ...(!canEditBindingValue(node, binding) && { canEditValue: false }),
+  ...(isAttributeAbsent(node, binding) && { present: false }),
 });
 
 // Read one extracted element's `data-id`/`data-binding` into panel bindings.
