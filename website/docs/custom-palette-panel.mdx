@@ -255,6 +255,72 @@ hold its own state — a validation message, an open/closed group, a
 multi-select — without hoisting any of it into the component that renders
 `Live.Dnd`.
 
+### Showing one element at a time
+
+`bindings` is flat: one entry per bound property, across every data-bound
+element in the section, in document order. Each entry's `id` is the `data-id`
+of the element it belongs to, so grouping by `id` gives one group per element.
+The built-in panel draws one box per group this way. A panel can instead keep
+a selected element in its own state and show only that element's fields:
+
+```tsx
+import { useState } from 'react';
+import { useDndPanel } from '@jbpark/live-editor/dnd';
+
+const ElementSwitcher = () => {
+  const { item, bindings } = useDndPanel();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // One group per element, in document order.
+  const groups = new Map<string, typeof bindings>();
+
+  for (const binding of bindings) {
+    groups.set(binding.id, [...(groups.get(binding.id) ?? []), binding]);
+  }
+
+  const ids = [...groups.keys()];
+  const current = selectedId && groups.has(selectedId) ? selectedId : ids[0];
+
+  return (
+    <div>
+      {ids.length > 1 && (
+        <nav>
+          {ids.map(id => (
+            <button
+              key={id}
+              aria-pressed={id === current}
+              onClick={() => setSelectedId(id)}
+            >
+              {id === item?.id ? 'Section' : groups.get(id)![0]!.label}
+            </button>
+          ))}
+        </nav>
+      )}
+      {current &&
+        groups.get(current)!.map(binding => (
+          <label key={`${binding.id}-${binding.property}`}>
+            <span>{binding.label}</span>
+            <input
+              defaultValue={binding.rawValue}
+              onBlur={e => binding.onChange(e.target.value)}
+            />
+          </label>
+        ))}
+    </div>
+  );
+};
+```
+
+- A section with one editable element needs no switcher.
+- The section's own bindings, when its `<section>` has a `data-binding`, share
+  the section's id (`item.id`) and come first. See
+  [Binding the section itself](./data-binding.mdx#binding-the-section-itself).
+- Nested elements inside an `items` or `children` value aren't in `bindings`.
+  Reach them through `useDndItems` / `useDndChildren` (below).
+- Keep the selection in your panel's state rather than asking `Live.Dnd` for
+  one. `bindings` stays the full list either way, so `Live.Dnd.Field` and the
+  rest of your panel keep working unchanged.
+
 ### Wrapping the built-in panel instead of starting from zero
 
 You don't have to replace the panel to add to it. `Live.Dnd.Panel` *is* the
