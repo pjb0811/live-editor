@@ -3,6 +3,7 @@ import DndImpl, {
   type DndPanel,
   type PanelBinding,
   type PanelNodeChange,
+  type PanelNodesChange,
   type Props,
 } from './dnd';
 import DraggableItem, {
@@ -149,6 +150,7 @@ export type {
   DndRegionProps,
   PanelBinding,
   PanelNodeChange,
+  PanelNodesChange,
   FieldProps,
   DndEditError,
   DndRenderField,

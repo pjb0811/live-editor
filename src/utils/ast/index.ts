@@ -68,8 +68,13 @@ export {
   parseDocument,
   replaceDocumentSections,
 } from './document';
-export { bulkUpdate, update } from './update';
-export type { UpdateFailure, UpdateResult } from './update';
+export { bulkUpdate, update, updateAll } from './update';
+export type {
+  UpdateAllResult,
+  UpdateEntry,
+  UpdateFailure,
+  UpdateResult,
+} from './update';
 export { getChildrenSignatures } from './children';
 export type { ChildrenAction, ChildrenEdit } from './children';
 export { canStructurallyEditArray } from './array-source';

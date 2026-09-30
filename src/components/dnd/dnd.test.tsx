@@ -757,6 +757,101 @@ describe('document container', () => {
 // A source that doesn't parse, which is what the code editor holds for most
 // of a keystroke, used to empty the canvas and the panel until it parsed
 // again (#433). Now they keep the last version that parsed, read-only.
+// One interaction that writes several bindings should reach the host as one
+// change, and never half of one (#425).
+describe('onNodesChange', () => {
+  const title = { id: 's1-title', label: 'Title', property: 'innerText' };
+  const body = { id: 's1-body', label: 'Body', property: 'innerText' };
+
+  const renderNodes = renderTwoFields;
+
+  it('commits several edits as one change', () => {
+    const { onChange, getData, lastCommit } = renderNodes();
+
+    act(() =>
+      getData().onNodesChange([
+        { ...title, value: 'New title' },
+        { ...body, value: 'New body' },
+      ]),
+    );
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(lastCommit()).toContain('New title');
+    expect(lastCommit()).toContain('New body');
+  });
+
+  it('commits nothing when one edit is refused', () => {
+    const { onChange, getData } = renderNodes();
+
+    act(() =>
+      getData().onNodesChange([
+        { ...title, value: 'New title' },
+        { id: 'missing', label: 'Nope', property: 'innerText', value: 'x' },
+      ]),
+    );
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('applies in array order, so a later edit to the same property wins', () => {
+    const { getData, lastCommit } = renderNodes();
+
+    act(() =>
+      getData().onNodesChange([
+        { ...title, value: 'Alpha' },
+        { ...title, value: 'Beta' },
+      ]),
+    );
+
+    expect(lastCommit()).toContain('Beta');
+    expect(lastCommit()).not.toContain('Alpha');
+  });
+
+  it('does nothing for an empty batch', () => {
+    const { onChange, getData } = renderNodes();
+
+    act(() => getData().onNodesChange([]));
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('builds on a commit made earlier in the same tick', () => {
+    const { getData, lastCommit } = renderNodes();
+
+    act(() => {
+      getData().onMoveDown();
+      getData().onNodesChange([
+        { ...title, value: 'New title' },
+        { ...body, value: 'New body' },
+      ]);
+    });
+
+    expect(lastCommit()).toContain('New title');
+    expect(lastCommit()).toContain('New body');
+    expect(lastCommit().indexOf('data-id="s2"')).toBeLessThan(
+      lastCommit().indexOf('data-id="s1"'),
+    );
+  });
+
+  it('shares its guard with onNodeChange while the document does not parse', () => {
+    const view = renderNodes();
+
+    act(() => view.rerenderWith(twoFields.replace('</main>', '<div </main>')));
+    act(() => view.getData().onNodesChange([{ ...title, value: 'New title' }]));
+
+    expect(view.onChange).not.toHaveBeenCalled();
+  });
+
+  it('leaves a single onNodeChange behaving as a batch of one', () => {
+    const { onChange, getData, lastCommit } = renderNodes();
+
+    act(() => getData().onNodeChange({ ...title, value: 'Only title' }));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(lastCommit()).toContain('Only title');
+  });
+});
+
 describe('document that stops parsing', () => {
   const broken = twoFields.replace('</main>', '<div </main>');
 

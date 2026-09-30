@@ -6,7 +6,7 @@ import { getCurrentValue } from './binding';
 import { extract } from './extract';
 import { appendArrayItem, parseItems } from './items';
 import type { DataAttrNode } from './types';
-import { bulkUpdate, update } from './update';
+import { bulkUpdate, update, updateAll } from './update';
 
 const CODE = `
 <div data-id="a" data-binding="[{label:'Text',property:'innerText'}]">old text</div>
@@ -596,6 +596,97 @@ describe('update', () => {
       expect(result.success).toBe(true);
       expect(result.code).toContain('<pre>a\nb</pre>');
     });
+  });
+});
+
+// All of it or none of it, in array order (#425). `bulkUpdate` above applies
+// what it can and reports the rest, which a single commit can't use.
+describe('updateAll', () => {
+  it('applies every entry in array order, across elements', () => {
+    const result = updateAll(CODE, [
+      { dataId: 'a', label: 'Text', value: 'all text' },
+      { dataId: 'f', label: 'Placeholder', value: 'all placeholder' },
+      { dataId: 'e', label: 'Node', value: '<All />' },
+    ]);
+
+    expect(result).toMatchObject({ success: true });
+    expect(result.code).toContain('>all text<');
+    expect(result.code).toContain('placeholder="all placeholder"');
+    expect(result.code).toContain('icon={<All />}');
+  });
+
+  it('gives back the source untouched, and which entry failed, when one is refused', () => {
+    const result = updateAll(CODE, [
+      { dataId: 'a', label: 'Text', value: 'all text' },
+      { dataId: 'missing', label: 'Text', value: 'nope' },
+      { dataId: 'f', label: 'Placeholder', value: 'all placeholder' },
+    ]);
+
+    expect(result).toEqual({
+      success: false,
+      code: CODE,
+      failure: { reason: 'element-not-found', dataId: 'missing' },
+      index: 1,
+    });
+  });
+
+  it('stops at the first failure', () => {
+    const result = updateAll(CODE, [
+      { dataId: 'missing', label: 'Text', value: 'x' },
+      { dataId: 'also-missing', label: 'Text', value: 'y' },
+    ]);
+
+    expect(result).toMatchObject({
+      success: false,
+      index: 0,
+      failure: { reason: 'element-not-found', dataId: 'missing' },
+    });
+  });
+
+  it('lets a later entry for the same property win', () => {
+    const result = updateAll(CODE, [
+      { dataId: 'a', label: 'Text', value: 'first' },
+      { dataId: 'a', label: 'Text', value: 'second' },
+    ]);
+
+    expect(result.code).toContain('>second<');
+    expect(result.code).not.toContain('first');
+  });
+
+  it('refuses the whole batch for a reserved attribute', () => {
+    const section = `<section data-id="s" data-name="N" data-binding="[{label:'Id',property:'data-id'},{label:'Pad',property:'className'}]" className="p-1">x</section>`;
+    const result = updateAll(section, [
+      { dataId: 's', label: 'Pad', value: 'p-4', property: 'className' },
+      { dataId: 's', label: 'Id', value: 'other', property: 'data-id' },
+    ]);
+
+    expect(result).toEqual({
+      success: false,
+      code: section,
+      failure: {
+        reason: 'reserved-property',
+        dataId: 's',
+        property: 'data-id',
+      },
+      index: 1,
+    });
+  });
+
+  it('matches applying the entries one at a time', () => {
+    const code = `<div data-id="a" data-binding={[{ label: 'T', property: 'title' }, { label: 'A', property: 'alt' }]} title="t" alt="a">x</div>`;
+    const entries = [
+      { dataId: 'a', label: 'T', value: 't2', property: 'title' },
+      { dataId: 'a', label: 'A', value: 'a2', property: 'alt' },
+    ];
+
+    expect(updateAll(code, entries).code).toBe(
+      update(update(code, 'a', 'T', 't2', 'title').code, 'a', 'A', 'a2', 'alt')
+        .code,
+    );
+  });
+
+  it('does nothing for an empty batch', () => {
+    expect(updateAll(CODE, [])).toEqual({ success: true, code: CODE });
   });
 });
 
