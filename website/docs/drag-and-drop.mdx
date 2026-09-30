@@ -72,12 +72,17 @@ Palette cards and canvas sections can be reached with Tab.
 | Key | On a palette card | On a canvas section |
 | --- | --- | --- |
 | Enter | Adds the section to the canvas | Selects the section (or clears the selection), like a click |
+| Arrow Up / Arrow Down | — | Goes to the previous or next section and selects it |
+| Home / End | — | Goes to the first or last section and selects it |
+| Delete or Backspace | — | Deletes the section (through `onBeforeDelete`) and moves focus to the next one |
 | Space | Picks the card up to drag it | Picks the section up to move it |
-| Arrow keys | Move what's picked up | Move what's picked up |
-| Space or Enter | Drops it | Drops it at the new position |
-| Escape | Cancels the drag | Cancels the move |
+| Arrow keys, while picked up | Move what's picked up | Move the section |
+| Space or Enter, while picked up | Drops it | Drops it at the new position |
+| Escape, while picked up | Cancels the drag | Cancels the move |
 
 Screen readers hear the section's name and its new position while it moves.
+The selected section is scrolled into view whenever it moves out of sight, from
+the keyboard or from the panel's move buttons.
 
 ## Confirming a delete
 
