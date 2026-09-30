@@ -62,12 +62,30 @@ export const DefaultDraggableItem = ({
         {...dragProps}
         className={cn(
           'cursor-grab',
-          'outline-none',
+          // A visible ring for keyboard focus only, instead of no outline at
+          // all: the card is reachable with Tab (#435).
+          'outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
           'hover:border-blue-300 hover:shadow-md',
           isDragging && 'opacity-50',
         )}
         onClick={tapToAdd && onAdd ? () => onAdd(item) : undefined}
         onDoubleClick={onAdd ? () => onAdd(item) : undefined}
+        // The card is a `role="button"`: Enter adds it, the keyboard
+        // counterpart of the double-click above. Space stays with dnd-kit,
+        // which picks the card up (#435).
+        onKeyDown={event => {
+          dragProps.onKeyDown?.(event);
+
+          if (
+            onAdd &&
+            event.key === 'Enter' &&
+            event.target === event.currentTarget &&
+            !event.defaultPrevented
+          ) {
+            event.preventDefault();
+            onAdd(item);
+          }
+        }}
       >
         {item.name}
       </Card>

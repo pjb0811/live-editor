@@ -8,13 +8,16 @@ import {
 } from 'react';
 
 import {
+  type Announcements,
   DndContext,
   type DragEndEvent,
   type DragOverEvent,
   DragOverlay,
   type DragStartEvent,
+  KeyboardSensor,
   type Modifier,
   PointerSensor,
+  type ScreenReaderInstructions,
   closestCenter,
   useSensor,
   useSensors,
@@ -22,6 +25,7 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   SortableContext,
+  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Space, Typography } from '@jbpark/ui-kit';
@@ -136,6 +140,18 @@ const describeUpdateFailure = (
   }
 };
 
+// Enter is left out of `start` so it can select the focused section (#435).
+const KEYBOARD_CODES = {
+  start: ['Space'],
+  cancel: ['Escape'],
+  end: ['Space', 'Enter'],
+};
+
+const SCREEN_READER_INSTRUCTIONS: ScreenReaderInstructions = {
+  draggable:
+    'Press Enter to select this section. Press Space to pick it up, the arrow keys to move it, and Space or Enter to drop it. Press Escape to cancel.',
+};
+
 // An edit refused because the document doesn't parse (#433).
 const blockedEditError = (error: unknown): DndEditError => ({
   type: 'parse',
@@ -240,6 +256,11 @@ export interface Props extends Omit<
   // compiling it (so none of its top-level code runs) and render the
   // fallback with reason `forced`.
   shouldForceSectionFallback?: (section: Section) => boolean;
+  // Asked before a section is deleted, from the canvas, the panel, or a
+  // custom panel's `onDelete`. Return `false` (or a promise of it) to keep the
+  // section; use it to show your own confirmation. Deleting is immediate and
+  // has no undo inside `Live.Dnd`, so this is the host's chance to ask (#435).
+  onBeforeDelete?: (section: Section) => boolean | Promise<boolean>;
   // Names a section whose `<section>` has no `data-name`, from its 0-based
   // position on the canvas. The name shows on the canvas, in the panel and
   // in `renderSectionFallback`'s `section`. Defaults to "Section 1",
@@ -301,6 +322,7 @@ const Dnd = ({
   onEditError,
   renderSectionFallback,
   shouldForceSectionFallback,
+  onBeforeDelete,
   sectionNameFallback,
   containerId,
   children,
@@ -331,13 +353,50 @@ const Dnd = ({
     }
   };
 
+  // Space picks a focused section up, the arrow keys move it, and Space or
+  // Enter drops it (Escape cancels). Enter doesn't pick up, unlike dnd-kit's
+  // default: a focused section is a `role="button"`, and Enter selects it
+  // like a click does (see Sortable). Before, sections could be reached with
+  // Tab but neither selected nor moved from the keyboard (#435).
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 10,
       },
     }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: KEYBOARD_CODES,
+    }),
   );
+
+  // dnd-kit announces drags by id, which here is a generated `data-id`.
+  const nameOf = (id: string | number, data?: { current?: unknown }) => {
+    const current = data?.current as { item?: Section } | undefined;
+
+    return (
+      current?.item?.name ??
+      sections.find(section => section.id === id)?.name ??
+      'section'
+    );
+  };
+
+  const positionOf = (id: string | number) =>
+    sections.findIndex(section => section.id === id) + 1;
+
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => `Picked up ${nameOf(active.id, active.data)}.`,
+    onDragOver: ({ active, over }) =>
+      over && positionOf(over.id) > 0
+        ? `${nameOf(active.id, active.data)} moved to position ${positionOf(over.id)} of ${sections.length}.`
+        : `${nameOf(active.id, active.data)} is no longer over a position.`,
+    onDragEnd: ({ active, over }) =>
+      over && positionOf(over.id) > 0
+        ? `${nameOf(active.id, active.data)} dropped at position ${positionOf(over.id)} of ${sections.length}.`
+        : `${nameOf(active.id, active.data)} dropped.`,
+    onDragCancel: ({ active }) =>
+      `Moving ${nameOf(active.id, active.data)} was cancelled.`,
+  };
 
   // Uncontrolled usage (`<Live.Dnd />` with no `value`) used to read
   // nothing but DEFAULT_TEMPLATE forever: every edit committed through
@@ -377,7 +436,7 @@ const Dnd = ({
     select,
     clearSelection,
     add: addItem,
-    remove: onDelete,
+    remove,
     copy: onCopy,
     move: moveSection,
     reorder,
@@ -424,6 +483,47 @@ const Dnd = ({
   };
 
   const onSelect = (id: string) => select(id);
+
+  // Read through a ref after an async `onBeforeDelete`: while a confirmation
+  // is open the document can change, and the `remove` from the render that
+  // asked would commit against the document as it was then.
+  const removeRef = useRef(remove);
+
+  useEffect(() => {
+    removeRef.current = remove;
+  });
+
+  const onDelete = (id: string) => {
+    const section = sections.find(candidate => candidate.id === id);
+
+    if (!onBeforeDelete || !section) {
+      remove(id);
+
+      return;
+    }
+
+    const decide = (allowed: boolean) => {
+      if (allowed) {
+        removeRef.current(id);
+      }
+    };
+
+    try {
+      const answer = onBeforeDelete(section);
+
+      if (typeof answer === 'boolean') {
+        decide(answer);
+
+        return;
+      }
+
+      answer.then(decide, error => {
+        console.error('onBeforeDelete rejected; the section was kept', error);
+      });
+    } catch (error) {
+      console.error('onBeforeDelete threw; the section was kept', error);
+    }
+  };
 
   const onChange = (next: Partial<Section>) => {
     if (!next.id) {
@@ -723,6 +823,10 @@ const Dnd = ({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        accessibility={{
+          announcements,
+          screenReaderInstructions: SCREEN_READER_INSTRUCTIONS,
+        }}
         modifiers={[
           conditionalModifiers,
           //

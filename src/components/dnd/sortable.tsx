@@ -27,6 +27,7 @@ const Sortable = ({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -43,6 +44,30 @@ const Sortable = ({
 
   const isNewItemOver = isOver && active?.data.current?.type === 'new-item';
 
+  // The wrapper is a `role="button"`, so Enter selects it the way a click
+  // does. Only when the key lands on the wrapper itself, not on its copy and
+  // delete buttons, and not while a drag is on (Enter drops one then) (#435).
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    listeners?.onKeyDown?.(e);
+
+    if (
+      e.key === 'Enter' &&
+      e.target === e.currentTarget &&
+      !active &&
+      !e.defaultPrevented
+    ) {
+      e.preventDefault();
+      onClick?.();
+    }
+  };
+
+  // The same element is the activator, so Space on the copy or delete button
+  // presses that button instead of picking the section up.
+  const setRefs = (node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    setActivatorNodeRef(node);
+  };
+
   const onDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     _onDelete?.(id);
@@ -55,10 +80,11 @@ const Sortable = ({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={setRefs}
       style={style}
       {...attributes}
       {...listeners}
+      onKeyDown={onKeyDown}
       onClick={onClick}
       className={cn(
         'relative',

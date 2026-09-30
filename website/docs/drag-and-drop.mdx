@@ -65,6 +65,39 @@ The embedded demo above runs the real `Live.Dnd` component, isolated with
 `shadow` mode inside a sandboxed iframe (see
 [Preview Modes](./preview-modes.mdx)).
 
+## Keyboard
+
+Palette cards and canvas sections can be reached with Tab.
+
+| Key | On a palette card | On a canvas section |
+| --- | --- | --- |
+| Enter | Adds the section to the canvas | Selects the section (or clears the selection), like a click |
+| Space | Picks the card up to drag it | Picks the section up to move it |
+| Arrow keys | Move what's picked up | Move what's picked up |
+| Space or Enter | Drops it | Drops it at the new position |
+| Escape | Cancels the drag | Cancels the move |
+
+Screen readers hear the section's name and its new position while it moves.
+
+## Confirming a delete
+
+Deleting a section is immediate. Pass `onBeforeDelete` to ask first: it gets
+the section, and returning `false`, or a promise of `false`, keeps it. It runs
+for the delete button on the canvas, the one in the panel, and a custom
+panel's `onDelete`. The library shows no dialog of its own.
+
+```tsx
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  onBeforeDelete={section => confirm(`Delete ${section.name}?`)}
+/>
+```
+
+A promise is waited for, and the section is removed from the document as it
+is when the answer comes, so edits made while your dialog was open are kept.
+If `onBeforeDelete` throws or rejects, the section is kept.
+
 ## Document structure
 
 `Live.Dnd` edits one component's source. Its sections are the `<section>`
