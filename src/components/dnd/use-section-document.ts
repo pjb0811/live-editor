@@ -25,6 +25,9 @@ export interface SectionDocument {
   selectedItem?: Section;
   selectedIndex: number;
   select: (id: string) => void;
+  // Selects `id` outright, where `select` toggles. For keyboard navigation,
+  // which lands on a section and must not deselect it (#435).
+  selectOnly: (id: string) => void;
   clearSelection: () => void;
   add: (item: Pick<Section, 'name' | 'code'>, atIndex?: number) => void;
   remove: (id: string) => void;
@@ -249,6 +252,8 @@ export const useSectionDocument = (
     setSelectedId(prev => (prev === id ? null : id));
   }, []);
 
+  const selectOnly = useCallback((id: string) => setSelectedId(id), []);
+
   const clearSelection = useCallback(() => setSelectedId(null), []);
 
   const add = useCallback(
@@ -393,6 +398,7 @@ export const useSectionDocument = (
     selectedItem,
     selectedIndex,
     select,
+    selectOnly,
     clearSelection,
     add,
     remove,

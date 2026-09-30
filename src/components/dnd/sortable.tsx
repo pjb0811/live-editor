@@ -13,7 +13,22 @@ interface Props {
   onClick?: () => void;
   onDelete?: (id: string) => void;
   onCopy?: (id: string) => void;
+  // Registers the focusable wrapper, so the canvas can move focus to it.
+  nodeRef?: (node: HTMLElement | null) => void;
+  // Arrow keys and Home/End on a focused section, outside a drag (#435).
+  onNavigate?: (to: SectionNavigation) => void;
+  // Delete or Backspace on a focused section (#435).
+  onDeleteKey?: () => void;
 }
+
+export type SectionNavigation = 'previous' | 'next' | 'first' | 'last';
+
+const NAVIGATION_KEYS: Record<string, SectionNavigation> = {
+  ArrowUp: 'previous',
+  ArrowDown: 'next',
+  Home: 'first',
+  End: 'last',
+};
 
 const Sortable = ({
   id,
@@ -22,6 +37,9 @@ const Sortable = ({
   onClick,
   onDelete: _onDelete,
   onCopy: _onCopy,
+  nodeRef,
+  onNavigate,
+  onDeleteKey,
 }: Props) => {
   const {
     attributes,
@@ -47,17 +65,37 @@ const Sortable = ({
   // The wrapper is a `role="button"`, so Enter selects it the way a click
   // does. Only when the key lands on the wrapper itself, not on its copy and
   // delete buttons, and not while a drag is on (Enter drops one then) (#435).
+  //
+  // The same rule covers the other keys handled here. Keys pressed inside a
+  // section's own inputs never count: those sit in the section's frame, or
+  // retarget to its shadow host, so the event target isn't the wrapper.
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     listeners?.onKeyDown?.(e);
 
-    if (
-      e.key === 'Enter' &&
-      e.target === e.currentTarget &&
-      !active &&
-      !e.defaultPrevented
-    ) {
+    if (e.target !== e.currentTarget || active || e.defaultPrevented) {
+      return;
+    }
+
+    if (e.key === 'Enter') {
       e.preventDefault();
       onClick?.();
+
+      return;
+    }
+
+    const to = NAVIGATION_KEYS[e.key];
+
+    if (to && onNavigate) {
+      // Otherwise the arrow keys also scroll the canvas.
+      e.preventDefault();
+      onNavigate(to);
+
+      return;
+    }
+
+    if ((e.key === 'Delete' || e.key === 'Backspace') && onDeleteKey) {
+      e.preventDefault();
+      onDeleteKey();
     }
   };
 
@@ -66,6 +104,7 @@ const Sortable = ({
   const setRefs = (node: HTMLDivElement | null) => {
     setNodeRef(node);
     setActivatorNodeRef(node);
+    nodeRef?.(node);
   };
 
   const onDelete = (e: React.MouseEvent) => {

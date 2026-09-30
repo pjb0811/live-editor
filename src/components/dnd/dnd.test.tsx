@@ -1156,6 +1156,135 @@ describe('keyboard', () => {
   });
 });
 
+// Arrow keys and Home/End move between sections, Delete removes the focused
+// one, and focus stays on the canvas throughout (#435).
+describe('keyboard navigation', () => {
+  const threeSections = documentWith(`
+    <section data-id="s1" data-name="First"><p>1</p></section>
+    <section data-id="s2" data-name="Second"><p>2</p></section>
+    <section data-id="s3" data-name="Third"><p>3</p></section>`);
+
+  const renderNav = (
+    onBeforeDelete?: (section: Section) => boolean | Promise<boolean>,
+  ) => {
+    const onChange = vi.fn();
+    let panel: DndPanel | undefined;
+
+    const Probe = () => {
+      panel = useDndPanel();
+
+      return <div data-testid="panel" />;
+    };
+
+    const utils = render(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd
+          value={threeSections}
+          onChange={onChange}
+          onBeforeDelete={onBeforeDelete}
+        >
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>,
+    );
+
+    const sortables = () =>
+      utils.container.querySelectorAll<HTMLElement>(
+        '[aria-roledescription="sortable"]',
+      );
+    const press = (index: number, key: string) =>
+      act(() => {
+        sortables()[index]!.focus();
+        fireEvent.keyDown(sortables()[index]!, { key, code: key });
+      });
+
+    return { onChange, sortables, press, getPanel: () => panel! };
+  };
+
+  it('moves focus and selection with the arrow keys', () => {
+    const { sortables, press, getPanel } = renderNav();
+
+    press(0, 'ArrowDown');
+
+    expect(getPanel().item?.id).toBe('s2');
+    expect(document.activeElement).toBe(sortables()[1]);
+
+    press(1, 'ArrowUp');
+
+    expect(getPanel().item?.id).toBe('s1');
+    expect(document.activeElement).toBe(sortables()[0]);
+  });
+
+  it('keeps the selection at either end instead of deselecting', () => {
+    const { press, getPanel } = renderNav();
+
+    press(0, 'ArrowDown');
+    press(1, 'ArrowDown');
+    press(2, 'ArrowDown');
+
+    expect(getPanel().item?.id).toBe('s3');
+  });
+
+  it('jumps to the first and last section with Home and End', () => {
+    const { sortables, press, getPanel } = renderNav();
+
+    press(0, 'End');
+
+    expect(getPanel().item?.id).toBe('s3');
+    expect(document.activeElement).toBe(sortables()[2]);
+
+    press(2, 'Home');
+
+    expect(getPanel().item?.id).toBe('s1');
+  });
+
+  it('deletes the focused section and moves focus to the next one', () => {
+    const { onChange, sortables, press } = renderNav();
+    const next = sortables()[2]!;
+
+    press(1, 'Delete');
+
+    expect(onChange.mock.calls.at(-1)![0]).not.toContain('data-id="s2"');
+    expect(document.activeElement).toBe(next);
+  });
+
+  it('moves focus to the previous section after deleting the last one', () => {
+    const { sortables, press } = renderNav();
+    const previous = sortables()[1]!;
+
+    press(2, 'Backspace');
+
+    expect(document.activeElement).toBe(previous);
+  });
+
+  it('asks onBeforeDelete, and leaves focus alone when it says no', () => {
+    const onBeforeDelete = vi.fn(() => false);
+    const { onChange, sortables, press } = renderNav(onBeforeDelete);
+
+    press(1, 'Delete');
+
+    expect(onBeforeDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 's2' }),
+    );
+    expect(onChange).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(sortables()[1]);
+  });
+
+  it('ignores the keys when they come from inside the section', () => {
+    const { sortables, getPanel } = renderNav();
+    const inner = sortables()[0]!.querySelector('div')!;
+
+    act(() => {
+      fireEvent.keyDown(inner, { key: 'ArrowDown', code: 'ArrowDown' });
+      fireEvent.keyDown(inner, { key: 'Delete', code: 'Delete' });
+    });
+
+    expect(getPanel().item).toBeUndefined();
+    expect(sortables()).toHaveLength(3);
+  });
+});
+
 describe('onBeforeDelete', () => {
   const renderDeletable = (onBeforeDelete?: (section: Section) => unknown) => {
     const onChange = vi.fn();

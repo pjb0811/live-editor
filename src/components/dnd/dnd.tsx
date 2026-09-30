@@ -69,7 +69,7 @@ import {
   type DndRenderSectionFallback,
   SectionFallbackContext,
 } from './section-fallback-context';
-import Sortable from './sortable';
+import Sortable, { type SectionNavigation } from './sortable';
 import { useSectionDocument } from './use-section-document';
 
 // Turn a structured `update` failure into a toast that names the actual
@@ -149,7 +149,38 @@ const KEYBOARD_CODES = {
 
 const SCREEN_READER_INSTRUCTIONS: ScreenReaderInstructions = {
   draggable:
-    'Press Enter to select this section. Press Space to pick it up, the arrow keys to move it, and Space or Enter to drop it. Press Escape to cancel.',
+    'On a palette item, press Enter to add it to the canvas. On a canvas section, press Enter to select it, the up and down arrow keys to go to the previous or next section, and Delete to remove it. Press Space to pick a section up, the arrow keys to move it, and Space or Enter to drop it. Press Escape to cancel.',
+};
+
+// Section wrappers by id, with one stable ref callback per id so React
+// doesn't detach and reattach every wrapper on each render. Held in a
+// `useState` box and only read from handlers and effects.
+const createNodeRegistry = () => {
+  const nodes = new Map<string, HTMLElement>();
+  const callbacks = new Map<string, (node: HTMLElement | null) => void>();
+
+  return {
+    get: (id: string) => nodes.get(id),
+    register: (id: string) => {
+      let callback = callbacks.get(id);
+
+      if (!callback) {
+        callback = node => {
+          if (node) {
+            nodes.set(id, node);
+          } else {
+            // A wrapper only detaches when its section leaves the canvas
+            // (sections are keyed by id), so its callback can go too.
+            nodes.delete(id);
+            callbacks.delete(id);
+          }
+        };
+        callbacks.set(id, callback);
+      }
+
+      return callback;
+    },
+  };
 };
 
 // An edit refused because the document doesn't parse (#433).
@@ -434,6 +465,7 @@ const Dnd = ({
     selectedItem,
     selectedIndex,
     select,
+    selectOnly,
     clearSelection,
     add: addItem,
     remove,
@@ -493,11 +525,14 @@ const Dnd = ({
     removeRef.current = remove;
   });
 
-  const onDelete = (id: string) => {
+  // Asks `onBeforeDelete` first when there is one, then removes the section.
+  // `onDeleted` runs only once it's actually gone.
+  const requestDelete = (id: string, onDeleted?: () => void) => {
     const section = sections.find(candidate => candidate.id === id);
 
     if (!onBeforeDelete || !section) {
       remove(id);
+      onDeleted?.();
 
       return;
     }
@@ -505,6 +540,7 @@ const Dnd = ({
     const decide = (allowed: boolean) => {
       if (allowed) {
         removeRef.current(id);
+        onDeleted?.();
       }
     };
 
@@ -524,6 +560,64 @@ const Dnd = ({
       console.error('onBeforeDelete threw; the section was kept', error);
     }
   };
+
+  const onDelete = (id: string) => requestDelete(id);
+
+  // The focusable wrapper of each section, so the keyboard can move focus
+  // between them (#435).
+  const [sectionNodes] = useState(createNodeRegistry);
+
+  // `focus()` also scrolls the section into view.
+  const focusSection = (id: string) => sectionNodes.get(id)?.focus();
+
+  // Arrow keys and Home/End move focus to another section and select it, so
+  // the panel follows. Outside a drag only: during one, dnd-kit owns them.
+  const onNavigate = (fromId: string, to: SectionNavigation) => {
+    const from = sections.findIndex(section => section.id === fromId);
+    const index =
+      to === 'first'
+        ? 0
+        : to === 'last'
+          ? sections.length - 1
+          : from + (to === 'next' ? 1 : -1);
+    const target = sections[index];
+
+    if (from < 0 || !target || target.id === fromId) {
+      return;
+    }
+
+    selectOnly(target.id);
+    focusSection(target.id);
+  };
+
+  // Delete on a focused section. Focus goes to the section that takes its
+  // place (or the one before it, for the last), so it isn't dropped on the
+  // page body.
+  const onDeleteKey = (id: string) => {
+    const index = sections.findIndex(section => section.id === id);
+    const neighbor = sections[index + 1] ?? sections[index - 1];
+
+    requestDelete(id, () => {
+      if (neighbor) {
+        focusSection(neighbor.id);
+      }
+    });
+  };
+
+  // Keeps the selected section on screen when it moves out of view without
+  // the keyboard taking it there: a move from the panel, or a copy that lands
+  // below the fold. After the next frame, once the new order is laid out.
+  useEffect(() => {
+    if (selectedId === null) {
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      sectionNodes.get(selectedId)?.scrollIntoView?.({ block: 'nearest' });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [sectionNodes, selectedId, selectedIndex]);
 
   const onChange = (next: Partial<Section>) => {
     if (!next.id) {
@@ -797,6 +891,9 @@ const Dnd = ({
                 onClick={() => onSelect(section.id)}
                 onDelete={onDelete}
                 onCopy={onCopy}
+                nodeRef={sectionNodes.register(section.id)}
+                onNavigate={to => onNavigate(section.id, to)}
+                onDeleteKey={() => onDeleteKey(section.id)}
               >
                 <Renderer
                   preview={previews[index]!}
