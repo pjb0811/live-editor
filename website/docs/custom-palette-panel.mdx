@@ -945,15 +945,28 @@ the source text, with no declaration required: it parses the string
 (the same way `parseValue` does) and, if the result is an object or array,
 recursively walks it, returning one `{ path, value }` entry per primitive
 leaf found. `path` is a list of keys/indices you can hand to
-`setEditableValue` to commit an edit to just that leaf, re-serializing the
-whole structure back into a string for `binding.onChange`. A nested
-object/array is walked into further; a string, number, or boolean is
-always a leaf — including one that happens to contain JSX. This is what
-lets it handle the shipped Stats/FAQ sections' `items` arrays of
+`setEditableValue` to commit an edit to just that leaf. It returns
+`rawValue` with only that leaf's source text replaced, ready for
+`binding.onChange`, so everything else in the value stays as written:
+formatting, comments, JSX, and functions or references the panel never
+shows. A nested object/array is walked into further; a string, number, or
+boolean is always a leaf — including one that happens to contain JSX. This
+is what lets it handle the shipped Stats/FAQ sections' `items` arrays of
 `{ key, children }`, where `children` is itself a separately data-bound
 JSX element: `children` comes back as one opaque text leaf rather than
 being decomposed further, exactly like `parseValue` already treats JSX
 elsewhere.
+
+A few rules for `setEditableValue`:
+
+- The new value is written as its own type. A string keeps the quotes the
+  leaf was written with, so convert an `<input>`'s text back to a number or
+  boolean first if the leaf was one.
+- A JSX leaf stays JSX when the edited text is still JSX, and becomes a
+  string otherwise.
+- It never adds a key or grows an array. A path that `flattenEditableValue`
+  wouldn't report, such as a missing key, an index past the end, or an
+  entry a later spread could replace, returns `rawValue` unchanged.
 
 ```tsx
 const entries = flattenEditableValue(binding.rawValue);

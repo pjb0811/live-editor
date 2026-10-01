@@ -7,6 +7,7 @@ import { extract } from './extract';
 import { appendArrayItem, parseItems } from './items';
 import type { DataAttrNode } from './types';
 import { bulkUpdate, update, updateAll } from './update';
+import { setEditableValue } from './value';
 
 const CODE = `
 <div data-id="a" data-binding="[{label:'Text',property:'innerText'}]">old text</div>
@@ -192,6 +193,26 @@ describe('update', () => {
       expect(result.success).toBe(true);
       expect(() => extract(result.code)).not.toThrow();
       expect(extract(result.code).length).toBeGreaterThan(0);
+    });
+
+    // A leaf edit from setEditableValue has to reach the document with the
+    // rest of the value as written (#427).
+    it('writes a setEditableValue leaf edit without touching the rest', () => {
+      const items = `[
+        // first
+        { key: 'a', label: <strong>10k</strong>, onClick: () => go() },
+      ]`;
+      const code = `<Stats data-id="s" data-binding={[{ label: 'Items', property: 'items' }]} items={${items}} />`;
+      const result = update(
+        code,
+        's',
+        'Items',
+        setEditableValue(items, [0, 'key'], 'b'),
+        'items',
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.code).toBe(code.replace("key: 'a'", "key: 'b'"));
     });
 
     // The narrow gate: only a value that is itself an array/object literal

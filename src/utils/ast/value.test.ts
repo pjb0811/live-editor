@@ -320,19 +320,89 @@ describe('flattenEditableValue', () => {
 });
 
 describe('setEditableValue', () => {
-  it('replaces a top-level key and re-serializes', () => {
-    const result = setEditableValue("{a: 1, b: 'x'}", ['a'], 2);
-
-    expect(JSON.parse(result)).toEqual({ a: 2, b: 'x' });
+  it('replaces a top-level key in place', () => {
+    expect(setEditableValue("{a: 1, b: 'x'}", ['a'], 2)).toBe("{a: 2, b: 'x'}");
   });
 
-  it('replaces a leaf nested inside an array of objects', () => {
-    const value = `[{ key: 'stats-row', children: <div data-id="x">Some JSX</div> }]`;
-    const result = setEditableValue(value, [0, 'key'], 'new-key');
+  // It used to re-serialize the whole value as JSON, which turned JSX into
+  // text and dropped functions, comments and formatting (#427).
+  it('changes only the leaf, keeping JSX, functions, comments and formatting', () => {
+    const value = `[
+  // first
+  { key: 'a', label: 'Users', children: <strong>10k</strong> },
+  { key: 'b', label: "Join", onClick: () => go(), 'data-x': 1 },
+]`;
 
-    expect(JSON.parse(result)).toEqual([
-      { key: 'new-key', children: '<div data-id="x">Some JSX</div>' },
-    ]);
+    expect(setEditableValue(value, [0, 'label'], 'Members')).toBe(
+      value.replace("'Users'", "'Members'"),
+    );
+    expect(setEditableValue(value, [1, 'data-x'], 2)).toBe(
+      value.replace("'data-x': 1", "'data-x': 2"),
+    );
+  });
+
+  it('keeps the quotes a string was written with, and escapes for them', () => {
+    expect(setEditableValue(`{ a: "x" }`, ['a'], `it's "y"`)).toBe(
+      `{ a: "it's \\"y\\"" }`,
+    );
+    expect(setEditableValue(`{ a: 'x' }`, ['a'], `it's "y"`)).toBe(
+      `{ a: 'it\\'s "y"' }`,
+    );
+    expect(setEditableValue('{ a: `x` }', ['a'], 'a`b${c}')).toBe(
+      '{ a: `a\\`b\\${c}` }',
+    );
+  });
+
+  it('writes a string over a number or boolean leaf as a quoted string', () => {
+    expect(setEditableValue('{ a: 1, b: true }', ['a'], '2')).toBe(
+      "{ a: '2', b: true }",
+    );
+    expect(setEditableValue('{ a: -1 }', ['a'], 3)).toBe('{ a: 3 }');
+    expect(setEditableValue('{ a: true }', ['a'], false)).toBe('{ a: false }');
+  });
+
+  it('keeps a JSX leaf as JSX when the edited text still is', () => {
+    const value = `{ children: <b>old</b> }`;
+
+    expect(setEditableValue(value, ['children'], '<i>new</i>')).toBe(
+      `{ children: <i>new</i> }`,
+    );
+    expect(setEditableValue(value, ['children'], 'plain')).toBe(
+      `{ children: 'plain' }`,
+    );
+  });
+
+  it('edits the last of duplicate keys, the one that takes effect', () => {
+    expect(setEditableValue('{ a: 1, a: 2 }', ['a'], 3)).toBe('{ a: 1, a: 3 }');
+  });
+
+  it('reaches through type wrappers and quoted keys', () => {
+    expect(
+      setEditableValue(
+        "[{ 'join-done': 'x' as const }] as const",
+        [0, 'join-done'],
+        'y',
+      ),
+    ).toBe("[{ 'join-done': 'y' as const }] as const");
+  });
+
+  it('fails safe when a spread could replace the entry', () => {
+    expect(setEditableValue('{ a: 1, ...rest }', ['a'], 2)).toBe(
+      '{ a: 1, ...rest }',
+    );
+    expect(setEditableValue('[...rest, 1]', [1], 2)).toBe('[...rest, 1]');
+  });
+
+  it('fails safe for a leaf that is not a literal, or is a structure', () => {
+    expect(setEditableValue('{ a: go() }', ['a'], 2)).toBe('{ a: go() }');
+    expect(setEditableValue('{ a: [1] }', ['a'], 2)).toBe('{ a: [1] }');
+    expect(setEditableValue('{ a: null }', ['a'], 2)).toBe('{ a: null }');
+  });
+
+  it('never grows an array or adds a key', () => {
+    expect(setEditableValue('[1, 2]', [2], 3)).toBe('[1, 2]');
+    expect(setEditableValue('[1, , 3]', [1], 2)).toBe('[1, , 3]');
+    expect(setEditableValue('{ a: 1 }', ['b'], 2)).toBe('{ a: 1 }');
   });
 
   it('fails safe (returns the original value) for a missing key', () => {
@@ -345,6 +415,7 @@ describe('setEditableValue', () => {
 
   it('fails safe (returns the original value) when the value is not object/array-shaped', () => {
     expect(setEditableValue('42', ['a'], 5)).toBe('42');
+    expect(setEditableValue('{ a: ', ['a'], 5)).toBe('{ a: ');
   });
 
   it('fails safe (returns the original value) for an empty path', () => {
