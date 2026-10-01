@@ -21,15 +21,23 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+  // The resetKeys the last render saw, so getDerivedStateFromProps can tell
+  // when they change.
+  resetKeys?: readonly unknown[];
 }
+
+const keysChanged = (
+  prev: readonly unknown[] = [],
+  next: readonly unknown[] = [],
+) => prev.length !== next.length || next.some((key, i) => key !== prev[i]);
 
 class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, resetKeys: props.resetKeys };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
@@ -38,26 +46,22 @@ class ErrorBoundary extends React.Component<Props, State> {
     this.props.onError?.(error, errorInfo);
   }
 
-  // Safe to reset unconditionally here (no race with a freshly-thrown
-  // error): while hasError is true, render() below never attempts
-  // `children` at all, so resetting just schedules a follow-up render where
-  // `children` gets its first real chance to run with the new resetKeys —
-  // if that throws too, getDerivedStateFromError catches it fresh in that
-  // later, separate commit.
-  componentDidUpdate(prevProps: Props) {
-    if (!this.state.hasError) {
-      return;
+  // Clears a caught error in the same render that sees new resetKeys, so
+  // `children` get their next chance right away and the fallback doesn't
+  // render (and run its effects) once more first (#442). If `children` throw
+  // again with the new keys, getDerivedStateFromError catches that in this
+  // same render pass.
+  static getDerivedStateFromProps(
+    props: Props,
+    state: State,
+  ): Partial<State> | null {
+    if (!keysChanged(state.resetKeys, props.resetKeys)) {
+      return null;
     }
 
-    const prevKeys = prevProps.resetKeys ?? [];
-    const nextKeys = this.props.resetKeys ?? [];
-    const changed =
-      prevKeys.length !== nextKeys.length ||
-      nextKeys.some((key, i) => key !== prevKeys[i]);
-
-    if (changed) {
-      this.setState({ hasError: false, error: undefined });
-    }
+    return state.hasError
+      ? { hasError: false, error: undefined, resetKeys: props.resetKeys }
+      : { resetKeys: props.resetKeys };
   }
 
   reset = () => this.setState({ hasError: false, error: undefined });
