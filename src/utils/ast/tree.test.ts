@@ -3,7 +3,7 @@ import * as t from '@babel/types';
 import { describe, expect, it } from 'vitest';
 
 import { DATA_ATTR } from '../../constants';
-import { clone, fillIds, replaceIds } from './tree';
+import { clone, fillIds, fillIdsFrom, replaceIds } from './tree';
 
 // Deterministic id generator so assertions don't depend on nanoid randomness.
 const sequentialIds = () => {
@@ -45,6 +45,38 @@ describe('fillIds', () => {
   it('is a no-op when there are no empty ids', () => {
     const code = `<div ${DATA_ATTR.ID}="a" />`;
     expect(fillIds(code, sequentialIds())).toBe(code);
+  });
+});
+
+// Same code, same ids: the panel and the canvas preview fill a section this
+// way independently, and have to agree on every element's id (#432).
+describe('fillIdsFrom', () => {
+  it('fills empty ids in order from the prefix', () => {
+    const code = `<div ${DATA_ATTR.ID}=""><span ${DATA_ATTR.ID}="" /></div>`;
+
+    expect(fillIdsFrom(code, 's')).toBe(
+      `<div ${DATA_ATTR.ID}="s-1"><span ${DATA_ATTR.ID}="s-2" /></div>`,
+    );
+  });
+
+  it('gives the same code the same ids every time', () => {
+    const code = `<div ${DATA_ATTR.ID}=""><p ${DATA_ATTR.ID}="" /></div>`;
+
+    expect(fillIdsFrom(code, 's')).toBe(fillIdsFrom(code, 's'));
+  });
+
+  it('keeps filled ids and skips the ones the code already uses', () => {
+    const code = `<div ${DATA_ATTR.ID}="s-1"><p ${DATA_ATTR.ID}="" /><p ${DATA_ATTR.ID}="" /></div>`;
+
+    expect(fillIdsFrom(code, 's')).toBe(
+      `<div ${DATA_ATTR.ID}="s-1"><p ${DATA_ATTR.ID}="s-2" /><p ${DATA_ATTR.ID}="s-3" /></div>`,
+    );
+  });
+
+  it('is a no-op when there are no empty ids', () => {
+    const code = `<div ${DATA_ATTR.ID}="a" />`;
+
+    expect(fillIdsFrom(code, 's')).toBe(code);
   });
 });
 

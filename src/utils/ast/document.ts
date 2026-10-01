@@ -9,6 +9,7 @@ import type { Section } from '../../types';
 import { createBoundedCache } from '../cache';
 import { registerEditorCache } from '../editor-caches';
 import { getJSXTagName } from './jsx-name';
+import { fillIdsFrom } from './tree';
 
 // @babel/traverse's own CJS build re-exports itself as `{ default: traverse,
 // ...everything else }` for ESM interop. Vite's dev-server dependency
@@ -582,7 +583,14 @@ export const createSectionPreviewCache = (): SectionPreviewCache => {
         return cached.preview;
       }
 
-      const preview = spliceCode(fullCode, span.start, span.end, section.code);
+      // Filled the same way the panel fills the selected section, so an
+      // element's `data-id` in the preview matches its fields (#432).
+      const preview = spliceCode(
+        fullCode,
+        span.start,
+        span.end,
+        fillIdsFrom(section.code, section.id),
+      );
       nextPreviewsById.set(section.id, { code: section.code, preview });
       return preview;
     });
