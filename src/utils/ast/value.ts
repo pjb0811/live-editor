@@ -315,13 +315,140 @@ export const flattenEditableValue = (
   return entries.length ? entries : null;
 };
 
+// Finds the node `flattenEditableValue` reported at `path`, walking the
+// same literal structure `evaluateLiteral` reads. Returns null for anything
+// it can't point at with certainty: a missing key or index, a step through
+// something that isn't an object or array, or a spread that could replace
+// the entry at runtime.
+const findEditableLeaf = (
+  root: t.Node,
+  path: EditablePathSegment[],
+): t.Node | null => {
+  let node = unwrapExpression(root);
+
+  for (const segment of path) {
+    if (t.isArrayExpression(node)) {
+      if (typeof segment !== 'number') {
+        return null;
+      }
+
+      const elements = node.elements.slice(0, segment + 1);
+      const element = node.elements[segment];
+
+      if (!element || elements.some(item => t.isSpreadElement(item))) {
+        return null;
+      }
+
+      node = unwrapExpression(element);
+      continue;
+    }
+
+    if (t.isObjectExpression(node)) {
+      const key = String(segment);
+      const matches = (property: t.ObjectExpression['properties'][number]) =>
+        t.isObjectProperty(property) &&
+        !property.computed &&
+        ((t.isIdentifier(property.key) && property.key.name === key) ||
+          (t.isStringLiteral(property.key) && property.key.value === key) ||
+          (t.isNumericLiteral(property.key) &&
+            String(property.key.value) === key));
+      // The last match is the one a duplicate key leaves in effect, and the
+      // one `evaluateLiteral` reports.
+      let index = node.properties.length - 1;
+
+      while (index >= 0 && !matches(node.properties[index]!)) {
+        index--;
+      }
+
+      const property = node.properties[index];
+
+      if (
+        !property ||
+        !t.isObjectProperty(property) ||
+        node.properties.slice(index + 1).some(item => t.isSpreadElement(item))
+      ) {
+        return null;
+      }
+
+      node = unwrapExpression(property.value);
+      continue;
+    }
+
+    return null;
+  }
+
+  return node;
+};
+
+const isEditableLeaf = (node: t.Node): boolean =>
+  t.isStringLiteral(node) ||
+  t.isNumericLiteral(node) ||
+  t.isBooleanLiteral(node) ||
+  (t.isUnaryExpression(node) &&
+    node.operator === '-' &&
+    t.isNumericLiteral(node.argument)) ||
+  (t.isTemplateLiteral(node) && node.expressions.length === 0) ||
+  t.isJSXElement(node) ||
+  t.isJSXFragment(node);
+
+const quoteString = (text: string, quote: string): string => {
+  if (quote === '`') {
+    return `\`${text.replace(/[\\`]|\$\{/g, match => `\\${match}`)}\``;
+  }
+
+  const escaped = JSON.stringify(text).slice(1, -1);
+
+  return quote === '"'
+    ? `"${escaped}"`
+    : `'${escaped.replace(/\\"/g, '"').replace(/'/g, "\\'")}'`;
+};
+
+const isJSXSource = (text: string): boolean => {
+  try {
+    const expression = parseExpression(text, { plugins: ['jsx'] });
+
+    return t.isJSXElement(expression) || t.isJSXFragment(expression);
+  } catch {
+    return false;
+  }
+};
+
+// Source text for `next` in place of `leaf`, keeping the leaf's own form
+// where it has one: a string keeps its quotes, and a JSX leaf, which
+// `flattenEditableValue` reports as its source text, stays JSX when the
+// edited text still is.
+const leafSource = (
+  value: string,
+  leaf: t.Node,
+  next: EditablePrimitive,
+): string => {
+  if (typeof next !== 'string') {
+    return String(next);
+  }
+
+  if ((t.isJSXElement(leaf) || t.isJSXFragment(leaf)) && isJSXSource(next)) {
+    return next.trim();
+  }
+
+  const quote =
+    t.isStringLiteral(leaf) || t.isTemplateLiteral(leaf)
+      ? value[leaf.start!]!
+      : "'";
+
+  return quoteString(next, quote);
+};
+
 // Companion to `flattenEditableValue`: replaces the single leaf at `path`
-// and re-serializes the whole structure — the result is a plain string
-// suitable for `PanelBinding.onChange`/`Dnd`'s AST-update pipeline, same
-// as any other committed value. Fails safe: an out-of-range index, a
-// missing key, or a `value` that didn't parse to an object/array in the
-// first place returns `value` unchanged rather than throwing or silently
-// writing to the wrong place.
+// and returns `value` with only that leaf's source text changed, so the
+// rest of the value keeps its formatting, comments, JSX, functions and
+// references. The result is a plain string for `PanelBinding.onChange`,
+// like any other committed value. It used to re-serialize the whole value
+// as JSON, which turned JSX into text and dropped functions and comments
+// on every edit (#427). Fails safe: a path `flattenEditableValue` wouldn't
+// report (a missing key, an out-of-range index, a step through something
+// that isn't an object or array, a non-literal leaf) or a `value` that
+// doesn't parse returns `value` unchanged rather than writing to the wrong
+// place. It never adds a key or grows an array.
 export const setEditableValue = (
   value: string,
   path: EditablePathSegment[],
@@ -331,38 +458,27 @@ export const setEditableValue = (
     return value;
   }
 
-  const parsed = parseValue(value);
+  let leaf: t.Node | null;
 
-  if (typeof parsed !== 'object' || parsed === null) {
+  try {
+    leaf = findEditableLeaf(
+      parseExpression(value, { plugins: ['jsx', 'typescript'] }),
+      path,
+    );
+  } catch {
     return value;
   }
 
-  const root: unknown = Array.isArray(parsed) ? [...parsed] : { ...parsed };
-  let cursor: Record<EditablePathSegment, unknown> | unknown[] = root as
-    Record<EditablePathSegment, unknown> | unknown[];
-
-  for (let i = 0; i < path.length - 1; i++) {
-    const key = path[i]!;
-    const child = (cursor as Record<EditablePathSegment, unknown>)[key];
-
-    if (typeof child !== 'object' || child === null) {
-      return value;
-    }
-
-    const clonedChild = Array.isArray(child) ? [...child] : { ...child };
-    (cursor as Record<EditablePathSegment, unknown>)[key] = clonedChild;
-    cursor = clonedChild as Record<EditablePathSegment, unknown> | unknown[];
-  }
-
-  const lastKey = path[path.length - 1]!;
-
-  if (!(lastKey in (cursor as object))) {
+  if (
+    !leaf ||
+    !isEditableLeaf(leaf) ||
+    leaf.start == null ||
+    leaf.end == null
+  ) {
     return value;
   }
 
-  (cursor as Record<EditablePathSegment, unknown>)[lastKey] = next;
-
-  return JSON.stringify(root);
+  return `${value.slice(0, leaf.start)}${leafSource(value, leaf, next)}${value.slice(leaf.end)}`;
 };
 
 export const extractNodeValue = (node: t.Node): ExtractedNodeValue => {
