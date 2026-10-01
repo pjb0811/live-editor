@@ -352,3 +352,101 @@ no widget on that field and draws its default control.
 Keep value rules out of `widget`. `min`, `max`, `pattern` and `required`
 belong on the binding itself, where the library enforces them whatever
 control draws the field.
+
+### Common `meta` keys
+
+The library defines no presentation fields beyond `widget`, so help text,
+grouping and visibility all go in `meta`. Nothing stops each app from
+inventing its own names for them, so these docs suggest a shared set. The
+library reads none of them, and the built-in panel ignores them all. They
+only mean something once your panel reads them.
+
+| Key           | Value               | Meaning                                                                         |
+| ------------- | ------------------- | ------------------------------------------------------------------------------- |
+| `description` | `string`            | Guidance the user always needs. Show it next to the field.                      |
+| `hint`        | `string`            | Extra detail the user can choose to open, such as a tooltip or an info icon.    |
+| `group`       | `string`            | Fields with the same name belong in one box.                                    |
+| `tab`         | `string`            | Fields with the same name go on one tab.                                        |
+| `visible`     | `boolean` or a rule | Whether to show the field. Leaving it out means visible. See [below](#visible). |
+
+Keep `description` and `hint` apart. Text the user has to read is a
+`description`. Putting it in a `hint` hides it behind a hover.
+
+```tsx
+data-binding={[
+  {
+    label: 'Link',
+    property: 'mode',
+    options: [
+      { label: 'None', value: 'none' },
+      { label: 'URL', value: 'url' },
+    ],
+    group: 'link',
+  },
+  {
+    label: 'URL',
+    property: 'href',
+    type: 'url',
+    description: 'Opens in the same tab.',
+    group: 'link',
+    visible: { property: 'mode', in: ['url'], default: 'none' },
+  },
+]}
+```
+
+#### `visible`
+
+`visible: false` always hides the field. A rule shows it only while another
+binding's value is one of a list:
+
+```ts
+type VisibleRule = {
+  property: string; // the binding this field depends on
+  id?: string; // that binding's element, when it isn't this field's own
+  in: unknown[]; // show while the value is one of these
+  default?: unknown; // the value to assume when the attribute is missing
+};
+```
+
+- `property` refers to this field's own element by default. A section can
+  carry the same property on several elements, so name another element with
+  `id`, its `data-id`.
+- When the value is an array, the field shows while any of its entries is
+  in `in`.
+- Set `default` whenever the property may be missing. Documents written before
+  the property existed don't carry it. Without `default`, those documents
+  would hide the field for good.
+- Only bindings reach the panel, so the property a rule reads must have a
+  binding of its own.
+
+A hidden field is still in `bindings`, with its value and `onChange`, so your
+panel can decide whether to leave it out or show it disabled. A panel might
+check the rule like this:
+
+```tsx
+import type { PanelBinding } from '@jbpark/live-editor/dnd';
+
+const isVisible = (binding: PanelBinding, bindings: PanelBinding[]) => {
+  const rule = binding.meta?.visible as boolean | VisibleRule | undefined;
+
+  if (rule === undefined || typeof rule === 'boolean') {
+    return rule ?? true;
+  }
+
+  const source = bindings.find(
+    item =>
+      item.id === (rule.id ?? binding.id) && item.property === rule.property,
+  );
+  const value =
+    source && source.present !== false ? source.value : rule.default;
+
+  return Array.isArray(value)
+    ? value.some(entry => rule.in.includes(entry))
+    : rule.in.includes(value);
+};
+
+bindings.filter(binding => isVisible(binding, bindings));
+```
+
+`meta` values arrive as `unknown`, so check a rule's shape before relying on
+it in production code.
