@@ -37,10 +37,10 @@ import {
   type DataAttrNode,
   type DocumentProblem,
   extract,
-  fillIds,
   updateAll,
 } from '~/utils/ast';
 import type { UpdateFailure } from '~/utils/ast';
+import { fillIdsFrom } from '~/utils/ast/tree';
 
 import { cn } from '../../utils/cn';
 import { preloadScripts } from '../../utils/scripts';
@@ -639,6 +639,7 @@ const Dnd = ({
   // `useDndPanel()` get the same extraction/update pipeline instead of each
   // needing it.
   const selectedCode = selectedItem?.code;
+  const selectedSectionId = selectedItem?.id;
   const { fields, updatedCode, parseError } = useMemo(() => {
     if (!selectedCode) {
       return {
@@ -649,7 +650,9 @@ const Dnd = ({
     }
 
     try {
-      const updated = fillIds(selectedCode);
+      // The same ids the canvas preview fills this section with, so an
+      // element's `data-id` there matches its fields here (#432).
+      const updated = fillIdsFrom(selectedCode, selectedSectionId ?? '');
       // Every element, the section's own root included: a `<section>` with a
       // `data-binding` is editable like any other element, and one without
       // resolves to no bindings below. It used to be dropped here, so a
@@ -669,7 +672,7 @@ const Dnd = ({
         parseError: { error: e },
       };
     }
-  }, [selectedCode]);
+  }, [selectedCode, selectedSectionId]);
 
   // Keyed on the missing id alone, so it fires when a document reaches this
   // state and not again for every edit that leaves it there.

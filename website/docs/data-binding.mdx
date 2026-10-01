@@ -9,7 +9,10 @@ A palette section becomes editable in the property panel through two
 attributes on its elements:
 
 - `data-id`: the element's identity. Leave it empty (`data-id=""`) in palette
-  sections; `Live.Dnd` assigns a unique id when the section is dropped.
+  sections. `Live.Dnd` fills an empty one from the section's own id, in
+  document order (`<section id>-1`, `-2`, ...), and the panel and the canvas
+  preview use the same ids. They're written into the source with the first
+  edit to that section, so opening a document doesn't change it.
 - `data-binding`: an array describing which props of that element the panel
   can edit, and how.
 

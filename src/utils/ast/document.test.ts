@@ -582,6 +582,21 @@ describe('createSectionPreviewCache (#131)', () => {
     expect(getSections(parseDocument(second[1]!)!)[0]!.name).toBe('B-edited');
   });
 
+  // The panel fills the selected section's empty element ids the same way,
+  // so an element's `data-id` in the preview matches its fields (#432).
+  it('fills empty element ids from the section id', () => {
+    const cache = createSectionPreviewCache();
+    const [preview] = cache.compute(FULL_CODE, [
+      {
+        id: 'a',
+        code: '<section data-id="a"><p data-id="">A</p><p data-id="a-1">B</p></section>',
+      },
+    ]);
+
+    expect(preview).toContain('<p data-id="a-2">A</p>');
+    expect(preview).toContain('<p data-id="a-1">B</p>');
+  });
+
   it('reuses cached previews across drag reorders (matched by id, not position)', () => {
     const cache = createSectionPreviewCache();
     const sections = [

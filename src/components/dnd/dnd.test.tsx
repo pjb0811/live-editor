@@ -16,8 +16,15 @@ import { type DndItems, useDndItems } from './panel/use-dnd-items';
 // The canvas isn't what's under test here, and each section renders a
 // compiled component inside an iframe — none of which jsdom needs to do for
 // us to inspect the data `useDndPanel()` hands over.
+// The last preview each section was rendered with, keyed by section id.
+const previews = vi.hoisted(() => new Map<string, string>());
+
 vi.mock('./renderer', () => ({
-  default: () => <div data-testid="renderer" />,
+  default: ({ sectionId, preview }: { sectionId: string; preview: string }) => {
+    previews.set(sectionId, preview);
+
+    return <div data-testid="renderer" />;
+  },
 }));
 
 // jsdom has no ResizeObserver, which `useResponsiveSize` constructs on
@@ -75,6 +82,22 @@ const renderWithPanel = () => {
 };
 
 describe('useDndPanel() data', () => {
+  // An element picked in the preview is matched to its fields by `data-id`,
+  // so both have to fill a section's empty ids the same way (#432).
+  it('gives each binding the data-id its element has in the canvas preview', () => {
+    const { getData } = renderWithPanel();
+    const data = getData()!;
+    const preview = previews.get(data.item!.id)!;
+
+    expect(data.item!.code).toContain('data-id=""');
+    expect(data.bindings.length).toBeGreaterThan(0);
+
+    for (const binding of data.bindings) {
+      expect(binding.id).toMatch(new RegExp(`^${data.item!.id}-\\d+$`));
+      expect(preview).toContain(`data-id="${binding.id}"`);
+    }
+  });
+
   it('forwards the node-level commit callback', () => {
     const { getData } = renderWithPanel();
 
