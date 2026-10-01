@@ -81,12 +81,17 @@ const removeClone = (clone: SyncedStyle) => {
   clone.remove();
 };
 
+// `anchor`, when given, is an element the synced block has to stay in front
+// of. Without it, a first sync appends the block after whatever the target
+// already holds, so a rule the target added for itself could end up before
+// the host's copies and lose to them on order (#441).
 export const reconcileStyles = (
   sourceDocument: Document,
   target: Document | ShadowRoot,
   manager: StyleSyncManager,
   enabled: boolean,
   transformStyle: (content: string) => string = content => content,
+  anchor: Node | null = null,
 ) => {
   if (!enabled) {
     manager.clones.forEach(removeClone);
@@ -120,7 +125,8 @@ export const reconcileStyles = (
 
     const nextSibling = previous
       ? previous.nextSibling
-      : (Array.from(container.childNodes).find(isSyncedStyle) ?? null);
+      : (Array.from(container.childNodes).find(isSyncedStyle) ??
+        (anchor?.parentNode === container ? anchor : null));
 
     if (clone !== nextSibling) {
       container.insertBefore(clone, nextSibling);

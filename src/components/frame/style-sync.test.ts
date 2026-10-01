@@ -136,4 +136,64 @@ describe('reconcileStyles', () => {
       secondTarget,
     );
   });
+
+  // The iframe's own container style has to stay after every host copy. A
+  // first sync that ran after it existed used to append the copies behind
+  // it, so a host `html { height: 100% !important }` won and the frame
+  // collapsed (#441).
+  it('inserts a first sync in front of the anchor, and keeps later ones there', () => {
+    const source = document.implementation.createHTMLDocument();
+    const target = createTarget();
+    const own = document.createElement('style');
+    const manager = createStyleSyncManager();
+
+    own.id = 'own';
+    target.appendChild(own);
+    source.head.innerHTML = '<style id="first">.a { color: red; }</style>';
+
+    reconcileStyles(source, target, manager, true, undefined, own);
+
+    expect([...target.children].map(el => el.id)).toEqual(['first', 'own']);
+
+    source.head.insertAdjacentHTML(
+      'beforeend',
+      '<style id="second">.b { color: blue; }</style>',
+    );
+    reconcileStyles(source, target, manager, true, undefined, own);
+
+    expect([...target.children].map(el => el.id)).toEqual([
+      'first',
+      'second',
+      'own',
+    ]);
+  });
+
+  it('appends as before without an anchor, or with one outside the target', () => {
+    const source = document.implementation.createHTMLDocument();
+    const target = createTarget();
+    const own = document.createElement('style');
+    const elsewhere = document.createElement('style');
+
+    own.id = 'own';
+    target.appendChild(own);
+    source.head.innerHTML = '<style id="first">.a { color: red; }</style>';
+
+    reconcileStyles(source, target, createStyleSyncManager(), true);
+    expect([...target.children].map(el => el.id)).toEqual(['own', 'first']);
+
+    const other = createTarget();
+    const ownOther = document.createElement('style');
+
+    ownOther.id = 'own';
+    other.appendChild(ownOther);
+    reconcileStyles(
+      source,
+      other,
+      createStyleSyncManager(),
+      true,
+      undefined,
+      elsewhere,
+    );
+    expect([...other.children].map(el => el.id)).toEqual(['own', 'first']);
+  });
 });

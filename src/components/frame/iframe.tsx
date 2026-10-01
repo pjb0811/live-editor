@@ -24,6 +24,13 @@ import {
   rewriteInlineViewportUnits,
 } from './viewport-units';
 
+// The <html> element's own container-context style — id'd so it can be
+// found/updated/removed across calls without holding a ref to it. Scoped
+// to `html` (not `:root`, which is equivalent but the fork's own
+// convention) so this only ever affects cq*-unit resolution and nothing
+// else about the document.
+const CONTAINER_STYLE_ID = 'autoheight-container';
+
 export interface Props {
   title?: string;
   /** Forwarded to the iframe's `sandbox` attribute for DOM/CSS isolation only — not a security boundary, since preview code executes in the host window's realm (see `compileModule` in `~/utils`). */
@@ -220,12 +227,18 @@ const IFrame = ({
       return;
     }
 
+    // The container style has to come after every host copy: both sides mark
+    // their rules `!important`, so a host `html { height: 100% !important }`
+    // synced in after it wins, and the frame folds to a pixel. That happened
+    // whenever the first sync ran after the container style existed, as when
+    // `syncStyle` is switched on after mount (#441).
     reconcileStyles(
       document,
       doc,
       styleManagerRef.current,
       syncStyle,
       convertViewportUnits,
+      doc.getElementById(CONTAINER_STYLE_ID),
     );
   }, [syncStyle]);
 
@@ -380,13 +393,6 @@ const IFrame = ({
     }
     prevStylesheetCountRef.current = stylesheets.length;
   }, [styles, stylesheets]);
-
-  // The <html> element's own container-context style — id'd so it can be
-  // found/updated/removed across calls without holding a ref to it. Scoped
-  // to `html` (not `:root`, which is equivalent but the fork's own
-  // convention) so this only ever affects cq*-unit resolution and nothing
-  // else about the document.
-  const CONTAINER_STYLE_ID = 'autoheight-container';
 
   // Permanently hides the iframe document's own scrollbar chrome while
   // autoHeight is sizing the iframe to its content. autoHeight sets the
