@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { StrictMode, useState } from 'react';
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import { EditorView } from '@uiw/react-codemirror';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -15,6 +21,10 @@ const fallbacks = `[
 ]`;
 
 beforeAll(() => {
+  // jsdom has no Range layout. A code editor measures its text through it
+  // once anything reports a real size, as the drag test below does.
+  Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
+  Range.prototype.getBoundingClientRect ??= () => new DOMRect();
   globalThis.ResizeObserver = class {
     observe() {}
     unobserve() {}
@@ -280,5 +290,116 @@ describe('Items render-map leaves', () => {
 
     expect(screen.getByText('This field is required.')).not.toBeNull();
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+// Collapsing items and drag sorting (#436).
+describe('Items collapse and sorting', () => {
+  const toggleOf = (title: string) =>
+    screen.getByRole('button', { name: title }) as HTMLButtonElement;
+
+  it('hides an item fields when collapsed and shows them again', () => {
+    const { container } = render(<Items value={objects} />);
+
+    expect(container.querySelectorAll('textarea')).toHaveLength(4);
+    expect(toggleOf('Item 1').getAttribute('aria-expanded')).toBe('true');
+
+    fireEvent.click(toggleOf('Item 1'));
+
+    expect(toggleOf('Item 1').getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelectorAll('textarea')).toHaveLength(2);
+
+    fireEvent.click(toggleOf('Item 1'));
+
+    expect(container.querySelectorAll('textarea')).toHaveLength(4);
+  });
+
+  it('collapses and expands every item at once', () => {
+    const { container } = render(<Items value={primitives} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse all' }));
+
+    expect(container.querySelectorAll('textarea')).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }));
+
+    expect(container.querySelectorAll('textarea')).toHaveLength(2);
+  });
+
+  it('keeps an item collapsed when the items reorder', () => {
+    const Harness = () => {
+      const [value, setValue] = useState(objects);
+
+      return <Items value={value} onChange={setValue} />;
+    };
+
+    render(<Harness />);
+    fireEvent.click(toggleOf('Item 1'));
+    fireEvent.click(
+      screen
+        .getAllByRole('button')
+        .find(button => button.querySelector('.lucide-arrow-down'))!,
+    );
+
+    expect(toggleOf('Item 1').getAttribute('aria-expanded')).toBe('true');
+    expect(toggleOf('Item 2').getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('moves an item with the keyboard through its drag handle', async () => {
+    const onChange = vi.fn();
+    // jsdom lays nothing out, so give each item a row of its own.
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const index = this.parentElement
+          ? [...this.parentElement.children].indexOf(this)
+          : 0;
+        const top = index * 100;
+
+        return {
+          x: 0,
+          y: top,
+          top,
+          left: 0,
+          right: 200,
+          bottom: top + 80,
+          width: 200,
+          height: 80,
+          toJSON: () => ({}),
+        } as DOMRect;
+      });
+    const tick = () => act(() => new Promise(resolve => setTimeout(resolve)));
+
+    render(<Items value={objects} onChange={onChange} />);
+
+    const handle = screen.getByRole('button', { name: 'Reorder Item 1' });
+
+    handle.focus();
+    fireEvent.keyDown(handle, { key: ' ', code: 'Space' });
+    await tick();
+    fireEvent.keyDown(handle, { key: 'ArrowDown', code: 'ArrowDown' });
+    await tick();
+    fireEvent.keyDown(handle, { key: ' ', code: 'Space' });
+    await tick();
+
+    rect.mockRestore();
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    const moved = onChange.mock.calls[0]![0] as string;
+
+    expect(moved.indexOf("key: 'b'")).toBeLessThan(moved.indexOf("key: 'a'"));
+  });
+
+  it('turns the drag handle off when the structure cannot be edited', () => {
+    render(<Items value={`[{ key: 'a' }, ...rest]`} />);
+
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Reorder Item 1',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
   });
 });

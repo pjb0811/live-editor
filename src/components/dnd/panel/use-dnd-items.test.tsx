@@ -419,3 +419,89 @@ describe('useDndItems edits in the same tick', () => {
     }
   });
 });
+
+// Collapsed state for the Items editor and custom panels (#436).
+describe('useDndItems expansion', () => {
+  const editable = () => {
+    const onChange = vi.fn();
+    const hook = renderHook(({ source }) => useDndItems(source, { onChange }), {
+      initialProps: { source: objects },
+    });
+    const commit = () =>
+      hook.rerender({ source: onChange.mock.calls.at(-1)![0] as string });
+
+    return { ...hook, commit };
+  };
+
+  it('starts with every item expanded', () => {
+    const { result } = renderHook(() => useDndItems(objects));
+
+    expect(result.current.expansion.expandedIds).toEqual(
+      result.current.items.map(item => item.id),
+    );
+  });
+
+  it('toggles one item and leaves the others', () => {
+    const { result } = renderHook(() => useDndItems(objects));
+    const [alpha, beta] = result.current.items;
+
+    act(() => result.current.expansion.toggle(alpha!.id));
+
+    expect(result.current.expansion.isExpanded(alpha!.id)).toBe(false);
+    expect(result.current.expansion.isExpanded(beta!.id)).toBe(true);
+
+    act(() => result.current.expansion.toggle(alpha!.id));
+
+    expect(result.current.expansion.isExpanded(alpha!.id)).toBe(true);
+  });
+
+  it('keeps an item collapsed through a move and an edit to a sibling', () => {
+    const { result, commit } = editable();
+    const alpha = result.current.items[0]!;
+
+    act(() => result.current.expansion.toggle(alpha.id));
+    act(() => result.current.actions.move(alpha.elementIndex, 2));
+    commit();
+
+    const moved = result.current.items[2]!;
+
+    expect(moved.id).toBe(alpha.id);
+    expect(result.current.expansion.isExpanded(moved.id)).toBe(false);
+
+    act(() =>
+      result.current.items[0]!.properties.find(
+        property => property.label === 'label',
+      )!.onChange('Beta 2'),
+    );
+    commit();
+
+    expect(result.current.expansion.expandedIds).toEqual(
+      result.current.items.slice(0, 2).map(item => item.id),
+    );
+  });
+
+  it('starts an added item expanded while others stay collapsed', () => {
+    const { result, commit } = editable();
+
+    act(() => result.current.expansion.setExpanded([]));
+    act(() => result.current.actions.add());
+    commit();
+
+    const added = result.current.items.at(-1)!;
+
+    expect(result.current.expansion.expandedIds).toEqual([added.id]);
+  });
+
+  it('expands exactly the given items', () => {
+    const { result } = renderHook(() => useDndItems(objects));
+    const ids = result.current.items.map(item => item.id);
+
+    act(() => result.current.expansion.setExpanded([ids[1]!]));
+
+    expect(result.current.expansion.expandedIds).toEqual([ids[1]]);
+
+    act(() => result.current.expansion.setExpanded(ids));
+
+    expect(result.current.expansion.expandedIds).toEqual(ids);
+  });
+});
