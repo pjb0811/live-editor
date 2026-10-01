@@ -651,12 +651,53 @@ What you don't have to reimplement:
 | `kind` | `'object' \| 'primitive'` | Which kind the array is being edited as. An array holding both is treated as objects; the primitives are left untouched rather than dropped. |
 | `items` | `DndItemsItem[]` | One entry per item. `properties` holds an object item's plain fields, `nested` its JSX-valued ones, `value` a primitive item's own binding. |
 | `selection` | multi-select state | `selected`, `toggle`, `isSelected`, `clear`, `replace`. Indices are item `index` values; the actions translate. |
+| `expansion` | `DndItemsExpansion` | Which items show their fields: `expandedIds`, `isExpanded(id)`, `toggle(id)`, `setExpanded(ids)`. Keyed by item `id`, and every item starts expanded. See [Collapsing and drag sorting](#collapsing-and-drag-sorting). |
 | `actions` | `DndItemsActions` | `add`, `move`, `remove`, plus `duplicateSelected` / `moveSelected` / `removeSelected`. |
 | `canEditStructure` | `boolean` | Uses the same dense-array syntax gate as the mutation helpers. Keep value controls available when false, but disable move, copy, add, and delete and direct the user to the code editor. |
 | `parseError` | `boolean` | The source didn't parse as an array. `items` is empty. |
 
 The built-in `Items` panel is written against exactly this hook, so anything
 it can do is reachable here.
+
+#### Collapsing and drag sorting
+
+The built-in `Items` panel lets each item collapse to its header, with
+"Collapse all" / "Expand all" above the list, and reorders items by dragging
+their handle. A mouse drag starts after a few pixels, a touch drag after a
+long press, and the keyboard picks an item up with Space or Enter on the
+handle. The up/down buttons and bulk actions are still there.
+
+`expansion` holds the collapsed state for your own markup too. It's keyed by
+item `id`, so an item stays collapsed when it moves or a sibling changes,
+and an item added later starts expanded. The hook only holds the state;
+what a collapsed item shows is up to you. A one-line summary can come from
+the item's own fields:
+
+```tsx
+const { items, expansion } = useDndItems(binding.rawValue, { onChange: binding.onChange });
+
+items.map(item => {
+  const title = item.properties.find(prop => prop.property === 'title');
+
+  return (
+    <section key={item.id}>
+      <button
+        aria-expanded={expansion.isExpanded(item.id)}
+        onClick={() => expansion.toggle(item.id)}
+      >
+        {String(title?.value ?? `Item ${item.index + 1}`)}
+      </button>
+      {expansion.isExpanded(item.id) && <ItemFields item={item} />}
+    </section>
+  );
+});
+```
+
+For drag sorting in your own markup, use `@dnd-kit/sortable` with `item.id`
+as the sortable id, and commit the drop with
+`actions.move(from.elementIndex, to.index)`, the same edit the built-in
+panel makes. Give the list its own `DndContext`, so a drag inside the panel
+never reaches the canvas's section sorting.
 
 #### Array source preservation and limits
 

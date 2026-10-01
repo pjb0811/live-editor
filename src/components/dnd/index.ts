@@ -34,6 +34,7 @@ import {
 import {
   type DndItems,
   type DndItemsActions,
+  type DndItemsExpansion,
   type DndItemsItem,
   type DndItemsNestedElement,
   type DndItemsNestedGroup,
@@ -158,6 +159,7 @@ export type {
   DndSectionFallbackArgs,
   DndItems,
   DndItemsActions,
+  DndItemsExpansion,
   DndItemsItem,
   DndItemsNestedElement,
   DndItemsNestedGroup,

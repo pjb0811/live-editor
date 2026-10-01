@@ -98,6 +98,20 @@ export interface DndItemsActions {
   removeSelected: () => void;
 }
 
+// Which items show their fields. Keyed by `DndItemsItem.id`, so an item
+// keeps its state when it moves, a sibling changes, or another item is
+// added or removed. Every item starts expanded, including one added later.
+// The hook only holds the state; drawing a collapsed item is the panel's job.
+export interface DndItemsExpansion {
+  // The ids of the current items that are expanded, in item order.
+  expandedIds: string[];
+  isExpanded: (id: string) => boolean;
+  toggle: (id: string) => void;
+  // Expands exactly these items and collapses the rest. Pass every id to
+  // expand all, or `[]` to collapse all.
+  setExpanded: (ids: string[]) => void;
+}
+
 export interface DndItems {
   // Which kind the array is being edited as. The panel shows one kind at a
   // time; an array holding both is treated as objects, and the primitives
@@ -108,6 +122,7 @@ export interface DndItems {
   // `toggle`, `isSelected`, `clear`, `replace`. Its indices are item
   // `index` values, not `elementIndex` — the actions below translate.
   selection: ReturnType<typeof useMultiSelect>;
+  expansion: DndItemsExpansion;
   actions: DndItemsActions;
   // Whether the current source can be moved, copied, removed or appended
   // without losing syntax. Value/property edits can remain available when
@@ -428,6 +443,13 @@ export const useDndItems = (
   const identity = useMemo(
     () => reconcileIdentityState(identityState, value, kind, rawItems),
     [identityState, kind, rawItems, value],
+  );
+
+  // Collapsed rather than expanded ids, so an item this hook hasn't seen
+  // yet, such as one just added, starts expanded. Ids are never reused, so
+  // one left behind by a removed item can't collapse another.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
+    () => new Set(),
   );
 
   const { selection, record } = useStructuralSelection(
@@ -818,10 +840,37 @@ export const useDndItems = (
         };
       });
 
+  const expansion: DndItemsExpansion = {
+    expandedIds: items.flatMap(item =>
+      collapsed.has(item.id) ? [] : [item.id],
+    ),
+    isExpanded: id => !collapsed.has(id),
+    toggle: id =>
+      setCollapsed(previous => {
+        const next = new Set(previous);
+
+        if (!next.delete(id)) {
+          next.add(id);
+        }
+
+        return next;
+      }),
+    setExpanded: ids => {
+      const expanded = new Set(ids);
+
+      setCollapsed(
+        new Set(
+          items.flatMap(item => (expanded.has(item.id) ? [] : [item.id])),
+        ),
+      );
+    },
+  };
+
   return {
     kind,
     items,
     selection,
+    expansion,
     actions,
     canEditStructure,
     parseError,

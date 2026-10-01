@@ -6,7 +6,12 @@ import type { BindingRenderMap } from '~/utils/ast';
 import type { PanelNodeChange } from '../dnd';
 import BulkActionsBar from './bulk-actions-bar';
 import Field from './field';
-import { type DndItemsNestedGroup, useDndItems } from './use-dnd-items';
+import { ItemCard, SortableItems } from './sortable-items';
+import {
+  type DndItemsItem,
+  type DndItemsNestedGroup,
+  useDndItems,
+} from './use-dnd-items';
 
 interface Props {
   value: string;
@@ -76,12 +81,19 @@ const NestedGroup = ({
 // array source lives in that hook, which is exported so a consumer can put
 // their own markup over the same engine — see its doc comment (#237/#308).
 const Items = ({ value, render, onChange, onChildChange }: Props) => {
-  const { kind, items, selection, actions, canEditStructure, parseError } =
-    useDndItems(value, {
-      render,
-      onChange,
-      onNodeChange: onChildChange,
-    });
+  const {
+    kind,
+    items,
+    selection,
+    expansion,
+    actions,
+    canEditStructure,
+    parseError,
+  } = useDndItems(value, {
+    render,
+    onChange,
+    onNodeChange: onChildChange,
+  });
 
   const header = (
     <div className="flex items-center justify-between">
@@ -148,7 +160,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     />
   );
 
-  const itemControls = (item: { index: number; elementIndex: number }) => (
+  const itemControls = (item: DndItemsItem) => (
     <div className="flex space-x-1">
       <Button
         size="small"
@@ -172,54 +184,75 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     </div>
   );
 
-  if (kind === 'primitive') {
-    return (
-      <div className="space-y-4">
-        {header}
+  const itemCheckbox = (item: DndItemsItem) => (
+    <div
+      onClick={e =>
+        canEditStructure && selection.toggle(item.index, e.shiftKey)
+      }
+      className="inline-flex"
+    >
+      <Checkbox
+        checked={selection.isSelected(item.index)}
+        disabled={!canEditStructure}
+        onChange={() => {}}
+      />
+    </div>
+  );
 
-        {bulkBar}
-
-        {!canEditStructure && (
-          <div
-            className="rounded border border-dashed border-amber-200 p-3 text-xs
-              text-amber-700"
-          >
-            Values remain editable, but moving, copying, adding, and deleting
-            require a dense array without spreads or parenthesized top-level
-            items. Use the code editor for those structural changes.
-          </div>
-        )}
-
-        {items.map(item => (
-          <div
-            key={item.id}
-            className="space-y-2 rounded border border-gray-100 bg-gray-50 p-2"
-          >
-            <div className="flex items-center justify-between space-x-1">
-              <div
-                onClick={e =>
-                  canEditStructure && selection.toggle(item.index, e.shiftKey)
-                }
-                className="inline-flex"
-              >
-                <Checkbox
-                  checked={selection.isSelected(item.index)}
-                  disabled={!canEditStructure}
-                  onChange={() => {}}
-                />
-              </div>
-              {itemControls(item)}
+  const objectBody = (item: DndItemsItem) => (
+    <>
+      <div className="space-y-2">
+        {item.properties.map(binding => (
+          <div key={`${item.id}-${binding.property}-${binding.label}`}>
+            <div className="flex flex-col space-y-2">
+              <label className="w-20 shrink-0 text-xs font-medium">
+                {binding.label}
+              </label>
+              <Field binding={binding} onNodeChange={onChildChange} />
             </div>
-            <Field binding={item.value!} onNodeChange={onChildChange} />
+            <span className="text-right text-xs text-gray-500">
+              ({String(binding.meta?.valueType)})
+            </span>
           </div>
         ))}
       </div>
-    );
-  }
+      <div className="space-y-3 border-t pt-2">
+        {item.nested.length ? (
+          item.nested.map(group => (
+            <NestedGroup
+              key={group.property}
+              group={group}
+              onNodeChange={onChildChange}
+            />
+          ))
+        ) : (
+          <div className="text-xs text-gray-500">✓ No JSX bindings found</div>
+        )}
+      </div>
+    </>
+  );
+
+  const allExpanded = expansion.expandedIds.length === items.length;
 
   return (
     <div className="space-y-4">
       {header}
+
+      {items.length > 1 && (
+        <div className="flex justify-end">
+          <Button
+            size="small"
+            variant="text"
+            onClick={() =>
+              expansion.setExpanded(
+                allExpanded ? [] : items.map(item => item.id),
+              )
+            }
+          >
+            {allExpanded ? 'Collapse all' : 'Expand all'}
+          </Button>
+        </div>
+      )}
 
       {bulkBar}
 
@@ -234,58 +267,35 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
         </div>
       )}
 
-      {items.map(item => (
-        <div key={item.id} className="space-y-3 rounded border bg-gray-50 p-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div
-                onClick={e =>
-                  canEditStructure && selection.toggle(item.index, e.shiftKey)
-                }
-                className="inline-flex"
-              >
-                <Checkbox
-                  checked={selection.isSelected(item.index)}
-                  disabled={!canEditStructure}
-                  onChange={() => {}}
-                />
-              </div>
-              <div className="text-xs font-medium">Item {item.index + 1}</div>
-            </div>
-            {itemControls(item)}
-          </div>
-          <div className="space-y-2">
-            {item.properties.map(binding => (
-              <div key={`${item.id}-${binding.property}-${binding.label}`}>
-                <div className="flex flex-col space-y-2">
-                  <label className="w-20 shrink-0 text-xs font-medium">
-                    {binding.label}
-                  </label>
-                  <Field binding={binding} onNodeChange={onChildChange} />
-                </div>
-                <span className="text-right text-xs text-gray-500">
-                  ({String(binding.meta?.valueType)})
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-3 border-t pt-2">
-            {item.nested.length ? (
-              item.nested.map(group => (
-                <NestedGroup
-                  key={group.property}
-                  group={group}
-                  onNodeChange={onChildChange}
-                />
-              ))
+      <SortableItems
+        items={items}
+        disabled={!canEditStructure}
+        onMove={(item, toIndex) => actions.move(item.elementIndex, toIndex)}
+      >
+        {item => (
+          <ItemCard
+            key={item.id}
+            id={item.id}
+            title={`Item ${item.index + 1}`}
+            disabled={!canEditStructure}
+            expanded={expansion.isExpanded(item.id)}
+            onToggle={() => expansion.toggle(item.id)}
+            checkbox={itemCheckbox(item)}
+            controls={itemControls(item)}
+            className={
+              kind === 'primitive'
+                ? 'space-y-2 rounded border border-gray-100 bg-gray-50 p-2'
+                : 'space-y-3 rounded border bg-gray-50 p-3'
+            }
+          >
+            {kind === 'primitive' ? (
+              <Field binding={item.value!} onNodeChange={onChildChange} />
             ) : (
-              <div className="text-xs text-gray-500">
-                ✓ No JSX bindings found
-              </div>
+              objectBody(item)
             )}
-          </div>
-        </div>
-      ))}
+          </ItemCard>
+        )}
+      </SortableItems>
     </div>
   );
 };
