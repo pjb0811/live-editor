@@ -1,12 +1,27 @@
 ## Summary
 
-<!-- Describe the purpose of this PR in 1-2 sentences. -->
+<!-- What this changes and why. For a bug: what triggers it, and the behavior before and after. For a feature: what was missing. -->
+
+<!-- Closes #123 (or Part of #123 when the issue stays open) -->
 
 ## Changes
 
-<!-- List the key updates. Keep each item concise and action-oriented. -->
+<!-- What the final branch actually changes, by behavior rather than by file: public API or behavior changes, docs, and the changeset. -->
 
 -
+
+## How to test
+
+<!-- Checks that actually ran, and how a reviewer can confirm the change. Say what wasn't checked. -->
+
+- [ ] `pnpm lint`
+- [ ] `pnpm check-types`
+- [ ] `pnpm build`
+- [ ] Manual verification completed
+
+## Notes for reviewers
+
+<!-- Optional: design choices, differences from the issue's proposal, limitations, remaining scope. Delete if empty. -->
 
 ## Type of Change
 
@@ -31,15 +46,6 @@
 - [ ] Context / State
 - [ ] Build / Release / CI
 - [ ] Documentation
-
-## Validation
-
-<!-- Mark the checks you actually ran. -->
-
-- [ ] `pnpm lint`
-- [ ] `pnpm check-types`
-- [ ] `pnpm build`
-- [ ] Manual verification completed
 
 ## Screenshots / Demo (if applicable)
 
