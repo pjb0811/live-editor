@@ -3,10 +3,12 @@ import './index.css';
 import Context from './components/context';
 import LiveDnd, {
   type DndEditError,
+  type DndInspector,
   type DndItems,
   type DndItemsItem,
   type DndItemsOptions,
   type DndLayout,
+  type DndNodePick,
   type DndPalette,
   type DndPanel,
   type DndRenderField,
@@ -50,6 +52,8 @@ export type {
   DndPalette,
   DndPanel,
   DndLayout,
+  DndInspector,
+  DndNodePick,
   PanelBinding,
   PanelNodeChange,
   PanelNodesChange,

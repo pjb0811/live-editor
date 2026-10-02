@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/constants';
@@ -7,7 +7,8 @@ import type { Section } from '~/types';
 
 import { PreviewContext } from '../context/states';
 import Dnd, { type DndPalette, type DndPanel } from './dnd';
-import { Canvas, Palette } from './layout';
+import { type DndInspector, useDndInspector } from './inspector';
+import { Canvas, Palette, Panel } from './layout';
 import type { DndLayout } from './layout-context';
 import { useDndLayout, useDndPalette, useDndPanel } from './layout-context';
 import Field from './panel/field';
@@ -1510,5 +1511,155 @@ describe('Field, exported for per-binding reuse', () => {
     // `FieldGroup` draws "Stats Items (items)" in the built-in panel; a
     // consumer supplying their own heading must not get a second one.
     expect(container.textContent).not.toContain('Stats Items');
+  });
+});
+
+// Picking an element in the canvas preview (#432). The renderer is mocked,
+// so the test marks it as the picked element and says what's under the
+// pointer.
+describe('element picker', () => {
+  const renderWithPicker = () => {
+    const onNodePick = vi.fn();
+    const state: { inspector?: DndInspector; panel?: DndPanel } = {};
+
+    const Probe = () => {
+      state.inspector = useDndInspector();
+      state.panel = useDndPanel();
+
+      return null;
+    };
+
+    const view = render(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd value={documentWith(stats.code)} onNodePick={onNodePick}>
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>,
+    );
+    const sortable = view.container.querySelector<HTMLElement>(
+      '[aria-roledescription="sortable"]',
+    )!;
+    const overlay = sortable.firstElementChild!;
+    const preview = sortable.querySelector('[data-testid="renderer"]')!;
+
+    preview.setAttribute('data-id', 'picked-1');
+    Object.defineProperty(document, 'elementsFromPoint', {
+      configurable: true,
+      value: () => [overlay, preview, sortable],
+    });
+
+    const pickButton = within(view.container).getByRole('button', {
+      name: 'Pick an element',
+    });
+
+    return { onNodePick, state, sortable, overlay, pickButton };
+  };
+
+  it('selects the section and reports the element picked', () => {
+    const {
+      onNodePick,
+      state,
+      sortable,
+      overlay,
+      pickButton: button,
+    } = renderWithPicker();
+
+    fireEvent.click(button);
+
+    expect(state.inspector!.active).toBe(true);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    // Sorting is off while picking.
+    expect(sortable.getAttribute('aria-disabled')).toBe('true');
+
+    fireEvent.click(overlay, { clientX: 10, clientY: 10 });
+
+    const sectionId = state.panel!.item!.id;
+
+    expect(onNodePick).toHaveBeenCalledWith({ id: 'picked-1', sectionId });
+    expect(state.inspector!.picked).toEqual({ id: 'picked-1', sectionId });
+    expect(state.inspector!.active).toBe(false);
+    expect(sortable.getAttribute('aria-disabled')).toBe('false');
+  });
+
+  it('outlines the element under the pointer', () => {
+    const { overlay, state } = renderWithPicker();
+
+    act(() => state.inspector!.activate());
+    fireEvent.pointerMove(overlay, { clientX: 10, clientY: 10 });
+
+    expect(
+      document.body.querySelector('[data-dnd-inspector-highlight]'),
+    ).not.toBeNull();
+
+    fireEvent.pointerLeave(overlay);
+
+    expect(
+      document.body.querySelector('[data-dnd-inspector-highlight]'),
+    ).toBeNull();
+  });
+
+  it('stops on Escape without picking', () => {
+    const { onNodePick, state } = renderWithPicker();
+
+    act(() => state.inspector!.activate());
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(state.inspector!.active).toBe(false);
+    expect(onNodePick).not.toHaveBeenCalled();
+  });
+
+  it("marks the picked element's fields in the built-in panel", () => {
+    const state: { inspector?: DndInspector; panel?: DndPanel } = {};
+
+    const Probe = () => {
+      state.inspector = useDndInspector();
+      state.panel = useDndPanel();
+
+      return null;
+    };
+
+    const { container } = render(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd value={documentWith(stats.code)}>
+          <Canvas />
+          <Panel />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>,
+    );
+    const sortable = container.querySelector<HTMLElement>(
+      '[aria-roledescription="sortable"]',
+    )!;
+    const overlay = sortable.firstElementChild!;
+    const preview = sortable.querySelector('[data-testid="renderer"]')!;
+
+    // Select the section first to learn its element ids.
+    fireEvent.click(overlay);
+
+    const target = state.panel!.bindings[0]!.id;
+
+    preview.setAttribute('data-id', target);
+    Object.defineProperty(document, 'elementsFromPoint', {
+      configurable: true,
+      value: () => [overlay, preview, sortable],
+    });
+    act(() => state.inspector!.activate());
+    fireEvent.click(overlay, { clientX: 10, clientY: 10 });
+
+    const marked = container.querySelectorAll('[data-picked]');
+
+    expect(marked).toHaveLength(1);
+    expect(marked[0]!.getAttribute('data-node-id')).toBe(target);
+  });
+
+  it('selects the section on a click when the picker is off', () => {
+    const { onNodePick, state, overlay } = renderWithPicker();
+
+    fireEvent.click(overlay, { clientX: 10, clientY: 10 });
+
+    expect(state.panel!.item).toBeDefined();
+    expect(onNodePick).not.toHaveBeenCalled();
+    expect(state.inspector!.picked).toBeNull();
   });
 });

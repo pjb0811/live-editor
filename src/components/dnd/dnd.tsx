@@ -31,7 +31,7 @@ import {
 import { Space, Typography } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 
-import { DRAGGABLE_ITEMS } from '~/constants';
+import { DATA_ATTR, DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
 import {
   type DataAttrNode,
@@ -54,6 +54,14 @@ import {
   type DndRenderField,
   toastEditError,
 } from './edit-options';
+import {
+  type DndInspector,
+  DndInspectorContext,
+  type DndNodePick,
+  pickElement,
+  viewportRect,
+} from './inspector';
+import InspectorHighlight from './inspector-highlight';
 import Layout from './layout';
 import { DndRegionContext } from './layout-context';
 import Overlay from './overlay';
@@ -310,6 +318,11 @@ export interface Props extends Omit<
   // the default template, which uses `app-container`, so pass a `value`
   // when you change this.
   containerId?: string;
+  // Called when an element is picked in the canvas preview with the element
+  // picker (`useDndInspector()`, or the canvas's picker button). Receives the
+  // element's `data-id`, the key its fields carry in `useDndPanel()`, and its
+  // section's id. The section is selected as well (#432).
+  onNodePick?: (pick: DndNodePick) => void;
   // The single customization slot. Omit it for the built-in editor. Supply
   // it and you own the arrangement: compose `Live.Dnd.Palette` /
   // `Live.Dnd.Canvas` / `Live.Dnd.Panel` (each the built-in region, in the
@@ -361,6 +374,7 @@ const Dnd = ({
   onBeforeDelete,
   sectionNameFallback,
   containerId,
+  onNodePick,
   children,
   ...restProps
 }: Props) => {
@@ -520,6 +534,77 @@ const Dnd = ({
   };
 
   const onSelect = (id: string) => select(id);
+
+  // The element picker (#432). `picked` follows the selection: picking
+  // selects the element's section, and selecting another section clears it.
+  const [inspecting, setInspecting] = useState(false);
+  const [picked, setPicked] = useState<DndNodePick | null>(null);
+  const [highlight, setHighlight] = useState<DOMRect | null>(null);
+
+  if (picked && picked.sectionId !== selectedId) {
+    setPicked(null);
+  }
+
+  const stopInspecting = useCallback(() => {
+    setInspecting(false);
+    setHighlight(null);
+  }, []);
+
+  useEffect(() => {
+    if (!inspecting) {
+      return;
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        stopInspecting();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [inspecting, stopInspecting]);
+
+  const inspector: DndInspector = {
+    active: inspecting,
+    activate: () => setInspecting(true),
+    deactivate: stopInspecting,
+    toggle: () => (inspecting ? stopInspecting() : setInspecting(true)),
+    picked,
+  };
+
+  const onInspectMove = (
+    section: HTMLElement,
+    overlay: Element,
+    x: number,
+    y: number,
+  ) => {
+    const element = pickElement(section, overlay, x, y);
+
+    setHighlight(element ? viewportRect(element) : null);
+  };
+
+  const onInspectPick = (
+    sectionId: string,
+    section: HTMLElement,
+    overlay: Element,
+    x: number,
+    y: number,
+  ) => {
+    const id = pickElement(section, overlay, x, y)?.getAttribute(DATA_ATTR.ID);
+
+    if (!id) {
+      return;
+    }
+
+    const pick = { id, sectionId };
+
+    selectOnly(sectionId);
+    setPicked(pick);
+    stopInspecting();
+    onNodePick?.(pick);
+  };
 
   // Read through a ref after an async `onBeforeDelete`: while a confirmation
   // is open the document can change, and the `remove` from the render that
@@ -902,6 +987,10 @@ const Dnd = ({
                 nodeRef={sectionNodes.register(section.id)}
                 onNavigate={to => onNavigate(section.id, to)}
                 onDeleteKey={() => onDeleteKey(section.id)}
+                inspecting={inspecting}
+                onInspectMove={onInspectMove}
+                onInspectPick={(...args) => onInspectPick(section.id, ...args)}
+                onInspectLeave={() => setHighlight(null)}
               >
                 <Renderer
                   preview={previews[index]!}
@@ -971,8 +1060,11 @@ const Dnd = ({
                 literally renders an editor with no regions at all, which
                 looks like a broken build rather than a mistake in the
                 layout. Falling back keeps the failure legible. */}
-              {Children.toArray(children).length ? children : <Layout />}
+              <DndInspectorContext.Provider value={inspector}>
+                {Children.toArray(children).length ? children : <Layout />}
+              </DndInspectorContext.Provider>
             </DndRegionContext.Provider>
+            <InspectorHighlight rect={inspecting ? highlight : null} />
           </DndEditOptionsContext.Provider>
         </div>
         <DragOverlay>

@@ -12,6 +12,11 @@ import DraggableItem, {
 } from './draggable';
 import type { DndEditError, DndRenderField } from './edit-options';
 import {
+  type DndInspector,
+  type DndNodePick,
+  useDndInspector,
+} from './inspector';
+import {
   Canvas,
   type DndLayoutProps,
   type DndRegionProps,
@@ -96,6 +101,9 @@ export { Palette, Canvas, Panel, Layout };
 // `clearSelection`, the palette Drawer's open state) — needed because
 // supplying children replaces that chrome along with the Splitter.
 export { useDndPalette, useDndPanel, useDndLayout };
+// The element picker: turn it on, and clicking an element in the canvas
+// preview selects its section and reports the element's `data-id` (#432).
+export { useDndInspector };
 // The array-editing engine behind the built-in Items panel, exposed for a
 // consumer who wants their own markup rather than the built-in control
 // (`Field` covers the latter). Everything it returns is `PanelBinding`s, so
@@ -147,6 +155,8 @@ export type {
   DndPalette,
   DndPanel,
   DndLayout,
+  DndInspector,
+  DndNodePick,
   DndLayoutProps,
   DndRegionProps,
   PanelBinding,

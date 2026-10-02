@@ -1,3 +1,5 @@
+import { useContext, useEffect, useRef } from 'react';
+
 import { Button, Typography } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
@@ -5,6 +7,7 @@ import type { Section } from '~/types';
 import { cn } from '~/utils/cn';
 
 import type { PanelBinding, PanelNodeChange } from '../dnd';
+import { DndInspectorContext } from '../inspector';
 import FieldGroup from './field-group';
 
 // The built-in property panel. Reached publicly as `Live.Dnd.Panel`, which
@@ -80,6 +83,59 @@ const Panel = ({
   readOnly = false,
 }: PanelProps) => {
   const groups = groupBindingsById(bindings);
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Read without the throwing hook: this panel also renders outside
+  // `Live.Dnd`, read-only, where there's no picker.
+  const picked = useContext(DndInspectorContext)?.picked ?? null;
+  const pickedId = picked?.id;
+
+  // Brings the fields of an element picked in the preview into view and
+  // marks them, whether they're a top-level group or nested in an Items or
+  // Children editor (#432). A collapsed array item hides its nested fields,
+  // so there's nothing to scroll to then.
+  useEffect(() => {
+    const root = rootRef.current;
+
+    if (!root || !pickedId) {
+      return;
+    }
+
+    const target = root.querySelector(
+      `[data-node-id="${CSS.escape(pickedId)}"]`,
+    );
+
+    if (!target) {
+      return;
+    }
+
+    target.setAttribute('data-picked', '');
+
+    // Fields above the target can still grow for a moment after it renders
+    // (a rich-text editor mounting, for one), pushing it back out of view.
+    // So keep it in view for the first few hundred milliseconds.
+    const until = performance.now() + 600;
+    let frame = 0;
+
+    const keepInView = () => {
+      const box = target.getBoundingClientRect();
+      const view = root.getBoundingClientRect();
+
+      if (box.top < view.top || box.bottom > view.bottom) {
+        target.scrollIntoView?.({ block: 'nearest' });
+      }
+
+      if (performance.now() < until) {
+        frame = requestAnimationFrame(keepInView);
+      }
+    };
+
+    keepInView();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      target.removeAttribute('data-picked');
+    };
+  }, [pickedId, groups.length]);
 
   if (!item) {
     return (
@@ -96,6 +152,7 @@ const Panel = ({
 
   return (
     <div
+      ref={rootRef}
       className={cn(
         'h-full space-y-4 p-4',
         'overflow-x-hidden overflow-y-auto',
@@ -145,11 +202,14 @@ const Panel = ({
         </Typography.Text>
       )}
       {groups.map(group => (
-        <FieldGroup
+        <div
           key={group[0]!.id}
-          bindings={group}
-          onNodeChange={onNodeChange}
-        />
+          data-node-id={group[0]!.id}
+          className="rounded data-[picked]:ring-2 data-[picked]:ring-blue-400
+            data-[picked]:ring-offset-2"
+        >
+          <FieldGroup bindings={group} onNodeChange={onNodeChange} />
+        </div>
       ))}
     </div>
   );

@@ -103,6 +103,69 @@ A promise is waited for, and the section is removed from the document as it
 is when the answer comes, so edits made while your dialog was open are kept.
 If `onBeforeDelete` throws or rejects, the section is kept.
 
+## Picking an element
+
+The crosshair button at the bottom-left of the canvas turns on the element
+picker. While it's on, the element under the pointer is outlined, and a click
+selects that element's section and brings its fields into view in the panel,
+including fields nested in an Items or Children editor. The picker turns off
+after a pick, and Escape turns it off without one. Sections can't be dragged
+while it's on.
+
+`onNodePick` reports each pick: the element's `data-id`, which is the `id` its
+fields carry in `useDndPanel().bindings`, and its section's id.
+
+```tsx
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  onNodePick={({ id, sectionId }) => console.log(id, sectionId)}
+/>
+```
+
+A custom layout or panel drives the picker with `useDndInspector()`:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `active` | `boolean` | Whether the picker is on. |
+| `activate` / `deactivate` / `toggle` | `() => void` | Turns it on or off. |
+| `picked` | `{ id: string; sectionId: string } \| null` | The last element picked, until another section is selected. A custom panel can use it to show that element's fields. |
+
+```tsx
+import { useDndInspector, useDndPanel } from '@jbpark/live-editor/dnd';
+
+const MyPanel = () => {
+  const { picked, toggle, active } = useDndInspector();
+  const { bindings } = useDndPanel();
+  const fields = picked
+    ? bindings.filter(binding => binding.id === picked.id)
+    : bindings;
+
+  return (
+    <>
+      <button aria-pressed={active} onClick={toggle}>
+        Pick an element
+      </button>
+      {/* render `fields` */}
+    </>
+  );
+};
+```
+
+What can be picked:
+
+- An element is picked by its `data-id`, so the picker finds the nearest
+  element at or above the pointer that has one. Empty ids are filled for the
+  preview the same way the panel fills them (see
+  [Data Binding](./data-binding.mdx)).
+- A component that doesn't pass `data-*` attributes through to its DOM can't
+  be picked itself. Clicking it picks the nearest element above it that has a
+  `data-id`.
+- It works the same in every frame mode: in an iframe, in a shadow root, or
+  rendered in place.
+- Fields inside a collapsed array item aren't shown, so the panel can't bring
+  them into view until the item is expanded.
+
 ## Document structure
 
 `Live.Dnd` edits one component's source. Its sections are the `<section>`

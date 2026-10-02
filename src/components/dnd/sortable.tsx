@@ -19,6 +19,22 @@ interface Props {
   onNavigate?: (to: SectionNavigation) => void;
   // Delete or Backspace on a focused section (#435).
   onDeleteKey?: () => void;
+  // The element picker is on (#432): the section can't be dragged, and the
+  // pointer over it reports positions instead of selecting it.
+  inspecting?: boolean;
+  onInspectMove?: (
+    section: HTMLElement,
+    overlay: Element,
+    x: number,
+    y: number,
+  ) => void;
+  onInspectPick?: (
+    section: HTMLElement,
+    overlay: Element,
+    x: number,
+    y: number,
+  ) => void;
+  onInspectLeave?: () => void;
 }
 
 export type SectionNavigation = 'previous' | 'next' | 'first' | 'last';
@@ -40,6 +56,10 @@ const Sortable = ({
   nodeRef,
   onNavigate,
   onDeleteKey,
+  inspecting = false,
+  onInspectMove,
+  onInspectPick,
+  onInspectLeave,
 }: Props) => {
   const {
     attributes,
@@ -51,13 +71,13 @@ const Sortable = ({
     isDragging,
     isOver,
     active,
-  } = useSortable({ id });
+  } = useSortable({ id, disabled: inspecting });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    cursor: 'grab',
+    cursor: inspecting ? 'crosshair' : 'grab',
   };
 
   const isNewItemOver = isOver && active?.data.current?.type === 'new-item';
@@ -137,6 +157,32 @@ const Sortable = ({
           'absolute inset-0 z-50',
           //
         )}
+        onPointerMove={
+          inspecting
+            ? e =>
+                onInspectMove?.(
+                  e.currentTarget.parentElement!,
+                  e.currentTarget,
+                  e.clientX,
+                  e.clientY,
+                )
+            : undefined
+        }
+        onPointerLeave={inspecting ? onInspectLeave : undefined}
+        onClick={
+          inspecting
+            ? e => {
+                // The pick selects the section itself.
+                e.stopPropagation();
+                onInspectPick?.(
+                  e.currentTarget.parentElement!,
+                  e.currentTarget,
+                  e.clientX,
+                  e.clientY,
+                );
+              }
+            : undefined
+        }
       />
       {children}
       {selected && (
