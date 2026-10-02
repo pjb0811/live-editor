@@ -114,7 +114,9 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
                 return (
                   <div
                     key={`editable-${nodeId || idx}`}
-                    className="rounded border border-green-100 bg-white p-2"
+                    data-node-id={nodeId}
+                    className="rounded border border-green-100 bg-white p-2
+                      data-[picked]:ring-2 data-[picked]:ring-blue-400"
                   >
                     <div className="mb-1 text-xs text-green-600">
                       {editableNode.tagName}

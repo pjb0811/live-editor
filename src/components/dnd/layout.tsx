@@ -1,9 +1,10 @@
 import { Button, Drawer, Space, Splitter } from '@jbpark/ui-kit';
-import { LayoutGrid } from 'lucide-react';
+import { Crosshair, LayoutGrid } from 'lucide-react';
 
 import { cn } from '~/utils/cn';
 
 import { DefaultDraggableItem } from './draggable';
+import { useDndInspector } from './inspector';
 import { useDndRegions } from './layout-context';
 import PropertyPanel from './panel';
 
@@ -96,7 +97,8 @@ export const Palette = ({ className, ...restProps }: DndRegionProps) => (
 // exactly once — the droppable and the sortable list inside use fixed ids,
 // and a second instance would duplicate both.
 export const Canvas = ({ className, style, ...restProps }: DndRegionProps) => {
-  const { canvas } = useDndRegions('<Live.Dnd.Canvas>');
+  const { canvas, documentError } = useDndRegions('<Live.Dnd.Canvas>');
+  const inspector = useDndInspector();
 
   return (
     <div
@@ -115,6 +117,28 @@ export const Canvas = ({ className, style, ...restProps }: DndRegionProps) => {
       {...restProps}
     >
       {canvas}
+      {/* The element picker's switch (#432). Pinned to the bottom-left of
+          the scroll area, clear of the selected section's own buttons at its
+          top-right and of the mobile palette button at the bottom-right. */}
+      {!documentError && (
+        <div className="pointer-events-none sticky bottom-0 z-70 h-0">
+          <div className="pointer-events-auto absolute bottom-3 left-3">
+            <Button
+              icon={<Crosshair />}
+              color="primary"
+              variant={inspector.active ? 'solid' : 'outlined'}
+              aria-pressed={inspector.active}
+              aria-label="Pick an element"
+              title={
+                inspector.active
+                  ? 'Click an element to edit it. Esc to cancel.'
+                  : 'Pick an element'
+              }
+              onClick={inspector.toggle}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

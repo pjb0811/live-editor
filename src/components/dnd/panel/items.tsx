@@ -48,7 +48,9 @@ const NestedGroup = ({
       {group.elements.map(element => (
         <div
           key={`${group.property}-${element.id}`}
-          className="rounded border border-blue-100 bg-blue-50 p-2"
+          data-node-id={element.id}
+          className="rounded border border-blue-100 bg-blue-50 p-2
+            data-[picked]:ring-2 data-[picked]:ring-blue-400"
         >
           <div className="mb-1 text-xs text-blue-600">
             &lt;{element.tagName}&gt;
