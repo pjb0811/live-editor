@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 
-import { createStyleSyncManager, reconcileStyles } from './style-sync';
+import {
+  createRootAttributeSync,
+  createStyleSyncManager,
+  reconcileRootAttributes,
+  reconcileStyles,
+} from './style-sync';
 
 const createTarget = () => {
   const host = document.createElement('div');
@@ -195,5 +200,79 @@ describe('reconcileStyles', () => {
       elsewhere,
     );
     expect([...other.children].map(el => el.id)).toEqual(['own', 'first']);
+  });
+});
+
+// The host's theme lives on its `<html>`, which an iframe doesn't share (#497).
+describe('reconcileRootAttributes', () => {
+  const roots = () => {
+    const source = document.implementation.createHTMLDocument();
+    const target = document.implementation.createHTMLDocument();
+
+    return {
+      source: source.documentElement,
+      target: target.documentElement,
+      sync: createRootAttributeSync(),
+    };
+  };
+
+  it('copies classes and data-* attributes, and nothing else', () => {
+    const { source, target, sync } = roots();
+
+    source.className = 'dark theme-blue';
+    source.setAttribute('data-theme', 'dark');
+    source.setAttribute('lang', 'ko');
+    source.setAttribute('style', 'height: 100%');
+    reconcileRootAttributes(source, target, sync, true);
+
+    expect([...target.classList]).toEqual(['dark', 'theme-blue']);
+    expect(target.getAttribute('data-theme')).toBe('dark');
+    expect(target.hasAttribute('lang')).toBe(false);
+    expect(target.hasAttribute('style')).toBe(false);
+  });
+
+  it('follows a theme switch and drops what the host dropped', () => {
+    const { source, target, sync } = roots();
+
+    source.className = 'dark';
+    source.setAttribute('data-theme', 'dark');
+    source.setAttribute('data-mode', 'compact');
+    reconcileRootAttributes(source, target, sync, true);
+
+    source.className = 'light';
+    source.setAttribute('data-theme', 'light');
+    source.removeAttribute('data-mode');
+    reconcileRootAttributes(source, target, sync, true);
+
+    expect([...target.classList]).toEqual(['light']);
+    expect(target.getAttribute('data-theme')).toBe('light');
+    expect(target.hasAttribute('data-mode')).toBe(false);
+  });
+
+  it("leaves the target's own classes and attributes alone", () => {
+    const { source, target, sync } = roots();
+
+    target.className = 'preview-own';
+    target.setAttribute('data-preview', 'yes');
+    source.className = 'dark';
+    reconcileRootAttributes(source, target, sync, true);
+
+    source.className = '';
+    reconcileRootAttributes(source, target, sync, true);
+
+    expect([...target.classList]).toEqual(['preview-own']);
+    expect(target.getAttribute('data-preview')).toBe('yes');
+  });
+
+  it('removes everything it copied when disabled', () => {
+    const { source, target, sync } = roots();
+
+    source.className = 'dark';
+    source.setAttribute('data-theme', 'dark');
+    reconcileRootAttributes(source, target, sync, true);
+    reconcileRootAttributes(source, target, sync, false);
+
+    expect(target.hasAttribute('class')).toBe(false);
+    expect(target.hasAttribute('data-theme')).toBe(false);
   });
 });

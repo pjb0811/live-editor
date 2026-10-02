@@ -18,7 +18,12 @@ import {
   isVisuallyHidden,
   verticalInsets,
 } from './measure';
-import { createStyleSyncManager, reconcileStyles } from './style-sync';
+import {
+  createRootAttributeSync,
+  createStyleSyncManager,
+  reconcileRootAttributes,
+  reconcileStyles,
+} from './style-sync';
 import {
   convertViewportUnits,
   rewriteInlineViewportUnits,
@@ -219,6 +224,7 @@ const IFrame = ({
   const shouldAutoHeight = autoHeight && style.height == null;
 
   const styleManagerRef = useRef(createStyleSyncManager());
+  const rootAttributeSyncRef = useRef(createRootAttributeSync());
 
   const applyStyle = useCallback(() => {
     const doc = iframeRef.current?.contentDocument;
@@ -240,6 +246,14 @@ const IFrame = ({
       convertViewportUnits,
       doc.getElementById(CONTAINER_STYLE_ID),
     );
+    // The host's theme class or attribute, which those copied styles select
+    // on (#497).
+    reconcileRootAttributes(
+      document.documentElement,
+      doc.documentElement,
+      rootAttributeSyncRef.current,
+      syncStyle,
+    );
   }, [syncStyle]);
 
   const applyStyleTimeoutRef = useRef<number>(undefined);
@@ -260,6 +274,13 @@ const IFrame = ({
     enabled: syncStyle,
     childList: true,
     subtree: true,
+    attributes: true,
+  });
+
+  // A theme switch only touches the host's `<html>` attributes, which the
+  // head observer above doesn't see.
+  useMutationObserver(document.documentElement, debouncedApplyStyle, {
+    enabled: syncStyle,
     attributes: true,
   });
 
