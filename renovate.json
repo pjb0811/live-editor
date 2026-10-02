@@ -20,9 +20,10 @@
       "enabled": false
     },
     {
-      "description": "The sibling libraries ship together often enough that one PR for both is easier to review.",
+      "description": "The sibling libraries: one PR for both, as soon as they're published (pnpm-workspace.yaml exempts them from pnpm's one-day wait too).",
       "matchPackageNames": ["@jbpark/**"],
-      "groupName": "@jbpark packages"
+      "groupName": "@jbpark packages",
+      "minimumReleaseAge": null
     }
   ]
 }

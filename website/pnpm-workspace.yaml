@@ -6,3 +6,9 @@ overrides:
 allowBuilds:
   '@swc/core': true
   core-js: true
+
+# Our own packages install as soon as they're published. pnpm 11+ otherwise
+# waits a day after any release (minimumReleaseAge), which would hold up the
+# usual flow of publishing ui-kit/use-hooks and using it here right away.
+minimumReleaseAgeExclude:
+  - '@jbpark/*'
