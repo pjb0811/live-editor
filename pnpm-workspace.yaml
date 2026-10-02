@@ -20,6 +20,12 @@ autoInstallPeers: true
 allowBuilds:
   esbuild: false
 
+# Our own packages install as soon as they're published. pnpm 11+ otherwise
+# waits a day after any release (minimumReleaseAge), which would hold up the
+# usual flow of publishing ui-kit/use-hooks and using it here right away.
+minimumReleaseAgeExclude:
+  - '@jbpark/*'
+
 overrides:
   '@codemirror/state': ^6.7.1
   # @tiptap/extension-text-style (pulled in by @jbpark/ui-kit's RichTextEditor)
