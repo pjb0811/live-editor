@@ -1,3 +1,18 @@
+# pnpm settings live here rather than in .npmrc: npm warns about pnpm-only
+# keys it finds there, and pnpm 11+ reads only auth and registry settings
+# from .npmrc (#481).
+#
+# Kept intentionally: the docs website (website/, a separate Docusaurus app)
+# builds @jbpark/ui-kit's un-bundled dist with webpack, which resolves ui-kit's
+# externalized transitive deps (scheduler, @radix-ui/*, @tiptap/*, gsap, motion,
+# ...) only via this flat layout. Removing it breaks `pnpm --dir website build`.
+# The dependency-hygiene it used to mask for THIS package is now caught by the
+# `depcheck` CI step instead (see #282). Verified: dropping this fails the
+# website build with a cascade of "Module not found" errors.
+shamefullyHoist: true
+strictPeerDependencies: false
+autoInstallPeers: true
+
 overrides:
   '@codemirror/state': ^6.7.1
   # @tiptap/extension-text-style (pulled in by @jbpark/ui-kit's RichTextEditor)
