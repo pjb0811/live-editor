@@ -135,3 +135,68 @@ export const reconcileStyles = (
     previous = clone;
   });
 };
+
+// What a root-attribute sync has written onto the target, so a later pass
+// removes exactly that and never what the target set for itself.
+export interface RootAttributeSync {
+  attributes: Set<string>;
+  classes: Set<string>;
+}
+
+export const createRootAttributeSync = (): RootAttributeSync => ({
+  attributes: new Set(),
+  classes: new Set(),
+});
+
+const isMirroredAttribute = (name: string) => name.startsWith('data-');
+
+// Mirrors the host `<html>`'s classes and `data-*` attributes onto an iframe's
+// `<html>`. A theme is usually switched there (`.dark`, `data-theme="dark"`),
+// and copying the host's stylesheets alone doesn't help an iframe: its
+// selectors look for those on an ancestor, and the iframe document has a root
+// of its own. A shadow root needs none of this, since it sits under the host's
+// `<html>` already (#497).
+//
+// Classes are synced token by token, so a class the preview put on its own
+// root survives. Other attributes (`style`, `lang`, `dir`, ...) are left
+// alone: the frame relies on its own root for sizing and layout.
+export const reconcileRootAttributes = (
+  source: Element,
+  target: Element,
+  sync: RootAttributeSync,
+  enabled: boolean,
+) => {
+  const attributes = enabled
+    ? Array.from(source.attributes).filter(({ name }) =>
+        isMirroredAttribute(name),
+      )
+    : [];
+  const classes = enabled ? Array.from(source.classList) : [];
+  const attributeNames = new Set(attributes.map(({ name }) => name));
+  const classNames = new Set(classes);
+
+  sync.attributes.forEach(name => {
+    if (!attributeNames.has(name)) {
+      target.removeAttribute(name);
+    }
+  });
+  attributes.forEach(({ name, value }) => {
+    if (target.getAttribute(name) !== value) {
+      target.setAttribute(name, value);
+    }
+  });
+
+  sync.classes.forEach(name => {
+    if (!classNames.has(name)) {
+      target.classList.remove(name);
+    }
+  });
+  classes.forEach(name => target.classList.add(name));
+
+  if (!target.classList.length) {
+    target.removeAttribute('class');
+  }
+
+  sync.attributes = attributeNames;
+  sync.classes = classNames;
+};
