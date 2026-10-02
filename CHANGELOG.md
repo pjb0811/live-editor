@@ -1,5 +1,29 @@
 # Changelog
 
+## 4.3.0
+
+### Minor Changes
+
+- 2e60038: Pick an element in the canvas preview to edit its fields.
+
+  - A crosshair button at the bottom-left of the canvas turns on an element picker. The element under the pointer is outlined, and a click selects its section and brings its fields into view in the built-in panel, including fields nested in an Items or Children editor. Escape cancels, and sections can't be dragged while the picker is on.
+  - `onNodePick` on `Live.Dnd` reports each pick as `{ id, sectionId }`, where `id` is the element's `data-id`, the key its fields carry in `useDndPanel().bindings`.
+  - `useDndInspector()` returns `active`, `activate`, `deactivate`, `toggle` and `picked`, for a custom layout or panel. The `DndInspector` and `DndNodePick` types are exported.
+  - It works in every frame mode: iframe, shadow root, or rendered in place.
+
+- 60532b8: Collapse items and reorder them by dragging in the Items editor.
+
+  - Each item in the built-in Items editor can collapse to its header, and "Collapse all" / "Expand all" sits above the list.
+  - Items reorder by dragging their handle. A mouse drag starts after a few pixels, a touch drag after a long press, and the keyboard picks an item up with Space or Enter. The drop commits through `actions.move`, the same edit the up/down buttons make. The up/down buttons and bulk actions are unchanged.
+  - `useDndItems()` returns `expansion` (`expandedIds`, `isExpanded`, `toggle`, `setExpanded`) for custom panels. It's keyed by item `id`, so an item stays collapsed when it moves or a sibling changes, and every item, including one added later, starts expanded.
+
+### Patch Changes
+
+- 8be933b: `Live.Error.Boundary` no longer renders its fallback one more time when `resetKeys` change after an error. The error used to be cleared after that render had already committed, so the fallback rendered again with the new props, and any of its effects keyed on them ran again, on every recovery. Nothing on screen changed. The error is now cleared in the render that sees the new keys, and a throw with the new keys is still caught.
+- e1bc134: Fix an iframe preview collapsing to a pixel when `syncStyle` is switched on after the frame has mounted and the host page sets `html { height: 100% !important }`. Each frame keeps a style that fixes its `<html>` to the reference height `vh` units resolve against, and the host's synced styles have to stay in front of it. A first sync that ran after that style existed appended the host's copies behind it instead. The host rule then won on order, `vh` resolved against the frame's own height, and the auto-height loop shrank the frame to 1px (measured with a `50vh` section in Chromium). Synced styles now always go in front of the frame's own style, however late the first sync runs.
+- 596735a: `setEditableValue` now changes only the leaf at `path` and leaves the rest of the value as written. It used to re-serialize the whole value as JSON, so editing one field of an `items` array turned every JSX value in it into plain text, dropped functions such as `onClick`, and lost comments and formatting. A string keeps the quotes it was written with, and a JSX leaf stays JSX when the edited text still is. A path it can't point at with certainty, such as one an object spread could override, returns the value unchanged.
+- d3c06ea: Fill a section's empty `data-id`s the same way in the panel and the canvas preview. The panel used to fill them with random ids, new each time the section's code changed, while the preview rendered them empty. Now both derive them from the section's id in document order (`<section id>-1`, `-2`, ...), skipping ids the section already uses. So an element in the preview carries the `data-id` its fields have in `useDndPanel().bindings`. As before, the ids reach the source only with the first edit to the section.
+
 ## 4.2.0
 
 ### Minor Changes
