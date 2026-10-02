@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { describe, test } from 'vitest';
 
 import {
   createSectionPreviewCache,
@@ -47,55 +47,73 @@ export default App;
 
 const SECTION_COUNTS = [5, 20, 50];
 
+// Vitest 5 runs a benchmark inside a test, through the test context's
+// `bench`. Benchmarks that answer the same question go into one
+// `bench.compare()`, which interleaves their iterations so the comparison
+// isn't skewed by whatever else the machine was doing.
 for (const sectionCount of SECTION_COUNTS) {
   const code = buildDocument(sectionCount);
   const firstSectionCode = getSections(parseDocument(code)!)[0]!.code;
 
   describe(`document.ts @ ${sectionCount} sections`, () => {
-    // tinybench's setup/teardown hooks run per measurement *cycle*, not per
-    // call, so they can't reliably force a cache miss on every single
-    // invocation. Appending a per-call counter to the source instead
-    // guarantees a unique cache key every time — a real re-parse each call,
-    // and (as a bonus) a fair stand-in for "the user is typing, so the
-    // source string is different on every edit" in practice.
-    let freshParseCounter = 0;
+    test('parseDocument: fresh parse vs cache hit', async ({ bench }) => {
+      // A benchmark's setup hooks don't run before every single call, so
+      // they can't reliably force a cache miss on each invocation. Appending
+      // a per-call counter to the source instead guarantees a unique cache
+      // key every time — a real re-parse each call, and (as a bonus) a fair
+      // stand-in for "the user is typing, so the source string is different
+      // on every edit" in practice.
+      let freshParseCounter = 0;
 
-    bench('parseDocument (no cache, fresh parse)', () => {
-      parseDocument(`${code}\n// ${freshParseCounter++}`);
+      await bench.compare(
+        bench('parseDocument (no cache, fresh parse)', () => {
+          parseDocument(`${code}\n// ${freshParseCounter++}`);
+        }),
+        bench('parseDocument (cache hit)', () => {
+          parseDocument(code);
+        }),
+      );
     });
 
-    bench('parseDocument (cache hit)', () => {
-      parseDocument(code);
+    test('getSections', async ({ bench }) => {
+      await bench('getSections', () => {
+        getSections(parseDocument(code)!);
+      }).run();
     });
 
-    bench('getSections', () => {
-      getSections(parseDocument(code)!);
-    });
-
-    bench('generateSectionPreview', () => {
-      generateSectionPreview(code, firstSectionCode);
+    test('generateSectionPreview', async ({ bench }) => {
+      await bench('generateSectionPreview', () => {
+        generateSectionPreview(code, firstSectionCode);
+      }).run();
     });
 
     // Before #97, dnd.tsx called generateSectionPreview once per section
     // per render regardless of which one actually changed — this is that
-    // N-calls pattern, compared below against the batched replacement.
-    const allSectionCodes = getSections(parseDocument(code)!).map(s => s.code);
+    // N-calls pattern, compared against the batched replacement.
+    test('section previews: per-section calls vs batched', async ({
+      bench,
+    }) => {
+      const allSectionCodes = getSections(parseDocument(code)!).map(
+        s => s.code,
+      );
 
-    bench(
-      'one generateSectionPreview call per section (pre-#97 pattern)',
-      () => {
-        allSectionCodes.map(sectionCode =>
-          generateSectionPreview(code, sectionCode),
-        );
-      },
-    );
-
-    bench(
-      'generateSectionPreviews (batched, one call for all sections)',
-      () => {
-        generateSectionPreviews(code, allSectionCodes);
-      },
-    );
+      await bench.compare(
+        bench(
+          'one generateSectionPreview call per section (pre-#97 pattern)',
+          () => {
+            allSectionCodes.map(sectionCode =>
+              generateSectionPreview(code, sectionCode),
+            );
+          },
+        ),
+        bench(
+          'generateSectionPreviews (batched, one call for all sections)',
+          () => {
+            generateSectionPreviews(code, allSectionCodes);
+          },
+        ),
+      );
+    });
 
     // #106: documentCache's limit was shrunk from 50 (shared with the
     // compile cache) to 4 (see CONFIG.DOCUMENT_CACHE_LIMIT), since it holds
@@ -105,17 +123,18 @@ for (const sectionCount of SECTION_COUNTS) {
     // the *same* current value within one render, so only the
     // most-recently-edited version ever needs to be resident, not a long
     // tail of every version edited so far.
-    let editCounter = 0;
+    test('simulated edit: extractSections()+generateSections() lookup pattern', async ({
+      bench,
+    }) => {
+      let editCounter = 0;
 
-    bench(
-      'simulated edit: extractSections()+generateSections() lookup pattern',
-      () => {
+      await bench('two parseDocument calls on one edited value', () => {
         const edited = `${code}\n// edit ${editCounter++}`;
 
         parseDocument(edited);
         parseDocument(edited);
-      },
-    );
+      }).run();
+    });
 
     // #131: dnd.tsx recomputed every section's preview on every edit, even
     // though only the one field/section actually touched needs a new
@@ -129,46 +148,54 @@ for (const sectionCount of SECTION_COUNTS) {
     // genuinely misses its cache on every iteration for *both* benches
     // here, same as a real edit. What's being compared is only the N-splice
     // step after that shared, unavoidable parse.
-    const baseSections = getSections(parseDocument(code)!).map(s => ({
-      id: s.id,
-      code: s.code,
-    }));
+    test('one section edited: recompute every preview vs preview cache', async ({
+      bench,
+    }) => {
+      const baseSections = getSections(parseDocument(code)!).map(s => ({
+        id: s.id,
+        code: s.code,
+      }));
+      const cache = createSectionPreviewCache();
 
-    let recomputeEditCounter = 0;
+      cache.compute(code, baseSections); // prime it, like the first render
 
-    bench(
-      'one section edited: generateSectionPreviews (recomputes every section)',
-      () => {
-        const editedCodes = baseSections.map((s, i) =>
-          i === 0
-            ? `${s.code}\n{/* edit ${recomputeEditCounter++} */}`
-            : s.code,
-        );
-        const editedFullCode = replaceDocumentSections(code, editedCodes);
+      let recomputeEditCounter = 0;
+      let cacheEditCounter = 0;
 
-        generateSectionPreviews(editedFullCode, editedCodes);
-      },
-    );
+      await bench.compare(
+        bench(
+          'one section edited: generateSectionPreviews (recomputes every section)',
+          () => {
+            const editedCodes = baseSections.map((s, i) =>
+              i === 0
+                ? `${s.code}\n{/* edit ${recomputeEditCounter++} */}`
+                : s.code,
+            );
+            const editedFullCode = replaceDocumentSections(code, editedCodes);
 
-    const cache = createSectionPreviewCache();
-    cache.compute(code, baseSections); // prime it, like the first render
-    let cacheEditCounter = 0;
+            generateSectionPreviews(editedFullCode, editedCodes);
+          },
+        ),
+        bench(
+          'one section edited: createSectionPreviewCache (reuses the rest)',
+          () => {
+            const editedSections = baseSections.map((s, i) =>
+              i === 0
+                ? {
+                    ...s,
+                    code: `${s.code}\n{/* edit ${cacheEditCounter++} */}`,
+                  }
+                : s,
+            );
+            const editedFullCode = replaceDocumentSections(
+              code,
+              editedSections.map(s => s.code),
+            );
 
-    bench(
-      'one section edited: createSectionPreviewCache (reuses the rest)',
-      () => {
-        const editedSections = baseSections.map((s, i) =>
-          i === 0
-            ? { ...s, code: `${s.code}\n{/* edit ${cacheEditCounter++} */}` }
-            : s,
-        );
-        const editedFullCode = replaceDocumentSections(
-          code,
-          editedSections.map(s => s.code),
-        );
-
-        cache.compute(editedFullCode, editedSections);
-      },
-    );
+            cache.compute(editedFullCode, editedSections);
+          },
+        ),
+      );
+    });
   });
 }
