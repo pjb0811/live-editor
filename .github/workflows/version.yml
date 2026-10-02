@@ -39,7 +39,7 @@ jobs:
       # whatever version ends up in package.json once this PR is reviewed
       # and merged.
       - name: Open/update Version Packages PR
-        uses: changesets/action@v1
+        uses: changesets/action@v2.1.2
         with:
           version: pnpm exec changeset version
           # No emoji prefix — the PR template asks for conventional-commit
