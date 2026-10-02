@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Asia/Seoul",
+  "schedule": ["before 9am on monday"],
+  "minimumReleaseAge": "1 day",
+  "major": {
+    "dependencyDashboardApproval": true
+  },
+  "packageRules": [
+    {
+      "description": "pnpm itself, pinned by packageManager in package.json and website/package.json: one PR that bumps both.",
+      "matchDepTypes": ["packageManager"],
+      "matchPackageNames": ["pnpm"],
+      "groupName": "pnpm"
+    },
+    {
+      "description": "engines states what consumers of the published package need, not the toolchain this repo uses, so it's changed by hand.",
+      "matchDepTypes": ["engines"],
+      "enabled": false
+    },
+    {
+      "description": "The sibling libraries ship together often enough that one PR for both is easier to review.",
+      "matchPackageNames": ["@jbpark/**"],
+      "groupName": "@jbpark packages"
+    }
+  ]
+}
