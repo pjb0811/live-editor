@@ -34,4 +34,4 @@ overrides:
   # pnpm can leave older @tiptap/* packages hoisted instead, which breaks
   # module resolution for the mismatched instance in some bundler
   # environments (reproduced on Vercel's docusaurus/webpack build).
-  '@tiptap/*': 3.31.3
+  '@tiptap/*': ^3.31.3

@@ -8,6 +8,9 @@
   "major": {
     "dependencyDashboardApproval": true
   },
+  "lockFileMaintenance": {
+    "enabled": true
+  },
   "ignoreDeps": ["@tiptap/*"],
   "packageRules": [
     {

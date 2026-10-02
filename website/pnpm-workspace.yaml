@@ -1,5 +1,5 @@
 overrides:
-  '@tiptap/*': 3.31.3
+  '@tiptap/*': ^3.31.3
 
 # Dependencies allowed to run install scripts (pnpm 11+ replaced
 # onlyBuiltDependencies with this map).
