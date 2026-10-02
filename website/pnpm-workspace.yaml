@@ -1,6 +1,8 @@
 overrides:
   '@tiptap/*': 3.31.3
 
-onlyBuiltDependencies:
-  - '@swc/core'
-  - core-js
+# Dependencies allowed to run install scripts (pnpm 11+ replaced
+# onlyBuiltDependencies with this map).
+allowBuilds:
+  '@swc/core': true
+  core-js: true

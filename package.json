@@ -41,7 +41,7 @@
     "node": ">=20",
     "pnpm": ">=10"
   },
-  "packageManager": "pnpm@10.29.3",
+  "packageManager": "pnpm@12.8.1",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
