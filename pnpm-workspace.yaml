@@ -13,6 +13,13 @@ shamefullyHoist: true
 strictPeerDependencies: false
 autoInstallPeers: true
 
+# Dependencies allowed to run install scripts. pnpm 11+ fails an install on
+# any script it hasn't been told about. esbuild's only checks its platform
+# binary, which the optional @esbuild/* package already provides; it never ran
+# under pnpm 10 either (#482).
+allowBuilds:
+  esbuild: false
+
 overrides:
   '@codemirror/state': ^6.7.1
   # @tiptap/extension-text-style (pulled in by @jbpark/ui-kit's RichTextEditor)

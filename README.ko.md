@@ -140,18 +140,13 @@ export default function Example() {
 
 ### pnpm 설정 (권장)
 
-본 프로젝트는 **pnpm@10**을 [Corepack](https://nodejs.org/api/corepack.html)으로 관리합니다. Corepack을 활성화하고 지정된 버전을 적용하세요:
+pnpm 버전은 `package.json`(그리고 `website/package.json`)의 `packageManager` 필드에 고정되어 있습니다. [Corepack](https://nodejs.org/api/corepack.html)을 활성화하면 저장소에서 `pnpm`을 실행할 때 그 버전을 그대로 쓰고, 처음 실행할 때 내려받습니다:
 
 ```bash
 corepack enable
-corepack prepare pnpm@10.29.3 --activate
 ```
 
-또는 수동으로 설치:
-
-```bash
-npm install -g pnpm@10
-```
+직접 설치하려면 `packageManager`에 적힌 버전으로 설치하세요(`npm install -g pnpm@<버전>`). pnpm 11 이상은 Node.js 22 이상이 필요합니다.
 
 ### 설치
 

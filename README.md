@@ -140,18 +140,13 @@ can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — s
 
 ### pnpm Setup (Recommended)
 
-This project uses **pnpm@10** with [Corepack](https://nodejs.org/api/corepack.html) for reproducibility. Enable Corepack and activate the specified pnpm version:
+The pnpm version is pinned by the `packageManager` field in `package.json` (and in `website/package.json`). With [Corepack](https://nodejs.org/api/corepack.html) enabled, running `pnpm` in the repo uses exactly that version, downloading it on first use:
 
 ```bash
 corepack enable
-corepack prepare pnpm@10.29.3 --activate
 ```
 
-Or, if you prefer a manual install:
-
-```bash
-npm install -g pnpm@10
-```
+Or install the pinned version yourself (`npm install -g pnpm@<version>`, with the version from `packageManager`). pnpm 11 and later need Node.js 22 or newer.
 
 ### Install
 

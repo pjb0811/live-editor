@@ -141,7 +141,7 @@ TypeScript와 Vite/Vitest 설정에 같은 별칭을 사용합니다.
 
 ## ⚙️ 개발 명령어
 
-개발·빌드는 CI와 같은 Node 24 계열(24.11 이상)과 `pnpm@10.29.3`을 사용합니다. 루트와 `website/`는 각각 잠금 파일 기준으로 설치합니다.
+개발·빌드는 CI와 같은 Node 24 계열(24.11 이상)과 `package.json`의 `packageManager`에 고정된 pnpm 버전을 사용합니다(Corepack을 켜면 자동으로 그 버전이 쓰입니다). 루트와 `website/`는 각각 잠금 파일 기준으로 설치합니다.
 
 ```bash
 pnpm install --frozen-lockfile
