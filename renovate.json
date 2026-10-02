@@ -8,6 +8,10 @@
   "major": {
     "dependencyDashboardApproval": true
   },
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "ignoreDeps": ["@tiptap/*"],
   "packageRules": [
     {
       "description": "pnpm itself, pinned by packageManager in package.json and website/package.json: one PR that bumps both.",
