@@ -796,8 +796,20 @@ const StackedLayout = ({
 // The Layout toggle is the outer layer. "Built-in" keeps the shipped 3-pane
 // Splitter and mobile chrome and only fills its `palette`/`panel` slots;
 // "Stacked" replaces the arrangement itself (see `StackedLayout`).
-const CustomPalettePanelDemo = () => {
-  const [value, setValue] = useState(DEFAULT_TEMPLATE);
+//
+// `value`/`onChange` are optional: the docs embed keeps the document to
+// itself, while the dev app's page passes its own so it can show the same
+// document as code.
+const CustomPalettePanelDemo = ({
+  value: controlledValue,
+  onChange,
+}: {
+  value?: string;
+  onChange?: (value: string) => void;
+}) => {
+  const [ownValue, setOwnValue] = useState(DEFAULT_TEMPLATE);
+  const value = controlledValue ?? ownValue;
+  const setValue = onChange ?? setOwnValue;
   const [mode, setMode] = useState<PanelMode>('custom');
   const [layout, setLayout] = useState<LayoutMode>('built-in');
 

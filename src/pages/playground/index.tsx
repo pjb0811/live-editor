@@ -1,31 +1,25 @@
 import { useState } from 'react';
 
-import { Button, Radio, Space, Splitter, Toast } from '@jbpark/ui-kit';
+import { Button, Space, Toast } from '@jbpark/ui-kit';
 import {
   useDebounce,
   useHistoryState,
   useKeyPress,
   useLocalStorage,
-  useResponsiveSize,
 } from '@jbpark/use-hooks';
 import { Redo2, Save, Undo2 } from 'lucide-react';
 
 import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS, STORAGE_KEY } from '~/constants';
 import Live from '~/index';
 
+import { EditorView, ModeSwitch, type ViewMode } from '../shared/editor-view';
 import { IFRAME_FRAME } from '../shared/frames';
 import { SECTION_ROOT_EXAMPLE } from '../shared/section-root-example';
-import { useEditorTheme } from '../shared/theme';
 import DiffModal from './diff-modal';
 
 // The default palette plus a Banner whose own `<section>` carries a
 // `data-binding`, to try section-root bindings (#429) by hand.
 const PALETTE = [...DRAGGABLE_ITEMS, SECTION_ROOT_EXAMPLE];
-
-const options = [
-  { label: 'Drag & Drop', value: 'dnd' },
-  { label: 'Editor', value: 'editor' },
-];
 
 // The whole editing loop on one document: the code editor and the Dnd
 // canvas edit the same value, with undo/redo across both and a reviewed save
@@ -45,13 +39,9 @@ const Playground = () => {
     canUndo,
     canRedo,
   } = useHistoryState(value);
-  const [type, setType] = useState<'dnd' | 'editor'>('dnd');
+  const [type, setType] = useState<ViewMode>('dnd');
   const [diffModalOpen, setDiffModalOpen] = useState(false);
   const hasUnsavedChanges = value !== savedValue;
-
-  const editorTheme = useEditorTheme();
-  const { breakpoint } = useResponsiveSize();
-  const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
 
   // Commit to undo/redo history only after edits settle, so rapid typing in
   // the raw editor doesn't create a history entry per keystroke.
@@ -86,14 +76,7 @@ const Playground = () => {
     <div className="flex h-full flex-col">
       <div className="flex justify-end border-b border-gray-200 px-2 py-1.5">
         <Space>
-          <Radio.Group
-            size="small"
-            value={type}
-            options={options}
-            optionType="button"
-            buttonStyle="solid"
-            onChange={value => setType(value as 'dnd' | 'editor')}
-          />
+          <ModeSwitch value={type} onChange={setType} />
           <Button
             size="small"
             aria-label="Undo"
@@ -121,28 +104,7 @@ const Playground = () => {
       <div className="min-h-0 flex-1 p-2">
         <Live>
           {type === 'editor' ? (
-            <Splitter
-              withHandle
-              orientation={isMobile ? 'vertical' : 'horizontal'}
-            >
-              <Splitter.Panel
-                defaultSize="50%"
-                minSize="20%"
-                maxSize="80%"
-                collapsible
-              >
-                <div className="h-full overflow-auto p-2">
-                  <Live.Preview showError frame={IFRAME_FRAME} />
-                </div>
-              </Splitter.Panel>
-              <Splitter.Panel collapsible>
-                <Live.Editor
-                  value={value}
-                  theme={editorTheme}
-                  onChange={setValue}
-                />
-              </Splitter.Panel>
-            </Splitter>
+            <EditorView value={value} onChange={setValue} />
           ) : (
             <Live.Dnd
               frame={IFRAME_FRAME}
