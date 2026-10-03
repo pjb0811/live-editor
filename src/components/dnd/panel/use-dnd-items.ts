@@ -5,6 +5,7 @@ import type { useMultiSelect } from '@jbpark/use-hooks';
 import { nanoid } from 'nanoid';
 
 import {
+  type BindingRegistry,
   type BindingRenderMap,
   type DataAttrNode,
   appendArrayItem,
@@ -204,8 +205,11 @@ interface ItemIdentityState {
 // Pulls the data-bound elements out of one JSX-valued property. A container
 // declaring `children` wins outright: it owns the elements below it, so
 // listing them separately would offer the same edit twice.
-const bindingsInJSX = (source: string): DataAttrNode[] => {
-  const nodes = extract(source);
+const bindingsInJSX = (
+  source: string,
+  registry: BindingRegistry | undefined,
+): DataAttrNode[] => {
+  const nodes = extract(source, { bindings: registry });
   const container = nodes.find(n =>
     n.bindings?.some(b => b.property === 'children'),
   );
@@ -234,7 +238,7 @@ const bindingsInJSX = (source: string): DataAttrNode[] => {
 // The parse. Split from the binding construction below so the Babel work is
 // memoized on the source string alone, while the callbacks the bindings
 // close over stay current on every render.
-const parseSource = (value: string) => {
+const parseSource = (value: string, registry?: BindingRegistry) => {
   const ast = parseArrayExpression(value);
 
   if (!ast) {
@@ -279,6 +283,7 @@ const parseSource = (value: string) => {
       try {
         const found = bindingsInJSX(
           value.slice(prop.value.start!, prop.value.end!),
+          registry,
         );
 
         if (found.length > 0) {
@@ -401,16 +406,15 @@ export const useDndItems = (
   value: string,
   { render, onChange, onNodeChange }: DndItemsOptions = {},
 ): DndItems => {
+  const { reportError, bindings: registry } = useDndEditOptions();
   const { objectItems, primitiveItems, parseError } = useMemo(
-    () => parseSource(value),
-    [value],
+    () => parseSource(value, registry),
+    [value, registry],
   );
   const canEditStructure = useMemo(
     () => canStructurallyEditArray(value),
     [value],
   );
-
-  const { reportError } = useDndEditOptions();
 
   // Read through a ref so the effect below fires once per parse failure, not
   // again on every render a host passes a fresh inline `onEditError`.

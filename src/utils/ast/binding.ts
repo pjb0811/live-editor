@@ -7,6 +7,7 @@ import {
   BINDING_TYPES,
   type BindingItem,
   type BindingOption,
+  type BindingRegistry,
   type BindingRenderLeaf,
   type BindingRenderMap,
   type BindingType,
@@ -178,6 +179,41 @@ const buildBindingItems = (raw: unknown): BindingItem[] => {
   });
 };
 
+// A registry entry goes through the same validation as an inline
+// `data-binding`, so both give a tag the same fields. Kept per registry
+// object, which a host is expected to define once rather than per render.
+const registryEntries = new WeakMap<
+  BindingRegistry,
+  Map<string, BindingItem[]>
+>();
+
+// The bindings `registry` gives an element of `tagName`, or `undefined` when
+// it has no entry for that tag.
+export const getRegistryBindings = (
+  registry: BindingRegistry | undefined,
+  tagName: string,
+): BindingItem[] | undefined => {
+  if (!registry || !Object.hasOwn(registry, tagName)) {
+    return undefined;
+  }
+
+  let entries = registryEntries.get(registry);
+
+  if (!entries) {
+    entries = new Map();
+    registryEntries.set(registry, entries);
+  }
+
+  let bindings = entries.get(tagName);
+
+  if (!bindings) {
+    bindings = buildBindingItems(registry[tagName]);
+    entries.set(tagName, bindings);
+  }
+
+  return bindings;
+};
+
 export const parseBinding = (bindingValue: string | null): BindingItem[] => {
   if (!bindingValue) {
     return [];
@@ -316,19 +352,23 @@ export const getStructuredValue = (
   }
 };
 
-const hasEditableBindings = (node: DataAttrNode): boolean => {
+// `extract()` fills `bindings` from the element's own `data-binding` or, when
+// it has none, from the registry it was given (#509). A node built some
+// other way may only have the attribute.
+export const readNodeBindings = (node: DataAttrNode): BindingItem[] => {
+  if (node.bindings) {
+    return node.bindings;
+  }
+
   const bindingAttr = node.dataAttributes.find(
     attr => attr.name === DATA_ATTR.BINDING,
   );
 
-  if (!bindingAttr?.value) {
-    return false;
-  }
-
-  const bindings = node.bindings || parseBinding(bindingAttr.value);
-
-  return bindings.length > 0;
+  return bindingAttr?.value ? parseBinding(bindingAttr.value) : [];
 };
+
+const hasEditableBindings = (node: DataAttrNode): boolean =>
+  readNodeBindings(node).length > 0;
 
 export const findEditableChildren = (node: DataAttrNode): DataAttrNode[] => {
   const editableChildren: DataAttrNode[] = [];

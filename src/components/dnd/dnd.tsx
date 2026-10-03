@@ -34,6 +34,7 @@ import { useResponsiveSize } from '@jbpark/use-hooks';
 import { DATA_ATTR, DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
 import {
+  type BindingRegistry,
   type DataAttrNode,
   type DocumentProblem,
   extract,
@@ -318,6 +319,12 @@ export interface Props extends Omit<
   // the default template, which uses `app-container`, so pass a `value`
   // when you change this.
   containerId?: string;
+  // Bindings for every element of a tag, keyed by the tag name as written
+  // (`ui.Button`, `h3`), so the markup only needs a `data-id`. An element's
+  // own `data-binding`, even `data-binding={[]}`, takes precedence. Define
+  // it once outside render: a new object each render re-reads every
+  // section (#509).
+  bindings?: BindingRegistry;
   // Called when an element is picked in the canvas preview with the element
   // picker (`useDndInspector()`, or the canvas's picker button). Receives the
   // element's `data-id`, the key its fields carry in `useDndPanel()`, and its
@@ -374,6 +381,7 @@ const Dnd = ({
   onBeforeDelete,
   sectionNameFallback,
   containerId,
+  bindings: bindingRegistry,
   onNodePick,
   children,
   ...restProps
@@ -757,7 +765,7 @@ const Dnd = ({
       // `data-binding` is editable like any other element, and one without
       // resolves to no bindings below. It used to be dropped here, so a
       // binding written on the section itself was silently ignored (#429).
-      const allNodes = extract(updated);
+      const allNodes = extract(updated, { bindings: bindingRegistry });
 
       return {
         fields: allNodes,
@@ -772,7 +780,7 @@ const Dnd = ({
         parseError: { error: e },
       };
     }
-  }, [selectedCode, selectedSectionId]);
+  }, [selectedCode, selectedSectionId, bindingRegistry]);
 
   // Keyed on the missing id alone, so it fires when a document reaches this
   // state and not again for every edit that leaves it there.
@@ -834,6 +842,7 @@ const Dnd = ({
         property,
         value: changeValue,
       })),
+      { bindings: bindingRegistry },
     );
 
     if (!result.success) {
@@ -1059,7 +1068,9 @@ const Dnd = ({
           {/* Not memoized: `palette`, `panel` and `canvas` are all rebuilt
               each render anyway, so a memo would only add a dependency list
               to keep in sync. */}
-          <DndEditOptionsContext.Provider value={{ renderField, reportError }}>
+          <DndEditOptionsContext.Provider
+            value={{ renderField, reportError, bindings: bindingRegistry }}
+          >
             <DndRegionContext.Provider
               value={{
                 palette,

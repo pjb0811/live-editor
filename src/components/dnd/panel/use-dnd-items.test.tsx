@@ -3,8 +3,9 @@ import { Toast } from '@jbpark/ui-kit';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { DataAttrNode } from '~/utils/ast';
+import type { BindingRegistry, DataAttrNode } from '~/utils/ast';
 
+import { DndEditOptionsContext } from '../edit-options';
 import { type DndItemsItem, useDndItems } from './use-dnd-items';
 
 const objects = `[
@@ -98,6 +99,28 @@ describe('useDndItems derivation', () => {
     const elements = groups[0]!.elements;
     expect(elements.map(e => e.id)).toEqual(['wrap']);
     expect(elements[0]!.bindings.map(b => b.label)).toEqual(['Cards']);
+  });
+
+  // `Live.Dnd`'s `bindings` reach the hook through its edit options (#509).
+  it("finds nested elements bound by Live.Dnd's binding registry", () => {
+    const registry: BindingRegistry = {
+      p: [{ label: 'Text', property: 'innerText' }],
+    };
+    const unbound = `[{ key: 'row', children: <div><p data-id="t1">Open</p></div> }]`;
+    const { result } = renderHook(() => useDndItems(unbound), {
+      wrapper: ({ children }) => (
+        <DndEditOptionsContext.Provider
+          value={{ reportError: vi.fn(), bindings: registry }}
+        >
+          {children}
+        </DndEditOptionsContext.Provider>
+      ),
+    });
+
+    const elements = result.current.items[0]!.nested[0]!.elements;
+
+    expect(elements.map(e => e.id)).toEqual(['t1']);
+    expect(elements[0]!.bindings.map(b => b.label)).toEqual(['Text']);
   });
 
   it('commits a nested binding through onNodeChange, keyed by data-id', () => {
