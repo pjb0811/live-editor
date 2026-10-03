@@ -118,7 +118,11 @@ export { useDndItems };
 // reads a node into bindings without a commit; `withPanelCommit` attaches
 // `onNodeChange`. Together they produce `PanelBinding`s ready for `Field`.
 export { resolvePanelBindings, withPanelCommit } from './panel-binding';
-export type { PanelBindingData, PanelBindingSource } from './panel-binding';
+export type {
+  PanelBindingData,
+  PanelBindingElement,
+  PanelBindingSource,
+} from './panel-binding';
 // The rule `Field` uses to pick its built-in control, so a custom panel that
 // routes some bindings to `Field` or a hook (most often the structural
 // `items`/`children` ones) asks the library instead of copying the checks.

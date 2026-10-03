@@ -97,11 +97,22 @@ export interface PanelBinding {
   // attribute and `onChange(value)` adds one back, so this is what a panel
   // reads to draw an on/off control. `prop=""` counts as present (#426).
   present?: boolean;
+  // The element the binding belongs to, for telling apart bindings that share
+  // a label (#514): its tag name as written, and its own text, trimmed (`''`
+  // when it has none). The built-in panel heads each element's fields with
+  // these. Absent for a binding that isn't an element's, such as an array
+  // item's property.
+  element?: PanelBindingElement;
   // Commit a new value through the same AST-update pipeline the built-in
   // panel uses (including the error Toast on a bad edit). Pass the value as
   // its real type; it's serialized once, at the AST boundary, where the
   // declared `type` is known — so no string quoting/guessing on your side.
   onChange: (value: unknown) => void;
+}
+
+export interface PanelBindingElement {
+  tagName: string;
+  text: string;
 }
 
 // A `PanelBinding` before a commit callback is attached. The split is the
@@ -222,6 +233,10 @@ const toPanelBindingData = (
   rawValue: getCurrentValue(node, binding.property),
   ...(!canEditBindingValue(node, binding) && { canEditValue: false }),
   ...(isAttributeAbsent(node, binding) && { present: false }),
+  element: {
+    tagName: node.tagName || 'element',
+    text: node.textContent.replace(/\s+/g, ' ').trim(),
+  },
 });
 
 // Read one extracted element's `data-id` and bindings into panel bindings.

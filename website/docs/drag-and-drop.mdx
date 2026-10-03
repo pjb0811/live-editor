@@ -141,6 +141,7 @@ A custom layout or panel drives the picker with `useDndInspector()`:
 | `active` | `boolean` | Whether the picker is on. |
 | `activate` / `deactivate` / `toggle` | `() => void` | Turns it on or off. |
 | `picked` | `{ id: string; sectionId: string } \| null` | The last element picked, until another section is selected. A custom panel can use it to show that element's fields. |
+| `highlight` | `(id: string \| null) => void` | Outlines the element with this `data-id` in the selected section's preview, the way the picker outlines the element under the pointer. `null` removes the outline. Call it when a field is hovered or focused so it shows which element it edits. |
 
 ```tsx
 import { useDndInspector, useDndPanel } from '@jbpark/live-editor/dnd';
@@ -162,6 +163,13 @@ const MyPanel = () => {
   );
 };
 ```
+
+The other direction works too. In the built-in panel, hovering over or
+focusing a field outlines the element it edits on the canvas. When a section
+has more than one editable element, the panel heads each element's fields
+with its tag name and text, such as `ui.Typography.Title` and "Fast setup",
+so fields that share a label can be told apart. A custom panel gets the same
+information from each binding's `element` and calls `highlight` itself.
 
 What can be picked:
 

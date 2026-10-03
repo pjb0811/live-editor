@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { pickElement, viewportRect } from './inspector';
+import { findElementById, pickElement, viewportRect } from './inspector';
 
 // jsdom has no layout, so each test says what's under the point.
 const stackAt = (root: Document | ShadowRoot, elements: Element[]) => {
@@ -135,5 +135,45 @@ describe('viewportRect', () => {
     expect([rect.left, rect.top, rect.width, rect.height]).toEqual([
       110, 70, 30, 40,
     ]);
+  });
+});
+
+// The other direction from picking: from a panel field's `data-id` to the
+// element it edits, in each frame mode (#514).
+describe('findElementById', () => {
+  it('finds an element rendered in place', () => {
+    const { section, content } = createSection('<p data-id="s-1">x</p>');
+
+    expect(findElementById(section, 's-1')).toBe(content.querySelector('p'));
+    expect(findElementById(section, 'nope')).toBeNull();
+  });
+
+  it('looks inside a shadow root', () => {
+    const { section, content } = createSection('');
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+
+    shadow.innerHTML = '<h2 data-id="s-2">Title</h2>';
+    content.append(host);
+
+    expect(findElementById(section, 's-2')).toBe(shadow.querySelector('h2'));
+  });
+
+  it("looks inside an iframe's document", () => {
+    const { section, content } = createSection('');
+    const frame = document.createElement('iframe');
+
+    content.append(frame);
+    frame.contentDocument!.body.innerHTML = '<a data-id="s-3">Go</a>';
+
+    expect(findElementById(section, 's-3')).toBe(
+      frame.contentDocument!.querySelector('a'),
+    );
+  });
+
+  it('escapes the id', () => {
+    const { section, content } = createSection("<p data-id='a\"b'>x</p>");
+
+    expect(findElementById(section, 'a"b')).toBe(content.querySelector('p'));
   });
 });

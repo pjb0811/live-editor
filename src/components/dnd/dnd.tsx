@@ -61,6 +61,7 @@ import {
   type DndInspector,
   DndInspectorContext,
   type DndNodePick,
+  findElementById,
   pickElement,
   viewportRect,
 } from './inspector';
@@ -562,6 +563,10 @@ const Dnd = ({
   const [inspecting, setInspecting] = useState(false);
   const [picked, setPicked] = useState<DndNodePick | null>(null);
   const [highlight, setHighlight] = useState<DOMRect | null>(null);
+  // The element a panel field points at (`inspector.highlight`), and its box
+  // in the viewport while it's on screen (#514).
+  const [fieldTarget, setFieldTarget] = useState<string | null>(null);
+  const [fieldRect, setFieldRect] = useState<DOMRect | null>(null);
 
   if (picked && picked.sectionId !== selectedId) {
     setPicked(null);
@@ -594,6 +599,7 @@ const Dnd = ({
     deactivate: stopInspecting,
     toggle: () => (inspecting ? stopInspecting() : setInspecting(true)),
     picked,
+    highlight: setFieldTarget,
   };
 
   const onInspectMove = (
@@ -730,6 +736,37 @@ const Dnd = ({
       focusSection(id);
     }
   };
+
+  // Follows the element a panel field points at, through canvas scrolls and
+  // resizes, since the outline is drawn in fixed viewport coordinates.
+  useEffect(() => {
+    const section = selectedId === null ? null : sectionNodes.get(selectedId);
+
+    if (!fieldTarget || !section) {
+      return;
+    }
+
+    let frame = 0;
+
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const element = findElementById(section, fieldTarget);
+
+        setFieldRect(element ? viewportRect(element) : null);
+      });
+    };
+
+    measure();
+    window.addEventListener('scroll', measure, true);
+    window.addEventListener('resize', measure);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener('resize', measure);
+    };
+  }, [fieldTarget, selectedId, sectionNodes]);
 
   // Keeps the selected section on screen when it moves out of view without
   // the keyboard taking it there: a move from the panel, or a copy that lands
@@ -1115,7 +1152,9 @@ const Dnd = ({
                 {Children.toArray(children).length ? children : <Layout />}
               </DndInspectorContext.Provider>
             </DndRegionContext.Provider>
-            <InspectorHighlight rect={inspecting ? highlight : null} />
+            <InspectorHighlight
+              rect={inspecting ? highlight : fieldTarget ? fieldRect : null}
+            />
           </DndEditOptionsContext.Provider>
         </div>
         <DragOverlay>
