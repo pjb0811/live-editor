@@ -1373,14 +1373,15 @@ describe('keyboard navigation', () => {
 // `data-binding` (#509).
 describe('binding registry', () => {
   const registry = {
-    h2: [{ label: 'Heading', property: 'innerText' }],
+    'ui.Typography.Title': [{ label: 'Heading', property: 'innerText' }],
   };
 
   const section = documentWith(`
     <section data-id="s1" data-name="First">
-      <h2 data-id="t1">Registered</h2>
-      <h2 data-id="t2" data-binding={[{ label: 'Own', property: 'title' }]} title="x">Own</h2>
-      <h2 data-id="t3" data-binding={[]}>Opted out</h2>
+      <ui.Typography.Title data-id="t1">Registered</ui.Typography.Title>
+      <ui.Typography.Title data-id="t2" data-binding={[{ label: 'Own', property: 'title' }]} title="x">Own</ui.Typography.Title>
+      <ui.Typography.Title data-id="t3" data-binding={[]}>Opted out</ui.Typography.Title>
+      <h2 data-id="t4">Plain heading</h2>
     </section>`);
 
   const renderRegistry = () => {
@@ -1411,7 +1412,7 @@ describe('binding registry', () => {
     return { onChange, getPanel: () => panel! };
   };
 
-  it("gives elements without data-binding their tag's fields", () => {
+  it("gives components without data-binding their entry's fields", () => {
     const { getPanel } = renderRegistry();
 
     expect(
@@ -1428,7 +1429,7 @@ describe('binding registry', () => {
     act(() => getPanel().bindings[0]!.onChange('Renamed'));
 
     expect(onChange.mock.calls.at(-1)![0]).toContain(
-      '<h2 data-id="t1">Renamed</h2>',
+      '<ui.Typography.Title data-id="t1">Renamed</ui.Typography.Title>',
     );
   });
 });

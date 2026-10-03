@@ -148,12 +148,12 @@ section are editable, and what they're called, is up to you. Because the
 binding is part of the section's source, it's copied and moved along with the
 section, and each copy stays editable.
 
-## Binding every element of a tag
+## Binding every element of a component
 
-Repeating the same `data-binding` on every button or heading gets long, and
-the array stays in the code the editor produces. Pass `bindings` to `Live.Dnd`
-instead: a map from a tag name to the entries every element of that tag gets.
-The markup then only needs a `data-id`.
+Repeating the same `data-binding` on every button or title gets long, and the
+array stays in the code the editor produces. Pass `bindings` to `Live.Dnd`
+instead: a map from a component's tag name to the entries every element of
+that component gets. The markup then only needs a `data-id`.
 
 ```tsx
 import type { BindingRegistry } from '@jbpark/live-editor/utils/ast';
@@ -171,7 +171,9 @@ const bindings = {
       ],
     },
   ],
-  h2: [{ label: 'Heading', property: 'innerText', required: true }],
+  'ui.Typography.Title': [
+    { label: 'Heading', property: 'innerText', required: true },
+  ],
 } satisfies BindingRegistry;
 
 <Live.Dnd value={code} onChange={setCode} bindings={bindings} />;
@@ -179,24 +181,32 @@ const bindings = {
 
 ```tsx
 <section data-name="Intro">
-  <h2 data-id="">Welcome</h2>
+  <ui.Typography.Title data-id="" level={2}>
+    Welcome
+  </ui.Typography.Title>
   <ui.Button data-id="" size="small">
     Get Started
   </ui.Button>
 </section>
 ```
 
-- **Tag names are matched as written.** `<ui.Button>` matches `'ui.Button'`.
-  The same component imported as `import { Button } from ...` is `<Button>`
-  and needs a `'Button'` entry.
+- **Components only.** A key is a component's name: a member path
+  (`ui.Button`) or a name that doesn't start with a lowercase letter
+  (`Button`). HTML elements such as `p` or `h2` can't be keys, since an entry
+  for one would make every paragraph or heading in every section editable.
+  `satisfies BindingRegistry` rejects those keys, and `Live.Dnd` ignores them
+  at runtime with a console warning. Bind an HTML element with its own
+  `data-binding`.
+- **Names are matched as written.** `<ui.Button>` matches `'ui.Button'`. The
+  same component imported as `import { Button } from ...` is `<Button>` and
+  needs a `'Button'` entry.
 - **An element's own `data-binding` wins**, whole: its entries replace the
   registry's for that element instead of being merged with them. Use it for the
   one element that should be edited differently. `data-binding={[]}` makes an
   element not editable at all.
 - **Every element still needs a `data-id`**, as with an inline binding.
 - Entries take everything an inline entry does, and are validated the same
-  way. Since the registry is a plain object in your code, `satisfies
-BindingRegistry` type-checks it.
+  way.
 - It applies everywhere bindings are read: the built-in panel, `useDndPanel()`,
   `Live.Dnd.Field`, and the elements found inside `items` and `children`
   values. The AST helpers take it as an option too:
