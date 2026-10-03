@@ -119,6 +119,17 @@ export interface BindingItem extends BindingFieldSpec {
   property: string;
 }
 
+// Bindings for every element of a tag, keyed by the tag name as written in
+// the source (`ui.Button`, `Button`, `h3`), so markup doesn't have to repeat
+// the same `data-binding` on each one (#509). An element's own
+// `data-binding`, even an empty one, takes precedence over its tag's entry.
+// Matched elements still need a `data-id` to be edited.
+export type BindingRegistry = Record<string, BindingItem[]>;
+
+export interface BindingRegistryOptions {
+  bindings?: BindingRegistry;
+}
+
 export type NodeValueType =
   'boolean' | 'number' | 'string' | 'null' | 'array' | 'object' | 'unknown';
 

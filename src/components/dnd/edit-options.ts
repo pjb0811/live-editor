@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react';
 
 import { Toast } from '@jbpark/ui-kit';
 
-import type { UpdateFailure } from '~/utils/ast';
+import type { BindingRegistry, UpdateFailure } from '~/utils/ast';
 
 import type { FieldProps } from './panel/field';
 
@@ -76,6 +76,9 @@ export type DndRenderField = (
 interface DndEditOptions {
   renderField?: DndRenderField;
   reportError: (error: DndEditError) => void;
+  // `Live.Dnd`'s `bindings`, for the editors that read elements out of a
+  // value of their own, such as `useDndItems` (#509).
+  bindings?: BindingRegistry;
 }
 
 export const toastEditError = (error: DndEditError) => {

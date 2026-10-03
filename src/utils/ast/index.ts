@@ -3,6 +3,8 @@ export type {
   BindingItem,
   BindingOption,
   BindingRenderLeaf,
+  BindingRegistry,
+  BindingRegistryOptions,
   BindingRenderMap,
   BindingType,
   BindingWidget,
@@ -15,6 +17,8 @@ export type {
 export {
   findEditableChildren,
   getCurrentValue,
+  getRegistryBindings,
+  readNodeBindings,
   getStructuredValue,
   parseBinding,
   parseBindingExpression,

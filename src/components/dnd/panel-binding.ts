@@ -10,7 +10,7 @@ import {
   canLosslesslyEvaluateSource,
   getCurrentValue,
   getStructuredValue,
-  parseBinding,
+  readNodeBindings,
 } from '~/utils/ast';
 
 // The node-level commit callback's shape, named because it's part of the
@@ -224,25 +224,25 @@ const toPanelBindingData = (
   ...(isAttributeAbsent(node, binding) && { present: false }),
 });
 
-// Read one extracted element's `data-id`/`data-binding` into panel bindings.
-// Returns `null` for anything not editable — a node missing either
-// attribute, or one whose `data-binding` parses to nothing — so callers keep
-// a single "skip this node" branch instead of re-deriving the rule.
+// Read one extracted element's `data-id` and bindings into panel bindings.
+// Returns `null` for anything not editable — a node without a `data-id`, or
+// one with no bindings — so callers keep a single "skip this node" branch
+// instead of re-deriving the rule.
 //
-// Reuses `node.bindings` when `extract()` already parsed the attribute and
-// only falls back to `parseBinding` otherwise, which is what keeps this
-// cheap enough to run on every node of a section.
+// The bindings are the ones `extract()` already read into `node.bindings`:
+// the element's own `data-binding`, or its tag's registry entry (#509). Only
+// a node built some other way falls back to parsing the attribute, which is
+// what keeps this cheap enough to run on every node of a section.
 export const resolvePanelBindings = (
   node: DataAttrNode,
 ): PanelBindingSource | null => {
   const id = readAttribute(node, 'data-id');
-  const bindingAttr = readAttribute(node, 'data-binding');
 
-  if (!id || !bindingAttr) {
+  if (!id) {
     return null;
   }
 
-  const parsed = node.bindings ?? parseBinding(bindingAttr);
+  const parsed = readNodeBindings(node);
 
   if (!parsed.length) {
     return null;
