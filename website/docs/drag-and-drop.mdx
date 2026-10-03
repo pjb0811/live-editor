@@ -65,6 +65,17 @@ The embedded demo above runs the real `Live.Dnd` component, isolated with
 `shadow` mode inside a sandboxed iframe (see
 [Preview Modes](./preview-modes.mdx)).
 
+## Section toolbar
+
+A selected section shows four buttons in its top-right corner: move up, move
+down, duplicate and delete. Move up is disabled on the first section and move
+down on the last. The move buttons make the same move as the panel's, so a
+section can be reordered without a drag even when a custom panel leaves move
+controls out.
+
+In the built-in mobile layout, selecting a section opens the panel in a
+drawer, which has the same buttons.
+
 ## Keyboard
 
 Palette cards and canvas sections can be reached with Tab.
@@ -82,7 +93,7 @@ Palette cards and canvas sections can be reached with Tab.
 
 Screen readers hear the section's name and its new position while it moves.
 The selected section is scrolled into view whenever it moves out of sight, from
-the keyboard or from the panel's move buttons.
+the keyboard or from the move buttons on the canvas or in the panel.
 
 ## Confirming a delete
 

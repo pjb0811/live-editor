@@ -694,6 +694,21 @@ const Dnd = ({
     });
   };
 
+  // A move to the first or last place disables the button just pressed, and
+  // focus on a disabled button falls back to the document. Focusing the
+  // section keeps a keyboard user where they were (#505).
+  const onMoveButton = (id: string, direction: 'up' | 'down') => {
+    const to =
+      sections.findIndex(section => section.id === id) +
+      (direction === 'up' ? -1 : 1);
+
+    moveSection(id, direction);
+
+    if (to === 0 || to === sections.length - 1) {
+      focusSection(id);
+    }
+  };
+
   // Keeps the selected section on screen when it moves out of view without
   // the keyboard taking it there: a move from the panel, or a copy that lands
   // below the fold. After the next frame, once the new order is laid out.
@@ -984,6 +999,10 @@ const Dnd = ({
                 onClick={() => onSelect(section.id)}
                 onDelete={onDelete}
                 onCopy={onCopy}
+                onMoveUp={() => onMoveButton(section.id, 'up')}
+                onMoveDown={() => onMoveButton(section.id, 'down')}
+                canMoveUp={index > 0}
+                canMoveDown={index < sections.length - 1}
                 nodeRef={sectionNodes.register(section.id)}
                 onNavigate={to => onNavigate(section.id, to)}
                 onDeleteKey={() => onDeleteKey(section.id)}
