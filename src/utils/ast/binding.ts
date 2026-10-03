@@ -187,13 +187,21 @@ const registryEntries = new WeakMap<
   Map<string, BindingItem[]>
 >();
 
+// Whether a tag name is a component rather than an HTML element, by JSX's
+// own rule: a member path, or an identifier that doesn't start with a
+// lowercase letter. A namespaced name (`svg:rect`) resolves to `''` and is
+// neither.
+export const isComponentTagName = (tagName: string): boolean =>
+  tagName !== '' && (tagName.includes('.') || !/^[a-z]/.test(tagName));
+
 // The bindings `registry` gives an element of `tagName`, or `undefined` when
-// it has no entry for that tag.
+// it has no entry for that component. HTML elements never match, even when
+// the registry has a key for them.
 export const getRegistryBindings = (
   registry: BindingRegistry | undefined,
   tagName: string,
 ): BindingItem[] | undefined => {
-  if (!registry || !Object.hasOwn(registry, tagName)) {
+  if (!registry) {
     return undefined;
   }
 
@@ -202,12 +210,30 @@ export const getRegistryBindings = (
   if (!entries) {
     entries = new Map();
     registryEntries.set(registry, entries);
+
+    // Once per registry, so a key the type would have rejected doesn't go
+    // unnoticed in plain JavaScript or behind a cast.
+    const ignored = Object.keys(registry).filter(
+      key => !isComponentTagName(key),
+    );
+
+    if (ignored.length > 0) {
+      console.warn(
+        `Live.Dnd \`bindings\` only applies to components. Ignored: ${ignored.join(', ')}. Bind an HTML element with its own data-binding.`,
+      );
+    }
+  }
+
+  if (!isComponentTagName(tagName) || !Object.hasOwn(registry, tagName)) {
+    return undefined;
   }
 
   let bindings = entries.get(tagName);
 
   if (!bindings) {
-    bindings = buildBindingItems(registry[tagName]);
+    bindings = buildBindingItems(
+      (registry as Record<string, BindingItem[] | undefined>)[tagName],
+    );
     entries.set(tagName, bindings);
   }
 

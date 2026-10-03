@@ -104,9 +104,9 @@ describe('useDndItems derivation', () => {
   // `Live.Dnd`'s `bindings` reach the hook through its edit options (#509).
   it("finds nested elements bound by Live.Dnd's binding registry", () => {
     const registry: BindingRegistry = {
-      p: [{ label: 'Text', property: 'innerText' }],
+      Text: [{ label: 'Text', property: 'innerText' }],
     };
-    const unbound = `[{ key: 'row', children: <div><p data-id="t1">Open</p></div> }]`;
+    const unbound = `[{ key: 'row', children: <div><Text data-id="t1">Open</Text></div> }]`;
     const { result } = renderHook(() => useDndItems(unbound), {
       wrapper: ({ children }) => (
         <DndEditOptionsContext.Provider

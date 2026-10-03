@@ -119,12 +119,21 @@ export interface BindingItem extends BindingFieldSpec {
   property: string;
 }
 
-// Bindings for every element of a tag, keyed by the tag name as written in
-// the source (`ui.Button`, `Button`, `h3`), so markup doesn't have to repeat
-// the same `data-binding` on each one (#509). An element's own
-// `data-binding`, even an empty one, takes precedence over its tag's entry.
-// Matched elements still need a `data-id` to be edited.
-export type BindingRegistry = Record<string, BindingItem[]>;
+// A component's tag name as written in the source: a member path
+// (`ui.Button`) or an identifier that doesn't start with a lowercase letter
+// (`Button`). Lowercase names are HTML elements.
+export type BindingComponentName = `${string}.${string}` | Capitalize<string>;
+
+// Bindings for every element of a component, keyed by its tag name as
+// written, so markup doesn't have to repeat the same `data-binding` on each
+// one (#509). Components only: an entry for an HTML element such as `p` or
+// `h2` would make every one of them in every section editable, so those keys
+// are rejected by the type and ignored at runtime. An element's own
+// `data-binding`, even an empty one, takes precedence over its component's
+// entry. Matched elements still need a `data-id` to be edited.
+export type BindingRegistry = Partial<
+  Record<BindingComponentName, BindingItem[]>
+>;
 
 export interface BindingRegistryOptions {
   bindings?: BindingRegistry;

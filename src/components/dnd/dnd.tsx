@@ -319,11 +319,12 @@ export interface Props extends Omit<
   // the default template, which uses `app-container`, so pass a `value`
   // when you change this.
   containerId?: string;
-  // Bindings for every element of a tag, keyed by the tag name as written
-  // (`ui.Button`, `h3`), so the markup only needs a `data-id`. An element's
-  // own `data-binding`, even `data-binding={[]}`, takes precedence. Define
-  // it once outside render: a new object each render re-reads every
-  // section (#509).
+  // Bindings for every element of a component, keyed by its tag name as
+  // written (`ui.Button`, `Button`), so the markup only needs a `data-id`.
+  // HTML element keys (`p`, `h2`) are ignored. An element's own
+  // `data-binding`, even `data-binding={[]}`, takes precedence. Define it
+  // once outside render: a new object each render re-reads every section
+  // (#509).
   bindings?: BindingRegistry;
   // Called when an element is picked in the canvas preview with the element
   // picker (`useDndInspector()`, or the canvas's picker button). Receives the
