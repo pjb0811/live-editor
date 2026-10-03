@@ -135,8 +135,17 @@ export type BindingRegistry = Partial<
   Record<BindingComponentName, BindingItem[]>
 >;
 
-export interface BindingRegistryOptions {
+// Bindings an element asks for by name, with `data-binding-key="hero-title"`
+// in its markup, on an HTML element or a component alike (#513). Plain data,
+// so a host can load it from JSON or a CMS.
+export type BindingKeyMap = Record<string, BindingItem[]>;
+
+// Where bindings come from besides an element's own `data-binding`, in
+// order of precedence: the key its `data-binding-key` names in
+// `bindingKeys`, then its component's entry in `bindings`.
+export interface BindingOptions {
   bindings?: BindingRegistry;
+  bindingKeys?: BindingKeyMap;
 }
 
 export type NodeValueType =

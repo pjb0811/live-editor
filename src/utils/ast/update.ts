@@ -6,17 +6,13 @@ import {
   DATA_ATTR,
   RESERVED_BINDING_PROPERTIES,
 } from '../../constants';
-import {
-  STRING_VALUED_TYPES,
-  getRegistryBindings,
-  parseBinding,
-} from './binding';
+import { STRING_VALUED_TYPES, parseBinding, resolveBindings } from './binding';
 import { editChildrenSource } from './children';
 import { traverse } from './document';
 import { generateCode, unwrap, wrap } from './helpers';
 import { getJSXTagName } from './jsx-name';
 import { type SourceEdit, applyEdits } from './patch';
-import type { BindingRegistryOptions, BindingType } from './types';
+import type { BindingItem, BindingOptions, BindingType } from './types';
 import {
   isLosslesslyEvaluable,
   unwrapExpression,
@@ -538,16 +534,16 @@ export interface UpdateResult {
 // PanelBinding.property). See #240: two bindings sharing a label used to
 // resolve to whichever `.find()` hit first, silently dropping the other's
 // edit while still reporting success.
-// `options.bindings` is the registry the bindings were read with (#509). An
-// element without its own `data-binding` is validated against its tag's
-// entry there.
+// `options` holds the binding sources the bindings were read with (#509,
+// #513). An element without its own `data-binding` is validated against the
+// entry its `data-binding-key` names, or its component's entry.
 export const update = (
   code: string,
   dataId: string,
   label: string,
   value: unknown,
   property?: string,
-  options: BindingRegistryOptions = {},
+  options: BindingOptions = {},
 ): UpdateResult => {
   try {
     const wrapped = wrap(code);
@@ -599,32 +595,53 @@ export const update = (
             attr.name.name === DATA_ATTR.BINDING,
         );
 
-        const registered = bindingAttr
-          ? undefined
-          : getRegistryBindings(options.bindings, getJSXTagName(opening));
-
-        if (!registered && !bindingAttr?.value) {
+        // An attribute with no value declares nothing to check against.
+        if (bindingAttr && !bindingAttr.value) {
           failure = { reason: 'no-binding', dataId };
           return;
         }
 
-        let bindingValue = '';
+        let own: BindingItem[] | undefined;
 
-        if (bindingAttr?.value && t.isStringLiteral(bindingAttr.value)) {
-          bindingValue = bindingAttr.value.value;
-        } else if (
-          bindingAttr?.value &&
-          t.isJSXExpressionContainer(bindingAttr.value)
-        ) {
-          try {
-            bindingValue = generateCode(bindingAttr.value.expression);
-          } catch (error) {
-            failure = { reason: 'parse-error', error };
-            return;
+        if (bindingAttr?.value) {
+          let bindingValue = '';
+
+          if (t.isStringLiteral(bindingAttr.value)) {
+            bindingValue = bindingAttr.value.value;
+          } else if (t.isJSXExpressionContainer(bindingAttr.value)) {
+            try {
+              bindingValue = generateCode(bindingAttr.value.expression);
+            } catch (error) {
+              failure = { reason: 'parse-error', error };
+              return;
+            }
           }
+
+          own = parseBinding(bindingValue);
         }
 
-        const bindings = registered ?? parseBinding(bindingValue);
+        const keyAttr = opening.attributes.find(
+          (attr): attr is t.JSXAttribute =>
+            t.isJSXAttribute(attr) &&
+            t.isJSXIdentifier(attr.name) &&
+            attr.name.name === DATA_ATTR.BINDING_KEY,
+        );
+        // The same sources, in the same order, that the bindings were read
+        // from (#509, #513).
+        const bindings = resolveBindings(
+          own,
+          keyAttr &&
+            (keyAttr.value && t.isStringLiteral(keyAttr.value)
+              ? keyAttr.value.value
+              : null),
+          getJSXTagName(opening),
+          options,
+        );
+
+        if (!own && bindings.length === 0) {
+          failure = { reason: 'no-binding', dataId };
+          return;
+        }
 
         // Prefer `property` (an actual key) over `label` (a display
         // string) — see the module-level comment on `update`. Either way,
@@ -708,7 +725,7 @@ export const update = (
             }
 
             collect(
-              editChildrenSource(wrapped, path.node, value, options.bindings),
+              editChildrenSource(wrapped, path.node, value, options),
               () => ({
                 reason: 'parse-error',
                 error: new Error(
@@ -829,7 +846,7 @@ export type UpdateAllResult =
 export const updateAll = (
   raw: string,
   entries: UpdateEntry[],
-  options: BindingRegistryOptions = {},
+  options: BindingOptions = {},
 ): UpdateAllResult => {
   let current = raw;
 

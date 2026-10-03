@@ -17,15 +17,26 @@ import type { Section } from '~/types';
 
 import { documentWith } from '../shared/documents';
 import { IFRAME_FRAME } from '../shared/frames';
-import { REGISTRY, REGISTRY_EXAMPLE } from '../shared/registry-example';
+import {
+  BINDING_KEYS,
+  KEYED_EXAMPLE,
+  REGISTRY,
+  REGISTRY_EXAMPLE,
+} from '../shared/registry-example';
 import { SECTION_ROOT_EXAMPLE } from '../shared/section-root-example';
 
-const PALETTE = [...DRAGGABLE_ITEMS, SECTION_ROOT_EXAMPLE, REGISTRY_EXAMPLE];
+const PALETTE = [
+  ...DRAGGABLE_ITEMS,
+  SECTION_ROOT_EXAMPLE,
+  REGISTRY_EXAMPLE,
+  KEYED_EXAMPLE,
+];
 
 const INITIAL_DOCUMENT = documentWith([
   DRAGGABLE_ITEMS[0],
   SECTION_ROOT_EXAMPLE,
   REGISTRY_EXAMPLE,
+  KEYED_EXAMPLE,
 ]);
 
 // The same document with its container id renamed. `Live.Dnd` finds no
@@ -43,6 +54,7 @@ interface LogEntry {
 
 interface Options {
   useRegistry: boolean;
+  useKeys: boolean;
   annotateFields: boolean;
   logErrors: boolean;
   confirmDelete: boolean;
@@ -101,6 +113,7 @@ const Toolbar = ({
       </Button>
       <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
         {toggle('useRegistry', 'bindings: registry')}
+        {toggle('useKeys', 'bindingKeys')}
         {toggle('annotateFields', 'renderField: annotate')}
         {toggle('logErrors', 'onEditError: log instead of toast')}
         {toggle('confirmDelete', 'onBeforeDelete: confirm')}
@@ -183,6 +196,7 @@ const Inspector = () => {
   const [value, setValue] = useState(INITIAL_DOCUMENT);
   const [options, setOptions] = useState<Options>({
     useRegistry: true,
+    useKeys: true,
     annotateFields: true,
     logErrors: true,
     confirmDelete: true,
@@ -234,6 +248,7 @@ const Inspector = () => {
         onChange={setValue}
         onNodePick={onNodePick}
         bindings={options.useRegistry ? REGISTRY : undefined}
+        bindingKeys={options.useKeys ? BINDING_KEYS : undefined}
         renderField={options.annotateFields ? annotate : undefined}
         onEditError={onEditError}
         onBeforeDelete={onBeforeDelete}

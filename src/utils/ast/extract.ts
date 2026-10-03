@@ -6,9 +6,9 @@ import { BINDING_PROP, CONFIG, DATA_ATTR } from '../../constants';
 import { type BoundedCache, createBoundedCache } from '../cache';
 import { registerEditorCache } from '../editor-caches';
 import {
-  getRegistryBindings,
   parseBinding,
   parseBindingExpression,
+  resolveBindings,
 } from './binding';
 import { traverse } from './document';
 import { attrValue, generateCode, wrap } from './helpers';
@@ -16,8 +16,7 @@ import { getJSXTagName } from './jsx-name';
 import type {
   Attribute,
   BindingItem,
-  BindingRegistry,
-  BindingRegistryOptions,
+  BindingOptions,
   DataAttrNode,
 } from './types';
 import { unwrapExpression } from './value';
@@ -62,12 +61,37 @@ const extractCache = createBoundedCache<string, DataAttrNode[]>(
   CONFIG.CACHE_LIMIT,
 );
 
-// The same source extracts differently under a registry, since bindings decide
-// how children are read, so each registry keeps a cache of its own (#509).
-let registryExtractCaches = new WeakMap<
-  BindingRegistry,
-  BoundedCache<string, DataAttrNode[]>
+// The same source extracts differently under other binding sources, since
+// bindings decide how children are read, so each combination of registry and
+// key map keeps a cache of its own (#509, #513). An absent map is keyed by
+// `NO_MAP`.
+const NO_MAP = {};
+let optionExtractCaches = new WeakMap<
+  object,
+  WeakMap<object, BoundedCache<string, DataAttrNode[]>>
 >();
+
+const cacheFor = ({ bindings, bindingKeys }: BindingOptions) => {
+  if (!bindings && !bindingKeys) {
+    return extractCache;
+  }
+
+  let byKeys = optionExtractCaches.get(bindings ?? NO_MAP);
+
+  if (!byKeys) {
+    byKeys = new WeakMap();
+    optionExtractCaches.set(bindings ?? NO_MAP, byKeys);
+  }
+
+  let cache = byKeys.get(bindingKeys ?? NO_MAP);
+
+  if (!cache) {
+    cache = createBoundedCache<string, DataAttrNode[]>(CONFIG.CACHE_LIMIT);
+    byKeys.set(bindingKeys ?? NO_MAP, cache);
+  }
+
+  return cache;
+};
 
 const extractAttributes = (
   attributes: (t.JSXAttribute | t.JSXSpreadAttribute)[],
@@ -218,7 +242,7 @@ const processChildrenBinding = (
   processedNodes?: WeakSet<t.JSXElement | t.JSXFragment>,
   shouldWrap: boolean = true,
   source?: string,
-  registry?: BindingRegistry,
+  options?: BindingOptions,
 ): DataAttrNode[] | undefined => {
   const jsxChildren = jsxElement.children.filter(
     child => t.isJSXElement(child) || t.isJSXFragment(child),
@@ -236,7 +260,7 @@ const processChildrenBinding = (
         child,
         processedNodes,
         source,
-        registry,
+        options,
       );
 
       if (shouldWrap) {
@@ -268,7 +292,7 @@ const processChildrenBinding = (
             fragmentChild,
             processedNodes,
             source,
-            registry,
+            options,
           );
           fragmentChildren.push(...childResults);
         }
@@ -397,7 +421,7 @@ const getBindingExpression = (
 const readNodeBindingInfo = (
   node: t.JSXElement,
   source?: string,
-  registry?: BindingRegistry,
+  options?: BindingOptions,
 ): NodeBindingInfo => {
   const opening = node.openingElement;
   const tagName = getJSXTagName(opening);
@@ -405,14 +429,20 @@ const readNodeBindingInfo = (
 
   const bindingAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING);
   const bindingExpr = getBindingExpression(opening);
+  const keyAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING_KEY);
   // The element's own `data-binding` wins whenever it's there, an empty one
-  // included, which is how a single element opts out of its tag's registry
-  // entry (#509).
-  const bindings = bindingExpr
-    ? parseBindingExpression(bindingExpr)
-    : bindingAttr
-      ? parseBinding(bindingAttr.value)
-      : (getRegistryBindings(registry, tagName) ?? []);
+  // included, which is how a single element opts out. Then the key it names,
+  // then its component's registry entry (#509, #513).
+  const bindings = resolveBindings(
+    bindingExpr
+      ? parseBindingExpression(bindingExpr)
+      : bindingAttr
+        ? parseBinding(bindingAttr.value)
+        : undefined,
+    keyAttr && (keyAttr.isStringLiteral ? keyAttr.value : null),
+    tagName,
+    options,
+  );
 
   const childrenBinding = bindings.find(
     b => b.property === BINDING_PROP.CHILDREN,
@@ -446,7 +476,7 @@ const readNodeBindingInfo = (
 
 const parseToNodes = (
   raw: string,
-  registry?: BindingRegistry,
+  options?: BindingOptions,
 ): DataAttrNode[] => {
   const wrapped = wrap(raw);
   const ast = parse(wrapped, {
@@ -485,7 +515,7 @@ const parseToNodes = (
         childrenBinding,
         arrayBindings,
         rawChildren,
-      } = readNodeBindingInfo(path.node, wrapped, registry);
+      } = readNodeBindingInfo(path.node, wrapped, options);
 
       if (!tagName || !dataAttrs.length) {
         return;
@@ -499,7 +529,7 @@ const parseToNodes = (
           processedNodes,
           true,
           wrapped,
-          registry,
+          options,
         );
       }
 
@@ -534,27 +564,20 @@ const parseToNodes = (
   return results;
 };
 
-// `options.bindings` gives elements without their own `data-binding` the
-// bindings registered for their tag (#509).
+// `options` gives elements without their own `data-binding` the bindings
+// their `data-binding-key` names in `bindingKeys`, or their component's in
+// `bindings` (#509, #513).
 export function extract(
   raw: string,
-  options: BindingRegistryOptions = {},
+  options: BindingOptions = {},
 ): DataAttrNode[] {
-  const registry = options.bindings;
-  let cache = extractCache;
-
-  if (registry) {
-    cache =
-      registryExtractCaches.get(registry) ??
-      createBoundedCache<string, DataAttrNode[]>(CONFIG.CACHE_LIMIT);
-    registryExtractCaches.set(registry, cache);
-  }
+  const cache = cacheFor(options);
 
   if (cache.has(raw)) {
     return cache.get(raw)!;
   }
 
-  const results = parseToNodes(raw, registry);
+  const results = parseToNodes(raw, options);
 
   cache.set(raw, results);
 
@@ -565,7 +588,7 @@ function extractFromNode(
   node: t.JSXElement,
   processedNodes?: WeakSet<t.JSXElement | t.JSXFragment>,
   source?: string,
-  registry?: BindingRegistry,
+  options?: BindingOptions,
 ): DataAttrNode[] {
   processedNodes?.add(node);
 
@@ -576,7 +599,7 @@ function extractFromNode(
     bindings,
     childrenBinding,
     rawChildren,
-  } = readNodeBindingInfo(node, source, registry);
+  } = readNodeBindingInfo(node, source, options);
 
   let childrenNodes: DataAttrNode[] | undefined;
 
@@ -586,7 +609,7 @@ function extractFromNode(
       processedNodes,
       true,
       source,
-      registry,
+      options,
     );
   }
 
@@ -596,7 +619,7 @@ function extractFromNode(
       processedNodes,
       false,
       source,
-      registry,
+      options,
     );
   }
 
@@ -615,7 +638,7 @@ function extractFromNode(
 
 export function clearExtractCache() {
   extractCache.clear();
-  registryExtractCaches = new WeakMap();
+  optionExtractCaches = new WeakMap();
 }
 
 registerEditorCache(clearExtractCache);

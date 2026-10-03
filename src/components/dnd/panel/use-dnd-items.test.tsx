@@ -110,7 +110,10 @@ describe('useDndItems derivation', () => {
     const { result } = renderHook(() => useDndItems(unbound), {
       wrapper: ({ children }) => (
         <DndEditOptionsContext.Provider
-          value={{ reportError: vi.fn(), bindings: registry }}
+          value={{
+            reportError: vi.fn(),
+            bindingOptions: { bindings: registry },
+          }}
         >
           {children}
         </DndEditOptionsContext.Provider>

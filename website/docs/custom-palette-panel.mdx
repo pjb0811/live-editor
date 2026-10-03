@@ -194,6 +194,7 @@ const MyPalette = () => {
 | `onNodeChange` | `(params: { id: string; label: string; property: string; value: unknown }) => void` | Commit an edit to an element addressed by its own `data-id`, rather than through a binding you were handed. Needed for the nested elements `bindings` can't reach — pass it to `Live.Dnd.Field` along with the binding. See [below](#reusing-the-built-in-control-for-one-binding). |
 | `onNodesChange` | `(changes: { id: string; label: string; property: string; value: unknown }[]) => void` | Commit several node-level edits as one change. They apply in array order, all or none: if any is refused, nothing is committed and the error names the one that failed. See [below](#writing-several-bindings-at-once). |
 | `readOnly` | `boolean` | `true` while the document doesn't parse. `item` and `bindings` are from the last version that did, and every commit is refused and reported through `onEditError` until it parses again. Disable your controls, or say why edits aren't landing. |
+| `bindingOptions` | `{ bindings?, bindingKeys? }` | `Live.Dnd`'s [component registry and key map](./data-binding.mdx#binding-by-key). Pass it to `extract()` when the panel reads a section's elements itself, so they get the same fields the built-in panel shows. |
 
 `bindings` carries each field's `type`, current `value`, `options` (when
 present), and an `onChange` wired straight into the same AST-update pipeline
@@ -955,11 +956,13 @@ Commit any string back with `onChange({ code })`:
 import { extract } from '@jbpark/live-editor/utils/ast';
 
 const RawEditor = () => {
-  const { item, onChange } = useDndPanel();
+  const { item, onChange, bindingOptions } = useDndPanel();
 
   if (!item) return null;
 
-  const nodes = extract(item.code); // read whatever you need
+  // With `bindingOptions`, nodes bound by key or by component carry the
+  // same `bindings` the built-in panel reads.
+  const nodes = extract(item.code, bindingOptions); // read whatever you need
 
   return (
     <button onClick={() => onChange({ code: item.code.replace(/foo/, 'bar') })}>
