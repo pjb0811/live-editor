@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 
 import { Button, Typography } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
@@ -71,6 +71,21 @@ const groupBindingsById = (bindings: PanelBinding[]): PanelBinding[][] => {
   return [...groups.values()];
 };
 
+// How a group's header names its element: the tag name, and its text when it
+// has some. Also the group's accessible name.
+const describeElement = (binding: PanelBinding) => {
+  const { tagName = 'element', text = '' } = binding.element ?? {};
+
+  return { tagName, text, label: text ? `${tagName} "${text}"` : tagName };
+};
+
+// The element a panel event happened in: the nearest group or nested
+// element marked with `data-node-id`.
+const nodeIdOf = (target: EventTarget | null) =>
+  (target instanceof Element &&
+    target.closest('[data-node-id]')?.getAttribute('data-node-id')) ||
+  null;
+
 const Panel = ({
   item,
   onDelete,
@@ -86,8 +101,27 @@ const Panel = ({
   const rootRef = useRef<HTMLDivElement>(null);
   // Read without the throwing hook: this panel also renders outside
   // `Live.Dnd`, read-only, where there's no picker.
-  const picked = useContext(DndInspectorContext)?.picked ?? null;
+  const inspector = useContext(DndInspectorContext);
+  const picked = inspector?.picked ?? null;
   const pickedId = picked?.id;
+  const highlight = inspector?.highlight;
+  // The element under the pointer wins over the focused one, so moving the
+  // pointer over another group shows that one while typing in a field.
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const targetId = hoveredId ?? focusedId;
+
+  // Outlines on the canvas the element the field under the pointer or focus
+  // edits, so fields that share a label can be told apart (#514).
+  useEffect(() => {
+    if (!highlight) {
+      return;
+    }
+
+    highlight(targetId);
+
+    return () => highlight(null);
+  }, [highlight, targetId]);
 
   // Brings the fields of an element picked in the preview into view and
   // marks them, whether they're a top-level group or nested in an Items or
@@ -153,6 +187,14 @@ const Panel = ({
   return (
     <div
       ref={rootRef}
+      onPointerOver={e => setHoveredId(nodeIdOf(e.target))}
+      onPointerLeave={() => setHoveredId(null)}
+      onFocus={e => setFocusedId(nodeIdOf(e.target))}
+      onBlur={e => {
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+          setFocusedId(null);
+        }
+      }}
       className={cn(
         'h-full space-y-4 p-4',
         'overflow-x-hidden overflow-y-auto',
@@ -201,16 +243,37 @@ const Panel = ({
           No editable elements.
         </Typography.Text>
       )}
-      {groups.map(group => (
-        <div
-          key={group[0]!.id}
-          data-node-id={group[0]!.id}
-          className="rounded data-[picked]:ring-2 data-[picked]:ring-blue-400
-            data-[picked]:ring-offset-2"
-        >
-          <FieldGroup bindings={group} onNodeChange={onNodeChange} />
-        </div>
-      ))}
+      {groups.map(group => {
+        const element = describeElement(group[0]!);
+
+        return (
+          <div
+            key={group[0]!.id}
+            data-node-id={group[0]!.id}
+            role="group"
+            aria-label={element.label}
+            className="rounded data-[picked]:ring-2 data-[picked]:ring-blue-400
+              data-[picked]:ring-offset-2"
+          >
+            {/* Only needed once fields of more than one element share the
+                panel; a single element reads the same as before (#514). */}
+            {groups.length > 1 && (
+              <div
+                className="mb-2 flex min-w-0 items-baseline gap-1.5 border-b
+                  border-gray-100 pb-1 text-xs"
+              >
+                <code className="shrink-0 text-gray-500">
+                  {element.tagName}
+                </code>
+                {element.text && (
+                  <span className="truncate text-gray-400">{element.text}</span>
+                )}
+              </div>
+            )}
+            <FieldGroup bindings={group} onNodeChange={onNodeChange} />
+          </div>
+        );
+      })}
     </div>
   );
 };

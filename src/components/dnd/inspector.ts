@@ -21,6 +21,12 @@ export interface DndInspector {
   // The last element picked, or `null`. Cleared when the selection moves to
   // another section.
   picked: DndNodePick | null;
+  // Outlines the element with this `data-id` in the selected section's
+  // preview, the way the picker outlines the element under the pointer.
+  // `null` removes the outline. The built-in panel calls it for the field
+  // under the pointer or focus, so a field shows which element it edits
+  // (#514).
+  highlight: (id: string | null) => void;
 }
 
 export const DndInspectorContext = createContext<DndInspector | null>(null);
@@ -117,6 +123,38 @@ export const pickElement = (
   }
 
   return element === section ? null : element;
+};
+
+// The element carrying `data-id="id"` in `section`'s preview, looking into
+// its iframe or shadow root for the frame modes that have one. `null` when
+// the section doesn't render it.
+export const findElementById = (
+  section: HTMLElement,
+  id: string,
+): Element | null => {
+  const selector = `[${DATA_ATTR.ID}="${CSS.escape(id)}"]`;
+  const roots: ParentNode[] = [section];
+
+  for (const root of roots) {
+    const found = root.querySelector(selector);
+
+    if (found) {
+      return found;
+    }
+
+    root.querySelectorAll('iframe').forEach(frame => {
+      if (frame.contentDocument) {
+        roots.push(frame.contentDocument);
+      }
+    });
+    root.querySelectorAll('*').forEach(element => {
+      if (element.shadowRoot) {
+        roots.push(element.shadowRoot);
+      }
+    });
+  }
+
+  return null;
 };
 
 // The picked element's box in the host viewport, adding the offset of each

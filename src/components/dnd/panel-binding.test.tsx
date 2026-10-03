@@ -77,6 +77,7 @@ describe('resolvePanelBindings', () => {
       meta: { group: 'content', order: 3 },
       value: 'Open',
       rawValue: 'Open',
+      element: { tagName: 'p', text: 'Open' },
     });
   });
 
@@ -280,6 +281,8 @@ describe('panel paths agree on the same element', () => {
         value: _value,
         rawValue: _rawValue,
         canEditValue: _canEditValue,
+        // Which element a binding belongs to, not something it declares.
+        element: _element,
         meta,
         ...fields
       } = binding;
