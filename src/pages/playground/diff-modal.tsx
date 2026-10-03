@@ -1,6 +1,7 @@
 import { Modal } from '@jbpark/ui-kit';
 import CodeEditor from '@jbpark/ui-kit/CodeEditor';
-import { vscodeLight } from '@uiw/codemirror-theme-vscode';
+
+import { useEditorTheme } from '../shared/theme';
 
 interface Props {
   open: boolean;
@@ -16,6 +17,8 @@ interface Props {
 // pipeline did what they expected before it's saved. Not an editing tool:
 // mergeControls/editable are both off, this is display-only.
 const DiffModal = ({ open, original, current, onConfirm, onCancel }: Props) => {
+  const theme = useEditorTheme();
+
   return (
     <Modal
       open={open}
@@ -29,7 +32,7 @@ const DiffModal = ({ open, original, current, onConfirm, onCancel }: Props) => {
       <div className="max-h-[60vh] overflow-auto rounded border border-gray-200">
         <CodeEditor
           value={current}
-          theme={vscodeLight}
+          theme={theme}
           editable={false}
           readOnly
           diff={{ original, mergeControls: false }}

@@ -11,7 +11,7 @@ import { useState } from 'react';
 import Context from '~/components/context';
 import Dnd from '~/components/dnd';
 import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/constants';
-import { SECTION_ROOT_EXAMPLE } from '~/pages/editor/section-root-example';
+import { SECTION_ROOT_EXAMPLE } from '~/pages/shared/section-root-example';
 
 // The default palette plus a Banner whose own `<section>` carries a
 // `data-binding`, so its background and padding are editable from the panel
