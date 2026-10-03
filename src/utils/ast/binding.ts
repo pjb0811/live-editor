@@ -6,7 +6,9 @@ import { BINDING_PROP, DATA_ATTR } from '../../constants';
 import {
   BINDING_TYPES,
   type BindingItem,
+  type BindingKeyMap,
   type BindingOption,
+  type BindingOptions,
   type BindingRegistry,
   type BindingRenderLeaf,
   type BindingRenderMap,
@@ -238,6 +240,98 @@ export const getRegistryBindings = (
   }
 
   return bindings;
+};
+
+// Key map entries are validated like inline ones and cached per map, as
+// registry entries are.
+const keyEntries = new WeakMap<BindingKeyMap, Map<string, BindingItem[]>>();
+
+// Each problem is reported once per key, not on every read of a section.
+const warnedKeys = new Set<string>();
+
+const warnOnce = (id: string, message: string) => {
+  if (!warnedKeys.has(id)) {
+    warnedKeys.add(id);
+    console.warn(message);
+  }
+};
+
+// The bindings `bindingKeys` has under `key`, or `undefined` when it has no
+// such entry.
+export const getKeyBindings = (
+  bindingKeys: BindingKeyMap | undefined,
+  key: string,
+): BindingItem[] | undefined => {
+  if (!bindingKeys || !Object.hasOwn(bindingKeys, key)) {
+    return undefined;
+  }
+
+  let entries = keyEntries.get(bindingKeys);
+
+  if (!entries) {
+    entries = new Map();
+    keyEntries.set(bindingKeys, entries);
+  }
+
+  let bindings = entries.get(key);
+
+  if (!bindings) {
+    bindings = buildBindingItems(bindingKeys[key]);
+    entries.set(key, bindings);
+  }
+
+  return bindings;
+};
+
+// One element's bindings, from the most specific source it has (#513):
+//
+// 1. `own`, its `data-binding`, parsed. `undefined` when it has none; an
+//    empty array is still its own, which is how an element opts out.
+// 2. `key`, the string its `data-binding-key` names in `bindingKeys`.
+//    `undefined` without the attribute, `null` when the attribute isn't a
+//    plain string. A key with no entry gives no fields rather than falling
+//    through to the registry.
+// 3. Its component's entry in `bindings`.
+export const resolveBindings = (
+  own: BindingItem[] | undefined,
+  key: string | null | undefined,
+  tagName: string,
+  options: BindingOptions = {},
+): BindingItem[] => {
+  if (own) {
+    if (key !== undefined) {
+      warnOnce(
+        `both:${key}`,
+        `Live.Dnd: an element has both data-binding and data-binding-key="${key ?? ''}". Its data-binding is used; remove one of them.`,
+      );
+    }
+
+    return own;
+  }
+
+  if (key === null) {
+    warnOnce(
+      'not-a-string',
+      'Live.Dnd: data-binding-key must be a plain string, such as data-binding-key="hero-title". The element has no fields.',
+    );
+
+    return [];
+  }
+
+  if (key !== undefined) {
+    const bindings = getKeyBindings(options.bindingKeys, key);
+
+    if (!bindings) {
+      warnOnce(
+        `missing:${key}`,
+        `Live.Dnd: data-binding-key="${key}" isn't in bindingKeys. The element has no fields.`,
+      );
+    }
+
+    return bindings ?? [];
+  }
+
+  return getRegistryBindings(options.bindings, tagName) ?? [];
 };
 
 export const parseBinding = (bindingValue: string | null): BindingItem[] => {

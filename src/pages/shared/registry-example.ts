@@ -1,5 +1,5 @@
 import type { Section } from '~/types';
-import type { BindingRegistry } from '~/utils/ast';
+import type { BindingKeyMap, BindingRegistry } from '~/utils/ast';
 
 // Fields for every element of these components, so the section below needs
 // no `data-binding` of its own (#509). HTML elements such as `h2` or `p`
@@ -49,6 +49,41 @@ export const REGISTRY_EXAMPLE: Section = {
         <ui.Button data-id="" type="primary" size="middle" className="mt-6">
           Registry button
         </ui.Button>
+      </section>
+    `,
+};
+
+// Schemas named in the markup with `data-binding-key` (#513). Plain data, as
+// if loaded from JSON.
+export const BINDING_KEYS = {
+  'promo-title': [
+    { label: 'Promo Title', property: 'innerText', required: true },
+  ],
+  'promo-link': [
+    { label: 'Link Text', property: 'innerText' },
+    { label: 'Link URL', property: 'href', type: 'url' },
+  ],
+  'promo-button': [{ label: 'Promo Button Text', property: 'innerText' }],
+} satisfies BindingKeyMap;
+
+// HTML elements bound by key, and a `ui.Button` whose key takes precedence
+// over the registry's `ui.Button` entry.
+export const KEYED_EXAMPLE: Section = {
+  id: 'keyed',
+  name: 'Key-bound',
+  code: `
+      <section data-name="Key-bound" className="bg-amber-50 px-6 py-12 text-center">
+        <h2 data-id="" data-binding-key="promo-title" className="text-3xl font-bold text-amber-900">
+          Fields from bindingKeys
+        </h2>
+        <a data-id="" data-binding-key="promo-link" href="https://example.com" className="mt-3 inline-block text-amber-700 underline">
+          A plain link with a schema kept outside the markup
+        </a>
+        <div className="mt-6">
+          <ui.Button data-id="" data-binding-key="promo-button" type="primary">
+            Keyed button
+          </ui.Button>
+        </div>
       </section>
     `,
 };

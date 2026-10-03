@@ -23,18 +23,23 @@ export const CONFIG = {
 export const DATA_ATTR = {
   ID: 'data-id',
   BINDING: 'data-binding',
+  // Names an entry of `Live.Dnd`'s `bindingKeys` instead of declaring the
+  // bindings inline (#513).
+  BINDING_KEY: 'data-binding-key',
   ITEM: 'data-item',
 } as const;
 
 // Attributes the editor owns. `data-id` is the key between the canvas and the
 // source, `data-name` is a section's name in the palette and panel, and
-// `data-binding` is the schema every edit is checked against. A binding can't
+// `data-binding` and `data-binding-key` say which schema every edit is
+// checked against. A binding can't
 // target them: rewriting one from the panel would break the mapping or the
 // declaration the edit itself depends on (#429).
 export const RESERVED_BINDING_PROPERTIES: readonly string[] = [
   DATA_ATTR.ID,
   'data-name',
   DATA_ATTR.BINDING,
+  DATA_ATTR.BINDING_KEY,
 ];
 
 export const REGEX = {

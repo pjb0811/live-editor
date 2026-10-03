@@ -1434,6 +1434,88 @@ describe('binding registry', () => {
   });
 });
 
+// Bindings named by `data-binding-key`, from `Live.Dnd`'s `bindingKeys` (#513).
+describe('binding keys', () => {
+  const registry = {
+    'ui.Button': [{ label: 'Button Text', property: 'innerText' }],
+  };
+  const bindingKeys = {
+    'hero-title': [{ label: 'Hero Title', property: 'innerText' }],
+    'hero-cta': [{ label: 'CTA Link', property: 'href' }],
+  };
+
+  const section = documentWith(`
+    <section data-id="s1" data-name="Hero">
+      <h1 data-id="t1" data-binding-key="hero-title">Welcome</h1>
+      <ui.Button data-id="b1">Registry</ui.Button>
+      <ui.Button data-id="b2" data-binding-key="hero-cta" href="/go">Keyed</ui.Button>
+    </section>`);
+
+  const renderKeys = () => {
+    const onChange = vi.fn();
+    let panel: DndPanel | undefined;
+
+    const Probe = () => {
+      panel = useDndPanel();
+
+      return <div data-testid="panel" />;
+    };
+
+    const { container } = render(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd
+          value={section}
+          onChange={onChange}
+          bindings={registry}
+          bindingKeys={bindingKeys}
+        >
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>,
+    );
+
+    act(() =>
+      container
+        .querySelector<HTMLElement>('[aria-roledescription="sortable"]')!
+        .click(),
+    );
+
+    return { onChange, getPanel: () => panel! };
+  };
+
+  it('resolves keys ahead of the registry', () => {
+    const { getPanel } = renderKeys();
+
+    expect(
+      getPanel().bindings.map(binding => [binding.id, binding.label]),
+    ).toEqual([
+      ['t1', 'Hero Title'],
+      ['b1', 'Button Text'],
+      ['b2', 'CTA Link'],
+    ]);
+  });
+
+  it('commits a keyed field on an HTML element', () => {
+    const { onChange, getPanel } = renderKeys();
+
+    act(() => getPanel().bindings[0]!.onChange('Hello'));
+
+    expect(onChange.mock.calls.at(-1)![0]).toContain(
+      '<h1 data-id="t1" data-binding-key="hero-title">Hello</h1>',
+    );
+  });
+
+  it('hands both maps to a custom panel', () => {
+    const { getPanel } = renderKeys();
+
+    expect(getPanel().bindingOptions).toEqual({
+      bindings: registry,
+      bindingKeys,
+    });
+  });
+});
+
 // The selected section's own toolbar on the canvas (#505).
 describe('section toolbar', () => {
   const threeSections = documentWith(`

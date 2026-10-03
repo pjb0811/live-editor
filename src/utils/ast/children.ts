@@ -6,7 +6,7 @@ import { moveSelectedIndices } from '../selection';
 import { extract, nodeToJSX } from './extract';
 import { generateCode } from './helpers';
 import { type SourceEdit, applyEdits } from './patch';
-import type { BindingRegistry, DataAttrNode } from './types';
+import type { BindingOptions, DataAttrNode } from './types';
 
 export type ChildrenAction =
   | { type: 'move'; from: number; to: number }
@@ -135,9 +135,9 @@ export const editChildrenSource = (
   source: string,
   parent: t.JSXElement,
   input: unknown,
-  // The registry the caller extracted the children with, so they're modeled
-  // the same way here (#509).
-  registry?: BindingRegistry,
+  // The binding sources the caller extracted the children with, so they're
+  // modeled the same way here (#509, #513).
+  options?: BindingOptions,
 ): SourceEdit[] | null => {
   try {
     if (!parent.closingElement || parent.start == null || parent.end == null) {
@@ -151,8 +151,8 @@ export const editChildrenSource = (
     );
     const raw = children.map(child => source.slice(child.start!, child.end!));
     const models =
-      extract(source.slice(parent.start, parent.end), { bindings: registry })[0]
-        ?.children ?? [];
+      extract(source.slice(parent.start, parent.end), options)[0]?.children ??
+      [];
 
     // The extractor currently omits some empty/expression-only fragments.
     // Never interpret its visible indices as different source children.

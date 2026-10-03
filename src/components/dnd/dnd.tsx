@@ -34,6 +34,8 @@ import { useResponsiveSize } from '@jbpark/use-hooks';
 import { DATA_ATTR, DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
 import {
+  type BindingKeyMap,
+  type BindingOptions,
   type BindingRegistry,
   type DataAttrNode,
   type DocumentProblem,
@@ -270,6 +272,10 @@ export interface DndPanel {
   // `onEditError`) until the source parses again. Disable your controls, or
   // say why edits aren't landing (#433).
   readOnly: boolean;
+  // `Live.Dnd`'s `bindings` and `bindingKeys`. Pass it to `extract()` when a
+  // custom panel reads a section's elements itself, so they get the same
+  // fields the built-in panel shows (#513).
+  bindingOptions: BindingOptions;
 }
 
 export interface Props extends Omit<
@@ -326,6 +332,12 @@ export interface Props extends Omit<
   // once outside render: a new object each render re-reads every section
   // (#509).
   bindings?: BindingRegistry;
+  // Bindings an element asks for by name: `data-binding-key="hero-title"` in
+  // its markup gets the entries under `hero-title` here, on an HTML element
+  // or a component alike. Comes after the element's own `data-binding` and
+  // before `bindings`. Plain data, so it can come from JSON; define it once
+  // outside render, like `bindings` (#513).
+  bindingKeys?: BindingKeyMap;
   // Called when an element is picked in the canvas preview with the element
   // picker (`useDndInspector()`, or the canvas's picker button). Receives the
   // element's `data-id`, the key its fields carry in `useDndPanel()`, and its
@@ -383,6 +395,7 @@ const Dnd = ({
   sectionNameFallback,
   containerId,
   bindings: bindingRegistry,
+  bindingKeys,
   onNodePick,
   children,
   ...restProps
@@ -747,6 +760,12 @@ const Dnd = ({
   // now shared here so both the built-in Panel and a custom one built on
   // `useDndPanel()` get the same extraction/update pipeline instead of each
   // needing it.
+  // One object for every reader below, renewed only when a map changes, so
+  // memos keyed on it don't re-run every render (#513).
+  const bindingOptions = useMemo<BindingOptions>(
+    () => ({ bindings: bindingRegistry, bindingKeys }),
+    [bindingRegistry, bindingKeys],
+  );
   const selectedCode = selectedItem?.code;
   const selectedSectionId = selectedItem?.id;
   const { fields, updatedCode, parseError } = useMemo(() => {
@@ -766,7 +785,7 @@ const Dnd = ({
       // `data-binding` is editable like any other element, and one without
       // resolves to no bindings below. It used to be dropped here, so a
       // binding written on the section itself was silently ignored (#429).
-      const allNodes = extract(updated, { bindings: bindingRegistry });
+      const allNodes = extract(updated, bindingOptions);
 
       return {
         fields: allNodes,
@@ -781,7 +800,7 @@ const Dnd = ({
         parseError: { error: e },
       };
     }
-  }, [selectedCode, selectedSectionId, bindingRegistry]);
+  }, [selectedCode, selectedSectionId, bindingOptions]);
 
   // Keyed on the missing id alone, so it fires when a document reaches this
   // state and not again for every edit that leaves it there.
@@ -843,7 +862,7 @@ const Dnd = ({
         property,
         value: changeValue,
       })),
-      { bindings: bindingRegistry },
+      bindingOptions,
     );
 
     if (!result.success) {
@@ -929,6 +948,7 @@ const Dnd = ({
     onNodeChange: onFieldChange,
     onNodesChange: commitChanges,
     readOnly: stale,
+    bindingOptions,
   };
 
   // Content only — the frame container that wraps this (`data-frame-container`
@@ -1070,7 +1090,7 @@ const Dnd = ({
               each render anyway, so a memo would only add a dependency list
               to keep in sync. */}
           <DndEditOptionsContext.Provider
-            value={{ renderField, reportError, bindings: bindingRegistry }}
+            value={{ renderField, reportError, bindingOptions }}
           >
             <DndRegionContext.Provider
               value={{

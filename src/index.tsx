@@ -27,7 +27,11 @@ import LiveError from './components/error';
 import { type FrameProps } from './components/frame';
 import LivePreview from './components/preview';
 import type { Section } from './types';
-import type { BindingRegistry } from './utils/ast';
+import type {
+  BindingKeyMap,
+  BindingOptions,
+  BindingRegistry,
+} from './utils/ast';
 
 const App = ({ children }: { children?: React.ReactNode }) => {
   return <Context>{children}</Context>;
@@ -70,6 +74,8 @@ export type {
   FrameProps,
   Section,
   BindingRegistry,
+  BindingKeyMap,
+  BindingOptions,
 };
 
 App.Preview = LivePreview;

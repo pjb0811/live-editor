@@ -103,7 +103,8 @@ Because a missing attribute is added instead of reported, a typo in
 `property` shows up as an unexpected attribute in the source rather than as an
 error.
 
-`data-id`, `data-name` and `data-binding` are managed by the editor, so a
+`data-id`, `data-name`, `data-binding` and `data-binding-key` are managed by
+the editor, so a
 binding can't target them. A field on one of these is shown as read-only, and
 an edit to it is refused with an error naming the property.
 
@@ -196,7 +197,7 @@ const bindings = {
   for one would make every paragraph or heading in every section editable.
   `satisfies BindingRegistry` rejects those keys, and `Live.Dnd` ignores them
   at runtime with a console warning. Bind an HTML element with its own
-  `data-binding`.
+  `data-binding`, or [by key](#binding-by-key).
 - **Names are matched as written.** `<ui.Button>` matches `'ui.Button'`. The
   same component imported as `import { Button } from ...` is `<Button>` and
   needs a `'Button'` entry.
@@ -214,6 +215,71 @@ const bindings = {
   `updateAll(..., { bindings })`.
 - Define it once, outside render. A new object on every render makes
   `Live.Dnd` read every section again.
+
+## Binding by key
+
+The component registry gives every element of a component the same fields. For
+an HTML element, or for one element whose fields or labels differ from the
+rest, name the schema in the markup with `data-binding-key` and define it in
+`bindingKeys`:
+
+```tsx
+import type { BindingKeyMap } from '@jbpark/live-editor/utils/ast';
+
+// Defined once, outside the component. Plain data, so it can come from JSON
+// or a CMS.
+const bindingKeys = {
+  'hero-title': [
+    { label: 'Hero Title', property: 'innerText', required: true },
+  ],
+  'hero-cta': [
+    { label: 'CTA Text', property: 'innerText' },
+    { label: 'CTA Link', property: 'href', type: 'url' },
+  ],
+} satisfies BindingKeyMap;
+
+<Live.Dnd
+  value={code}
+  onChange={setCode}
+  bindings={bindings}
+  bindingKeys={bindingKeys}
+/>;
+```
+
+```tsx
+<section data-name="Hero">
+  <h1 data-id="" data-binding-key="hero-title">
+    Welcome
+  </h1>
+  <a data-id="" data-binding-key="hero-cta" href="/start">
+    Get started
+  </a>
+</section>
+```
+
+- **Any element.** HTML elements and components alike, since an element only
+  gets fields when its markup names a key.
+- **Precedence.** An element's own `data-binding` comes first, then the key its
+  `data-binding-key` names, then its component's registry entry. Each replaces
+  the next whole. An element with both `data-binding` and `data-binding-key`
+  uses its `data-binding`, and the console warns about it.
+- **A key that isn't in `bindingKeys`** gives the element no fields, without
+  falling back to the registry, and the console names the key once. So does a
+  `data-binding-key` that isn't a plain string.
+- **Every element still needs a `data-id`**, and `data-binding-key` can't be
+  the target of a binding.
+- The AST helpers take both maps in one options object:
+  `extract(source, { bindings, bindingKeys })`, and the same for `update()` and
+  `updateAll()`. A custom panel gets that object from
+  `useDndPanel().bindingOptions`.
+
+### Where the schema lives
+
+An inline `data-binding` travels with the section's source, so a saved
+document stays editable wherever it's opened. With `bindings` or
+`bindingKeys`, the schema lives in your code instead, and a saved document is
+only editable where the same maps are passed. Keep the maps with the documents
+that use them, and keep a key's name once documents refer to it.
 
 ## Types
 

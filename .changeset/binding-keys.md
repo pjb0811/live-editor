@@ -1,0 +1,5 @@
+---
+'@jbpark/live-editor': minor
+---
+
+Bind elements by key to schemas kept outside the markup. An element with `data-binding-key="hero-title"` gets the entries under `hero-title` in `Live.Dnd`'s new `bindingKeys` prop, on an HTML element or a component alike, so per-position labels and HTML elements no longer need an inline `data-binding`. The map is plain data, so it can be loaded from JSON. Precedence is the element's own `data-binding`, then its key, then its component's `bindings` entry, each replacing the next whole. A key missing from the map, or a `data-binding-key` that isn't a plain string, gives the element no fields and a one-time console warning, as does an element with both attributes. `data-binding-key` is editor-owned, so no binding can rewrite it. Custom panels get both maps from `useDndPanel().bindingOptions` to pass to `extract()`. The AST helpers take them in one options object (`BindingOptions`): `extract(source, { bindings, bindingKeys })`, `update(..., { bindings, bindingKeys })` and `updateAll(..., { bindings, bindingKeys })`. `BindingKeyMap`, `BindingOptions`, `getKeyBindings` and `resolveBindings` are exported.

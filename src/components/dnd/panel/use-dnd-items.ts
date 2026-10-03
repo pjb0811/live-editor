@@ -5,7 +5,7 @@ import type { useMultiSelect } from '@jbpark/use-hooks';
 import { nanoid } from 'nanoid';
 
 import {
-  type BindingRegistry,
+  type BindingOptions,
   type BindingRenderMap,
   type DataAttrNode,
   appendArrayItem,
@@ -207,9 +207,9 @@ interface ItemIdentityState {
 // listing them separately would offer the same edit twice.
 const bindingsInJSX = (
   source: string,
-  registry: BindingRegistry | undefined,
+  bindingOptions: BindingOptions | undefined,
 ): DataAttrNode[] => {
-  const nodes = extract(source, { bindings: registry });
+  const nodes = extract(source, bindingOptions);
   const container = nodes.find(n =>
     n.bindings?.some(b => b.property === 'children'),
   );
@@ -238,7 +238,7 @@ const bindingsInJSX = (
 // The parse. Split from the binding construction below so the Babel work is
 // memoized on the source string alone, while the callbacks the bindings
 // close over stay current on every render.
-const parseSource = (value: string, registry?: BindingRegistry) => {
+const parseSource = (value: string, bindingOptions?: BindingOptions) => {
   const ast = parseArrayExpression(value);
 
   if (!ast) {
@@ -283,7 +283,7 @@ const parseSource = (value: string, registry?: BindingRegistry) => {
       try {
         const found = bindingsInJSX(
           value.slice(prop.value.start!, prop.value.end!),
-          registry,
+          bindingOptions,
         );
 
         if (found.length > 0) {
@@ -406,10 +406,10 @@ export const useDndItems = (
   value: string,
   { render, onChange, onNodeChange }: DndItemsOptions = {},
 ): DndItems => {
-  const { reportError, bindings: registry } = useDndEditOptions();
+  const { reportError, bindingOptions } = useDndEditOptions();
   const { objectItems, primitiveItems, parseError } = useMemo(
-    () => parseSource(value, registry),
-    [value, registry],
+    () => parseSource(value, bindingOptions),
+    [value, bindingOptions],
   );
   const canEditStructure = useMemo(
     () => canStructurallyEditArray(value),
