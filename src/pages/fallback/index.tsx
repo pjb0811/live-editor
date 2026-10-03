@@ -9,6 +9,7 @@ import Live from '~/index';
 import type { Section } from '~/types';
 
 import { documentWith } from '../shared/documents';
+import { EditorView, ModeSwitch, type ViewMode } from '../shared/editor-view';
 import { IFRAME_FRAME } from '../shared/frames';
 
 // Throws while rendering, so the canvas shows its fallback with reason
@@ -71,6 +72,7 @@ const Fallback = () => {
   const [value, setValue] = useState(INITIAL_DOCUMENT);
   const [custom, setCustom] = useState(true);
   const [forced, setForced] = useState(false);
+  const [mode, setMode] = useState<ViewMode>('dnd');
 
   return (
     <div className="flex h-full flex-col">
@@ -78,28 +80,42 @@ const Fallback = () => {
         className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b
           border-gray-200 px-3 py-1.5 text-xs"
       >
-        <label className="flex items-center gap-1.5">
-          <Switch size="small" checked={custom} onChange={setCustom} />
-          renderSectionFallback: custom
-        </label>
-        <label className="flex items-center gap-1.5">
-          <Switch size="small" checked={forced} onChange={setForced} />
-          shouldForceSectionFallback: "Forced fallback"
-        </label>
+        <ModeSwitch value={mode} onChange={setMode} />
+        {/* Fallback options only act on the canvas. */}
+        {mode === 'dnd' && (
+          <>
+            <label className="flex items-center gap-1.5">
+              <Switch size="small" checked={custom} onChange={setCustom} />
+              renderSectionFallback: custom
+            </label>
+            <label className="flex items-center gap-1.5">
+              <Switch size="small" checked={forced} onChange={setForced} />
+              shouldForceSectionFallback: "Forced fallback"
+            </label>
+          </>
+        )}
       </div>
-      <div className="min-h-0 flex-1">
+      <div
+        className={mode === 'editor' ? 'min-h-0 flex-1 p-2' : 'min-h-0 flex-1'}
+      >
         <Live>
-          <Live.Dnd
-            frame={IFRAME_FRAME}
-            items={DRAGGABLE_ITEMS}
-            value={value}
-            onChange={setValue}
-            renderSectionFallback={custom ? customFallback : undefined}
-            shouldForceSectionFallback={section =>
-              forced && section.name === FORCEABLE.name
-            }
-            className="h-full"
-          />
+          {mode === 'editor' ? (
+            // The whole document compiles as one here, so a section that
+            // throws takes the preview down with it, unlike on the canvas.
+            <EditorView value={value} onChange={setValue} />
+          ) : (
+            <Live.Dnd
+              frame={IFRAME_FRAME}
+              items={DRAGGABLE_ITEMS}
+              value={value}
+              onChange={setValue}
+              renderSectionFallback={custom ? customFallback : undefined}
+              shouldForceSectionFallback={section =>
+                forced && section.name === FORCEABLE.name
+              }
+              className="h-full"
+            />
+          )}
         </Live>
       </div>
     </div>

@@ -16,6 +16,7 @@ import Live from '~/index';
 import type { Section } from '~/types';
 
 import { documentWith } from '../shared/documents';
+import { EditorView, ModeSwitch, type ViewMode } from '../shared/editor-view';
 import { IFRAME_FRAME } from '../shared/frames';
 import {
   BINDING_KEYS,
@@ -65,10 +66,12 @@ const Toolbar = ({
   options,
   onOptionsChange,
   onLoad,
+  modeSwitch,
 }: {
   options: Options;
   onOptionsChange: (options: Options) => void;
   onLoad: (document: string) => void;
+  modeSwitch: React.ReactNode;
 }) => {
   const inspector = useDndInspector();
   const toggle = (key: keyof Options, label: string) => (
@@ -87,6 +90,7 @@ const Toolbar = ({
       className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b
         border-gray-200 px-3 py-1.5"
     >
+      {modeSwitch}
       <Button
         size="small"
         type={inspector.active ? 'primary' : 'default'}
@@ -194,6 +198,7 @@ const confirmDelete = (section: Section) =>
 // error reporting (`onEditError`) and the delete guard (`onBeforeDelete`).
 const Inspector = () => {
   const [value, setValue] = useState(INITIAL_DOCUMENT);
+  const [mode, setMode] = useState<ViewMode>('dnd');
   const [options, setOptions] = useState<Options>({
     useRegistry: true,
     useKeys: true,
@@ -239,6 +244,23 @@ const Inspector = () => {
     return confirmed;
   };
 
+  const modeSwitch = <ModeSwitch value={mode} onChange={setMode} />;
+
+  // The same document as code. The Dnd options above have nothing to act on
+  // here, so only the switch back stays.
+  if (mode === 'editor') {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="border-b border-gray-200 px-3 py-1.5">{modeSwitch}</div>
+        <div className="min-h-0 flex-1 p-2">
+          <Live>
+            <EditorView value={value} onChange={setValue} />
+          </Live>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Live>
       <Live.Dnd
@@ -258,6 +280,7 @@ const Inspector = () => {
           options={options}
           onOptionsChange={setOptions}
           onLoad={setValue}
+          modeSwitch={modeSwitch}
         />
         <div className="min-h-0 flex-1">
           <Live.Dnd.Layout />
