@@ -75,6 +75,17 @@
    * selector matches ui-kit's portal root, which `Toast` appends to
    * `document.body`, outside `#root`.
    */
+  /*
+   * The UA's own colors (canvas, default text) follow the theme too. This is
+   * a stylesheet rule rather than an inline style on `<html>` so
+   * `frame.syncStyle` carries it into iframe previews along with the
+   * `data-theme` attribute. Without it, text that sets no color of its own,
+   * such as ui-kit's `Typography.Title`, stays black in a dark iframe.
+   */
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+  }
+
   [role='region'][aria-label='Notifications'] p {
     margin: 0;
   }

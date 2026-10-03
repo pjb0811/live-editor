@@ -34,7 +34,13 @@ live-editor/
 │  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx, measure.ts, viewport-units.ts)
 │  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, base-modules.ts, use-dynamic-tailwind.ts)
 │  ├─ pages/
-│  │  └─ editor/            # 로컬 개발용 에디터 페이지 (index.tsx = 앱 레이아웃, Editor/DnD 토글)
+│  │  ├─ index.tsx          # 로컬 개발 앱 셸 (해시로 페이지 전환, 다크 모드 토글)
+│  │  ├─ playground/        # 코드 에디터·DnD 토글, undo/redo, 저장
+│  │  ├─ custom-panel/      # 커스텀 Palette/Panel/Layout (docs 데모 재사용)
+│  │  ├─ inspector/         # 요소 선택, renderField, onEditError, onBeforeDelete
+│  │  ├─ fallback/          # renderSectionFallback, shouldForceSectionFallback
+│  │  ├─ preview-modes/     # iframe/shadow/in place 비교, syncStyle·테마 동기화
+│  │  └─ shared/            # 페이지 공용 예제 섹션, 프레임 설정
 │  ├─ utils/
 │  │  ├─ index.ts           # compile(), cn() 등 핵심 유틸 (UI kit을 import하지 않음 — Node에서 로드 가능해야 함)
 │  │  ├─ cache.ts           # 바운디드 LRU 캐시

@@ -806,7 +806,7 @@ const CustomPalettePanelDemo = () => {
 
   return (
     <Context>
-      <div className="flex h-screen flex-col">
+      <div className="flex h-full flex-col">
         {/* Wraps instead of overflowing: a right-aligned row that's too wide
             spills off the left edge, where it can't be scrolled back into
             view, and on a phone that hid the first two panel modes. */}
