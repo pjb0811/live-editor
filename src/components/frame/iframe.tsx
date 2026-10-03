@@ -662,6 +662,26 @@ const IFrame = ({
       ?.remove();
   }, [shouldAutoHeight]);
 
+  // A fixed-height iframe scrolls its own document. `syncStyle` copies the
+  // host's stylesheets in, and an app shell often sets `body { overflow:
+  // hidden }` to keep its own page from scrolling. Copied in, that rule left
+  // the preview unable to scroll at all. An inline value wins over any copied
+  // rule. With autoHeight the iframe is as tall as its content, so there's
+  // nothing to scroll and the body is left as it was.
+  useEffect(() => {
+    const body = iframeRef.current?.contentDocument?.body;
+
+    if (!body || !mountNode) {
+      return;
+    }
+
+    if (shouldAutoHeight) {
+      body.style.removeProperty('overflow-y');
+    } else {
+      body.style.setProperty('overflow-y', 'auto');
+    }
+  }, [shouldAutoHeight, mountNode]);
+
   // Keyed on mountNode (not just shouldAutoHeight) so it re-runs once the
   // iframe's document exists — before load there's no head to inject into.
   useEffect(() => {

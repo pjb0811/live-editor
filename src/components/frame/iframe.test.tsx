@@ -30,6 +30,34 @@ describe('IFrame layout', () => {
   });
 });
 
+// A host rule like `body { overflow: hidden }`, copied in by syncStyle,
+// must not stop a fixed-height preview from scrolling.
+describe('IFrame scrolling', () => {
+  const frameBody = (container: HTMLElement) =>
+    container.querySelector('iframe')!.contentDocument!.body;
+
+  it('lets a fixed-height iframe scroll its own document', async () => {
+    const { container } = render(<IFrame syncStyle>{() => null}</IFrame>);
+
+    await waitFor(() =>
+      expect(frameBody(container).style.overflowY).toBe('auto'),
+    );
+  });
+
+  it('leaves the body alone with autoHeight', async () => {
+    const { container } = render(
+      <IFrame syncStyle autoHeight>
+        {() => null}
+      </IFrame>,
+    );
+
+    await waitFor(() =>
+      expect(frameBody(container).querySelector('#iframe-root')).not.toBeNull(),
+    );
+    expect(frameBody(container).style.overflowY).toBe('');
+  });
+});
+
 // With syncStyle the host's stylesheets come in, but their theme selectors
 // need the host's `<html>` class or attribute on the iframe's root (#497).
 describe('IFrame syncStyle and the host theme', () => {
