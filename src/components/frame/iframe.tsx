@@ -207,6 +207,10 @@ const IFrame = ({
   // a boolean latched to `true` forever meant a later change to `scripts`
   // (new entries) never got loaded once the first batch had.
   const loadedScriptsRef = useRef<Set<string>>(new Set());
+  // The document those scripts went into. Moving the iframe in the DOM, as
+  // reordering canvas sections does, reloads it with a fresh document that
+  // has none of them (#507).
+  const loadedScriptsDocRef = useRef<Document | null>(null);
   const prevStyleCountRef = useRef(0);
   const prevStylesheetCountRef = useRef(0);
   // Animations already given a "re-measure once you settle" handler, so a
@@ -296,6 +300,11 @@ const IFrame = ({
 
       if (!doc) {
         return;
+      }
+
+      if (loadedScriptsDocRef.current !== doc) {
+        loadedScriptsDocRef.current = doc;
+        loadedScriptsRef.current = new Set();
       }
 
       doc.body.style.overflowX = 'hidden';

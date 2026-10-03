@@ -342,6 +342,47 @@ export const FramesFixture = () => {
   );
 };
 
+// Two iframe sections with a script and a style injected through `frame`.
+// Reordering them moves an iframe in the DOM, which reloads its document, and
+// whatever was injected into the old document has to reach the new one.
+const reorderSection = (id: string, name: string) => `
+    <section data-id="${id}" data-name="${name}">
+      <p id="${id}-text" className="injected">${name} section</p>
+    </section>`;
+
+const reorderCode = (first: string, second: string) => `const App = () => (
+  <main id="app-container">${first}${second}
+  </main>
+);
+
+export default App;`;
+
+const firstSection = reorderSection('s-first', 'First');
+const secondSection = reorderSection('s-second', 'Second');
+
+const reorderFrame = {
+  mode: 'iframe' as const,
+  scripts: ['/e2e/frame-script.js'],
+  styles: ['.injected { color: rgb(0, 128, 0); }'],
+};
+
+export const ReorderFixture = () => {
+  const [code, setCode] = useState(reorderCode(firstSection, secondSection));
+
+  return (
+    <Live>
+      <button onClick={() => setCode(reorderCode(secondSection, firstSection))}>
+        Swap sections
+      </button>
+      <div style={{ height: 700 }}>
+        <Live.Dnd value={code} onChange={setCode} frame={reorderFrame}>
+          <Live.Dnd.Canvas />
+        </Live.Dnd>
+      </div>
+    </Live>
+  );
+};
+
 // The real CodeMirror editor, so its own undo history is what's under test,
 // with the same probe panel as `SurfaceFixture` for the DnD side.
 export const HistoryFixture = () => {
@@ -400,6 +441,7 @@ const fixtures = {
   autoheight: <AutoHeightFixture />,
   transitions: <TransitionFixture />,
   frames: <FramesFixture />,
+  reorder: <ReorderFixture />,
   history: <HistoryFixture />,
   'field-error': <FieldErrorFixture />,
 } as const;

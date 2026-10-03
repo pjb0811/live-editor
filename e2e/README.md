@@ -41,6 +41,11 @@ the fix and finds the tag again after. The other adds, changes and removes a
 host stylesheet and reads the section's computed color, so a style that
 lingers in the frame after removal fails (#338).
 
+`reorder` swaps two iframe sections that load a script through
+`frame.scripts`. Moving an iframe in the DOM reloads its document, which jsdom
+doesn't do, so only a real browser shows whether the new document gets the
+script again (#507).
+
 `history` uses the real CodeMirror editor: it types, undoes with the keyboard,
 types again, then edits through the DnD panel, and checks the panel built on
 the undone document rather than the undone text.
