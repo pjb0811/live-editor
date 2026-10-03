@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button, Space } from '@jbpark/ui-kit';
-import { Copy, Trash } from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy, Trash } from 'lucide-react';
 
 import { cn } from '~/utils/cn';
 
@@ -13,6 +13,12 @@ interface Props {
   onClick?: () => void;
   onDelete?: (id: string) => void;
   onCopy?: (id: string) => void;
+  // The move buttons on the selected section, the same move as the panel's
+  // (#505). Each is disabled where the section can't go further.
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   // Registers the focusable wrapper, so the canvas can move focus to it.
   nodeRef?: (node: HTMLElement | null) => void;
   // Arrow keys and Home/End on a focused section, outside a drag (#435).
@@ -53,6 +59,10 @@ const Sortable = ({
   onClick,
   onDelete: _onDelete,
   onCopy: _onCopy,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = false,
+  canMoveDown = false,
   nodeRef,
   onNavigate,
   onDeleteKey,
@@ -119,8 +129,8 @@ const Sortable = ({
     }
   };
 
-  // The same element is the activator, so Space on the copy or delete button
-  // presses that button instead of picking the section up.
+  // The same element is the activator, so Space on a toolbar button presses
+  // that button instead of picking the section up.
   const setRefs = (node: HTMLDivElement | null) => {
     setNodeRef(node);
     setActivatorNodeRef(node);
@@ -135,6 +145,12 @@ const Sortable = ({
   const onCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
     _onCopy?.(id);
+  };
+
+  // Stops the click from reaching the wrapper, which would select it again.
+  const press = (action?: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    action?.();
   };
 
   return (
@@ -192,8 +208,33 @@ const Sortable = ({
             //
           )}
         >
-          <Button icon={<Copy />} onClick={onCopy} />
-          <Button danger icon={<Trash />} onClick={onDelete} />
+          {onMoveUp && (
+            <Button
+              icon={<ChevronUp />}
+              disabled={!canMoveUp}
+              onClick={press(onMoveUp)}
+              aria-label="Move section up"
+            />
+          )}
+          {onMoveDown && (
+            <Button
+              icon={<ChevronDown />}
+              disabled={!canMoveDown}
+              onClick={press(onMoveDown)}
+              aria-label="Move section down"
+            />
+          )}
+          <Button
+            icon={<Copy />}
+            onClick={onCopy}
+            aria-label="Duplicate section"
+          />
+          <Button
+            danger
+            icon={<Trash />}
+            onClick={onDelete}
+            aria-label="Delete section"
+          />
         </Space>
       )}
     </div>

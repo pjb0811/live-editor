@@ -1369,6 +1369,129 @@ describe('keyboard navigation', () => {
   });
 });
 
+// The selected section's own toolbar on the canvas (#505).
+describe('section toolbar', () => {
+  const threeSections = documentWith(`
+    <section data-id="s1" data-name="First"><p>1</p></section>
+    <section data-id="s2" data-name="Second"><p>2</p></section>
+    <section data-id="s3" data-name="Third"><p>3</p></section>`);
+
+  const renderToolbar = () => {
+    const onChange = vi.fn();
+    let panel: DndPanel | undefined;
+
+    const Probe = () => {
+      panel = useDndPanel();
+
+      return <div data-testid="panel" />;
+    };
+
+    const utils = render(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd value={threeSections} onChange={onChange}>
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>,
+    );
+
+    const sortables = () =>
+      utils.container.querySelectorAll<HTMLElement>(
+        '[aria-roledescription="sortable"]',
+      );
+    const select = (index: number) => act(() => sortables()[index]!.click());
+    const button = (index: number, name: string) =>
+      within(sortables()[index]!).getByRole('button', { name });
+    const order = (code: string) =>
+      ['s1', 's2', 's3'].sort(
+        (a, b) =>
+          code.indexOf(`data-id="${a}"`) - code.indexOf(`data-id="${b}"`),
+      );
+
+    return {
+      ...utils,
+      onChange,
+      sortables,
+      select,
+      button,
+      order,
+      getPanel: () => panel!,
+    };
+  };
+
+  it('shows named buttons on the selected section only', () => {
+    const { sortables, select, button } = renderToolbar();
+
+    expect(within(sortables()[1]!).queryAllByRole('button')).toHaveLength(0);
+
+    select(1);
+
+    for (const name of [
+      'Move section up',
+      'Move section down',
+      'Duplicate section',
+      'Delete section',
+    ]) {
+      expect(button(1, name)).toBeTruthy();
+    }
+
+    expect(within(sortables()[0]!).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('moves the section and keeps it selected', () => {
+    const { onChange, select, button, order, getPanel, rerender } =
+      renderToolbar();
+
+    select(1);
+    act(() => button(1, 'Move section up').click());
+
+    const moved = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(order(moved)).toEqual(['s2', 's1', 's3']);
+
+    rerender(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd value={moved} onChange={onChange}>
+          <Canvas />
+        </Dnd>
+      </PreviewContext.Provider>,
+    );
+
+    expect(getPanel().item?.id).toBe('s2');
+
+    act(() => button(0, 'Move section down').click());
+
+    expect(order(onChange.mock.calls.at(-1)![0] as string)).toEqual([
+      's1',
+      's2',
+      's3',
+    ]);
+  });
+
+  it('disables moving past either end', () => {
+    const { select, button } = renderToolbar();
+
+    select(0);
+
+    expect(button(0, 'Move section up')).toHaveProperty('disabled', true);
+    expect(button(0, 'Move section down')).toHaveProperty('disabled', false);
+
+    select(2);
+
+    expect(button(2, 'Move section up')).toHaveProperty('disabled', false);
+    expect(button(2, 'Move section down')).toHaveProperty('disabled', true);
+  });
+
+  it('focuses the section when the move reaches an end', () => {
+    const { sortables, select, button } = renderToolbar();
+
+    select(1);
+    act(() => button(1, 'Move section up').click());
+
+    expect(document.activeElement).toBe(sortables()[1]);
+  });
+});
+
 describe('onBeforeDelete', () => {
   const renderDeletable = (onBeforeDelete?: (section: Section) => unknown) => {
     const onChange = vi.fn();
