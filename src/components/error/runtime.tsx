@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { useEventListener } from '@jbpark/use-hooks';
 
+import { useLiveMessages } from '~/components/context/messages';
 import { useError } from '~/components/context/states';
 
 import Error from './error';
@@ -13,6 +14,7 @@ export interface Props extends React.ComponentPropsWithRef<'div'> {
 
 const Runtime = ({ open = true, reset }: Props) => {
   const { error: message, setError } = useError();
+  const messages = useLiveMessages();
 
   useEventListener('error', e => {
     setError(e.message);
@@ -27,7 +29,9 @@ const Runtime = ({ open = true, reset }: Props) => {
     return null;
   }
 
-  return <Error message={message} onReset={reset} title="Runtime Error" />;
+  return (
+    <Error message={message} onReset={reset} title={messages.errors.runtime} />
+  );
 };
 
 export default Runtime;

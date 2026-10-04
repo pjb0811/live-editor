@@ -1,14 +1,33 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { registerEditorSession } from '~/utils/editor-caches';
 
+import {
+  type LiveMessagesInput,
+  MessagesContext,
+  mergeMessages,
+} from './messages';
 import type { ErrorContextType, PreviewContextType } from './states';
 import { ErrorContext, PreviewContext } from './states';
 
-const ContextProvider = ({ children }: { children?: React.ReactNode }) => {
+export interface Props {
+  children?: React.ReactNode;
+  // Replaces any of the editor's built-in text, group by group: the rest
+  // stays English, or the enclosing `Live`'s. Define it once outside render, or memoize it, since a
+  // new object re-renders every component that shows text (#524).
+  messages?: LiveMessagesInput;
+}
+
+const ContextProvider = ({ children, messages }: Props) => {
   const [code, setCodeState] = useState(DEFAULT_TEMPLATE);
   const [error, setError] = useState<ErrorContextType['error']>(null);
 
@@ -47,10 +66,20 @@ const ContextProvider = ({ children }: { children?: React.ReactNode }) => {
     [error, setError],
   );
 
+  // A provider inside another one starts from the outer one's messages, so
+  // a page can set them once around several editors.
+  const inherited = useContext(MessagesContext);
+  const messagesValue = useMemo(
+    () => mergeMessages(messages, inherited),
+    [messages, inherited],
+  );
+
   return (
     <PreviewContext.Provider value={previewValue}>
       <ErrorContext.Provider value={errorValue}>
-        {children}
+        <MessagesContext.Provider value={messagesValue}>
+          {children}
+        </MessagesContext.Provider>
       </ErrorContext.Provider>
     </PreviewContext.Provider>
   );

@@ -22,14 +22,25 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
 
+import {
+  type LiveMessages,
+  useLiveMessages,
+} from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
 import type { DndItemsItem } from './use-dnd-items';
 
-const label = (items: DndItemsItem[], id: string | number) => {
+// The default announcements would read out the items' generated ids.
+const label = (
+  messages: LiveMessages,
+  items: DndItemsItem[],
+  id: string | number,
+) => {
   const index = items.findIndex(item => item.id === id);
 
-  return index >= 0 ? `Item ${index + 1}` : 'Item';
+  // Every id dnd-kit reports is one of `items`; the id itself is only a
+  // last resort.
+  return index >= 0 ? messages.items.item(index + 1) : String(id);
 };
 
 // Drag sorting for the built-in Items editor (#436). It has a context of its
@@ -70,19 +81,19 @@ export const SortableItems = ({
     }
   };
 
-  // The default announcements read out the items' generated ids.
+  const messages = useLiveMessages();
+  const { announcements: say } = messages;
+  const name = (id: string | number) => label(messages, items, id);
+
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${label(items, active.id)}.`,
+    onDragStart: ({ active }) => say.pickedUp(name(active.id)),
     onDragOver: ({ active, over }) =>
-      over
-        ? `${label(items, active.id)} is over ${label(items, over.id)}.`
-        : undefined,
+      over ? say.itemOver(name(active.id), name(over.id)) : undefined,
     onDragEnd: ({ active, over }) =>
       over
-        ? `${label(items, active.id)} was moved to the place of ${label(items, over.id)}.`
-        : `${label(items, active.id)} was dropped.`,
-    onDragCancel: ({ active }) =>
-      `Moving ${label(items, active.id)} was cancelled.`,
+        ? say.itemMoved(name(active.id), name(over.id))
+        : say.dropped(name(active.id)),
+    onDragCancel: ({ active }) => say.cancelled(name(active.id)),
   };
 
   return (
@@ -127,6 +138,7 @@ export const ItemCard = ({
   className?: string;
   children: React.ReactNode;
 }) => {
+  const messages = useLiveMessages();
   const {
     attributes,
     listeners,
@@ -150,7 +162,7 @@ export const ItemCard = ({
             ref={setActivatorNodeRef}
             {...attributes}
             {...listeners}
-            aria-label={`Reorder ${title}`}
+            aria-label={messages.items.reorder(title)}
             disabled={disabled}
             className="cursor-grab rounded p-0.5 text-gray-400
               hover:text-gray-700 disabled:cursor-not-allowed

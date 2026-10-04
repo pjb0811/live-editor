@@ -1,6 +1,7 @@
 import { Button, Drawer, Space, Splitter } from '@jbpark/ui-kit';
 import { Crosshair, LayoutGrid } from 'lucide-react';
 
+import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
 import { DefaultDraggableItem } from './draggable';
@@ -99,6 +100,7 @@ export const Palette = ({ className, ...restProps }: DndRegionProps) => (
 export const Canvas = ({ className, style, ...restProps }: DndRegionProps) => {
   const { canvas, documentError } = useDndRegions('<Live.Dnd.Canvas>');
   const inspector = useDndInspector();
+  const messages = useLiveMessages();
 
   return (
     <div
@@ -128,11 +130,11 @@ export const Canvas = ({ className, style, ...restProps }: DndRegionProps) => {
               color="primary"
               variant={inspector.active ? 'solid' : 'outlined'}
               aria-pressed={inspector.active}
-              aria-label="Pick an element"
+              aria-label={messages.canvas.pickElement}
               title={
                 inspector.active
-                  ? 'Click an element to edit it. Esc to cancel.'
-                  : 'Pick an element'
+                  ? messages.canvas.pickElementActive
+                  : messages.canvas.pickElement
               }
               onClick={inspector.toggle}
             />
@@ -178,6 +180,7 @@ export interface DndLayoutProps {
 export const Layout = ({ palette, panel }: DndLayoutProps) => {
   const { isMobile, selectedId, clearSelection, paletteOpen, setPaletteOpen } =
     useDndRegions('<Live.Dnd.Layout>');
+  const messages = useLiveMessages();
 
   return (
     <>
@@ -210,7 +213,7 @@ export const Layout = ({ palette, panel }: DndLayoutProps) => {
         type="primary"
         shape="circle"
         icon={<LayoutGrid />}
-        aria-label="Components"
+        aria-label={messages.canvas.palette}
         className="fixed right-4 bottom-4 z-20 md:hidden"
         onClick={() => setPaletteOpen(true)}
       />
@@ -222,7 +225,7 @@ export const Layout = ({ palette, panel }: DndLayoutProps) => {
         onClose={() => setPaletteOpen(false)}
         direction="bottom"
         size="large"
-        title="Components"
+        title={messages.canvas.palette}
       >
         {palette ?? <PaletteItems subject="<Live.Dnd.Layout>" />}
       </Drawer>
@@ -231,7 +234,7 @@ export const Layout = ({ palette, panel }: DndLayoutProps) => {
         onClose={clearSelection}
         direction="bottom"
         size="large"
-        title="Properties"
+        title={messages.canvas.properties}
       >
         {panel ?? <PanelFields subject="<Live.Dnd.Layout>" />}
       </Drawer>

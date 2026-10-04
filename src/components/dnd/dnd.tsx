@@ -38,6 +38,7 @@ import type { UpdateFailure } from '~/utils/ast/update';
 
 import { cn } from '../../utils/cn';
 import { preloadScripts } from '../../utils/scripts';
+import { type LiveMessages, useLiveMessages } from '../context/messages';
 import { usePreview } from '../context/states';
 import { type FrameProps } from '../frame';
 import { useStableModules } from '../preview/use-stable-modules';
@@ -67,7 +68,7 @@ import {
 } from './section-fallback-context';
 import Sortable from './sortable';
 import { useDeleteFlow } from './use-delete-flow';
-import { SCREEN_READER_INSTRUCTIONS, useDndKeyboard } from './use-dnd-keyboard';
+import { useDndKeyboard } from './use-dnd-keyboard';
 import { useInspectorState } from './use-inspector-state';
 import { useSectionDocument } from './use-section-document';
 
@@ -81,78 +82,74 @@ import { useSectionDocument } from './use-section-document';
 const describeUpdateFailure = (
   failure: UpdateFailure | undefined,
   label: string,
+  { editErrors: m }: LiveMessages,
 ): { title: string; description?: string } => {
   switch (failure?.reason) {
     case 'attribute-not-found':
       return {
-        title: `Failed to update "${label}"`,
-        description: `This element has no "${failure.property}" attribute — check the property in its data-binding.`,
+        title: m.updateFailed(label),
+        description: m.attributeNotFound(failure.property),
       };
     case 'binding-not-declared':
       return {
-        title: `Failed to update "${label}"`,
-        description: `No binding for ${
-          failure.property
-            ? `property "${failure.property}"`
-            : `label "${label}"`
-        } is declared on this element's data-binding.`,
+        title: m.updateFailed(label),
+        description: m.bindingNotDeclared({
+          label,
+          property: failure.property,
+        }),
       };
     case 'duplicate-binding':
       return {
-        title: `Failed to update "${label}"`,
-        description: `${failure.count} bindings share ${
-          failure.property
-            ? `property "${failure.property}"`
-            : `label "${label}"`
-        } on this element — remove the duplicate in its data-binding.`,
+        title: m.updateFailed(label),
+        description: m.duplicateBinding({
+          count: failure.count,
+          label,
+          property: failure.property,
+        }),
       };
     case 'reserved-property':
       return {
-        title: `Cannot edit "${label}" in the panel`,
-        description: `"${failure.property}" is managed by the editor, so a binding can't change it.`,
+        title: m.cannotEdit(label),
+        description: m.reservedProperty(failure.property),
       };
     case 'required-property':
       return {
-        title: `Cannot remove "${label}"`,
-        description: `"${failure.property}" is marked required in its data-binding, so it can't be removed.`,
+        title: m.cannotRemove(label),
+        description: m.requiredProperty(failure.property),
       };
     case 'no-binding':
-      return {
-        title: `Failed to update "${label}"`,
-        description: 'This element has no data-binding declaration.',
-      };
+      return { title: m.updateFailed(label), description: m.noBinding };
     case 'element-not-found':
-      return {
-        title: `Failed to update "${label}"`,
-        description: 'The target element could not be found in this section.',
-      };
+      return { title: m.updateFailed(label), description: m.elementNotFound };
     case 'unsupported-syntax':
       return {
-        title: `Cannot edit "${label}" in the panel`,
-        description: `The "${failure.property}" expression was preserved. Change it in the code editor instead.`,
+        title: m.cannotEdit(label),
+        description: m.unsupportedSyntax(failure.property),
       };
     case 'parse-error':
       return {
-        title: `Failed to update "${label}"`,
+        title: m.updateFailed(label),
         description:
           failure.error instanceof Error
             ? failure.error.message
-            : 'Check the console for details.',
+            : m.checkConsole,
       };
     default:
-      return { title: `Failed to update "${label}"` };
+      return { title: m.updateFailed(label) };
   }
 };
 
 // An edit refused because the document doesn't parse (#433).
-const blockedEditError = (error: unknown): DndEditError => ({
+const blockedEditError = (
+  error: unknown,
+  { editErrors: m }: LiveMessages,
+): DndEditError => ({
   type: 'parse',
   target: 'document',
   reason: 'parse-error',
   error,
-  title: 'The document has a syntax error',
-  description:
-    'The canvas shows the last version that parsed. Fix the error in the code, then edit here again.',
+  title: m.documentSyntaxError,
+  description: m.documentSyntaxErrorDetail,
 });
 
 // What `useDndPalette()` returns. Deliberately just data: the drag wiring is
@@ -380,14 +377,19 @@ const Dnd = ({
   // ContextProvider supplies DEFAULT_TEMPLATE for a fresh document.
   const value = _value === undefined ? code : _value;
 
+  const messages = useLiveMessages();
   const reportError = onEditError ?? toastEditError;
 
   // Read through a ref so the effects below fire once per failure, not again
   // on every render a host passes a fresh inline `onEditError`.
   const reportErrorRef = useRef(reportError);
+  // Read through a ref by the same effects, so new messages don't report the
+  // same failure again.
+  const messagesRef = useRef(messages);
 
   useEffect(() => {
     reportErrorRef.current = reportError;
+    messagesRef.current = messages;
   });
 
   // Reported only when an author tries to edit, not whenever the source
@@ -395,7 +397,9 @@ const Dnd = ({
   // the canvas already says it's showing the last valid version (#433).
   const onBlockedEdit = useCallback((problem: DocumentProblem) => {
     if (problem.reason === 'parse-error') {
-      reportErrorRef.current(blockedEditError(problem.error));
+      reportErrorRef.current(
+        blockedEditError(problem.error, messagesRef.current),
+      );
     }
   }, []);
 
@@ -460,6 +464,7 @@ const Dnd = ({
   const {
     sensors,
     announcements,
+    screenReaderInstructions,
     sectionNodes,
     onNavigate,
     onDeleteKey,
@@ -547,8 +552,12 @@ const Dnd = ({
         target: 'document',
         reason: 'container-not-found',
         containerId: missingContainer,
-        title: `No #${missingContainer} element in the document`,
-        description: `Sections are the <section> elements inside the element with id="${missingContainer}". Start from createDocument(), or set containerId to match your document.`,
+        title:
+          messagesRef.current.editErrors.missingContainer(missingContainer),
+        description:
+          messagesRef.current.editErrors.missingContainerDetail(
+            missingContainer,
+          ),
       });
     }
   }, [missingContainer]);
@@ -559,8 +568,8 @@ const Dnd = ({
         type: 'parse',
         target: 'section',
         error: parseError.error,
-        title: 'Failed to parse this section',
-        description: 'Check the console for details.',
+        title: messagesRef.current.editErrors.sectionParseFailed,
+        description: messagesRef.current.editErrors.checkConsole,
       });
     }
   }, [parseError]);
@@ -576,7 +585,7 @@ const Dnd = ({
     // The fields show the last version that parsed while the source doesn't,
     // and their ids point into that version, not the current source (#433).
     if (stale && problem?.reason === 'parse-error') {
-      reportError(blockedEditError(problem.error));
+      reportError(blockedEditError(problem.error, messages));
       return;
     }
 
@@ -610,7 +619,7 @@ const Dnd = ({
         label,
         property,
         failure: result.failure,
-        ...describeUpdateFailure(result.failure, label),
+        ...describeUpdateFailure(result.failure, label, messages),
       });
       return;
     }
@@ -701,8 +710,7 @@ const Dnd = ({
             'text-sm text-amber-900',
           )}
         >
-          Showing the last version that parsed. Fix the syntax error in the code
-          to edit here again.
+          {messages.canvas.stale}
         </div>
       )}
       <Droppable
@@ -722,31 +730,30 @@ const Dnd = ({
             {problem?.reason === 'parse-error' ? (
               <Space orientation="vertical" align="center">
                 <Typography.Paragraph>
-                  The document has a syntax error
+                  {messages.canvas.syntaxError}
                 </Typography.Paragraph>
                 <Typography.Text>
-                  Fix it in the code to see its sections
+                  {messages.canvas.syntaxErrorHint}
                 </Typography.Text>
               </Space>
             ) : missingContainer !== null ? (
               <Space orientation="vertical" align="center">
                 <Typography.Paragraph>
-                  No #{missingContainer} element in the document
+                  {messages.canvas.missingContainer(missingContainer)}
                 </Typography.Paragraph>
                 <Typography.Text>
-                  Sections go inside the element with id=&quot;
-                  {missingContainer}&quot;
+                  {messages.canvas.missingContainerHint(missingContainer)}
                 </Typography.Text>
               </Space>
             ) : (
               <Space orientation="vertical" align="center">
                 <Typography.Paragraph>
-                  No sections available
+                  {messages.canvas.empty}
                 </Typography.Paragraph>
                 <Typography.Text>
                   {isMobile
-                    ? 'Tap a component to add it'
-                    : 'Drag a component from the left to add it'}
+                    ? messages.canvas.emptyHintTouch
+                    : messages.canvas.emptyHintDrag}
                 </Typography.Text>
               </Space>
             )}
@@ -804,7 +811,7 @@ const Dnd = ({
         collisionDetection={closestCenter}
         accessibility={{
           announcements,
-          screenReaderInstructions: SCREEN_READER_INSTRUCTIONS,
+          screenReaderInstructions,
         }}
         modifiers={[
           conditionalModifiers,

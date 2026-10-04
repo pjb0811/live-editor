@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Button, Checkbox } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 
+import { useLiveMessages } from '~/components/context/messages';
 import { findEditableChildren } from '~/utils/ast/binding';
 import { type DataAttrNode } from '~/utils/ast/types';
 
@@ -21,6 +22,7 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
   const items = useMemo(() => (Array.isArray(value) ? value : []), [value]);
 
   const { selection, actions } = useDndChildren(items, { onChange });
+  const messages = useLiveMessages();
 
   const editableChildrenMap = useMemo(() => {
     const map = new Map<number, DataAttrNode[]>();
@@ -37,7 +39,7 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-green-700">
-          Children Items ({items.length})
+          {messages.children.heading(items.length)}
         </div>
         <Button
           size="small"
@@ -45,7 +47,7 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
           icon={<Plus />}
           onClick={actions.add}
         >
-          Add Child
+          {messages.children.add}
         </Button>
       </div>
 
@@ -75,7 +77,10 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
                 />
               </div>
               <div className="text-xs font-medium text-green-800">
-                Child {itemIndex + 1} ({item.tagName || 'fragment'})
+                {messages.children.child(
+                  itemIndex + 1,
+                  item.tagName || 'fragment',
+                )}
               </div>
             </div>
 
@@ -83,17 +88,19 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
               <Button
                 size="small"
                 icon={<ArrowUp />}
+                aria-label={messages.items.moveUp}
                 disabled={itemIndex === 0}
                 onClick={() => actions.move(itemIndex, itemIndex - 1)}
               />
               <Button
                 size="small"
                 icon={<ArrowDown />}
+                aria-label={messages.items.moveDown}
                 disabled={itemIndex === items.length - 1}
                 onClick={() => actions.move(itemIndex, itemIndex + 1)}
               />
               <Button
-                title="Delete item"
+                title={messages.items.delete}
                 danger
                 size="small"
                 icon={<X />}
@@ -105,7 +112,7 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
           {editableChildrenMap.has(itemIndex) && (
             <div className="space-y-2">
               <div className="text-xs font-medium text-green-700">
-                Editable Bindings:
+                {messages.children.editableBindings}
               </div>
               {editableChildrenMap.get(itemIndex)!.map((editableNode, idx) => {
                 const nodeId = editableNode.dataAttributes.find(
@@ -132,7 +139,7 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
           {!!item.children && !editableChildrenMap.has(itemIndex) && (
             <div className="space-y-1">
               <div className="text-xs font-medium text-green-700">
-                Child Nodes:
+                {messages.children.childNodes}
               </div>
               {item.children.map((node, nodeIndex) => (
                 <div

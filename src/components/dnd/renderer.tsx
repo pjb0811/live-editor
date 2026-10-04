@@ -1,5 +1,6 @@
 import { memo } from 'react';
 
+import { useLiveMessages } from '~/components/context/messages';
 import ErrorBoundary from '~/components/error/boundary';
 import LiveError from '~/components/error/error';
 import Frame, { type FrameProps } from '~/components/frame';
@@ -46,6 +47,7 @@ const Renderer = ({
   // compiler or runs any of its top-level code.
   const module = useCompiledModule(forceFallback ? '' : preview, modules);
   const section = { id: sectionId, name: sectionName, code: sectionCode };
+  const messages = useLiveMessages();
 
   // In `shadow` mode there's no separate document to load a stylesheet into
   // — the shadow root only gets whatever CSS naturally inherits across the
@@ -72,8 +74,8 @@ const Renderer = ({
         args={{ section, reason: 'forced' }}
         builtin={
           <LiveError
-            message="This section is not rendered in this editor."
-            title="Section Unavailable"
+            message={messages.errors.sectionNotRendered}
+            title={messages.errors.sectionUnavailable}
           />
         }
       />
@@ -84,7 +86,9 @@ const Renderer = ({
     return (
       <SectionFallback
         args={{ section, reason: 'compile', message: module.error }}
-        builtin={<LiveError message={module.error} title="Compile Error" />}
+        builtin={
+          <LiveError message={module.error} title={messages.errors.compile} />
+        }
       />
     );
   }
@@ -137,7 +141,7 @@ const Renderer = ({
                   <LiveError
                     message={message}
                     onReset={reset}
-                    title="Rendering Error"
+                    title={messages.errors.rendering}
                   />
                 }
               />

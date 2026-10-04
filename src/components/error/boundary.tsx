@@ -1,5 +1,10 @@
 import React from 'react';
 
+import {
+  type LiveMessages,
+  MessagesContext,
+} from '~/components/context/messages';
+
 import Error from './error';
 
 interface Props {
@@ -32,6 +37,9 @@ const keysChanged = (
 ) => prev.length !== next.length || next.some((key, i) => key !== prev[i]);
 
 class ErrorBoundary extends React.Component<Props, State> {
+  static contextType = MessagesContext;
+  declare context: LiveMessages;
+
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, resetKeys: props.resetKeys };
@@ -74,7 +82,7 @@ class ErrorBoundary extends React.Component<Props, State> {
         <Error
           message={this.state.error?.message}
           onReset={this.reset}
-          title="Rendering Error"
+          title={this.context.errors.rendering}
         />
       );
     }

@@ -3,6 +3,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { Button, Typography } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
+import { useLiveMessages } from '~/components/context/messages';
 import type { Section } from '~/types';
 import { cn } from '~/utils/cn';
 
@@ -97,6 +98,7 @@ const Panel = ({
   onNodeChange,
   readOnly = false,
 }: PanelProps) => {
+  const messages = useLiveMessages();
   const groups = groupBindingsById(bindings);
   const rootRef = useRef<HTMLDivElement>(null);
   // Read without the throwing hook: this panel also renders outside
@@ -179,7 +181,7 @@ const Panel = ({
           //
         )}
       >
-        Please select a section.
+        {messages.panel.selectSection}
       </Typography.Paragraph>
     );
   }
@@ -211,7 +213,7 @@ const Panel = ({
               icon={<ChevronUp />}
               disabled={!canMoveUp}
               onClick={onMoveUp}
-              aria-label="Move section up"
+              aria-label={messages.section.moveUp}
             />
           )}
           {onMoveDown && (
@@ -219,7 +221,7 @@ const Panel = ({
               icon={<ChevronDown />}
               disabled={!canMoveDown}
               onClick={onMoveDown}
-              aria-label="Move section down"
+              aria-label={messages.section.moveDown}
             />
           )}
           {onDelete && (
@@ -227,20 +229,19 @@ const Panel = ({
               danger
               icon={<Trash />}
               onClick={() => onDelete(item.id)}
-              aria-label="Delete section"
+              aria-label={messages.section.delete}
             />
           )}
         </div>
       </div>
       {readOnly && (
         <Typography.Text role="status" className="block text-xs text-amber-700">
-          The document has a syntax error. These fields are from the last
-          version that parsed, and can&apos;t be edited until it parses again.
+          {messages.panel.readOnly}
         </Typography.Text>
       )}
       {!groups.length && (
         <Typography.Text className="text-xs text-gray-400">
-          No editable elements.
+          {messages.panel.noEditableElements}
         </Typography.Text>
       )}
       {groups.map(group => {

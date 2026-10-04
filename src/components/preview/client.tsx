@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 
+import { useLiveMessages } from '~/components/context/messages';
 import { useError, usePreview } from '~/components/context/states';
 import LiveError from '~/components/error';
 import Frame, { type FrameProps } from '~/components/frame';
@@ -24,6 +25,7 @@ const Client = ({
 }: Props) => {
   const { code } = usePreview();
   const { error, setError } = useError();
+  const messages = useLiveMessages();
   const isError = !!showError && !!error;
 
   const classNames = cn(isError && 'hidden', className);
@@ -54,7 +56,7 @@ const Client = ({
     return (
       <>
         <div className={cn('relative h-full w-full', classNames)}>
-          <LiveError message={module.error} title="Compile Error" />
+          <LiveError message={module.error} title={messages.errors.compile} />
         </div>
         <LiveError.Runtime open={isError} />
       </>

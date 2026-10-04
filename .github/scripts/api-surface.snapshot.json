@@ -20,7 +20,9 @@
         "LivePreview",
         "LiveProvider",
         "LiveRenderer",
-        "default"
+        "default",
+        "defaultMessages",
+        "useLiveMessages"
       ],
       "types": [
         "BindingKeyMap",
@@ -45,6 +47,8 @@
         "ItemsEditor",
         "ItemsEditorItem",
         "ItemsEditorOptions",
+        "LiveMessages",
+        "LiveMessagesInput",
         "PanelBinding",
         "PanelNodeChange",
         "PanelNodesChange",
@@ -52,8 +56,8 @@
       ]
     },
     "./provider": {
-      "values": ["default"],
-      "types": []
+      "values": ["default", "defaultMessages", "useLiveMessages"],
+      "types": ["LiveMessages", "LiveMessagesInput", "Props"]
     },
     "./dnd": {
       "values": [
@@ -172,6 +176,7 @@
         "clone",
         "createNodeFromValue",
         "createSectionPreviewCache",
+        "defaultValidationMessages",
         "duplicateArrayItems",
         "extract",
         "extractNodeValue",
@@ -246,6 +251,8 @@
         "UpdateEntry",
         "UpdateFailure",
         "UpdateResult",
+        "ValidationMessages",
+        "ValidationOptions",
         "ValidationResult"
       ]
     },
