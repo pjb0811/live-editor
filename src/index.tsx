@@ -31,6 +31,7 @@ import type {
   BindingKeyMap,
   BindingOptions,
   BindingRegistry,
+  BindingSchema,
 } from './utils/ast';
 
 const App = ({ children }: { children?: React.ReactNode }) => {
@@ -76,6 +77,7 @@ export type {
   BindingRegistry,
   BindingKeyMap,
   BindingOptions,
+  BindingSchema,
 };
 
 App.Preview = LivePreview;

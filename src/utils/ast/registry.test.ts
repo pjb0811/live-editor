@@ -385,4 +385,42 @@ describe('binding keys', () => {
       property: 'data-binding-key',
     });
   });
+
+  // Typed with `satisfies`, so this also checks that the schema types take
+  // keys of the app's own.
+  it('passes keys of its own through to meta, in both maps', () => {
+    const withMeta = {
+      bindings: {
+        'ui.Button': [
+          { label: 'Text', property: 'innerText', group: 'Button' },
+        ],
+      } satisfies BindingRegistry,
+      bindingKeys: {
+        title: [
+          {
+            label: 'Title',
+            property: 'innerText',
+            tab: 'Content',
+            visible: { property: 'mode', in: ['on'] },
+          },
+        ],
+      } satisfies BindingKeyMap,
+    };
+    const [title, button] = extract(
+      `<h1 data-id="t" data-binding-key="title">Hi</h1>
+       <ui.Button data-id="b">Go</ui.Button>`,
+      withMeta,
+    );
+
+    expect(title!.bindings).toEqual([
+      {
+        label: 'Title',
+        property: 'innerText',
+        meta: { tab: 'Content', visible: { property: 'mode', in: ['on'] } },
+      },
+    ]);
+    expect(button!.bindings).toEqual([
+      { label: 'Text', property: 'innerText', meta: { group: 'Button' } },
+    ]);
+  });
 });

@@ -207,7 +207,9 @@ const bindings = {
   element not editable at all.
 - **Every element still needs a `data-id`**, as with an inline binding.
 - Entries take everything an inline entry does, and are validated the same
-  way.
+  way. That includes keys of your own, such as `group` or `tab`, which arrive
+  in `binding.meta` (see [Common `meta` keys](#common-meta-keys)). The type of
+  one entry is `BindingSchema`.
 - It applies everywhere bindings are read: the built-in panel, `useDndPanel()`,
   `Live.Dnd.Field`, and the elements found inside `items` and `children`
   values. The AST helpers take it as an option too:
@@ -268,6 +270,8 @@ const bindingKeys = {
   `data-binding-key` that isn't a plain string.
 - **Every element still needs a `data-id`**, and `data-binding-key` can't be
   the target of a binding.
+- Entries are `BindingSchema`s, as in the registry, so keys of your own
+  arrive in `binding.meta` here too.
 - The AST helpers take both maps in one options object:
   `extract(source, { bindings, bindingKeys })`, and the same for `update()` and
   `updateAll()`. A custom panel gets that object from

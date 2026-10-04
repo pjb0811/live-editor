@@ -8,6 +8,7 @@ export type {
   BindingOptions,
   BindingRegistry,
   BindingRenderMap,
+  BindingSchema,
   BindingType,
   BindingWidget,
   DataAttrNode,
