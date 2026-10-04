@@ -1,7 +1,7 @@
 import { Button, Checkbox } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 
-import type { BindingRenderMap } from '~/utils/ast';
+import type { BindingRenderMap } from '~/utils/ast/types';
 
 import type { PanelNodeChange } from '../dnd';
 import BulkActionsBar from './bulk-actions-bar';

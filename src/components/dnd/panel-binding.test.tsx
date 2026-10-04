@@ -2,7 +2,9 @@
 import { render, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { type DataAttrNode, extract, fillIds, parseBinding } from '~/utils/ast';
+import { type DataAttrNode, extract } from '~/utils/ast';
+import { parseBinding } from '~/utils/ast/binding';
+import { fillIds } from '~/utils/ast/tree';
 
 import {
   type PanelBinding,

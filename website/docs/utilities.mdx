@@ -1,0 +1,109 @@
+---
+sidebar_position: 6.5
+title: Utilities
+---
+
+# Utilities
+
+`@jbpark/live-editor/utils` holds helpers for working with a document
+outside the editor: reading and replacing its sections, checking it before
+you save or load it, and managing the caches the editor keeps. The AST
+helpers a custom panel uses (`extract`, `update`, `validateBindingValue`, ...)
+are in `@jbpark/live-editor/utils/ast`, and
+[Custom Palette & Panel](./custom-palette-panel.mdx) describes them.
+
+## Documents
+
+A document is the code `Live.Dnd` edits: a component that renders a
+container element holding the sections, as
+[Document structure](./drag-and-drop.mdx#document-structure) describes.
+
+```tsx
+import {
+  checkDocument,
+  createDocument,
+  extractSections,
+  replaceSections,
+} from '@jbpark/live-editor/utils';
+
+const code = createDocument();
+const sections = extractSections(code); // [{ id, name, code }, ...]
+const next = replaceSections(code, [
+  ...sections.map(section => section.code),
+  '<section data-name="Contact"><p>Write to us</p></section>',
+]);
+```
+
+| Function                                 | Returns         | What it does                                                                                                                                   |
+| ---------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createDocument(options?)`               | `string`        | An empty document with the container. Start a controlled `Live.Dnd` from it. See [Document structure](./drag-and-drop.mdx#document-structure). |
+| `extractSections(code, options?)`        | `Section[]`     | The container's sections, each `{ id, name, code }`. `[]` when the code doesn't parse or has no container.                                     |
+| `replaceSections(code, codes, options?)` | `string`        | The document with its sections replaced by `codes`, in order. Everything outside the container is kept as written.                             |
+| `checkDocument(code, options?)`          | `DocumentCheck` | Whether `Live.Dnd` can edit the document. See below.                                                                                           |
+
+Every function takes `{ containerId }` when your container isn't the default
+`id="app-container"`. Pass the same id you give `Live.Dnd`.
+
+### Checking a document
+
+`checkDocument` tells you why `Live.Dnd` couldn't edit a document, before you
+save it or after you load it. These are the same reasons `Live.Dnd` reports
+through `onEditError`:
+
+```ts
+type DocumentCheck =
+  | { ok: true }
+  | { ok: false; reason: 'parse-error'; error: unknown }
+  | { ok: false; reason: 'container-not-found'; containerId: string };
+```
+
+```ts
+const check = checkDocument(code, { containerId: 'root' });
+
+if (!check.ok && check.reason === 'container-not-found') {
+  // The document has no element with id="root".
+}
+```
+
+## Caches
+
+The editor caches compiled modules, fetched scripts and parsed documents for
+the whole page. `Live` clears them when its last instance unmounts, so most
+apps never call these.
+
+| Function                  | What it clears                                                                                                                |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `clearEditorCaches()`     | Every page-wide cache: compiled modules, script blobs (their blob URLs are revoked), parsed documents and extracted bindings. |
+| `clearCompilationCache()` | Compiled modules only. Clearing doesn't re-render anything: a component compiles again the next time it renders.              |
+
+## Scripts
+
+`preloadScripts(urls)` starts fetching scripts you'll pass as `frame.scripts`,
+so the first preview doesn't wait for them. It doesn't throw: a failed fetch
+is retried, and reported, when a preview loads the script.
+
+## Class names
+
+`cn(...classes)` joins class names and merges conflicting Tailwind classes
+(`clsx` with `tailwind-merge`), the way the editor's own components do.
+
+## Deprecated exports
+
+These names are exported from `./utils` and `./utils/ast` but are internal
+helpers, so they're deprecated and leave those entries in the next major.
+Each still works until then.
+
+| Names                                                                                                                                                                                                                                                                  | Use instead                                                                      |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `appendArrayItem`, `duplicateArrayItems`, `moveArrayItem`, `moveArrayItems`, `removeArrayItems`, `updateArrayItemProperty`, `updateArrayItemValue`, `parseItems`, `parseArrayExpression`, `arrayExpressionToCode`, `canStructurallyEditArray`, `ArrayItem`, `ItemKind` | `useDndItems` from `./dnd`                                                       |
+| `extractNodeValue`, `extractObjectProperties`, `getCurrentValue`, `getStructuredValue`, `createNodeFromValue`, `canLosslesslyEvaluateSource`, `ExtractedNodeValue`, `NodeValueType`, `EditableNodeValueType`                                                           | `extract`, `update`, and `PanelBinding`'s `value`, `onChange` and `canEditValue` |
+| `parseBinding`, `parseBindingExpression`, `readNodeBindings`, `resolveBindings`, `getKeyBindings`, `getRegistryBindings`, `isComponentTagName`                                                                                                                         | `extract(source, { bindings, bindingKeys })` or `useDndPanel().bindings`         |
+| `parseDocument`, `getSections`, `replaceDocumentSections`, `inspectDocument`, `DocumentInspection`                                                                                                                                                                     | `extractSections`, `replaceSections`, `checkDocument`                            |
+| `generateDocumentCode`, `fillSectionIds`, `generateSectionPreview(s)`, `createSectionPreviewCache`, `SectionPreviewCache`, `DocumentTree`, `generateSection(s)`                                                                                                        | Nothing. `Live.Dnd` does this itself.                                            |
+| `fillIds`, `replaceIds`, `clone`, `generateCode`                                                                                                                                                                                                                       | Nothing                                                                          |
+| `clearExtractCache`, `clearDocumentParseCache`, `clearScriptCache`                                                                                                                                                                                                     | `clearEditorCaches`                                                              |
+| `transformCode`, `detectTypeScript`                                                                                                                                                                                                                                    | `compile`                                                                        |
+| `registerEditorSession`, `getCachedScriptBlob`                                                                                                                                                                                                                         | Nothing. `Live` registers its session; use `preloadScripts`.                     |
+
+The `ItemsEditor*` and `ChildrenEditor*` names in `./dnd` were renamed
+earlier to `DndItems*` and `DndChildren*`, and leave at the same time.

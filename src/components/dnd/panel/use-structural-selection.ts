@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import { useMultiSelect } from '@jbpark/use-hooks';
 
-import type { ChildrenAction } from '~/utils/ast';
+import type { ChildrenAction } from '~/utils/ast/children';
 import { moveSelectedIndices } from '~/utils/selection';
 
 // The structural commands both list editors issue (#342). Children sends them

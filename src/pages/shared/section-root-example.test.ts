@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { resolvePanelBindings } from '~/components/dnd/panel-binding';
 import { DEFAULT_TEMPLATE } from '~/constants';
-import { extract, fillIds, fillSectionIds, update } from '~/utils/ast';
+import { extract, update } from '~/utils/ast';
+import { fillSectionIds } from '~/utils/ast/document';
+import { fillIds } from '~/utils/ast/tree';
 import { extractSections, replaceSections } from '~/utils/sections';
 
 import { SECTION_ROOT_EXAMPLE } from './section-root-example';

@@ -6,10 +6,9 @@ import type { Section } from '~/types';
 import {
   type DocumentProblem,
   type SectionOptions,
-  fillSectionIds,
-  inspectDocument,
-  replaceIds,
-} from '~/utils/ast';
+} from '~/utils/ast/document';
+import { fillSectionIds, inspectDocument } from '~/utils/ast/document';
+import { replaceIds } from '~/utils/ast/tree';
 import {
   createSectionPreviewCache,
   extractSections,

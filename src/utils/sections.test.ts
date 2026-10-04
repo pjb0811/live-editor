@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_TEMPLATE } from '../constants';
 import {
+  checkDocument,
   createDocument,
   extractSections,
   generateSections,
@@ -46,4 +47,38 @@ describe('createDocument', () => {
       expect(() => createDocument({ containerId })).toThrow(/containerId/);
     },
   );
+});
+
+// What a host checks before saving or loading a document (#522).
+describe('checkDocument', () => {
+  it('accepts a document Live.Dnd can edit, without exposing its AST', () => {
+    expect(checkDocument(createDocument())).toEqual({ ok: true });
+  });
+
+  it('names a missing container', () => {
+    expect(
+      checkDocument(createDocument(), { containerId: 'elsewhere' }),
+    ).toEqual({
+      ok: false,
+      reason: 'container-not-found',
+      containerId: 'elsewhere',
+    });
+  });
+
+  it('reports a syntax error', () => {
+    const result = checkDocument('export default () => <main');
+
+    expect(result).toMatchObject({ ok: false, reason: 'parse-error' });
+  });
+
+  it('returns a copy, so changing it leaves the shared cache alone', () => {
+    const code = createDocument({ containerId: 'copy-check' });
+    const first = checkDocument(code, { containerId: 'other' });
+
+    Object.assign(first, { containerId: 'changed' });
+
+    expect(checkDocument(code, { containerId: 'other' })).toMatchObject({
+      containerId: 'other',
+    });
+  });
 });

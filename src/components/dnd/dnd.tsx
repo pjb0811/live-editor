@@ -33,17 +33,17 @@ import { useResponsiveSize } from '@jbpark/use-hooks';
 
 import { DATA_ATTR, DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
+import { type DocumentProblem } from '~/utils/ast/document';
+import { extract } from '~/utils/ast/extract';
+import { fillIdsFrom } from '~/utils/ast/tree';
 import {
   type BindingKeyMap,
   type BindingOptions,
   type BindingRegistry,
   type DataAttrNode,
-  type DocumentProblem,
-  extract,
-  updateAll,
-} from '~/utils/ast';
-import type { UpdateFailure } from '~/utils/ast';
-import { fillIdsFrom } from '~/utils/ast/tree';
+} from '~/utils/ast/types';
+import { updateAll } from '~/utils/ast/update';
+import type { UpdateFailure } from '~/utils/ast/update';
 
 import { cn } from '../../utils/cn';
 import { preloadScripts } from '../../utils/scripts';
