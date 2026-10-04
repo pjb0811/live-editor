@@ -134,6 +134,7 @@
     },
     "./utils": {
       "values": [
+        "checkDocument",
         "clearCompilationCache",
         "clearEditorCaches",
         "clearScriptCache",
@@ -151,7 +152,13 @@
         "replaceSections",
         "transformCode"
       ],
-      "types": ["DocumentOptions", "SectionOptions", "SectionPreviewCache"]
+      "types": [
+        "DocumentCheck",
+        "DocumentOptions",
+        "DocumentProblem",
+        "SectionOptions",
+        "SectionPreviewCache"
+      ]
     },
     "./utils/ast": {
       "values": [

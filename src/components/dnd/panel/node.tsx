@@ -1,4 +1,4 @@
-import type { DataAttrNode } from '~/utils/ast';
+import type { DataAttrNode } from '~/utils/ast/types';
 
 import {
   type PanelNodeChange,

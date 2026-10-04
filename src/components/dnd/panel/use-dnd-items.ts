@@ -4,26 +4,30 @@ import * as t from '@babel/types';
 import type { useMultiSelect } from '@jbpark/use-hooks';
 import { nanoid } from 'nanoid';
 
+import { canStructurallyEditArray } from '~/utils/ast/array-source';
+import { findEditableChildren } from '~/utils/ast/binding';
+import { extract } from '~/utils/ast/extract';
+import {
+  appendArrayItem,
+  duplicateArrayItems,
+  moveArrayItem,
+  moveArrayItems,
+  removeArrayItems,
+  updateArrayItemProperty,
+  updateArrayItemValue,
+} from '~/utils/ast/items';
 import {
   type BindingOptions,
   type BindingRenderMap,
   type DataAttrNode,
-  appendArrayItem,
+} from '~/utils/ast/types';
+import { parseValue } from '~/utils/ast/value';
+import {
   canLosslesslyEvaluateSource,
-  canStructurallyEditArray,
-  duplicateArrayItems,
-  extract,
   extractNodeValue,
   extractObjectProperties,
-  findEditableChildren,
-  moveArrayItem,
-  moveArrayItems,
   parseArrayExpression,
-  parseValue,
-  removeArrayItems,
-  updateArrayItemProperty,
-  updateArrayItemValue,
-} from '~/utils/ast';
+} from '~/utils/ast/value';
 import { moveSelectedIndices } from '~/utils/selection';
 
 import { useDndEditOptions } from '../edit-options';

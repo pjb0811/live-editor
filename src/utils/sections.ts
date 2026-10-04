@@ -3,11 +3,13 @@ import type { Section } from '~/types';
 
 import {
   type DocumentOptions,
+  type DocumentProblem,
   type SectionOptions,
   createSectionPreviewCache,
   generateSectionPreview,
   generateSectionPreviews,
   getSections,
+  inspectDocument,
   parseDocument,
   replaceDocumentSections,
 } from './ast/document';
@@ -69,6 +71,25 @@ export const createDocument = ({
   return documentTemplate(containerId);
 };
 
+// Whether `Live.Dnd` can edit a document: it parses, and it has the
+// container. A host can check one before saving or loading it, and gets the
+// same reasons `Live.Dnd` reports through `onEditError` (#522).
+export type DocumentCheck = { ok: true } | ({ ok: false } & DocumentProblem);
+
+export const checkDocument = (
+  code: string,
+  options?: DocumentOptions,
+): DocumentCheck => {
+  const inspection = inspectDocument(code, options);
+
+  if (inspection.ok) {
+    return { ok: true };
+  }
+
+  // A copy: the inspection is cached and shared with `Live.Dnd`.
+  return { ...inspection };
+};
+
 // Incremental counterpart to generateSections() — see createSectionPreviewCache
 // (#131). Pass a fresh instance's `compute` in place of generateSections()
 // where the caller can keep it alive across renders (e.g. Dnd holds one via
@@ -76,6 +97,7 @@ export const createDocument = ({
 export { createSectionPreviewCache };
 export type {
   DocumentOptions,
+  DocumentProblem,
   SectionOptions,
   SectionPreviewCache,
 } from './ast/document';

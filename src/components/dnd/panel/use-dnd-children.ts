@@ -3,9 +3,9 @@ import { useMemo } from 'react';
 import {
   type ChildrenAction,
   type ChildrenEdit,
-  type DataAttrNode,
   getChildrenSignatures,
-} from '~/utils/ast';
+} from '~/utils/ast/children';
+import { type DataAttrNode } from '~/utils/ast/types';
 import { moveSelectedIndices } from '~/utils/selection';
 
 import {

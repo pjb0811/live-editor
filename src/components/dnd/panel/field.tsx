@@ -23,11 +23,9 @@ import type {
 } from '@uiw/react-codemirror';
 
 import CoreEditor from '~/components/editor/core';
-import {
-  type DataAttrNode,
-  parseValue,
-  validateBindingValue,
-} from '~/utils/ast';
+import { type DataAttrNode } from '~/utils/ast/types';
+import { validateBindingValue } from '~/utils/ast/validate';
+import { parseValue } from '~/utils/ast/value';
 
 import type { PanelBinding, PanelNodeChange } from '../dnd';
 import { useDndEditOptions } from '../edit-options';

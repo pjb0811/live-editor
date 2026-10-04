@@ -6,7 +6,7 @@ description: 'Babel AST 변환 코드를 작성하거나 src/utils/ast/ 모듈�
 # Babel AST 변환 코드 작성
 
 `src/utils/ast/`는 Canvas의 DnD/패널 편집 결과를 Babel AST 변환으로 소스 코드 문자열에 반영하는 핵심 모듈입니다.
-`index.ts`는 로직 없이 아래 파일들의 export를 그대로 재수출하는 **배럴**이므로, 새 로직은 반드시 역할에 맞는 파일에 추가하고 `index.ts`는 건드리지 않습니다 (신규 public export를 추가하는 경우에만 배럴에 한 줄 추가).
+`index.ts`는 로직 없이 공개 API만 재수출하는 **배럴**이므로, 새 로직은 반드시 역할에 맞는 파일에 추가합니다. 배럴에는 호스트가 쓸 공개 API만 추가하고, 라이브러리 내부 코드는 배럴이 아니라 모듈 파일(`~/utils/ast/items` 등)에서 import합니다. 배럴 아래쪽의 `@deprecated` 이름은 다음 major에서 빠질 내부 helper입니다 (#522). `src/utils/barrels.test.ts`가 저장소 안에서 이 이름을 배럴로 import하면 실패합니다.
 
 ## 모듈 맵 — 무엇을 고칠 때 어디를 보나
 
@@ -54,7 +54,7 @@ tree → helpers
 - **Fragment 래핑**: JSX 조각을 래핑하는 경로에서는 `wrap()`/`unwrap()`을 짝지어 사용하고 소스 오프셋도 보정한다. 전체 문서의 `parse()`나 단일 표현식의 `parseExpression()`에는 일괄 적용하지 않는다.
 - **data-id 보존**: Canvas ↔ AST 매핑 키이므로 `extract`/`update` 어느 경로에서도 유실되지 않도록 주의.
 - **캐시 무효화**: `extract()`는 `extractCache`(raw 문자열 키)로 캐시된다. 캐시 키에 영향 없는 변경이면 무시해도 되지만, 파싱 로직 자체를 바꿨다면 관련 테스트에서 `clearExtractCache()` 호출이 필요한지 확인.
-- **공개 API 유지**: `index.ts`가 재수출하는 이름/타입을 이유 없이 바꾸지 않는다 — `~/utils/ast`로 import하는 컴포넌트들과 `package.json`의 `./utils/ast` 서브패스 export가 이 배럴에 그대로 의존한다.
+- **공개 API 유지**: `index.ts`가 재수출하는 이름/타입을 이유 없이 바꾸지 않는다 — `package.json`의 `./utils/ast` 서브패스 export가 이 배럴에 그대로 의존한다. 이름을 추가·삭제하면 `pnpm check-api-surface`가 실패하므로, 의도한 변경이면 `--update`로 스냅샷을 갱신해 함께 커밋한다.
 
 ## References
 

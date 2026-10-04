@@ -3,7 +3,8 @@ import { useMemo } from 'react';
 import { Button, Checkbox } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 
-import { type DataAttrNode, findEditableChildren } from '~/utils/ast';
+import { findEditableChildren } from '~/utils/ast/binding';
+import { type DataAttrNode } from '~/utils/ast/types';
 
 import type { PanelNodeChange } from '../dnd';
 import BulkActionsBar from './bulk-actions-bar';

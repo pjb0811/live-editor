@@ -32,7 +32,7 @@ import type {
   BindingOptions,
   BindingRegistry,
   BindingSchema,
-} from './utils/ast';
+} from './utils/ast/types';
 
 const App = ({ children }: { children?: React.ReactNode }) => {
   return <Context>{children}</Context>;

@@ -1,5 +1,10 @@
 import { RESERVED_BINDING_PROPERTIES } from '~/constants';
 import {
+  getCurrentValue,
+  getStructuredValue,
+  readNodeBindings,
+} from '~/utils/ast/binding';
+import {
   type BindingItem,
   type BindingOption,
   type BindingRenderLeaf,
@@ -7,11 +12,8 @@ import {
   type BindingType,
   type BindingWidget,
   type DataAttrNode,
-  canLosslesslyEvaluateSource,
-  getCurrentValue,
-  getStructuredValue,
-  readNodeBindings,
-} from '~/utils/ast';
+} from '~/utils/ast/types';
+import { canLosslesslyEvaluateSource } from '~/utils/ast/value';
 
 // The node-level commit callback's shape, named because it's part of the
 // public surface in two places (`DndPanel`, `Field`) and was previously

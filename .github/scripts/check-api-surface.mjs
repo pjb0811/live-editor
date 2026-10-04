@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import prettier from 'prettier';
 
 import { diffSurface, readSurface } from './api-surface.mjs';
 
@@ -15,7 +16,15 @@ const snapshotPath = resolve(here, 'api-surface.snapshot.json');
 const surface = readSurface(root);
 
 if (process.argv.includes('--update')) {
-  writeFileSync(snapshotPath, `${JSON.stringify(surface, null, 2)}\n`);
+  // Formatted like the rest of the repo, so a `prettier --write` doesn't
+  // turn an unchanged surface into a diff.
+  const options = await prettier.resolveConfig(snapshotPath);
+  const json = await prettier.format(JSON.stringify(surface, null, 2), {
+    ...options,
+    filepath: snapshotPath,
+  });
+
+  writeFileSync(snapshotPath, json);
   console.log(`Updated ${snapshotPath}`);
 } else {
   const snapshot = JSON.parse(readFileSync(snapshotPath, 'utf8'));
