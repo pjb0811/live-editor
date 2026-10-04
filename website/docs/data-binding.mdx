@@ -3,6 +3,8 @@ sidebar_position: 4.5
 title: Data Binding
 ---
 
+import DemoFrame from '@site/src/components/demo-frame';
+
 # Data Binding
 
 A palette section becomes editable in the property panel through two
@@ -590,3 +592,29 @@ bindings.filter(binding => isVisible(binding, bindings));
 
 `meta` values arrive as `unknown`, so check a rule's shape before relying on
 it in production code.
+
+#### A panel that reads them
+
+The demo below is a custom panel built on `useDndPanel()` that reads all five
+keys. The section's schema lives in `bindingKeys`, so the markup only carries
+`data-binding-key`.
+
+- **`tab`** puts the fields on a Content or a Style tab. A field without one
+  goes on a General tab, and the tab bar only shows when there's more than one
+  tab.
+- **`group`** puts the button's fields in one Button box. On the Style tab,
+  that box holds only the variant. A field without a `group` sits in a box for
+  its element, the way the built-in panel groups fields.
+- **`description`** shows under its field, and **`hint`** behind the icon next
+  to the Text label.
+- **`visible`** hides URL when Link is set to None.
+
+Each field is still drawn by `Live.Dnd.Field`, so only the arrangement is the
+demo's own. Its source is in
+[`demos/panel-meta`](https://github.com/pjb0811/live-editor/tree/main/demos/panel-meta).
+
+<DemoFrame
+  src="demos/panel-meta/"
+  title="Live Editor — Panel meta demo"
+  height={720}
+/>
