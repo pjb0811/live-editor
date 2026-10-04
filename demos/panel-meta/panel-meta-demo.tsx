@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { Card, Tabs, Tooltip } from '@jbpark/ui-kit';
 import { Info } from 'lucide-react';
 
 import Context from '~/components/context';
@@ -128,16 +129,19 @@ const MetaField = ({
           {binding.label}
         </span>
         {/* A hint is extra detail the user opens on demand, so it sits
-            behind an icon. Anything they need to read is a description. */}
+            behind an icon. Anything they need to read is a description.
+            The trigger is a button so keyboard focus opens it too. */}
         {hint && (
-          <span
-            role="img"
-            aria-label={hint}
-            title={hint}
-            className="cursor-help text-gray-400"
-          >
-            <Info size={12} />
-          </span>
+          <Tooltip content={hint} placement="top">
+            <button
+              type="button"
+              aria-label={hint}
+              className="inline-flex cursor-help border-0 bg-transparent p-0
+                text-gray-400"
+            >
+              <Info size={12} />
+            </button>
+          </Tooltip>
         )}
       </div>
       <Field binding={binding} onNodeChange={onNodeChange} />
@@ -172,71 +176,74 @@ const MetaPanel = () => {
   ).sort(([a], [b]) => tabRank(a) - tabRank(b));
   // A tab another section had, or one a `visible` rule just emptied, falls
   // back to the first.
-  const [tabName, tabBindings] =
-    tabs.find(([name]) => name === selectedTab) ?? tabs[0] ?? [];
+  const tabName = tabs.some(([name]) => name === selectedTab)
+    ? selectedTab
+    : tabs[0]?.[0];
+
+  // One box per `group`, or per element for fields without one.
+  const renderBoxes = (tabBindings: PanelBinding[]) => (
+    <div className="space-y-3">
+      {groupBy(tabBindings, boxKey).map(([key, fields]) => {
+        const title = boxTitle(fields[0]!);
+
+        return (
+          <Card
+            key={key}
+            role="group"
+            aria-label={title}
+            title={title}
+            classNames={{
+              title: 'text-xs font-normal text-gray-500',
+              body: 'space-y-3',
+            }}
+            // A group can span elements, so a box outlines the element of
+            // the field under the pointer rather than the box's own.
+            onPointerLeave={() => highlight(null)}
+          >
+            {fields.map(binding => (
+              <div
+                key={`${binding.id}-${binding.property}`}
+                onPointerEnter={() => highlight(binding.id)}
+              >
+                <MetaField binding={binding} onNodeChange={onNodeChange} />
+              </div>
+            ))}
+          </Card>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-gray-200 px-4 py-3 font-semibold">
         {item.name}
       </div>
-      {tabs.length > 1 && (
-        <div
-          role="tablist"
-          aria-label="Field tabs"
-          className="flex gap-1 border-b border-gray-200 px-2"
-        >
-          {tabs.map(([name]) => (
-            <button
-              key={name}
-              type="button"
-              role="tab"
-              aria-selected={name === tabName}
-              className={cn(
-                '-mb-px border-0 border-b-2 border-solid bg-transparent',
-                'cursor-pointer px-3 py-2 text-sm',
-                name === tabName
-                  ? 'border-blue-600 font-medium text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700',
-              )}
-              onClick={() => setSelectedTab(name)}
-            >
-              {name}
-            </button>
-          ))}
+      {tabs.length === 0 && (
+        <p className="p-4 text-xs text-gray-400">No editable elements.</p>
+      )}
+      {tabs.length === 1 && (
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {renderBoxes(tabs[0]![1])}
         </div>
       )}
-      <div
-        role={tabs.length > 1 ? 'tabpanel' : undefined}
-        aria-label={tabs.length > 1 ? tabName : undefined}
-        className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4"
-      >
-        {!tabBindings && (
-          <p className="text-xs text-gray-400">No editable elements.</p>
-        )}
-        {tabBindings &&
-          groupBy(tabBindings, boxKey).map(([key, fields]) => (
-            <fieldset
-              key={key}
-              className="space-y-3 rounded border border-gray-200 p-3"
-              // A group can span elements, so a box outlines the element of
-              // the field under the pointer rather than the box's own.
-              onPointerLeave={() => highlight(null)}
-            >
-              <legend className="px-1 text-xs text-gray-500">
-                {boxTitle(fields[0]!)}
-              </legend>
-              {fields.map(binding => (
-                <div
-                  key={`${binding.id}-${binding.property}`}
-                  onPointerEnter={() => highlight(binding.id)}
-                >
-                  <MetaField binding={binding} onNodeChange={onNodeChange} />
-                </div>
-              ))}
-            </fieldset>
-          ))}
-      </div>
+      {tabs.length > 1 && (
+        <Tabs
+          value={tabName}
+          onChange={value => setSelectedTab(String(value))}
+          listLabel="Field tabs"
+          items={tabs.map(([name, tabBindings]) => ({
+            key: name,
+            label: name,
+            children: renderBoxes(tabBindings),
+          }))}
+          className="min-h-0 flex-1"
+          classNames={{
+            list: 'px-2',
+            panel: 'min-h-0 flex-1 overflow-y-auto p-4',
+          }}
+        />
+      )}
     </div>
   );
 };
