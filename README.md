@@ -130,8 +130,8 @@ can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — s
 ## ⚙️ Requirements
 
 - Peer deps: `react >=19`, `react-dom >=19`
-- Package metadata declares Node.js >=20; repository development/builds and CI use the version pinned in `.nvmrc` (currently 24.18.0).
-- **pnpm**: 10.x or higher (managed via [Corepack](https://nodejs.org/api/corepack.html))
+- Package metadata declares Node.js >=20. CI checks that the entries meant for Node (`utils`, `utils/ast`, `utils/tailwind`, `provider`, `error`) load on Node 20. Repository development, builds and the rest of CI use the version pinned in `.nvmrc` (currently 24.18.0).
+- **pnpm** (developing this repo only): the version in `packageManager` (currently 12.8.1), managed via [Corepack](https://nodejs.org/api/corepack.html). Installing the package works with any package manager.
 
 ## 🚀 Development (this repo)
 
