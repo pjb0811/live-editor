@@ -8,30 +8,21 @@ import {
 } from 'react';
 
 import {
-  type Announcements,
   DndContext,
   type DragEndEvent,
-  type DragOverEvent,
   DragOverlay,
-  type DragStartEvent,
-  KeyboardSensor,
   type Modifier,
-  PointerSensor,
-  type ScreenReaderInstructions,
   closestCenter,
-  useSensor,
-  useSensors,
 } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { Space, Typography } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 
-import { DATA_ATTR, DRAGGABLE_ITEMS } from '~/constants';
+import { DRAGGABLE_ITEMS } from '~/constants';
 import type { Section } from '~/types';
 import { type DocumentProblem } from '~/utils/ast/document';
 import { extract } from '~/utils/ast/extract';
@@ -57,14 +48,7 @@ import {
   type DndRenderField,
   toastEditError,
 } from './edit-options';
-import {
-  type DndInspector,
-  DndInspectorContext,
-  type DndNodePick,
-  findElementById,
-  pickElement,
-  viewportRect,
-} from './inspector';
+import { DndInspectorContext, type DndNodePick } from './inspector';
 import InspectorHighlight from './inspector-highlight';
 import Layout from './layout';
 import { DndRegionContext } from './layout-context';
@@ -81,7 +65,10 @@ import {
   type DndRenderSectionFallback,
   SectionFallbackContext,
 } from './section-fallback-context';
-import Sortable, { type SectionNavigation } from './sortable';
+import Sortable from './sortable';
+import { useDeleteFlow } from './use-delete-flow';
+import { SCREEN_READER_INSTRUCTIONS, useDndKeyboard } from './use-dnd-keyboard';
+import { useInspectorState } from './use-inspector-state';
 import { useSectionDocument } from './use-section-document';
 
 // Turn a structured `update` failure into a toast that names the actual
@@ -155,49 +142,6 @@ const describeUpdateFailure = (
     default:
       return { title: `Failed to update "${label}"` };
   }
-};
-
-// Enter is left out of `start` so it can select the focused section (#435).
-const KEYBOARD_CODES = {
-  start: ['Space'],
-  cancel: ['Escape'],
-  end: ['Space', 'Enter'],
-};
-
-const SCREEN_READER_INSTRUCTIONS: ScreenReaderInstructions = {
-  draggable:
-    'On a palette item, press Enter to add it to the canvas. On a canvas section, press Enter to select it, the up and down arrow keys to go to the previous or next section, and Delete to remove it. Press Space to pick a section up, the arrow keys to move it, and Space or Enter to drop it. Press Escape to cancel.',
-};
-
-// Section wrappers by id, with one stable ref callback per id so React
-// doesn't detach and reattach every wrapper on each render. Held in a
-// `useState` box and only read from handlers and effects.
-const createNodeRegistry = () => {
-  const nodes = new Map<string, HTMLElement>();
-  const callbacks = new Map<string, (node: HTMLElement | null) => void>();
-
-  return {
-    get: (id: string) => nodes.get(id),
-    register: (id: string) => {
-      let callback = callbacks.get(id);
-
-      if (!callback) {
-        callback = node => {
-          if (node) {
-            nodes.set(id, node);
-          } else {
-            // A wrapper only detaches when its section leaves the canvas
-            // (sections are keyed by id), so its callback can go too.
-            nodes.delete(id);
-            callbacks.delete(id);
-          }
-        };
-        callbacks.set(id, callback);
-      }
-
-      return callback;
-    },
-  };
 };
 
 // An edit refused because the document doesn't parse (#433).
@@ -426,51 +370,6 @@ const Dnd = ({
     }
   };
 
-  // Space picks a focused section up, the arrow keys move it, and Space or
-  // Enter drops it (Escape cancels). Enter doesn't pick up, unlike dnd-kit's
-  // default: a focused section is a `role="button"`, and Enter selects it
-  // like a click does (see Sortable). Before, sections could be reached with
-  // Tab but neither selected nor moved from the keyboard (#435).
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-      keyboardCodes: KEYBOARD_CODES,
-    }),
-  );
-
-  // dnd-kit announces drags by id, which here is a generated `data-id`.
-  const nameOf = (id: string | number, data?: { current?: unknown }) => {
-    const current = data?.current as { item?: Section } | undefined;
-
-    return (
-      current?.item?.name ??
-      sections.find(section => section.id === id)?.name ??
-      'section'
-    );
-  };
-
-  const positionOf = (id: string | number) =>
-    sections.findIndex(section => section.id === id) + 1;
-
-  const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${nameOf(active.id, active.data)}.`,
-    onDragOver: ({ active, over }) =>
-      over && positionOf(over.id) > 0
-        ? `${nameOf(active.id, active.data)} moved to position ${positionOf(over.id)} of ${sections.length}.`
-        : `${nameOf(active.id, active.data)} is no longer over a position.`,
-    onDragEnd: ({ active, over }) =>
-      over && positionOf(over.id) > 0
-        ? `${nameOf(active.id, active.data)} dropped at position ${positionOf(over.id)} of ${sections.length}.`
-        : `${nameOf(active.id, active.data)} dropped.`,
-    onDragCancel: ({ active }) =>
-      `Moving ${nameOf(active.id, active.data)} was cancelled.`,
-  };
-
   // Uncontrolled usage (`<Live.Dnd />` with no `value`) used to read
   // nothing but DEFAULT_TEMPLATE forever: every edit committed through
   // useSectionDocument writes into PreviewContext, but this component
@@ -528,10 +427,6 @@ const Dnd = ({
   const missingContainer =
     problem?.reason === 'container-not-found' ? problem.containerId : null;
 
-  const onDragStart = (_: DragStartEvent) => {};
-
-  const onDragOver = (_e: DragOverEvent) => {};
-
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -558,230 +453,34 @@ const Dnd = ({
 
   const onSelect = (id: string) => select(id);
 
-  // The element picker (#432). `picked` follows the selection: picking
-  // selects the element's section, and selecting another section clears it.
-  const [inspecting, setInspecting] = useState(false);
-  const [picked, setPicked] = useState<DndNodePick | null>(null);
-  const [highlight, setHighlight] = useState<DOMRect | null>(null);
-  // The element a panel field points at (`inspector.highlight`), and its box
-  // in the viewport while it's on screen (#514).
-  const [fieldTarget, setFieldTarget] = useState<string | null>(null);
-  const [fieldRect, setFieldRect] = useState<DOMRect | null>(null);
-
-  if (picked && picked.sectionId !== selectedId) {
-    setPicked(null);
-  }
-
-  const stopInspecting = useCallback(() => {
-    setInspecting(false);
-    setHighlight(null);
-  }, []);
-
-  useEffect(() => {
-    if (!inspecting) {
-      return;
-    }
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        stopInspecting();
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [inspecting, stopInspecting]);
-
-  const inspector: DndInspector = {
-    active: inspecting,
-    activate: () => setInspecting(true),
-    deactivate: stopInspecting,
-    toggle: () => (inspecting ? stopInspecting() : setInspecting(true)),
-    picked,
-    highlight: setFieldTarget,
-  };
-
-  const onInspectMove = (
-    section: HTMLElement,
-    overlay: Element,
-    x: number,
-    y: number,
-  ) => {
-    const element = pickElement(section, overlay, x, y);
-
-    setHighlight(element ? viewportRect(element) : null);
-  };
-
-  const onInspectPick = (
-    sectionId: string,
-    section: HTMLElement,
-    overlay: Element,
-    x: number,
-    y: number,
-  ) => {
-    const id = pickElement(section, overlay, x, y)?.getAttribute(DATA_ATTR.ID);
-
-    if (!id) {
-      return;
-    }
-
-    const pick = { id, sectionId };
-
-    selectOnly(sectionId);
-    setPicked(pick);
-    stopInspecting();
-    onNodePick?.(pick);
-  };
-
-  // Read through a ref after an async `onBeforeDelete`: while a confirmation
-  // is open the document can change, and the `remove` from the render that
-  // asked would commit against the document as it was then.
-  const removeRef = useRef(remove);
-
-  useEffect(() => {
-    removeRef.current = remove;
-  });
-
-  // Asks `onBeforeDelete` first when there is one, then removes the section.
-  // `onDeleted` runs only once it's actually gone.
-  const requestDelete = (id: string, onDeleted?: () => void) => {
-    const section = sections.find(candidate => candidate.id === id);
-
-    if (!onBeforeDelete || !section) {
-      remove(id);
-      onDeleted?.();
-
-      return;
-    }
-
-    const decide = (allowed: boolean) => {
-      if (allowed) {
-        removeRef.current(id);
-        onDeleted?.();
-      }
-    };
-
-    try {
-      const answer = onBeforeDelete(section);
-
-      if (typeof answer === 'boolean') {
-        decide(answer);
-
-        return;
-      }
-
-      answer.then(decide, error => {
-        console.error('onBeforeDelete rejected; the section was kept', error);
-      });
-    } catch (error) {
-      console.error('onBeforeDelete threw; the section was kept', error);
-    }
-  };
+  const requestDelete = useDeleteFlow({ sections, remove, onBeforeDelete });
 
   const onDelete = (id: string) => requestDelete(id);
 
-  // The focusable wrapper of each section, so the keyboard can move focus
-  // between them (#435).
-  const [sectionNodes] = useState(createNodeRegistry);
+  const {
+    sensors,
+    announcements,
+    sectionNodes,
+    onNavigate,
+    onDeleteKey,
+    onMoveButton,
+  } = useDndKeyboard({
+    sections,
+    selectedId,
+    selectedIndex,
+    selectOnly,
+    move: moveSection,
+    requestDelete,
+  });
 
-  // `focus()` also scrolls the section into view.
-  const focusSection = (id: string) => sectionNodes.get(id)?.focus();
-
-  // Arrow keys and Home/End move focus to another section and select it, so
-  // the panel follows. Outside a drag only: during one, dnd-kit owns them.
-  const onNavigate = (fromId: string, to: SectionNavigation) => {
-    const from = sections.findIndex(section => section.id === fromId);
-    const index =
-      to === 'first'
-        ? 0
-        : to === 'last'
-          ? sections.length - 1
-          : from + (to === 'next' ? 1 : -1);
-    const target = sections[index];
-
-    if (from < 0 || !target || target.id === fromId) {
-      return;
-    }
-
-    selectOnly(target.id);
-    focusSection(target.id);
-  };
-
-  // Delete on a focused section. Focus goes to the section that takes its
-  // place (or the one before it, for the last), so it isn't dropped on the
-  // page body.
-  const onDeleteKey = (id: string) => {
-    const index = sections.findIndex(section => section.id === id);
-    const neighbor = sections[index + 1] ?? sections[index - 1];
-
-    requestDelete(id, () => {
-      if (neighbor) {
-        focusSection(neighbor.id);
-      }
-    });
-  };
-
-  // A move to the first or last place disables the button just pressed, and
-  // focus on a disabled button falls back to the document. Focusing the
-  // section keeps a keyboard user where they were (#505).
-  const onMoveButton = (id: string, direction: 'up' | 'down') => {
-    const to =
-      sections.findIndex(section => section.id === id) +
-      (direction === 'up' ? -1 : 1);
-
-    moveSection(id, direction);
-
-    if (to === 0 || to === sections.length - 1) {
-      focusSection(id);
-    }
-  };
-
-  // Follows the element a panel field points at, through canvas scrolls and
-  // resizes, since the outline is drawn in fixed viewport coordinates.
-  useEffect(() => {
-    const section = selectedId === null ? null : sectionNodes.get(selectedId);
-
-    if (!fieldTarget || !section) {
-      return;
-    }
-
-    let frame = 0;
-
-    const measure = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const element = findElementById(section, fieldTarget);
-
-        setFieldRect(element ? viewportRect(element) : null);
-      });
-    };
-
-    measure();
-    window.addEventListener('scroll', measure, true);
-    window.addEventListener('resize', measure);
-
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', measure, true);
-      window.removeEventListener('resize', measure);
-    };
-  }, [fieldTarget, selectedId, sectionNodes]);
-
-  // Keeps the selected section on screen when it moves out of view without
-  // the keyboard taking it there: a move from the panel, or a copy that lands
-  // below the fold. After the next frame, once the new order is laid out.
-  useEffect(() => {
-    if (selectedId === null) {
-      return;
-    }
-
-    const frame = requestAnimationFrame(() => {
-      sectionNodes.get(selectedId)?.scrollIntoView?.({ block: 'nearest' });
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [sectionNodes, selectedId, selectedIndex]);
+  const {
+    inspector,
+    inspecting,
+    onInspectMove,
+    onInspectPick,
+    onInspectLeave,
+    highlightRect,
+  } = useInspectorState({ selectedId, selectOnly, sectionNodes, onNodePick });
 
   const onChange = (next: Partial<Section>) => {
     if (!next.id) {
@@ -1076,7 +775,7 @@ const Dnd = ({
                 inspecting={inspecting}
                 onInspectMove={onInspectMove}
                 onInspectPick={(...args) => onInspectPick(section.id, ...args)}
-                onInspectLeave={() => setHighlight(null)}
+                onInspectLeave={onInspectLeave}
               >
                 <Renderer
                   preview={previews[index]!}
@@ -1111,8 +810,6 @@ const Dnd = ({
           conditionalModifiers,
           //
         ]}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
         <div
@@ -1152,9 +849,7 @@ const Dnd = ({
                 {Children.toArray(children).length ? children : <Layout />}
               </DndInspectorContext.Provider>
             </DndRegionContext.Provider>
-            <InspectorHighlight
-              rect={inspecting ? highlight : fieldTarget ? fieldRect : null}
-            />
+            <InspectorHighlight rect={highlightRect} />
           </DndEditOptionsContext.Provider>
         </div>
         <DragOverlay>
