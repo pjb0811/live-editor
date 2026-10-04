@@ -28,7 +28,8 @@ live-editor/
 │  │  │  ├─ droppable.tsx   # 드롭 영역
 │  │  │  ├─ sortable.tsx    # 정렬 가능한 리스트
 │  │  │  ├─ overlay.tsx     # 드래그 인디케이터
-│  │  │  └─ use-section-document.ts  # 섹션 문서 상태 훅
+│  │  │  ├─ use-section-document.ts  # 섹션 문서 상태 훅
+│  │  │  └─ use-dnd-keyboard.ts, use-inspector-state.ts, use-delete-flow.ts  # Dnd의 키보드·요소 picker·삭제 흐름
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx, measure.ts, viewport-units.ts)
