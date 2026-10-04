@@ -37,6 +37,7 @@ live-editor/
 │  │  ├─ index.tsx          # 로컬 개발 앱 셸 (해시로 페이지 전환, 다크 모드 토글)
 │  │  ├─ playground/        # 코드 에디터·DnD 토글, undo/redo, 저장
 │  │  ├─ custom-panel/      # 커스텀 Palette/Panel/Layout (docs 데모 재사용)
+│  │  ├─ panel-meta/        # meta 키(tab/group/description/hint/visible)를 읽는 패널 (docs 데모 재사용)
 │  │  ├─ inspector/         # 요소 선택, renderField, onEditError, onBeforeDelete
 │  │  ├─ fallback/          # renderSectionFallback, shouldForceSectionFallback
 │  │  ├─ preview-modes/     # iframe/shadow/in place 비교, syncStyle·테마 동기화

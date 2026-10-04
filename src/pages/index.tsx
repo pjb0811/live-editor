@@ -9,6 +9,7 @@ import './index.css';
 import CustomPanel from './custom-panel';
 import Fallback from './fallback';
 import Inspector from './inspector';
+import PanelMeta from './panel-meta';
 import Playground from './playground';
 import PreviewModes from './preview-modes';
 import { type Theme, ThemeContext } from './shared/theme';
@@ -19,6 +20,7 @@ import { type Theme, ThemeContext } from './shared/theme';
 const PAGES = [
   { key: 'playground', label: 'Playground', Page: Playground },
   { key: 'custom-panel', label: 'Custom panel', Page: CustomPanel },
+  { key: 'panel-meta', label: 'Panel meta', Page: PanelMeta },
   { key: 'inspector', label: 'Inspector & options', Page: Inspector },
   { key: 'fallback', label: 'Section fallback', Page: Fallback },
   { key: 'preview-modes', label: 'Preview modes', Page: PreviewModes },
