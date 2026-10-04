@@ -124,6 +124,15 @@ export interface BindingItem extends BindingFieldSpec {
 // (`Button`). Lowercase names are HTML elements.
 export type BindingComponentName = `${string}.${string}` | Capitalize<string>;
 
+// One entry of `bindings` or `bindingKeys`, as written: a `BindingItem` plus
+// any key of the app's own (`group`, `tab`, `description`, ...), which
+// arrives in `binding.meta` just as it does from an inline `data-binding`.
+// `meta` itself isn't one of them: it's where those keys end up, so writing
+// it here would nest it under `meta.meta`.
+export interface BindingSchema extends Omit<BindingItem, 'meta'> {
+  [key: string]: unknown;
+}
+
 // Bindings for every element of a component, keyed by its tag name as
 // written, so markup doesn't have to repeat the same `data-binding` on each
 // one (#509). Components only: an entry for an HTML element such as `p` or
@@ -132,13 +141,13 @@ export type BindingComponentName = `${string}.${string}` | Capitalize<string>;
 // `data-binding`, even an empty one, takes precedence over its component's
 // entry. Matched elements still need a `data-id` to be edited.
 export type BindingRegistry = Partial<
-  Record<BindingComponentName, BindingItem[]>
+  Record<BindingComponentName, BindingSchema[]>
 >;
 
 // Bindings an element asks for by name, with `data-binding-key="hero-title"`
 // in its markup, on an HTML element or a component alike (#513). Plain data,
 // so a host can load it from JSON or a CMS.
-export type BindingKeyMap = Record<string, BindingItem[]>;
+export type BindingKeyMap = Record<string, BindingSchema[]>;
 
 // Where bindings come from besides an element's own `data-binding`, in
 // order of precedence: the key its `data-binding-key` names in
