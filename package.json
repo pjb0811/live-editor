@@ -89,6 +89,7 @@
     "build:demo": "vite build --outDir dist-demo",
     "build:demos": "vite build --config demos/vite.config.ts",
     "check-types": "tsc -b",
+    "check-api-surface": "node .github/scripts/check-api-surface.mjs",
     "check-package-types": "pnpm build && node .github/scripts/check-package-types.mjs",
     "lint": "eslint .",
     "depcheck": "depcheck --ignores=\"~,@changesets/cli,@jbpark/live-editor,@trivago/prettier-plugin-sort-imports,prettier-plugin-classnames,prettier-plugin-merge,prettier-plugin-tailwindcss,baseline-browser-mapping,vite-plugin-dts,depcheck\" --ignore-dirs=\"dist,dist-demo,website,.history\"",
