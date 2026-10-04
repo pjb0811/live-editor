@@ -38,8 +38,7 @@
     "url": "https://github.com/pjb0811/live-editor/issues"
   },
   "engines": {
-    "node": ">=20",
-    "pnpm": ">=10"
+    "node": ">=20"
   },
   "packageManager": "pnpm@12.8.1",
   "exports": {

@@ -75,3 +75,14 @@ jobs:
 
       - name: Build website
         run: pnpm --dir website build
+
+      # `engines.node` promises the oldest Node below, while everything above
+      # runs on `.nvmrc`. Re-run the Node entry check on that version so the
+      # range stays tested. Last, since it switches the job's Node.
+      - name: Setup the oldest supported Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+
+      - name: Check non-UI entries load in the oldest supported Node
+        run: node .github/scripts/check-node-entries.mjs
