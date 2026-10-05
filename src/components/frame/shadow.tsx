@@ -13,16 +13,10 @@ import { useMutationObserver } from '@jbpark/use-hooks';
 import { createStyleSyncManager, reconcileStyles } from './style-sync';
 
 interface Props {
-  // Clones the host document's <link rel="stylesheet">/<style> tags into the
-  // shadow root, mirroring `iframe.tsx`'s option of the same name. Unlike
-  // `dynamicTailwind` (which recompiles only the classes it can find in the
-  // rendered DOM, and only knows Tailwind's own default theme), this gets
-  // the host's *actual* compiled CSS — including a consuming app's own
-  // custom utilities/theme tokens — at the cost of only covering classes
-  // that were already known at the host's own build time. The two are
-  // complementary: this handles anything already in the host's stylesheets,
-  // dynamicTailwind covers whatever's left (e.g. a class typed at runtime
-  // that no build ever saw).
+  // Copies the host page's stylesheets and `<style>` tags into the shadow
+  // root, like `iframe.tsx`'s option of the same name. This brings the host's
+  // compiled CSS, its own utilities and theme included. `dynamicTailwind`
+  // covers what the host's build never saw, such as a class typed at runtime.
   syncStyle?: boolean;
   children: (hostContainer: HTMLElement | null) => ReactNode;
 }
@@ -34,9 +28,8 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
   const [renderTarget, setRenderTarget] = useState<HTMLDivElement | null>(null);
   const [hostContainer, setHostContainer] = useState<HTMLElement | null>(null);
 
-  // Appended as siblings of the portal target (below), not inside it — that
-  // subtree is React-owned via createPortal, and anything appended there
-  // directly would get wiped on the next reconcile.
+  // Added next to the portal target, not inside it: React owns that subtree
+  // and would remove anything added there.
   const styleManagerRef = useRef(createStyleSyncManager());
 
   const applyStyle = useCallback(() => {
@@ -51,9 +44,8 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
 
   const applyStyleTimeoutRef = useRef<number>(undefined);
 
-  // Debounced so a burst of head mutations (a stylesheet swap can fire
-  // several in quick succession) only re-runs applyStyle once — same
-  // rationale as iframe.tsx's identical setup.
+  // Debounced, since a stylesheet swap fires several head mutations in a
+  // row, as in `iframe.tsx`.
   const debouncedApplyStyle = useCallback(() => {
     clearTimeout(applyStyleTimeoutRef.current);
     applyStyleTimeoutRef.current = window.setTimeout(applyStyle, 50);
@@ -100,14 +92,10 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
     }
 
     applyStyle();
-    // click/pointerdown/pointerup are `composed: true` by spec, so they
-    // already retarget across the shadow boundary and reach listeners
-    // outside it (document, this host's ancestors, React's own root
-    // listener) on their own - manually redispatching them here used to
-    // make every one of those listeners see the interaction twice. Anyone
-    // needing the real element inside the shadow tree (not the retargeted
-    // host) can still read it via event.composedPath()[0], unaffected by
-    // this removal. See #92.
+    // `click`, `pointerdown` and `pointerup` already cross the shadow boundary
+    // (`composed: true`), so they aren't dispatched again here, which made
+    // listeners outside see them twice (#92). `event.composedPath()[0]` gives
+    // the element inside.
   }, [applyStyle]);
 
   useLayoutEffect(() => {

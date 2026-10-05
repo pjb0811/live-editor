@@ -1,46 +1,17 @@
-// Pure helpers behind iframe.tsx's autoHeight measurement (#132 stages
-// 2-3) — kept DOM-free so they're testable under this repo's node-
-// environment vitest setup; the DOM walking itself (getComputedStyle,
-// querySelectorAll, offsetHeight reads) has no real layout engine to run
-// against outside a real browser and stays in iframe.tsx, verified
-// separately with a real Chromium instance instead of a unit test.
+// The calculations behind `iframe.tsx`'s `autoHeight`, kept free of the DOM
+// so they can be unit-tested. The DOM reads stay in `iframe.tsx`, which needs
+// a real browser to test.
 
-// A fallback used only when there's no `[data-frame-container]` scroll
-// container to measure against at all — e.g. `Frame` used directly by a
-// library consumer, without `Dnd`. There's no better reference height to
-// wait for in that case (unlike the "container exists but hasn't laid out
-// yet" case below, which defers instead), so this just needs to be *some*
-// reasonable default. Matches the source fork's own constant — a common
-// mobile viewport height, chosen there for the same reason.
+// The probe height when there's no `[data-frame-container]` scroll
+// container, as when `Frame` is used without `Live.Dnd`. A common mobile
+// viewport height.
 export const FALLBACK_PROBE_HEIGHT = 812;
 
-// The reference height for the preview's CSS containment context (see
-// ensureContainerStyle in iframe.tsx) — everything sized in `vh`-family
-// units (converted to `cqh` by convertViewportUnits) resolves against
-// this instead of the iframe's own height, which is what breaks the old
-// approach's fold-to-0px-then-measure circularity (#132 problem 1).
-//
-// `clientHeight` excludes the scroll container's own border, but not its
-// padding, nor anything between the iframe and that container. The caller
-// adds all of that up into `wrapperInsets` (see `verticalInsets`) while
-// walking from the iframe to the scroll container. This codebase's own
-// Sortable/Renderer/Frame add little (the Droppable's border and padding),
-// but a consumer's CSS, `provider` or `Canvas` className can add more.
-//
-// Returns `null` (not a guessed fallback) when the container hasn't been
-// laid out yet (`clientHeight` still 0, e.g. mid-transition) — the
-// caller should skip this measurement pass rather than settle on a
-// number that has nothing to do with the actual available space and
-// that no future event would ever correct (see the issue's own
-// reasoning for why a `window.innerHeight` fallback here was wrong).
-// The vertical space one element takes around the box inside it: margin,
-// border and padding, top and bottom. Margin counts too (#440): a 100vh
-// section in a wrapper with a vertical margin would otherwise be as tall as
-// the container and overflow it by that margin.
-//
-// Summed per element, so a margin that collapses through a parent with no
-// border or padding is counted twice. That errs on the side of a slightly
-// smaller probe, which fits, rather than a larger one, which scrolls.
+// The vertical space an element takes around its content: margin, border
+// and padding, top and bottom. Margin counts (#440), or a `100vh` section in
+// a wrapper with a margin would overflow the container by that margin. A
+// margin that collapses through a parent is counted twice, which errs toward
+// a smaller probe that fits.
 export const verticalInsets = (
   style: Pick<
     CSSStyleDeclaration,
@@ -61,6 +32,11 @@ export const verticalInsets = (
     style.paddingBottom,
   ].reduce((sum, value) => sum + (parseFloat(value) || 0), 0);
 
+// The height the preview's `cq*` units resolve against: the scroll
+// container's `clientHeight` minus `wrapperInsets`, the space everything
+// between the iframe and the container takes (`verticalInsets`). `null`
+// while the container isn't laid out yet: skip the pass rather than guess a
+// height that nothing would correct later.
 export const computeProbeHeight = (
   scrollContainerClientHeight: number,
   wrapperInsets: number,
@@ -70,19 +46,11 @@ export const computeProbeHeight = (
   return usable > 0 ? usable : null;
 };
 
-// `visibility:hidden` and `opacity:0` elements keep a non-zero
-// offsetHeight/scrollHeight (unlike `display:none`, which zeroes them
-// out on its own) — without this check, a closed bottom sheet or a
-// not-yet-faded-in overlay sitting in the DOM inflates the measured
-// height by however tall it would be if shown.
-//
-// `opacity:0` on its own can't separate that closed overlay from the
-// *first frames of a fade-in*, which is on its way to being visible and
-// belongs in the height (#374). `isAnimating` is how the caller resolves
-// it: an element part-way through a keyframe animation is measured even
-// while fully transparent. It deliberately doesn't rescue
-// `visibility:hidden` — an element animating some unrelated property
-// while hidden is still hidden.
+// Whether an element is hidden but still takes height: `visibility: hidden`
+// or `opacity: 0` (`display: none` already reads 0), such as a closed bottom
+// sheet. A transparent element that `isAnimating` is a fade-in starting, so
+// it's measured (#374). `visibility: hidden` stays hidden even while
+// animating.
 export const isVisuallyHidden = (
   computed: {
     visibility: string;
@@ -93,41 +61,25 @@ export const isVisuallyHidden = (
   computed.visibility === 'hidden' ||
   (computed.opacity === '0' && !isAnimating);
 
-// Which `Animation.playState`s mean "this element's appearance is still
-// in flight, don't trust the current frame as its resting state".
-//
-// `playState !== 'idle'` would be the tempting shorthand and is wrong:
-// a *finished* fade-out with `animation-fill-mode: forwards` sits in
-// `finished` while holding `opacity: 0`, and that element really is
-// hidden for good — counting it as animating would put the full height
-// of a dismissed overlay back into the estimate. `paused` counts because
-// a paused fade-in is stopped part-way through, not dismissed.
+// The `playState`s that mean the element is still changing. Not just
+// `!== 'idle'`: a finished fade-out with `fill-mode: forwards` stays
+// `finished` at `opacity: 0` and is hidden for good. `paused` counts, since
+// a paused fade-in stopped part-way.
 export const isAnimationActive = (playState: string): boolean =>
   playState === 'running' || playState === 'paused';
 
-// `translate(Xpx, Ypx)` / `translateY(Ypx)` / `matrix(a,b,c,d,tx,ty)`'s Y
-// component — a positioned popup/overlay is commonly offset this way
-// (Radix/floating-ui do), so its *effective* bottom edge is `offsetY +
-// offsetHeight` from its positioned ancestor, not just `offsetHeight`
-// alone. Returns 0 for anything else (no transform, or an X-only/
-// unrecognized one) rather than throwing — an unparsed offset is safer
-// treated as "no extra offset" than as a measurement failure.
-//
-// iframe.tsx's only caller passes `getComputedStyle(el).transform`, which
-// every real browser normalizes to `matrix(...)` regardless of what
-// syntax (translate/translateY/none of the above) the original CSS used
-// — confirmed against a real Chromium instance, not assumed. The
-// translate()/translateY() branches mainly document intent and cover any
-// future caller that passes an *inline* style's transform instead (which
-// does preserve the author's original syntax).
+// The Y offset of a `translate(x, y)`, `translateY(y)` or
+// `matrix(a, b, c, d, tx, ty)` transform, or 0 for anything else. Positioned
+// overlays are often moved this way (Radix, floating-ui), so their bottom
+// edge is `offsetY + offsetHeight`. Browsers report computed transforms as
+// `matrix(...)`; the other forms cover an inline style.
 export const parseTranslateY = (transform: string): number => {
   if (!transform || transform === 'none') {
     return 0;
   }
 
-  // translateY(y) is single-argument — tried first and separately from
-  // translate(x, y), since a naive "match the arg after a comma" pattern
-  // has no comma to find here at all and would silently fall through to 0.
+  // `translateY(y)` has one argument, so it's matched on its own, before
+  // `translate(x, y)`.
   const translateYMatch = transform.match(/translateY\(\s*([+-]?\d*\.?\d+)/);
 
   if (translateYMatch?.[1]) {
@@ -149,16 +101,9 @@ export const parseTranslateY = (transform: string): number => {
   return matrixMatch?.[1] ? parseFloat(matrixMatch[1]) : 0;
 };
 
-// A `position:fixed`/`absolute` element is placed relative to the
-// viewport (or the nearest positioned ancestor, which for this preview
-// content is effectively the same scale) — `offsetY + offsetHeight` can
-// legitimately exceed the probe height (e.g. an element deliberately
-// positioned to bleed off-screen), but letting an unbounded value drive
-// the *whole document's* measured height would make one runaway overlay
-// balloon everything below it. Capping at `probeHeight` treats "this
-// element's bottom edge is somewhere past the viewport" the same as "at
-// the viewport edge" for sizing purposes, without needing to know how far
-// past.
+// The height a fixed or absolute element adds: its offset plus its height,
+// capped at `probeHeight`, so one element placed past the viewport can't
+// stretch the whole preview.
 export const estimatePositionedElementHeight = (
   offsetHeight: number,
   transform: string,

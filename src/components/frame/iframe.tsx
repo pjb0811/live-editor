@@ -29,11 +29,8 @@ import {
   rewriteInlineViewportUnits,
 } from './viewport-units';
 
-// The <html> element's own container-context style — id'd so it can be
-// found/updated/removed across calls without holding a ref to it. Scoped
-// to `html` (not `:root`, which is equivalent but the fork's own
-// convention) so this only ever affects cq*-unit resolution and nothing
-// else about the document.
+// The style that makes `<html>` a size container, found again by this id.
+// Scoped to `html`, so it only affects how `cq*` units resolve.
 const CONTAINER_STYLE_ID = 'autoheight-container';
 
 export interface Props {
@@ -52,12 +49,10 @@ export interface Props {
 
 const EMPTY_STRING_ARRAY: string[] = [];
 
-// `getAnimations()` returns three kinds of animation mixed together:
-// CSSAnimation (a @keyframes rule), CSSTransition (a `transition`) and
-// plain Animation (`element.animate()`). They need telling apart below
-// because only the first two announce their own completion through a
-// bubbling DOM event. Both constructors are feature-detected rather than
-// assumed: jsdom exposes neither.
+// `getAnimations()` mixes CSS animations, CSS transitions and script
+// animations (`element.animate()`). Only the first two fire a bubbling event
+// when they end, so they're told apart. Both constructors are checked first,
+// since jsdom has neither.
 const isCssAnimation = (
   win: Window & typeof globalThis,
   animation: Animation,
@@ -72,62 +67,38 @@ const isCssTransition = (
   typeof win.CSSTransition === 'function' &&
   animation instanceof win.CSSTransition;
 
-// Whether this element's look is still in flight, which is what tells a
-// transient `opacity: 0` (the first frames of a fade-in — measure it)
-// from a permanent one (a closed overlay — skip it).
-//
-// Transitions count here, unlike keyframe animations they are not
-// distinguished: now that a measurement pass only freezes transitions when
-// it moves the probe height (see withMeasurementOverrides), an element at
-// the very start of a fade-*in* transition genuinely reads `opacity: 0`
-// with a running transition and has to be measured. An element fading
-// *out* needs no special case — part-way through it reads a fractional
-// opacity, so it is measured for as long as it is still visible, and once
-// the transition is over it reads `0` with nothing running and drops out.
-//
-// getAnimations() is feature-detected: jsdom and pre-2020 browsers don't
-// implement it, and without it this returns false, which is the safe
-// direction (under-measuring a fading-in overlay rather than inflating a
-// section by the height of a dismissed one).
+// Whether the element is animating, which tells a passing `opacity: 0` (the
+// start of a fade-in, so measure it) from a lasting one (a closed overlay, so
+// skip it). Transitions count too: a measurement pass doesn't always freeze
+// them, so a fade-in can read `opacity: 0` with a transition running. Without
+// `getAnimations()` (jsdom, old browsers) this is false, which under-measures
+// a fading-in overlay rather than counting a closed one.
 const hasActiveAnimation = (el: HTMLElement): boolean =>
   typeof el.getAnimations === 'function' &&
   el.getAnimations().some(animation => isAnimationActive(animation.playState));
 
-// `finished` never resolves for an animation that repeats forever, so a
-// handler attached to one would only pin its closure for as long as the
-// element lives. No signal is lost by skipping it: such an element is
-// perpetually "animating", so hasActiveAnimation keeps it in the estimate
-// on every pass anyway.
+// An animation that repeats forever never resolves `finished`, so it gets no
+// handler. It's always animating, so `hasActiveAnimation` keeps it measured
+// anyway.
 const neverFinishes = (animation: Animation): boolean => {
   const timing = animation.effect?.getComputedTiming();
 
   return timing?.iterations === Infinity || timing?.duration === Infinity;
 };
 
-// A second, separate style — inert (`media="not all"`) except for the
-// brief window updateHeight actually measures in, toggled on right
-// before and off right after (#132 stage 4). Two things it guards
-// against:
+// A style that is off (`media="not all"`) except while a measurement runs.
+// It guards against two things:
 //
-// - transitions: if any rule in the preview (or a browser default)
-//   gives `html`/an ancestor a `transition` on a property this
-//   measurement touches, changing ensureContainerStyle's `height` would
-//   animate instead of applying instantly, and a read taken right after
-//   would catch a mid-transition value instead of the settled one. Only
-//   applied on a pass that actually changes the probe height — see
-//   `freezeTransitions`.
-// - scrollbar chrome: applying a new probe height can make a scrollbar
-//   appear/disappear for exactly this measurement pass; on platforms
-//   where it takes up layout width (Windows, unlike macOS's overlay
-//   scrollbars), that narrows content and skews the height reading.
-//   `scrollbar-width: none`/`::-webkit-scrollbar { display: none }`
-//   only hides the *chrome* — unlike `overflow: hidden`, scrolling
-//   itself still works, so content that ends up taller than its probe
-//   height is still reachable rather than silently clipped.
+// - Transitions: a transition on what the measurement changes would animate
+//   the new probe height, and the read would catch a value part-way there.
+//   Only on a pass that changes the probe height (`freezeTransitions`).
+// - Scrollbars: a new probe height can show or hide a scrollbar for that
+//   pass, which narrows the content where scrollbars take space (Windows)
+//   and changes the height. Only the scrollbar is hidden; scrolling still
+//   works.
 //
-// A single style element (not two, and never added/removed) so
-// toggling it can't itself trip the MutationObserver watching for
-// *content* changes.
+// One element that is never added or removed, so toggling it doesn't trigger
+// the MutationObserver that watches the content.
 const MEASUREMENT_OVERRIDE_STYLE_ID = 'autoheight-measurement-overrides';
 
 const SCROLLBAR_OVERRIDE_RULES = [
@@ -138,24 +109,11 @@ const SCROLLBAR_OVERRIDE_RULES = [
 const FREEZE_TRANSITIONS_RULE =
   '*, *::before, *::after { transition: none !important; }';
 
-// `freezeTransitions` is deliberately not always on. `transition: none`
-// does not pause a transition for the duration of the measurement — it
-// *cancels* it, and lifting the override afterwards does not resume it.
-// Measured in Chromium: 0.5s into a 4s fade the element read `0.974`
-// with one running animation; inside the override window it read `0`
-// with none, and it was still `0` with none 0.8s after the override came
-// back off. The element had snapped to its end state for good.
-//
-// Freezing on every pass therefore killed every transition in the
-// preview that happened to overlap a measurement — and because a DOM
-// mutation is what both triggers a measurement and typically starts a
-// transition (a class toggle opening an overlay), that was most of them.
-//
-// The guard is only needed for what the measurement *itself* changes:
-// the probe height, and with it any `cq*`-unit descendant sized against
-// it. When the probe height is unchanged from the last pass, the pass
-// changes nothing, so there is nothing to freeze and the preview's own
-// transitions are left alone.
+// Measures with the overrides above on. `freezeTransitions` is off unless
+// the pass changes the probe height: `transition: none` cancels a running
+// transition rather than pausing it, and the element jumps to its end state
+// for good. A pass that leaves the probe height alone changes nothing, so it
+// leaves the preview's transitions alone.
 const withMeasurementOverrides = (
   doc: Document,
   freezeTransitions: boolean,
@@ -202,28 +160,24 @@ const IFrame = ({
 }: Props) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
-  // Tracks which script srcs have already been injected into this iframe's
-  // document, keyed by src rather than a single loaded/not-loaded boolean —
-  // a boolean latched to `true` forever meant a later change to `scripts`
-  // (new entries) never got loaded once the first batch had.
+  // The script srcs already added to this iframe's document, so a src added
+  // to `scripts` later still loads.
   const loadedScriptsRef = useRef<Set<string>>(new Set());
-  // The document those scripts went into. Moving the iframe in the DOM, as
-  // reordering canvas sections does, reloads it with a fresh document that
-  // has none of them (#507).
+  // The document those scripts went into. Moving the iframe, as reordering
+  // canvas sections does, reloads it with a new document that has none
+  // (#507).
   const loadedScriptsDocRef = useRef<Document | null>(null);
   const prevStyleCountRef = useRef(0);
   const prevStylesheetCountRef = useRef(0);
-  // Animations already given a "re-measure once you settle" handler, so a
-  // long-running one still in flight across many measurement passes only
-  // ever gets one (see trackScriptAnimations). Weak so it never keeps a
-  // finished animation — or the element owning it — alive.
+  // Animations that already have a re-measure handler, so a long one gets only
+  // one. Weak, so it never keeps an animation or its element alive.
   const trackedAnimationsRef = useRef(new WeakSet<Animation>());
-  // Lets those handlers call back into the *current* updateHeight without
-  // updateHeight having to list itself as its own dependency.
+  // Lets those handlers call the current `updateHeight` without it depending
+  // on itself.
   const updateHeightRef = useRef<(() => void) | null>(null);
   // The probe height the container style was last built for. A pass that
-  // leaves it unchanged changes nothing about the document, which is what
-  // lets that pass measure without freezing the preview's transitions.
+  // leaves it unchanged changes nothing, so it can measure without freezing
+  // transitions.
   const lastProbeHeightRef = useRef<number | undefined>(undefined);
   const shouldAutoHeight = autoHeight && style.height == null;
 
@@ -237,11 +191,9 @@ const IFrame = ({
       return;
     }
 
-    // The container style has to come after every host copy: both sides mark
-    // their rules `!important`, so a host `html { height: 100% !important }`
-    // synced in after it wins, and the frame folds to a pixel. That happened
-    // whenever the first sync ran after the container style existed, as when
-    // `syncStyle` is switched on after mount (#441).
+    // The container style goes after every copied host style. Both use
+    // `!important`, so a host `html { height: 100% !important }` copied in after
+    // it would win and fold the frame to a pixel (#441).
     reconcileStyles(
       document,
       doc,
@@ -250,8 +202,8 @@ const IFrame = ({
       convertViewportUnits,
       doc.getElementById(CONTAINER_STYLE_ID),
     );
-    // The host's theme class or attribute, which those copied styles select
-    // on (#497).
+    // The host's theme class or attribute, which the copied styles select on
+    // (#497).
     reconcileRootAttributes(
       document.documentElement,
       doc.documentElement,
@@ -262,9 +214,8 @@ const IFrame = ({
 
   const applyStyleTimeoutRef = useRef<number>(undefined);
 
-  // Debounced so a burst of head mutations (a stylesheet swap can fire
-  // several in quick succession) only re-runs applyStyle once, matching the
-  // original raw-MutationObserver setup's 50ms debounce.
+  // Debounced, since a stylesheet swap fires several head mutations in a
+  // row.
   const debouncedApplyStyle = useCallback(() => {
     clearTimeout(applyStyleTimeoutRef.current);
     applyStyleTimeoutRef.current = window.setTimeout(applyStyle, 50);
@@ -281,8 +232,8 @@ const IFrame = ({
     attributes: true,
   });
 
-  // A theme switch only touches the host's `<html>` attributes, which the
-  // head observer above doesn't see.
+  // A theme switch only changes the host's `<html>` attributes, which the head
+  // observer above doesn't see.
   useMutationObserver(document.documentElement, debouncedApplyStyle, {
     enabled: syncStyle,
     attributes: true,
@@ -375,9 +326,9 @@ const IFrame = ({
         doc.head.appendChild(styleEl);
       }
 
-      // The primary source of vh/svh/etc in a real preview — compiled
-      // component CSS (e.g. Tailwind's `h-screen` -> `height: 100vh`).
-      // See ensureContainerStyle below for why this needs converting.
+      // The main source of `vh` units in a preview: compiled component CSS,
+      // such as Tailwind's `h-screen`. See `ensureContainerStyle` for why they're
+      // converted.
       const convertedCss = convertViewportUnits(css);
 
       if (styleEl.textContent !== convertedCss) {
@@ -385,10 +336,7 @@ const IFrame = ({
       }
     });
 
-    // Indices beyond the current array's length are stale from a previous,
-    // longer `styles`/`stylesheets` — the loops above only add/update up to
-    // the current length, so anything past it (from before an item was
-    // removed, or the array shrank) would otherwise stay injected forever.
+    // Remove what's left from a longer `styles` or `stylesheets` array.
     for (
       let index = styles.length;
       index < prevStyleCountRef.current;
@@ -424,30 +372,18 @@ const IFrame = ({
     prevStylesheetCountRef.current = stylesheets.length;
   }, [styles, stylesheets]);
 
-  // Permanently hides the iframe document's own scrollbar chrome while
-  // autoHeight is sizing the iframe to its content. autoHeight sets the
-  // iframe's height to `Math.ceil(contentHeight)`, so sub-pixel content or
-  // a rounding remainder can leave the inner document a fraction taller
-  // than its viewport — enough for the browser to draw a vertical
-  // scrollbar inside every section's iframe (visual noise once several Dnd
-  // sections stack). Unlike the measurement-only override above (toggled
-  // off after each read), this one stays on: `scrollbar-width`/
-  // `::-webkit-scrollbar` hide only the *chrome*, not scrolling itself, so
-  // content that ever genuinely exceeds the measured height is still
-  // reachable by wheel/keyboard rather than clipped.
+  // Hides the iframe document's scrollbar while `autoHeight` sizes it.
+  // Rounding can leave the document a fraction taller than the iframe, which
+  // would draw a scrollbar in every section. Unlike the measurement override,
+  // this stays on. Scrolling still works if the content ever outgrows it.
   const HIDE_SCROLLBAR_STYLE_ID = 'autoheight-hide-scrollbar';
 
-  // Ties `cqh`/`cqmin`/`cqmax` (what convertViewportUnits rewrote every
-  // vh/svh/lvh/dvh/vmin/vmax to) to a *fixed* reference height instead of
-  // the iframe's own height — this is what breaks the old approach's
-  // circularity (#132 problem 1): folding the iframe to 0px before
-  // measuring made vh-sized content resolve to 0 and stay there forever,
-  // while measuring without folding never converges (vh content sized
-  // against the iframe's own just-grown height keeps growing it further).
-  // `container-type: size` requires an explicit height to size against,
-  // which `probeHeight` (the *scroll container's* available height, not
-  // the iframe's) provides — genuinely independent of whatever height this
-  // function goes on to set on the iframe itself.
+  // Makes `<html>` a size container with a fixed height, `probeHeight`, the
+  // scroll container's available height. Viewport units are rewritten to `cq*`
+  // units (`convertViewportUnits`), so they resolve against this height
+  // instead of the iframe's own. Against the iframe's own height, `100vh`
+  // content would grow the iframe, which grows the content again, and never
+  // settle (#132).
   const ensureContainerStyle = (doc: Document, probeHeight: number) => {
     let styleEl = doc.getElementById(
       CONTAINER_STYLE_ID,
@@ -461,28 +397,18 @@ const IFrame = ({
 
     const text = `html { container-type: size !important; height: ${probeHeight}px !important; }`;
 
-    // Only written when it actually differs. Re-assigning identical
-    // textContent would tear down and rebuild the same CSSOM rule on every
-    // pass, and the whole point of the probe height being stable is that a
-    // pass changes nothing about the document (see freezeTransitions).
+    // Written only when it differs, so a pass with the same probe height
+    // changes nothing in the document (see `freezeTransitions`).
     if (styleEl.textContent !== text) {
       styleEl.textContent = text;
     }
   };
 
-  // Script-driven animations are the blind spot the animationend listeners
-  // below can't cover: the Web Animations API fires no DOM event when one
-  // ends, so nothing would re-run a measurement taken mid-fade. Their
-  // `finished` promise is the equivalent signal, so each gets exactly one
-  // re-measure scheduled for when it settles.
-  //
-  // CSS animations and transitions are both skipped: their
-  // `animationend`/`transitionend` already bubble to the mount node, so
-  // tracking them here too would only measure twice.
-  //
-  // A cancelled animation rejects `finished` with an AbortError and snaps
-  // the element back to its un-animated style, which is as much a reason to
-  // re-measure as a clean finish — hence one handler on both settle paths.
+  // Script animations fire no event when they end, so each gets one
+  // re-measure when its `finished` promise settles. CSS animations and
+  // transitions are skipped: their end events already bubble to the mount node.
+  // A cancelled animation rejects `finished` and snaps the element back, which
+  // also changes the height, so both outcomes re-measure.
   const trackScriptAnimations = useCallback(
     (doc: Document, win: Window & typeof globalThis) => {
       if (typeof doc.getAnimations !== 'function') {
@@ -510,18 +436,11 @@ const IFrame = ({
     [],
   );
 
-  // Not ported from #132 stage 4: a "settled scrollHeight + settled probe
-  // height both unchanged -> skip" guard, meant to avoid redundant re-runs
-  // from updateHeight's own `iframe.style.height` write looping back
-  // through the ResizeObserver below (a real path — the iframe's own box
-  // size determines its *internal* viewport size, so this can genuinely
-  // fire again). Left out deliberately: `scrollHeight` only reflects
-  // normal document flow, but a position:fixed/absolute overlay opening or
-  // closing (its whole reason for needing the full-subtree walk above)
-  // often doesn't touch `scrollHeight` at all. A guard keyed on it would
-  // silently skip exactly the kind of update stage 3 exists to catch —
-  // reintroducing a narrower version of the bug this file just fixed
-  // would be a worse trade than the redundant-recompute cost it'd save.
+  // There is no "skip when `scrollHeight` and the probe height are unchanged"
+  // check, though setting the iframe's height can trigger the ResizeObserver
+  // again. Opening or closing a fixed or absolute overlay often leaves
+  // `scrollHeight` unchanged, so such a check would skip exactly the updates
+  // the full-subtree walk is for.
   const updateHeight = useCallback(() => {
     if (!shouldAutoHeight || !mountNode || !iframeRef.current) {
       return;
@@ -540,16 +459,14 @@ const IFrame = ({
     let probeHeight: number;
 
     if (!scrollParent) {
-      // No scroll container anywhere in the tree (Frame used directly,
-      // without Dnd) — fall back to a fixed default; see
-      // FALLBACK_PROBE_HEIGHT's own comment for why this differs from
-      // the "container exists but isn't laid out yet" case below.
+      // No scroll container (`Frame` used without `Live.Dnd`): use a fixed
+      // default. See `FALLBACK_PROBE_HEIGHT`.
       probeHeight = FALLBACK_PROBE_HEIGHT;
     } else {
-      // Starts at the iframe itself, whose own margin, border and padding
-      // take space the same way a wrapper's do, and stops before the scroll
-      // container, which only contributes its padding: `clientHeight`
-      // already leaves out its border and margin (#440).
+      // From the iframe up to the scroll container: the iframe's and each
+      // wrapper's margin, border and padding take space, and the scroll container
+      // adds only its padding, since `clientHeight` leaves out its border and
+      // margin (#440).
       const scrollParentStyle = win.getComputedStyle(scrollParent);
       let wrapperInsets =
         (parseFloat(scrollParentStyle.paddingTop) || 0) +
@@ -567,10 +484,8 @@ const IFrame = ({
       );
 
       if (computed === null) {
-        // Layout not ready yet (mid-transition, just mounted, etc) —
-        // skip this pass instead of guessing; the ResizeObserver/
-        // MutationObserver below will call this again once something
-        // actually changes, including the layout settling.
+        // Layout isn't ready yet: skip this pass. The observers call this again
+        // once it settles.
         return;
       }
 
@@ -579,9 +494,8 @@ const IFrame = ({
 
     let contentHeight = 0;
 
-    // First pass (`undefined`) and any pass that moves the probe height are
-    // the only ones that change the container context, so they are the only
-    // ones that need the preview's transitions out of the way.
+    // Only the first pass and a pass that moves the probe height change the
+    // container, so only they freeze transitions.
     const freezeTransitions = probeHeight !== lastProbeHeightRef.current;
 
     lastProbeHeightRef.current = probeHeight;
@@ -589,36 +503,27 @@ const IFrame = ({
     withMeasurementOverrides(doc, freezeTransitions, () => {
       ensureContainerStyle(doc, probeHeight);
 
-      // Rewrite vh-family units the container context can't otherwise reach —
-      // inline `style` attributes and in-preview `<style>` tags — so they too
-      // resolve against the fixed probe height rather than the iframe's own
-      // (see rewriteInlineViewportUnits). Must run after ensureContainerStyle
-      // and before the reads below; it's idempotent, so the extra observer
-      // pass its first-render rewrites trigger converges immediately.
+      // Rewrite viewport units in inline `style` attributes and in-preview
+      // `<style>` tags, which the container style can't reach, so they resolve
+      // against the probe height too. After `ensureContainerStyle` and before the
+      // reads below. It's idempotent, so the observer pass its own rewrites trigger
+      // changes nothing.
       rewriteInlineViewportUnits(mountNode);
 
-      // No 0px fold before measuring (that was the source of problem 1)
-      // — with cq*-unit content now sized against the fixed probe height
-      // instead of the iframe's own, a direct read is already stable.
+      // No need to fold the iframe to 0px first: `cq*` content is sized against
+      // the fixed probe height, so a direct read is stable (#132).
       contentHeight = mountNode.scrollHeight;
 
-      // Full subtree, not just direct children (a popup/overlay nested a
-      // few components deep was previously invisible to this walk
-      // entirely — problem 2's "중첩된 오버레이는 아예 누락됩니다").
+      // Every descendant, so an overlay nested deep in the tree counts too.
       const descendants = mountNode.querySelectorAll<HTMLElement>('*');
 
       descendants.forEach(el => {
         const style = win.getComputedStyle(el);
 
-        // visibility:hidden/opacity:0 elements (a closed bottom sheet,
-        // a not-yet-faded-in overlay) keep a non-zero offsetHeight —
-        // display:none doesn't need checking here since the browser
-        // already zeroes *its* offsetHeight on its own.
-        //
-        // The animation lookup is confined to the one verdict it can
-        // change — whether a fully transparent element is fading in
-        // (measure it) or simply not shown (skip it) — so every other
-        // element still costs nothing but the computed-style read.
+        // `visibility: hidden` and `opacity: 0` elements, such as a closed bottom
+        // sheet, still have an `offsetHeight`, so they're skipped here
+        // (`display: none` already reads 0). Animations are checked only for a fully
+        // transparent element, to tell a fade-in apart from a hidden one.
         const isAnimating = style.opacity === '0' && hasActiveAnimation(el);
 
         if (isVisuallyHidden(style, isAnimating)) {
@@ -644,9 +549,8 @@ const IFrame = ({
       iframe.style.height = `${Math.ceil(contentHeight)}px`;
     }
 
-    // Outside the measurement window on purpose: the overrides above cancel
-    // running transitions, and this read should see the document's real
-    // animation set rather than one the act of measuring just altered.
+    // After the measurement window, which can cancel transitions, so this sees
+    // the document's real animations.
     trackScriptAnimations(doc, win);
   }, [shouldAutoHeight, mountNode, trackScriptAnimations]);
 
@@ -654,13 +558,8 @@ const IFrame = ({
     updateHeightRef.current = updateHeight;
   }, [updateHeight]);
 
-  // updateHeight only ever adds/refreshes the container-context style —
-  // if autoHeight is toggled off (or an explicit style.height is passed)
-  // at runtime, nothing else would ever remove or update it again,
-  // leaving cq*-unit content sized against a stale probe height instead
-  // of correctly falling back to real viewport-relative sizing (which
-  // cqh does on its own once nothing establishes a size container — see
-  // ensureContainerStyle's own comment).
+  // Removes the container style when `autoHeight` turns off or a height is
+  // given, so `cq*` content goes back to sizing against the viewport.
   useEffect(() => {
     if (shouldAutoHeight) {
       return;
@@ -671,12 +570,10 @@ const IFrame = ({
       ?.remove();
   }, [shouldAutoHeight]);
 
-  // A fixed-height iframe scrolls its own document. `syncStyle` copies the
-  // host's stylesheets in, and an app shell often sets `body { overflow:
-  // hidden }` to keep its own page from scrolling. Copied in, that rule left
-  // the preview unable to scroll at all. An inline value wins over any copied
-  // rule. With autoHeight the iframe is as tall as its content, so there's
-  // nothing to scroll and the body is left as it was.
+  // A fixed-height iframe scrolls its own document. A copied host
+  // `body { overflow: hidden }` would stop that, so an inline value overrides
+  // it. With `autoHeight` there's nothing to scroll, so the body is left
+  // alone.
   useEffect(() => {
     const body = iframeRef.current?.contentDocument?.body;
 
@@ -691,8 +588,8 @@ const IFrame = ({
     }
   }, [shouldAutoHeight, mountNode]);
 
-  // Keyed on mountNode (not just shouldAutoHeight) so it re-runs once the
-  // iframe's document exists — before load there's no head to inject into.
+  // Depends on `mountNode` so it runs again once the iframe's document
+  // exists.
   useEffect(() => {
     const doc = iframeRef.current?.contentDocument;
 
@@ -726,14 +623,9 @@ const IFrame = ({
 
   const [resizeRef, resizeSize] = useResizeObserver<HTMLElement>();
 
-  // useResizeObserver's ref callback isn't wired through this component's
-  // own JSX (mountNode is the portal's imperatively-created container, not
-  // something rendered here), so it's attached/detached imperatively
-  // instead. Its reported size is intentionally unused - updateHeight's own
-  // walk (every descendant, position:fixed/absolute ones capped and offset
-  // by their transform) computes a more accurate height than mountNode's
-  // own content-box size would, so a change in `resizeSize` is only used
-  // as a trigger to recompute.
+  // Attached by hand, since `mountNode` is created by the portal, not
+  // rendered here. Only used as a trigger: `updateHeight`'s own walk measures
+  // more accurately than the mount node's size.
   useEffect(() => {
     if (!shouldAutoHeight || !mountNode) {
       return;
@@ -756,27 +648,14 @@ const IFrame = ({
     characterData: true,
   });
 
-  // An animation or transition finishing is neither a DOM mutation nor a
-  // resize of the mount node, so neither observer above re-runs the
-  // measurement — a fixed/absolute element read mid-fade would keep its
-  // stale height on the iframe until something unrelated happened to the DOM
-  // (#374). All four events bubble, so a single listener each on the mount
-  // node covers every descendant.
+  // Re-measure when an animation or transition ends or is cancelled, which
+  // neither observer sees. A fixed or absolute element read part-way through a
+  // fade would otherwise keep its height until something else changed (#374).
+  // All four events bubble, so one listener each on the mount node covers
+  // every descendant.
   //
-  // The `cancel` events count as much as the `end` ones: a cancelled
-  // animation or transition snaps the element back to its un-animated style,
-  // changing the height just the same.
-  //
-  // `transitionend`/`transitioncancel` used to be unnecessary, because every
-  // measurement pass cancelled every transition outright. Now that a pass
-  // only freezes transitions when it moves the probe height, a transition
-  // can genuinely still be running when a pass reads it, so its completion
-  // needs the same re-measure a keyframe animation's does.
-  //
-  // useEventListener resolves an element target through a ref, so mountNode
-  // (portal-owned state, not something this component renders) is wrapped in
-  // one that changes identity only when the node itself does. `enabled`
-  // keeps it from polling for a node that isn't there yet.
+  // The mount node is wrapped in a ref that changes only with the node, and
+  // `enabled` waits until it exists.
   const mountNodeRef = useMemo(() => ({ current: mountNode }), [mountNode]);
   const settleListenerEnabled = shouldAutoHeight && mountNode !== null;
 
@@ -808,10 +687,8 @@ const IFrame = ({
     <iframe
       ref={iframeRef}
       style={{
-        // An iframe is inline-level by default, so it sits on a text
-        // baseline and leaves the descender gap (~4px) below it. With one
-        // auto-height frame per canvas section, those gaps stacked into
-        // height no content accounted for (#439).
+        // An iframe is inline by default and leaves a gap below it for text
+        // descenders, which added up across canvas sections (#439).
         display: 'block',
         width: '100%',
         height: '100%',
