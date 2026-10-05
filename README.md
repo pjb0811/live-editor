@@ -34,6 +34,9 @@ live-editor/
 └─ package.json
 ```
 
+How the pieces fit together — the read and write paths, the commit levels and
+a glossary — is in [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 ## 🎯 Highlights
 
 - **Real-time code updates**: Canvas interactions (add/move/remove, property edits) are propagated back to source code safely.
@@ -136,7 +139,8 @@ can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — s
 ## 🚀 Development (this repo)
 
 > Working on Live Editor itself. To _use_ the package in your app, see
-> [Installation](#-installation) above.
+> [Installation](#-installation) above. Start with
+> [ARCHITECTURE.md](./ARCHITECTURE.md) for how the code is organized.
 
 ### pnpm Setup (Recommended)
 

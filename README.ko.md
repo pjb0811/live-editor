@@ -34,6 +34,8 @@ live-editor/
 └─ package.json
 ```
 
+각 부분이 어떻게 맞물리는지(읽기·쓰기 경로, commit 단계, 용어집)는 [ARCHITECTURE.ko.md](./ARCHITECTURE.ko.md)에 있습니다.
+
 ## 🎯 주요 기능
 
 - **AST 기반 실시간 코드 반영**: 캔버스 상호작용(추가/이동/삭제, 속성 변경)을 안전하게 소스 코드에 적용합니다.
@@ -136,7 +138,8 @@ export default function Example() {
 ## 🚀 개발 (이 저장소)
 
 > Live Editor 자체를 개발할 때 참고하세요. 패키지를 앱에서 _사용_ 하려면
-> 위의 [설치](#-설치)를 보세요.
+> 위의 [설치](#-설치)를 보세요. 코드 구조는
+> [ARCHITECTURE.ko.md](./ARCHITECTURE.ko.md)부터 읽기를 권합니다.
 
 ### pnpm 설정 (권장)
 

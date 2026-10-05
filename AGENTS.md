@@ -3,6 +3,8 @@
 React 19 + TypeScript 기반의 인터랙티브 UI 에디터 라이브러리입니다.
 Canvas의 DnD 편집 결과를 Babel AST 변환으로 소스 코드에 역으로 반영하고, 호스트에서 실행한 결과를 iframe 또는 Shadow DOM에 렌더링합니다. iframe은 DOM/CSS 격리용이며 JavaScript 실행의 보안 경계가 아닙니다.
 
+데이터 흐름, commit 단계, `Live.Dnd` 내부, AST 계층, 용어집은 [ARCHITECTURE.ko.md](ARCHITECTURE.ko.md)(영어: [ARCHITECTURE.md](ARCHITECTURE.md))에 있습니다. 구조를 바꾸면 두 문서와 문서 사이트의 [How It Works](website/docs/how-it-works.mdx)를 함께 고칩니다.
+
 ---
 
 ## 📁 디렉토리 구조
