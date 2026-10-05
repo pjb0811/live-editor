@@ -88,19 +88,20 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
               <Button
                 size="small"
                 icon={<ArrowUp />}
-                aria-label={messages.items.moveUp}
+                aria-label={messages.children.moveUp}
                 disabled={itemIndex === 0}
                 onClick={() => actions.move(itemIndex, itemIndex - 1)}
               />
               <Button
                 size="small"
                 icon={<ArrowDown />}
-                aria-label={messages.items.moveDown}
+                aria-label={messages.children.moveDown}
                 disabled={itemIndex === items.length - 1}
                 onClick={() => actions.move(itemIndex, itemIndex + 1)}
               />
               <Button
-                title={messages.items.delete}
+                aria-label={messages.children.delete}
+                title={messages.children.delete}
                 danger
                 size="small"
                 icon={<X />}

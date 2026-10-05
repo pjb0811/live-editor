@@ -1,10 +1,19 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Dnd from '~/components/dnd';
 import { useDndPanel } from '~/components/dnd/layout-context';
+import Children from '~/components/dnd/panel/children';
 import LiveError from '~/components/error';
+import Guard from '~/components/error/guard';
+import { extract } from '~/utils/ast/extract';
 import { createDocument, replaceSections } from '~/utils/sections';
 
 import ContextProvider from './context';
@@ -27,7 +36,10 @@ beforeAll(() => {
   };
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const ko = {
   section: { delete: '섹션 삭제' },
@@ -154,5 +166,48 @@ describe('Live messages', () => {
 
     expect(screen.getByText('Retry')).toBeTruthy();
     expect(screen.getByText('다시 시도')).toBeTruthy();
+  });
+
+  it('labels the Children buttons with their own group', () => {
+    const [parent] = extract(
+      `<div data-id="p" data-binding={[{label:'Children',property:'children'}]}><p data-id="a">A</p><p data-id="b">B</p></div>`,
+    );
+
+    render(
+      <ContextProvider
+        messages={{
+          items: { moveUp: 'Item up' },
+          children: { moveUp: 'Child up', delete: 'Child delete' },
+        }}
+      >
+        <Children
+          value={parent!.children ?? []}
+          onChange={() => {}}
+          onNodeChange={() => {}}
+        />
+      </ContextProvider>,
+    );
+
+    expect(screen.getAllByLabelText('Child up')).toHaveLength(2);
+    expect(screen.getAllByLabelText('Child delete')).toHaveLength(2);
+    expect(screen.queryByLabelText('Item up')).toBeNull();
+  });
+
+  it('translates the message of a page error that carries none', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <ContextProvider messages={{ errors: { unknown: '알 수 없는 오류' } }}>
+        <Guard>
+          <p>content</p>
+        </Guard>
+      </ContextProvider>,
+    );
+
+    act(() => {
+      window.dispatchEvent(new ErrorEvent('error'));
+    });
+
+    expect(screen.getByText('알 수 없는 오류')).toBeTruthy();
   });
 });

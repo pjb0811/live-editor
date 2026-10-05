@@ -148,8 +148,8 @@ const blockedEditError = (
   target: 'document',
   reason: 'parse-error',
   error,
-  title: m.documentSyntaxError,
-  description: m.documentSyntaxErrorDetail,
+  title: m.syntaxError,
+  description: m.syntaxErrorDetail,
 });
 
 // What `useDndPalette()` returns. Deliberately just data: the drag wiring is
@@ -733,7 +733,7 @@ const Dnd = ({
                   {messages.canvas.syntaxError}
                 </Typography.Paragraph>
                 <Typography.Text>
-                  {messages.canvas.syntaxErrorHint}
+                  {messages.canvas.syntaxErrorDetail}
                 </Typography.Text>
               </Space>
             ) : missingContainer !== null ? (
@@ -742,7 +742,7 @@ const Dnd = ({
                   {messages.canvas.missingContainer(missingContainer)}
                 </Typography.Paragraph>
                 <Typography.Text>
-                  {messages.canvas.missingContainerHint(missingContainer)}
+                  {messages.canvas.missingContainerDetail(missingContainer)}
                 </Typography.Text>
               </Space>
             ) : (
