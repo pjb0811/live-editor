@@ -35,22 +35,15 @@ import Children from './children';
 import { getFieldKind } from './field-kind';
 import Items from './items';
 
-// Exported as `Live.Dnd.Field` (see index.ts) so a custom panel can
-// hand any single binding back to the built-in control instead of
-// reimplementing it — most usefully for `items`/`children` bindings, whose
-// editors discover nested data-bound elements by re-extracting the value's
-// own JSX (~100 lines of Babel walking a consumer would otherwise have to
-// reproduce). Renders the *control* only; the built-in panel's label comes
-// from `FieldGroup`, so a consumer supplies their own heading and layout.
+// Props of `Live.Dnd.Field`, the built-in control for one binding. A custom
+// panel can use it for any binding, most usefully `items` and `children`,
+// whose editors find nested elements. Renders the control only; supply
+// your own label.
 export interface FieldProps {
   binding: PanelBinding;
-  // `Items`/`Children` edit a *different* element than `binding` itself —
-  // an array item or a sibling child, each with its own id/label/property —
-  // which `binding.onChange`'s single-value shape can't express. This is
-  // the node-level escape hatch those two need (see #237's documented
-  // items/children boundary). Not part of `PanelBinding`, which is
-  // per-binding; it reaches a custom panel through `useDndPanel()`
-  // instead (#308). Omit it and nested array/children edits won't commit.
+  // Commits edits to elements other than `binding`'s own, which the Items
+  // and Children editors make. Pass `useDndPanel().onNodeChange`; without it,
+  // edits inside those values aren't saved (#308).
   onNodeChange?: PanelNodeChange;
 }
 
@@ -84,20 +77,12 @@ const formatDateValue = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-// ColorPicker's onChange fires on every drag frame — committing straight
-// to `onChange` (which drives the AST parse/mutate/re-serialize +
-// generateSections + compile pipeline, see #130) makes a single drag cost
-// upward of 15-25ms per frame. Debouncing the *commit* keeps that pipeline
-// to roughly one run per pause instead of one per frame, while a local
-// `liveValue` state keeps the swatch/hex text updating every frame for
-// responsiveness — ColorPicker is fully controlled (`useControllableState`
-// with `value` always set here), so without this it would visually snap
-// back to the last committed color between debounced commits.
+// The color picker reports every drag frame, and each commit re-parses and
+// recompiles (#130). So the commit waits this long after the last change,
+// while `liveValue` updates the swatch every frame.
 const COLOR_COMMIT_DELAY = 75;
 
-// A curated subset rather than `toolbar` (every preset): the panel is a
-// small sidebar field, not a full document editor, so this keeps to the
-// formatting controls most binding content actually needs.
+// The formatting controls for a small sidebar field, not every preset.
 const RICHTEXT_TOOLBAR: ComponentProps<typeof RichTextEditor>['toolbar'] = [
   'bold',
   'italic',
@@ -118,11 +103,9 @@ interface JSXEditorFieldProps {
   onSave: (value: string) => void;
 }
 
-// Moving a keyed item reconnects descendant effects under Strict Effects.
-// `@uiw/react-codemirror` recreates its EditorView during that reconnect,
-// replacing the `.cm-editor` DOM and otherwise losing focus/selection. Keep
-// those user-facing values above the view lifecycle and restore them when the
-// replacement view is created (#359).
+// Keeps focus and selection when CodeMirror recreates its view, which
+// `@uiw/react-codemirror` does when a moved item's effects reconnect under
+// Strict Effects (#359).
 const JSXEditorField = ({ value, isHTML, onSave }: JSXEditorFieldProps) => {
   const selectionRef = useRef<EditorSelection | null>(null);
   const focusedRef = useRef(false);
@@ -171,26 +154,19 @@ const JSXEditorField = ({ value, isHTML, onSave }: JSXEditorFieldProps) => {
 
 const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
   const [liveValue, setLiveValue] = useState(value);
-  // Tracks `value` purely to detect an external change during render (see
-  // below) — refs can't be read/written during render, so this has to be
-  // state even though nothing here reads `prevValue` itself afterward.
+  // The last `value` seen, to notice a change from outside during render.
   const [prevValue, setPrevValue] = useState(value);
   const lastCommittedRef = useRef(value);
 
-  // The committed `value` can also change from outside (undo/redo, another
-  // field touching the same binding) — stay in sync with it rather than
-  // only ever tracking our own commits. Adjusted during render (React's
-  // recommended "reset state when a prop changes" pattern) rather than in
-  // an effect, so the mismatched frame never actually paints.
+  // Follow a change from outside, such as undo or another field. Done
+  // during render, so the old color never paints.
   if (value !== prevValue) {
     setPrevValue(value);
     setLiveValue(value);
   }
 
-  // `lastCommittedRef` only needs to be current by the time `commit` next
-  // runs (always from an event handler / debounce timer, never render), so
-  // syncing it in an effect — instead of alongside the state adjustment
-  // above — keeps the ref access out of the render phase entirely.
+  // `commit` reads this from handlers and timers only, so an effect is
+  // enough.
   useEffect(() => {
     lastCommittedRef.current = value;
   }, [value]);
@@ -217,10 +193,8 @@ const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
         debouncedCommit();
       }}
       onOpenChange={open => {
-        // Flush immediately on close (picker dismissed / selection
-        // finished) instead of waiting out the debounce window, so the
-        // last color is never at risk of being dropped by an unmount
-        // racing the pending timeout.
+        // Commit at once when the picker closes, so an unmount can't drop
+        // the last color.
         if (!open) {
           commit(liveValue);
         }
@@ -229,34 +203,24 @@ const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
   );
 };
 
-// `mb-0` is deliberate: `dist/style.css` ships without a preflight, so a bare
-// `<p>` keeps the UA's `margin-block: 1em` in a consumer that doesn't reset
-// it. That bottom margin collapses out of the field's wrapper and overrides
-// `FieldGroup`'s `space-y-1`, shifting every field below as the error toggles
-// (#409). `mt-1` already declares the top; this declares the bottom.
+// `mb-0` matters: `dist/style.css` has no CSS reset, so without it a `<p>`
+// keeps the browser's bottom margin and the fields below jump when the
+// error appears (#409).
 const FieldError = ({ message }: { message: string | null }) =>
   message ? <p className="mt-1 mb-0 text-xs text-red-500">{message}</p> : null;
 
 const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   const messages = useLiveMessages();
   const validationOptions = { messages: messages.validation };
-  // `value` is already structured (its real JS type); `rawValue` is the exact
-  // source text used for the raw editors (Items/code/textarea) and as the
-  // <input> defaultValue. See #238.
+  // `value` is the JS value; `rawValue` is the source text, for the text
+  // controls and the source editors (#238).
   const { id, value, rawValue, onChange } = binding;
 
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // The text-like inputs below (url/number/textarea) commit on blur, so
-  // they need local live state to hold what the user is typing. Left
-  // uncontrolled (`defaultValue`), they ignored later changes to the canonical
-  // value — an undo/redo or another field touching the same binding — because
-  // `Field` reconciles rather than remounts (a stable key, now
-  // `property`+`label` — see #318).
-  // The stale text then got re-committed on blur, clobbering the undo. Track
-  // the canonical `rawValue` with a render-phase reset, the same pattern
-  // `ColorPickerField` uses above. See #284. (The date picker commits on
-  // change, not blur, so it can bind the prop directly with no local state.)
+  // What the user is typing, for the inputs that commit on blur (url,
+  // number, text area). Reset during render when `rawValue` changes from outside,
+  // such as undo, so the old text isn't committed on blur (#284).
   const [text, setText] = useState(rawValue);
   const [prevRawValue, setPrevRawValue] = useState(rawValue);
 
@@ -280,10 +244,8 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  // Guard against the canonical value with the same shape as the commit:
-  // raw source text for string-in/string-out controls, structured values
-  // for typed controls. Comparing across those shapes lets no-op edits
-  // through when, for example, `'42'` and `42` describe the same field.
+  // Skips a commit that doesn't change anything, comparing a string with
+  // `rawValue` and anything else with `value`.
   const commitIfChanged = (next: unknown) => {
     const current = typeof next === 'string' ? rawValue : value;
 
@@ -469,11 +431,9 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           placeholder={messages.panel.numberPlaceholder}
           onBlur={e => {
             const raw = e.target.value.trim();
-            // Commit a real number, not a numeric string — the AST boundary
-            // and `validateBindingValue` (its `min`/`max`) both expect the
-            // value as its declared type now. An unparseable entry falls
-            // back to the raw text so a genuine mistake still round-trips
-            // rather than becoming `NaN`.
+            // Commit a number, not a numeric string, as `update` and
+            // `validateBindingValue` expect. Text that isn't a number is
+            // committed as is rather than as `NaN`.
             const next: unknown =
               raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : raw;
             const result = validateBindingValue(
@@ -505,11 +465,8 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
         placeholder={messages.panel.textPlaceholder}
         onBlur={e => {
           const raw = e.target.value.trim();
-          // Untyped field: infer the value's type from the text the user
-          // entered (so `42` commits as a number), the way the old boundary
-          // did — but here, in the presentation layer, not by re-guessing in
-          // the AST pipeline. A declared string-family type keeps the text
-          // verbatim, so `"{x}"` stays a string.
+          // An untyped field reads the text as a value, so `42` commits as a
+          // number. A declared type keeps the text as typed.
           const next: unknown = binding.type ? raw : parseValue(raw);
           const result = validateBindingValue(binding, next, validationOptions);
 
@@ -528,10 +485,9 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   );
 };
 
-// The public control: a consumer's `renderField` gets the first say, with the
-// built-in control as its fallback. Every field goes through here — nested
-// object keys and item properties render `Field` too — so an override
-// reaches them without any per-editor wiring.
+// `Live.Dnd.Field`: the host's `renderField` first, then the built-in
+// control. Nested object keys and item properties render `Field` too, so
+// `renderField` reaches every field.
 const Field = (props: FieldProps) => {
   const { renderField } = useDndEditOptions();
   const builtin = <BuiltinField {...props} />;

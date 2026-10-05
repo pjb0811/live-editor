@@ -6,13 +6,8 @@ interface Props {
   onNodeChange?: PanelNodeChange;
 }
 
-// One bordered group per element `id` — the same visual grouping `Node`
-// (panel/node.tsx) renders, but for the top-level panel list, where
-// `bindings` are already resolved PanelBindings (see dnd.tsx's `bindings`
-// useMemo). `Node` stays a separate component: it still parses a raw
-// DataAttrNode itself, which `Items` needs for elements it discovers
-// dynamically inside an array item's `children` (not present in the
-// top-level `bindings` array at all) — see #237's items/children boundary.
+// The fields of one element, from `PanelBinding`s. `Node` draws the same
+// for an extracted node, as the Children editor has.
 const FieldGroup = ({ bindings, onNodeChange }: Props) => (
   <div className="space-y-2 rounded">
     <div className="space-y-1">

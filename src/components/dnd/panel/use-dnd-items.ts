@@ -45,10 +45,9 @@ import {
   useStructuralSelection,
 } from './use-structural-selection';
 
-// One data-bound element discovered inside a JSX-valued item property.
-// These are the elements the top-level `bindings` array can't reach —
-// `extract()` doesn't walk into an attribute expression, so they're found
-// by re-extracting the property's own JSX here (#308).
+// A data-bound element inside a JSX-valued item property. `bindings`
+// doesn't list these, because `extract()` doesn't read into attribute
+// values, so this hook extracts the property's JSX itself (#308).
 export interface DndItemsNestedElement {
   // The element's `data-id`, which is what commits address it by.
   id: string;
@@ -60,16 +59,14 @@ export interface DndItemsNestedGroup {
   // The item property holding this JSX (e.g. `children`, `label`).
   property: string;
   elements: DndItemsNestedElement[];
-  // Set instead of `elements` when the JSX parsed but declared no binding
-  // at all. Editing the property's raw source is the only thing left to
-  // offer, so this is a `jsx`-typed binding over that source (#298).
+  // Set instead of `elements` when the JSX has no bindings: a `jsx` binding
+  // for editing the property's source (#298).
   fallback?: PanelBinding;
 }
 
 export interface DndItemsItem {
-  // Stable while this hook can prove the same item survived a source edit.
-  // Structural actions update this identity alongside the source patch, so
-  // React keys follow moved/duplicated/deleted rows instead of their positions.
+  // Stays the same while the hook can tell the item survived an edit, so
+  // React keys follow an item that moves, is copied or is deleted.
   id: string;
   // Position among the visible items of this kind, which is what selection
   // indices refer to.
@@ -88,16 +85,13 @@ export interface DndItemsItem {
 }
 
 export interface DndItemsActions {
-  // Appends a copy of the first item of the current `kind`. An array
-  // binding stays editable only while it holds at least one item: the shape
-  // of a new item comes from its siblings, never from a guess. On an empty
-  // array this is a no-op that raises the failure toast, so a custom panel
-  // should offer it only when `items` is non-empty, the way the built-in
-  // panel does (#316).
+  // Appends a copy of the first item of the current `kind`, since a new
+  // item's shape comes from its siblings. On an empty array it fails with
+  // the error toast, so offer it only when `items` isn't empty, as the
+  // built-in panel does (#316).
   add: () => void;
   move: (elementIndex: number, toIndex: number) => void;
-  // Refuses the edit that would remove the last item, keeping the array
-  // non-empty and therefore editable.
+  // Refuses to remove the last item, so the array stays editable.
   remove: (elementIndex: number) => void;
   duplicateSelected: () => void;
   moveSelected: (direction: 'up' | 'down') => void;
@@ -141,12 +135,9 @@ export interface DndItems {
 
 export interface DndItemsOptions {
   render?: BindingRenderMap;
-  // Commits a whole new array source. Every mutation here goes through
-  // `~/utils/ast`'s item functions, which re-parse the source and hand back
-  // a string, so no AST node is held or edited across renders.
+  // Commits the new array source after an edit.
   onChange?: (value: string) => void;
-  // Commits an edit to one nested element, addressed by its own `data-id`.
-  // A single binding's `onChange` can't express this — see #308.
+  // Commits an edit to a nested element by its own `data-id` (#308).
   onNodeChange?: PanelNodeChange;
 }
 
@@ -240,9 +231,8 @@ const bindingsInJSX = (
   return bindings;
 };
 
-// The parse. Split from the binding construction below so the Babel work is
-// memoized on the source string alone, while the callbacks the bindings
-// close over stay current on every render.
+// Parses the array. Kept apart from building the bindings, so the parse is
+// memoized on the source while the callbacks stay current every render.
 const parseSource = (value: string, bindingOptions?: BindingOptions) => {
   const ast = parseArrayExpression(value);
 
@@ -398,15 +388,11 @@ const removeIds = (ids: string[], indices: Set<number>) => {
   return ids.filter((_, index) => !indices.has(index));
 };
 
-// The array-editing engine behind the built-in Items panel, exposed so a
-// consumer can render their own markup over it (#237/#308 follow-up).
-//
-// What it saves reimplementing: re-parsing each item's JSX to find nested
-// data-bound elements, resolving the binding `render` map, translating
-// visible item positions to array element positions before every edit, and
-// reconciling the selection after a move or delete (#285). Everything comes
-// back as `PanelBinding`s, the same currency `useDndPanel()` and
-// `Live.Dnd.Field` already speak, so nothing here requires touching Babel.
+// What the built-in Items editor runs on, for a custom panel's own markup.
+// It finds the nested data-bound elements in each item, applies the
+// `render` map, maps visible positions to array positions for every edit,
+// and keeps the selection right after a move or delete (#285). Fields come
+// back as `PanelBinding`s, so `Live.Dnd.Field` can render them.
 export const useDndItems = (
   value: string,
   { render, onChange, onNodeChange }: DndItemsOptions = {},
@@ -422,11 +408,9 @@ export const useDndItems = (
     [value],
   );
 
-  // Read through a ref so the effect below fires once per parse failure, not
-  // again on every render a host passes a fresh inline `onEditError`.
+  // Read through refs, so the effect below reports each parse failure once,
+  // even when the host passes a new `onEditError` or new messages.
   const reportErrorRef = useRef(reportError);
-  // Read in the effect below the same way, so new messages don't report the
-  // same parse failure again.
   const messagesRef = useRef(messages);
 
   useEffect(() => {
@@ -471,21 +455,15 @@ export const useDndItems = (
     value,
   );
 
-  // The array the last commit produced, with the identity and selection that
-  // go with it, tagged with the render `value` it was built on. Every edit
-  // below computes a whole new array from a snapshot, and the host only
-  // hands the result back as `value` on the next render, so two edits in the
-  // same tick both started from this render's array and the second dropped
-  // the first (#451). Edits read `latest()` instead.
+  // The array the last commit produced, with its item ids and selection,
+  // and the render `value` it was built on. Edits read `latest()`, so a
+  // second edit in the same tick builds on the first instead of undoing it
+  // (#451). Cleared after each render, when the new `value` takes over, as
+  // in `useSectionDocument` (#450).
   //
-  // Dropped after each render, as `useSectionDocument` does for the document
-  // (#450): from then on the rendered `value` is the source of truth again,
-  // including when the host didn't accept the commit.
-  //
-  // Held in a `useState` box rather than a ref: the item bindings below are
-  // built during render and close over `latest()`, which the compiler reads
-  // as a ref access in render even though only their `onChange` calls it —
-  // the same reason `useSectionDocument` keeps its preview cache this way.
+  // Held in `useState`, not a ref: the bindings built during render close
+  // over `latest()`, and the React compiler treats that as reading a ref in
+  // render.
   const [pending] = useState(createPendingCommit);
 
   useEffect(() => {
@@ -531,10 +509,9 @@ export const useDndItems = (
     return index >= 0 ? snapshot.items[index] : null;
   };
 
-  // `null` means the edit could not be applied. `nextSelection` is where the
-  // selection stands once it is: applied now, since a non-null `next` means
-  // the edit succeeded, and again when this exact source comes back as
-  // `value`. Any other new `value` clears it (useStructuralSelection).
+  // `null` means the edit failed. Otherwise the selection becomes
+  // `nextSelection` now, and again when this source comes back as `value`;
+  // any other new `value` clears it (`useStructuralSelection`).
   const commit = (
     snapshot: Snapshot,
     next: string | null,
@@ -569,9 +546,8 @@ export const useDndItems = (
     return true;
   };
 
-  // Selection indices are positions among the visible items; every AST
-  // function addresses element positions. Keeping the two apart is what
-  // stops an edit from dropping the items that aren't on screen.
+  // Selection indices count visible items; the AST functions take array
+  // positions. Converting keeps hidden items from being lost.
   const elementIndicesOf = (snapshot: Snapshot, indices: Set<number>) =>
     new Set(
       snapshot.items
@@ -652,8 +628,8 @@ export const useDndItems = (
         return;
       }
 
-      // Positions shift after a move but the count doesn't, so the
-      // selection is cleared rather than left on the wrong items (#285).
+      // A move shifts positions, so clear the selection rather than leave it
+      // on other items (#285).
       commit(
         snapshot,
         moveArrayItem(snapshot.value, from.elementIndex, target.elementIndex),
@@ -670,7 +646,7 @@ export const useDndItems = (
         return;
       }
 
-      // Removing an item shifts every position after it; same reasoning.
+      // A removal shifts later positions too, so clear the selection.
       commit(
         snapshot,
         removeArrayItems(
@@ -761,9 +737,8 @@ export const useDndItems = (
     },
   };
 
-  // Built fresh each render rather than inside the memo above: these close
-  // over `onChange`/`onNodeChange`, and the work is a plain walk of the
-  // already-parsed result — no Babel.
+  // Built every render, outside the memo, because they close over
+  // `onChange` and `onNodeChange`. A cheap walk with no parsing.
   const items: DndItemsItem[] = isPrimitive
     ? primitiveItems.map(item => ({
         id: identity.ids[item.index] ?? item.id,
@@ -796,9 +771,8 @@ export const useDndItems = (
           return {
             ...toBindingFields(binding),
             id: `item-${id}-${key}`,
-            // Merged over the leaf's own metadata, never under it: a consumer
-            // labels the control with the property's actual kind, as the
-            // built-in panel does, so an authored `valueType` can't shadow it.
+            // Over the leaf's own `meta`, so the property's real type wins
+            // over an authored `valueType`.
             meta: { ...binding.meta, valueType: prop.type },
             value: parseValue(String(prop.value)),
             rawValue:

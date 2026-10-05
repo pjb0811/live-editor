@@ -19,8 +19,7 @@ const Node = ({ data, onChange }: FieldEditorProps) => {
     return null;
   }
 
-  // Keyed by `property`, never `label`: two bindings on one element may
-  // share a label, and using it as identity is what #318 fixed elsewhere.
+  // Keyed by `property`, not `label`, which two bindings can share (#318).
   return (
     <div className="space-y-2 rounded">
       <div className="space-y-1">

@@ -80,9 +80,8 @@ const NestedGroup = ({
   );
 };
 
-// Presentation for `useDndItems`. Everything that reads or writes the
-// array source lives in that hook, which is exported so a consumer can put
-// their own markup over the same engine — see its doc comment (#237/#308).
+// The built-in Items editor: markup over `useDndItems`, which does all the
+// reading and writing.
 const Items = ({ value, render, onChange, onChildChange }: Props) => {
   const messages = useLiveMessages();
   const {
@@ -134,10 +133,8 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     );
   }
 
-  // An array binding is editable only while it holds at least one item: the
-  // panel derives an item's shape from its siblings and will not invent one.
-  // `removeArrayItems` already refuses to empty a populated array, so this
-  // state means the source itself declared `[]` (or only holes/spreads).
+  // No items to copy a shape from. The editor never empties an array, so
+  // the source itself has `[]`, or only holes and spreads.
   if (items.length === 0) {
     return (
       <div className="space-y-4">
