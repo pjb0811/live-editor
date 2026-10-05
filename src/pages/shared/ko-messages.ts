@@ -21,9 +21,9 @@ export const KO_MESSAGES: LiveMessages = {
     emptyHintTouch: '컴포넌트를 탭해 추가하세요',
     emptyHintDrag: '왼쪽에서 컴포넌트를 끌어 와 추가하세요',
     syntaxError: '문서에 문법 오류가 있습니다',
-    syntaxErrorHint: '코드에서 오류를 고치면 섹션이 보입니다',
+    syntaxErrorDetail: '코드에서 오류를 고치면 섹션이 보입니다',
     missingContainer: containerId => `문서에 #${containerId} 요소가 없습니다`,
-    missingContainerHint: containerId =>
+    missingContainerDetail: containerId =>
       `섹션은 id="${containerId}"인 요소 안에 둡니다`,
     stale:
       '마지막으로 파싱된 버전을 보여 주고 있습니다. 여기서 다시 편집하려면 코드의 문법 오류를 고치세요.',
@@ -56,12 +56,15 @@ export const KO_MESSAGES: LiveMessages = {
       '편집할 항목이 없습니다. 패널은 새 항목의 모양을 추측하지 않고 기존 항목을 복사하므로, 첫 항목은 코드 편집기에서 추가하세요.',
     structureLocked:
       '값은 편집할 수 있지만, 이동·복사·추가·삭제는 spread나 괄호로 감싼 최상위 항목이 없는 배열에서만 됩니다. 이런 구조 변경은 코드 편집기를 쓰세요.',
-    noNestedBindings: '✓ JSX 바인딩이 없습니다',
+    noNestedBindings: 'JSX 바인딩이 없습니다',
   },
   children: {
     heading: count => `자식 항목 (${count})`,
     add: '자식 추가',
     child: (position, tagName) => `자식 ${position} (${tagName})`,
+    moveUp: '자식 위로 이동',
+    moveDown: '자식 아래로 이동',
+    delete: '자식 삭제',
     editableBindings: '편집할 수 있는 바인딩:',
     childNodes: '자식 노드:',
   },
@@ -96,8 +99,8 @@ export const KO_MESSAGES: LiveMessages = {
     unsupportedSyntax: property =>
       `"${property}" 표현식은 보존했습니다. 코드 편집기에서 바꾸세요.`,
     checkConsole: '자세한 내용은 콘솔을 확인하세요.',
-    documentSyntaxError: '문서에 문법 오류가 있습니다',
-    documentSyntaxErrorDetail:
+    syntaxError: '문서에 문법 오류가 있습니다',
+    syntaxErrorDetail:
       '캔버스는 마지막으로 파싱된 버전을 보여 줍니다. 코드의 오류를 고친 뒤 다시 편집하세요.',
     missingContainer: containerId => `문서에 #${containerId} 요소가 없습니다`,
     missingContainerDetail: containerId =>
@@ -131,6 +134,8 @@ export const KO_MESSAGES: LiveMessages = {
     sectionUnavailable: '섹션을 표시할 수 없음',
     sectionNotRendered: '이 섹션은 이 에디터에서 렌더링하지 않습니다.',
     tryAgain: '다시 시도',
+    unknown: '알 수 없는 오류',
+    unhandledRejection: '처리되지 않은 Promise 거부',
   },
   validation: {
     required: '필수 항목입니다.',

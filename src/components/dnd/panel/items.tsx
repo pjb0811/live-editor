@@ -234,7 +234,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           ))
         ) : (
           <div className="text-xs text-gray-500">
-            {messages.items.noNestedBindings}
+            <span aria-hidden="true">✓</span> {messages.items.noNestedBindings}
           </div>
         )}
       </div>

@@ -17,6 +17,12 @@ const Guard = ({ children, onError }: Props) => {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const errorHandled = useRef(false);
+  // Read by the listeners, so new messages don't subscribe them again.
+  const messagesRef = useRef(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  });
 
   useEventListener(
     'error',
@@ -28,7 +34,9 @@ const Guard = ({ children, onError }: Props) => {
       errorHandled.current = true;
 
       const errorMessage =
-        event.error?.message || event.message || 'Unknown error';
+        event.error?.message ||
+        event.message ||
+        messagesRef.current.errors.unknown;
 
       console.error('⚡ [Guard] Event handler error:', errorMessage);
 
@@ -58,7 +66,8 @@ const Guard = ({ children, onError }: Props) => {
 
       errorHandled.current = true;
 
-      const errorMessage = event.reason?.message || 'Promise rejection';
+      const errorMessage =
+        event.reason?.message || messagesRef.current.errors.unhandledRejection;
 
       event.preventDefault();
       setError(errorMessage);

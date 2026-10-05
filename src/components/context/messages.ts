@@ -30,9 +30,9 @@ export interface LiveMessages {
     emptyHintTouch: string;
     emptyHintDrag: string;
     syntaxError: string;
-    syntaxErrorHint: string;
+    syntaxErrorDetail: string;
     missingContainer: (containerId: string) => string;
-    missingContainerHint: (containerId: string) => string;
+    missingContainerDetail: (containerId: string) => string;
     stale: string;
   };
   panel: {
@@ -67,6 +67,9 @@ export interface LiveMessages {
     heading: (count: number) => string;
     add: string;
     child: (position: number, tagName: string) => string;
+    moveUp: string;
+    moveDown: string;
+    delete: string;
     editableBindings: string;
     childNodes: string;
   };
@@ -103,8 +106,8 @@ export interface LiveMessages {
     elementNotFound: string;
     unsupportedSyntax: (property: string) => string;
     checkConsole: string;
-    documentSyntaxError: string;
-    documentSyntaxErrorDetail: string;
+    syntaxError: string;
+    syntaxErrorDetail: string;
     missingContainer: (containerId: string) => string;
     missingContainerDetail: (containerId: string) => string;
     sectionParseFailed: string;
@@ -135,6 +138,10 @@ export interface LiveMessages {
     sectionUnavailable: string;
     sectionNotRendered: string;
     tryAgain: string;
+    // The message of a page error that carries none.
+    unknown: string;
+    // The message of an unhandled promise rejection that carries none.
+    unhandledRejection: string;
   };
   validation: ValidationMessages;
 }
@@ -162,10 +169,10 @@ export const defaultMessages: LiveMessages = {
     emptyHintTouch: 'Tap a component to add it',
     emptyHintDrag: 'Drag a component from the left to add it',
     syntaxError: 'The document has a syntax error',
-    syntaxErrorHint: 'Fix it in the code to see its sections',
+    syntaxErrorDetail: 'Fix it in the code to see its sections',
     missingContainer: containerId =>
       `No #${containerId} element in the document`,
-    missingContainerHint: containerId =>
+    missingContainerDetail: containerId =>
       `Sections go inside the element with id="${containerId}"`,
     stale:
       'Showing the last version that parsed. Fix the syntax error in the code to edit here again.',
@@ -199,12 +206,15 @@ export const defaultMessages: LiveMessages = {
       'No editable items. The panel copies an existing item rather than guessing the shape of a new one — add the first item in the code editor.',
     structureLocked:
       'Values remain editable, but moving, copying, adding, and deleting require a dense array without spreads or parenthesized top-level items. Use the code editor for those structural changes.',
-    noNestedBindings: '✓ No JSX bindings found',
+    noNestedBindings: 'No JSX bindings found',
   },
   children: {
     heading: count => `Children Items (${count})`,
     add: 'Add Child',
     child: (position, tagName) => `Child ${position} (${tagName})`,
+    moveUp: 'Move child up',
+    moveDown: 'Move child down',
+    delete: 'Delete child',
     editableBindings: 'Editable Bindings:',
     childNodes: 'Child Nodes:',
   },
@@ -239,8 +249,8 @@ export const defaultMessages: LiveMessages = {
     unsupportedSyntax: property =>
       `The "${property}" expression was preserved. Change it in the code editor instead.`,
     checkConsole: 'Check the console for details.',
-    documentSyntaxError: 'The document has a syntax error',
-    documentSyntaxErrorDetail:
+    syntaxError: 'The document has a syntax error',
+    syntaxErrorDetail:
       'The canvas shows the last version that parsed. Fix the error in the code, then edit here again.',
     missingContainer: containerId =>
       `No #${containerId} element in the document`,
@@ -275,6 +285,8 @@ export const defaultMessages: LiveMessages = {
     sectionUnavailable: 'Section Unavailable',
     sectionNotRendered: 'This section is not rendered in this editor.',
     tryAgain: 'Try Again',
+    unknown: 'Unknown error',
+    unhandledRejection: 'Unhandled promise rejection',
   },
   validation: defaultValidationMessages,
 };

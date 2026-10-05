@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useLiveMessages } from '~/components/context/messages';
 import type { Module } from '~/types';
 import { compile } from '~/utils/compile';
 
@@ -21,6 +22,7 @@ export const useCompiledModule = (
   // An inline `modules` object from `Live.Preview`'s host is new each
   // render; only a changed entry should recompile (#397).
   const modules = useStableModules(_modules);
+  const { unknown } = useLiveMessages().errors;
 
   const mergedModules = useMemo(
     () => ({ ...baseModules, ...modules }),
@@ -37,8 +39,8 @@ export const useCompiledModule = (
     } catch (e) {
       return {
         exports: {},
-        error: e instanceof Error ? e.message : 'Module transformation error',
+        error: e instanceof Error ? e.message : unknown,
       };
     }
-  }, [code, mergedModules]);
+  }, [code, mergedModules, unknown]);
 };

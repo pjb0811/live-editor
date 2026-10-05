@@ -70,7 +70,9 @@ describe('Children panel integration', () => {
 
     fireEvent.click(screen.getByTitle('Duplicate selected'));
     await waitFor(() => expect(screen.getAllByRole('textbox')).toHaveLength(3));
-    fireEvent.click(screen.getAllByTitle('Delete item')[0]!);
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Delete child' })[0]!,
+    );
     await waitFor(() => expect(screen.getAllByRole('textbox')).toHaveLength(2));
     const copied = screen.getAllByRole('textbox')[1]!;
     fireEvent.change(copied, { target: { value: 'Edited copy' } });
