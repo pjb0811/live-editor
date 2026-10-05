@@ -105,6 +105,7 @@ export interface LiveMessages {
     noBinding: string;
     elementNotFound: string;
     unsupportedSyntax: (property: string) => string;
+    selfClosing: (property: string) => string;
     checkConsole: string;
     syntaxError: string;
     syntaxErrorDetail: string;
@@ -248,6 +249,8 @@ export const defaultMessages: LiveMessages = {
     elementNotFound: 'The target element could not be found in this section.',
     unsupportedSyntax: property =>
       `The "${property}" expression was preserved. Change it in the code editor instead.`,
+    selfClosing: property =>
+      `This element is self-closing, so it has no content for "${property}". Give it a closing tag in the code editor.`,
     checkConsole: 'Check the console for details.',
     syntaxError: 'The document has a syntax error',
     syntaxErrorDetail:

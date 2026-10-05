@@ -117,6 +117,11 @@ const describeUpdateFailure = (
       return { title: m.updateFailed(label), description: m.noBinding };
     case 'element-not-found':
       return { title: m.updateFailed(label), description: m.elementNotFound };
+    case 'self-closing':
+      return {
+        title: m.cannotEdit(label),
+        description: m.selfClosing(failure.property),
+      };
     case 'unsupported-syntax':
       return {
         title: m.cannotEdit(label),

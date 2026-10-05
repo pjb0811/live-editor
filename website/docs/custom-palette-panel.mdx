@@ -70,12 +70,12 @@ collapsible sidebar of your own, panels in a modal, three CSS grid areas —
 as long as each region renders somewhere inside `Live.Dnd`, which owns the
 drag context they share.
 
-| Region | Renders |
-| --- | --- |
-| `Live.Dnd.Palette` | The built-in palette draggables, in a scroll container. |
-| `Live.Dnd.Canvas` | The drop target and the sortable list of sections. |
-| `Live.Dnd.Panel` | The built-in property panel, in a scroll container. |
-| `Live.Dnd.Layout` | The built-in arrangement, so you can wrap it (a toolbar above it, say) rather than rebuild it, and replace one region through its `palette`/`panel` slots. Also how to get the built-in Splitter layout without importing `@jbpark/ui-kit` yourself. |
+| Region             | Renders                                                                                                                                                                                                                                              |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Live.Dnd.Palette` | The built-in palette draggables, in a scroll container.                                                                                                                                                                                              |
+| `Live.Dnd.Canvas`  | The drop target and the sortable list of sections.                                                                                                                                                                                                   |
+| `Live.Dnd.Panel`   | The built-in property panel, in a scroll container.                                                                                                                                                                                                  |
+| `Live.Dnd.Layout`  | The built-in arrangement, so you can wrap it (a toolbar above it, say) rather than rebuild it, and replace one region through its `palette`/`panel` slots. Also how to get the built-in Splitter layout without importing `@jbpark/ui-kit` yourself. |
 
 Each takes the props of a `div` (`className` is merged over the region's own
 defaults, so overriding one wins rather than fighting), and each should be
@@ -112,7 +112,7 @@ otherwise. A custom layout can use it to show its own notice. See
 ### Keeping the built-in layout and swapping one region
 
 Replacing the palette or the panel usually doesn't mean you want a different
-*arrangement*. `Live.Dnd.Layout` is the built-in one, exported with two slots
+_arrangement_. `Live.Dnd.Layout` is the built-in one, exported with two slots
 so you can hand it your own component and keep everything else:
 
 ```tsx
@@ -130,10 +130,10 @@ built-in regions bring theirs); `palette` works the same way.
 
 `useDndPalette()` returns what drives the palette:
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `items` | `Section[]` | The palette's available sections. |
-| `onAdd` | `(item: Section) => void` | Add a section to the canvas. |
+| Field   | Type                      | Description                       |
+| ------- | ------------------------- | --------------------------------- |
+| `items` | `Section[]`               | The palette's available sections. |
+| `onAdd` | `(item: Section) => void` | Add a section to the canvas.      |
 
 Wrap your own markup in the exported `Live.Dnd.DraggableItem` so items stay
 draggable — it owns the dnd-kit wiring and hands back `ref` / `dragProps` /
@@ -181,20 +181,20 @@ const MyPalette = () => {
 
 `useDndPanel()` returns what drives the property panel:
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `item` | `Section?` | The currently selected section, or `undefined` if none is selected. |
-| `bindings` | `PanelBinding[]` | The selected section's editable `data-binding` fields, flattened to one entry per bound property. See the table below. |
-| `onChange` | `(next: Partial<Section>) => void` | Update fields of the selected section directly (not through a binding). |
-| `onDelete` | `(id: string) => void` | Delete a section by id. |
-| `onMoveUp` | `() => void` | Move the selected section up. Alternative to drag-reordering — needed because the canvas sits behind the mobile Drawer this panel renders in, so there's nothing visible to drag onto there. |
-| `onMoveDown` | `() => void` | Move the selected section down, same rationale as `onMoveUp`. |
-| `canMoveUp` | `boolean` | Whether `onMoveUp` would do anything right now — disable your move-up control when `false`. |
-| `canMoveDown` | `boolean` | Whether `onMoveDown` would do anything right now — disable your move-down control when `false`. |
-| `onNodeChange` | `(params: { id: string; label: string; property: string; value: unknown }) => void` | Commit an edit to an element addressed by its own `data-id`, rather than through a binding you were handed. Needed for the nested elements `bindings` can't reach — pass it to `Live.Dnd.Field` along with the binding. See [below](#reusing-the-built-in-control-for-one-binding). |
-| `onNodesChange` | `(changes: { id: string; label: string; property: string; value: unknown }[]) => void` | Commit several node-level edits as one change. They apply in array order, all or none: if any is refused, nothing is committed and the error names the one that failed. See [below](#writing-several-bindings-at-once). |
-| `readOnly` | `boolean` | `true` while the document doesn't parse. `item` and `bindings` are from the last version that did, and every commit is refused and reported through `onEditError` until it parses again. Disable your controls, or say why edits aren't landing. |
-| `bindingOptions` | `{ bindings?, bindingKeys? }` | `Live.Dnd`'s [component registry and key map](./data-binding.mdx#binding-by-key). Pass it to `extract()` when the panel reads a section's elements itself, so they get the same fields the built-in panel shows. |
+| Field            | Type                                                                                   | Description                                                                                                                                                                                                                                                                         |
+| ---------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `item`           | `Section?`                                                                             | The currently selected section, or `undefined` if none is selected.                                                                                                                                                                                                                 |
+| `bindings`       | `PanelBinding[]`                                                                       | The selected section's editable `data-binding` fields, flattened to one entry per bound property. See the table below.                                                                                                                                                              |
+| `onChange`       | `(next: Partial<Section>) => void`                                                     | Update fields of the selected section directly (not through a binding).                                                                                                                                                                                                             |
+| `onDelete`       | `(id: string) => void`                                                                 | Delete a section by id.                                                                                                                                                                                                                                                             |
+| `onMoveUp`       | `() => void`                                                                           | Move the selected section up. Alternative to drag-reordering — needed because the canvas sits behind the mobile Drawer this panel renders in, so there's nothing visible to drag onto there.                                                                                        |
+| `onMoveDown`     | `() => void`                                                                           | Move the selected section down, same rationale as `onMoveUp`.                                                                                                                                                                                                                       |
+| `canMoveUp`      | `boolean`                                                                              | Whether `onMoveUp` would do anything right now — disable your move-up control when `false`.                                                                                                                                                                                         |
+| `canMoveDown`    | `boolean`                                                                              | Whether `onMoveDown` would do anything right now — disable your move-down control when `false`.                                                                                                                                                                                     |
+| `onNodeChange`   | `(params: { id: string; label: string; property: string; value: unknown }) => void`    | Commit an edit to an element addressed by its own `data-id`, rather than through a binding you were handed. Needed for the nested elements `bindings` can't reach — pass it to `Live.Dnd.Field` along with the binding. See [below](#reusing-the-built-in-control-for-one-binding). |
+| `onNodesChange`  | `(changes: { id: string; label: string; property: string; value: unknown }[]) => void` | Commit several node-level edits as one change. They apply in array order, all or none: if any is refused, nothing is committed and the error names the one that failed. See [below](#writing-several-bindings-at-once).                                                             |
+| `readOnly`       | `boolean`                                                                              | `true` while the document doesn't parse. `item` and `bindings` are from the last version that did, and every commit is refused and reported through `onEditError` until it parses again. Disable your controls, or say why edits aren't landing.                                    |
+| `bindingOptions` | `{ bindings?, bindingKeys? }`                                                          | `Live.Dnd`'s [component registry and key map](./data-binding.mdx#binding-by-key). Pass it to `extract()` when the panel reads a section's elements itself, so they get the same fields the built-in panel shows.                                                                    |
 
 `bindings` carries each field's `type`, current `value`, `options` (when
 present), and an `onChange` wired straight into the same AST-update pipeline
@@ -204,8 +204,15 @@ the built-in panel uses. Switch on `binding.type` to render your own control:
 import { useDndPanel } from '@jbpark/live-editor/dnd';
 
 const MyPanel = () => {
-  const { item, bindings, onDelete, onMoveUp, onMoveDown, canMoveUp, canMoveDown } =
-    useDndPanel();
+  const {
+    item,
+    bindings,
+    onDelete,
+    onMoveUp,
+    onMoveDown,
+    canMoveUp,
+    canMoveDown,
+  } = useDndPanel();
 
   return (
     <div>
@@ -266,6 +273,7 @@ a selected element in its own state and show only that element's fields:
 
 ```tsx
 import { useState } from 'react';
+
 import { useDndPanel } from '@jbpark/live-editor/dnd';
 
 const ElementSwitcher = () => {
@@ -324,7 +332,7 @@ const ElementSwitcher = () => {
 
 ### Wrapping the built-in panel instead of starting from zero
 
-You don't have to replace the panel to add to it. `Live.Dnd.Panel` *is* the
+You don't have to replace the panel to add to it. `Live.Dnd.Panel` _is_ the
 built-in one, so keep it and put your own chrome around it:
 
 ```tsx
@@ -343,7 +351,7 @@ it doesn't push it out of view.)
 
 `onNodeChange` matters more than it looks. `bindings` covers the elements
 `extract()` finds by walking the section's markup, which does not include
-JSX nested *inside* an attribute value — the elements held in an `items` or
+JSX nested _inside_ an attribute value — the elements held in an `items` or
 `children` binding. The built-in array/children editors discover those by
 re-extracting that value themselves, and commit them through `onNodeChange`,
 addressing each by its own `data-id`. No single `PanelBinding.onChange` can
@@ -366,7 +374,7 @@ its own change, and if the second one is refused the first stays applied.
 ```tsx
 const { onNodesChange } = useDndPanel();
 
-const pick = (image) =>
+const pick = image =>
   onNodesChange([
     { id: 'hero-image', label: 'Image', property: 'src', value: image.url },
     { id: 'hero-image', label: 'Alt', property: 'alt', value: image.title },
@@ -441,22 +449,22 @@ number or option binding there's little reason to reach for it — a bare
 for a binding. `Field` makes its choice with this same function, so routing
 on it can't drift from the built-in panel:
 
-| Kind | Built-in control | Chosen when (first match wins) |
-| --- | --- | --- |
-| `'readonly'` | Preserved source with a note to use the code editor | `canEditValue` is `false` |
-| `'items'` | Items editor (`useDndItems` for your own markup) | `property` is `items` or `data`, or `type` is `array` |
-| `'richtext'` | Rich text editor | `type` is `richtext` |
-| `'html'` | Code editor, HTML mode | `property` is `innerHTML` |
-| `'jsx'` | Code editor | `type` is `jsx` |
+| Kind         | Built-in control                                       | Chosen when (first match wins)                            |
+| ------------ | ------------------------------------------------------ | --------------------------------------------------------- |
+| `'readonly'` | Preserved source with a note to use the code editor    | `canEditValue` is `false`                                 |
+| `'items'`    | Items editor (`useDndItems` for your own markup)       | `property` is `items` or `data`, or `type` is `array`     |
+| `'richtext'` | Rich text editor                                       | `type` is `richtext`                                      |
+| `'html'`     | Code editor, HTML mode                                 | `property` is `innerHTML`                                 |
+| `'jsx'`      | Code editor                                            | `type` is `jsx`                                           |
 | `'children'` | Children editor (`useDndChildren` for your own markup) | `property` is `children` and `value` is an array of nodes |
-| `'object'` | One nested field per key | `value` is a plain object |
-| `'boolean'` | Checkbox | `type` is `boolean`, or `value` is a boolean |
-| `'select'` | Select | `options` is set |
-| `'color'` | Color picker | `type` is `color`, or `property` contains `color` |
-| `'date'` | Date picker | `type` is `date` |
-| `'url'` | URL input | `type` is `url` |
-| `'number'` | Number input | `type` is `number`, or `value` is a number |
-| `'text'` | Text area | anything else |
+| `'object'`   | One nested field per key                               | `value` is a plain object                                 |
+| `'boolean'`  | Checkbox                                               | `type` is `boolean`, or `value` is a boolean              |
+| `'select'`   | Select                                                 | `options` is set                                          |
+| `'color'`    | Color picker                                           | `type` is `color`, or `property` contains `color`         |
+| `'date'`     | Date picker                                            | `type` is `date`                                          |
+| `'url'`      | URL input                                              | `type` is `url`                                           |
+| `'number'`   | Number input                                           | `type` is `number`, or `value` is a number                |
+| `'text'`     | Text area                                              | anything else                                             |
 
 `isStructuralFieldKind(kind)` is `true` for `'items'` and `'children'`. Those
 are the two kinds whose value holds further data-bound elements, which a flat
@@ -526,11 +534,11 @@ of each array item, and in a custom panel's `Live.Dnd.Field` as well:
 
 What the function returns decides what renders:
 
-| Return | Result |
-| --- | --- |
-| `undefined` | The built-in control. |
-| a node | That node instead. |
-| `null` | Nothing. The field's heading still shows in the built-in panel. |
+| Return      | Result                                                          |
+| ----------- | --------------------------------------------------------------- |
+| `undefined` | The built-in control.                                           |
+| a node      | That node instead.                                              |
+| `null`      | Nothing. The field's heading still shows in the built-in panel. |
 
 The second argument, `builtin`, is the control that would have rendered, so
 you can wrap it instead of replacing it (`<Hint>{builtin}</Hint>`). Don't
@@ -561,11 +569,11 @@ not shown:
 `title` and `description` are the toast's own messages. `type` says what
 failed:
 
-| `type` | When | Extra fields |
-| --- | --- | --- |
-| `'update'` | A field edit was rejected, usually because the element's `data-binding` names a `property` or `label` its markup doesn't have. | `id`, `label`, `property`, `failure` (with `failure.reason`) |
-| `'parse'` | The selected section, or an `items` value inside it, doesn't parse. | `target` (`'section'` or `'items'`), `error` |
-| `'items'` | An array edit would have lost source (a spread, a hole), so it was refused. | — |
+| `type`     | When                                                                                                                                                                                                   | Extra fields                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `'update'` | A field edit was rejected, usually because the element's `data-binding` names a `property` or `label` its markup doesn't have, or because text was written to a self-closing element (`self-closing`). | `id`, `label`, `property`, `failure` (with `failure.reason`) |
+| `'parse'`  | The selected section, or an `items` value inside it, doesn't parse.                                                                                                                                    | `target` (`'section'` or `'items'`), `error`                 |
+| `'items'`  | An array edit would have lost source (a spread, a hole), so it was refused.                                                                                                                            | —                                                            |
 
 ### Your own markup for an array binding: `useDndItems`
 
@@ -580,22 +588,27 @@ next major. To migrate, rename `useItemsEditor` → `useDndItems`,
 
 :::
 
-`Field` gives you the built-in *control*. When you want the same engine but
+`Field` gives you the built-in _control_. When you want the same engine but
 a different layout, `useDndItems` is that engine on its own:
 
 ```tsx
 import { useDndItems } from '@jbpark/live-editor/dnd';
 
 const MyItems = ({ binding, onNodeChange }) => {
-  const { items, selection, actions, canEditStructure } = useDndItems(binding.rawValue, {
-    render: binding.render,
-    onChange: binding.onChange,
-    onNodeChange,
-  });
+  const { items, selection, actions, canEditStructure } = useDndItems(
+    binding.rawValue,
+    {
+      render: binding.render,
+      onChange: binding.onChange,
+      onNodeChange,
+    },
+  );
 
   return (
     <div>
-      <button disabled={!canEditStructure} onClick={actions.add}>Add</button>
+      <button disabled={!canEditStructure} onClick={actions.add}>
+        Add
+      </button>
       {items.map(item => (
         <details key={item.id}>
           <summary>
@@ -621,7 +634,11 @@ const MyItems = ({ binding, onNodeChange }) => {
           {item.nested.map(group =>
             group.elements.map(el =>
               el.bindings.map(b => (
-                <Live.Dnd.Field key={b.label} binding={b} onNodeChange={onNodeChange} />
+                <Live.Dnd.Field
+                  key={b.label}
+                  binding={b}
+                  onNodeChange={onNodeChange}
+                />
               )),
             ),
           )}
@@ -647,15 +664,15 @@ What you don't have to reimplement:
   later bulk action never hits the wrong ones. See
   [Selection after an edit](#selection-after-an-edit).
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `kind` | `'object' \| 'primitive'` | Which kind the array is being edited as. An array holding both is treated as objects; the primitives are left untouched rather than dropped. |
-| `items` | `DndItemsItem[]` | One entry per item. `properties` holds an object item's plain fields, `nested` its JSX-valued ones, `value` a primitive item's own binding. |
-| `selection` | multi-select state | `selected`, `toggle`, `isSelected`, `clear`, `replace`. Indices are item `index` values; the actions translate. |
-| `expansion` | `DndItemsExpansion` | Which items show their fields: `expandedIds`, `isExpanded(id)`, `toggle(id)`, `setExpanded(ids)`. Keyed by item `id`, and every item starts expanded. See [Collapsing and drag sorting](#collapsing-and-drag-sorting). |
-| `actions` | `DndItemsActions` | `add`, `move`, `remove`, plus `duplicateSelected` / `moveSelected` / `removeSelected`. |
-| `canEditStructure` | `boolean` | Uses the same dense-array syntax gate as the mutation helpers. Keep value controls available when false, but disable move, copy, add, and delete and direct the user to the code editor. |
-| `parseError` | `boolean` | The source didn't parse as an array. `items` is empty. |
+| Field              | Type                      | Description                                                                                                                                                                                                            |
+| ------------------ | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kind`             | `'object' \| 'primitive'` | Which kind the array is being edited as. An array holding both is treated as objects; the primitives are left untouched rather than dropped.                                                                           |
+| `items`            | `DndItemsItem[]`          | One entry per item. `properties` holds an object item's plain fields, `nested` its JSX-valued ones, `value` a primitive item's own binding.                                                                            |
+| `selection`        | multi-select state        | `selected`, `toggle`, `isSelected`, `clear`, `replace`. Indices are item `index` values; the actions translate.                                                                                                        |
+| `expansion`        | `DndItemsExpansion`       | Which items show their fields: `expandedIds`, `isExpanded(id)`, `toggle(id)`, `setExpanded(ids)`. Keyed by item `id`, and every item starts expanded. See [Collapsing and drag sorting](#collapsing-and-drag-sorting). |
+| `actions`          | `DndItemsActions`         | `add`, `move`, `remove`, plus `duplicateSelected` / `moveSelected` / `removeSelected`.                                                                                                                                 |
+| `canEditStructure` | `boolean`                 | Uses the same dense-array syntax gate as the mutation helpers. Keep value controls available when false, but disable move, copy, add, and delete and direct the user to the code editor.                               |
+| `parseError`       | `boolean`                 | The source didn't parse as an array. `items` is empty.                                                                                                                                                                 |
 
 The built-in `Items` panel is written against exactly this hook, so anything
 it can do is reachable here.
@@ -675,7 +692,9 @@ what a collapsed item shows is up to you. A one-line summary can come from
 the item's own fields:
 
 ```tsx
-const { items, expansion } = useDndItems(binding.rawValue, { onChange: binding.onChange });
+const { items, expansion } = useDndItems(binding.rawValue, {
+  onChange: binding.onChange,
+});
 
 items.map(item => {
   const title = item.properties.find(prop => prop.property === 'title');
@@ -707,11 +726,11 @@ indices are retained: holes and spread entries are omitted from the visible
 list, but they remain in the source. For example, changing A in
 `[, {label:'A'}, {label:'B'}]` leaves the leading hole and B untouched.
 
-| Operation | Dense arrays | Arrays with holes or spreads |
-| --- | --- | --- |
-| Edit a supported literal or object property | Supported | Supported at its original syntax position |
-| Move, remove, duplicate, append | Supported | Refused; edit the source code instead |
-| Edit a spread entry itself | Not applicable | Refused |
+| Operation                                   | Dense arrays   | Arrays with holes or spreads              |
+| ------------------------------------------- | -------------- | ----------------------------------------- |
+| Edit a supported literal or object property | Supported      | Supported at its original syntax position |
+| Move, remove, duplicate, append             | Supported      | Refused; edit the source code instead     |
+| Edit a spread entry itself                  | Not applicable | Refused                                   |
 
 Structural edits preserve raw element text, comments, whitespace and trailing
 commas. Gaps between elements stay in their original positions during moves;
@@ -752,7 +771,10 @@ const MyChildren = ({ binding }) => {
             onChange={() => selection.toggle(index)}
           />
           Child {index + 1}
-          <button disabled={index === 0} onClick={() => actions.move(index, index - 1)}>
+          <button
+            disabled={index === 0}
+            onClick={() => actions.move(index, index - 1)}
+          >
             Move up
           </button>
           <button onClick={() => actions.remove(index)}>Delete</button>
@@ -834,14 +856,14 @@ checks. Low-level callers can use `ChildrenEdit` and `getChildrenSignatures` fro
 indices are positions, so whatever moves items has to move or clear the
 selection with them:
 
-| What changed the source | Selection afterwards |
-| --- | --- |
-| `add`, `duplicateSelected` | Unchanged. Both append at the end, so no existing item moves. |
-| `moveSelected` | The moved items, at their new positions, so the block can be moved again. |
-| `move`, `remove`, `removeSelected` | Cleared. Positions shifted under the selection. |
-| An item value edit (`useDndItems`) | Unchanged. |
-| Anything else: another field, undo, an external `value` | Cleared. The same positions may now hold different items. |
-| A refused edit | Unchanged. No new source was produced. |
+| What changed the source                                 | Selection afterwards                                                      |
+| ------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `add`, `duplicateSelected`                              | Unchanged. Both append at the end, so no existing item moves.             |
+| `moveSelected`                                          | The moved items, at their new positions, so the block can be moved again. |
+| `move`, `remove`, `removeSelected`                      | Cleared. Positions shifted under the selection.                           |
+| An item value edit (`useDndItems`)                      | Unchanged.                                                                |
+| Anything else: another field, undo, an external `value` | Cleared. The same positions may now hold different items.                 |
+| A refused edit                                          | Unchanged. No new source was produced.                                    |
 
 `useDndChildren` applies the result when the new source arrives, since the
 host's `onChange` decides whether the edit succeeds. `useDndItems` applies
@@ -849,26 +871,26 @@ it immediately, because its own array edit has already succeeded by then.
 
 ### `PanelBinding`
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `string` | `data-id` of the owning element (stable across edits). |
-| `label` | `string` | Human-readable label from the binding definition. |
-| `property` | `string` | The bound prop/attribute name. |
-| `type` | `BindingType?` | The declared data kind — what the value *is* (`string`, `number`, `boolean`, ...). `undefined` means a plain string binding. See the full list below. |
-| `widget` | `BindingWidget?` | The declared presentation — how to *render* it, as `{ type, ...settings }`. `widget.type` is an open string, not `BindingType`: the library ships no widgets, so every value (e.g. `'slider'`) is a name you make up and handle yourself. Authored as a bare string (`widget: 'slider'`), it arrives as `{ type: 'slider' }`. The built-in panel ignores it and renders the default control for `type`. |
-| `options` | `BindingOption[]?` | Present when the binding defines a fixed option set (render a `<select>`). |
-| `render` | `BindingRenderMap?` | Present on `object`/`array` bindings whose nested keys/items declare their own types — walk it to type each nested field instead of treating the value as an opaque string. |
-| `min` | `number?` | Minimum value for a `number` binding. Compared against the real number `value` delivers — pass it straight to `validateBindingValue`. |
-| `max` | `number?` | Maximum value for a `number` binding. |
-| `pattern` | `string?` | A regex source the value must match. |
-| `required` | `boolean?` | Whether an empty value should fail validation. |
-| `meta` | `Record<string, unknown>?` | Any authored key that isn't one of the fields above (a group name, help text, ...) — see below, and [Common `meta` keys](./data-binding.mdx#common-meta-keys) for a shared set of names. Control settings such as a step or unit belong on `widget` instead. `undefined` when nothing extra was authored, not an empty object. |
-| `value` | `unknown` | Current value as its real JS type — a `number` for a `number` binding, a `boolean`, an `object`/`array`, a `string` otherwise. Switch on it without re-parsing. |
-| `rawValue` | `string` | The exact source text behind `value`, for cases that can't round-trip through a JS value (`jsx`/`richtext`, or an expression attribute you want to edit as text). Use it for an `<input>` `defaultValue` and for `flattenEditableValue`/`setEditableValue`. |
-| `canEditValue` | `boolean?` | `false` when reconstructing the modeled value could discard a reference, call, spread, hole, or computed property. Hide or disable the value control and direct the user to the code editor. `undefined` means the value is editable. |
-| `element` | `{ tagName: string; text: string }?` | The element the binding belongs to: its tag name as written and its own text, trimmed (`''` when it has none). The built-in panel heads each element's fields with these. Absent for a binding that isn't an element's, such as an array item's property. |
-| `present` | `boolean?` | `false` when the binding names an attribute the element doesn't carry. `onChange(undefined)` removes an attribute and `onChange(value)` adds it back, so this is what an on/off control reads. `undefined` means the attribute is there, or the binding is content (`innerText`, `innerHTML`, `children`). See [Optional attributes](./data-binding.mdx#optional-attributes). |
-| `onChange` | `(value: unknown) => void` | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). Pass the value as its real type — it's serialized once, at the AST boundary, where the declared `type` is known, so no string quoting on your side. |
+| Field          | Type                                 | Description                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | `string`                             | `data-id` of the owning element (stable across edits).                                                                                                                                                                                                                                                                                                                                                  |
+| `label`        | `string`                             | Human-readable label from the binding definition.                                                                                                                                                                                                                                                                                                                                                       |
+| `property`     | `string`                             | The bound prop/attribute name.                                                                                                                                                                                                                                                                                                                                                                          |
+| `type`         | `BindingType?`                       | The declared data kind — what the value _is_ (`string`, `number`, `boolean`, ...). `undefined` means a plain string binding. See the full list below.                                                                                                                                                                                                                                                   |
+| `widget`       | `BindingWidget?`                     | The declared presentation — how to _render_ it, as `{ type, ...settings }`. `widget.type` is an open string, not `BindingType`: the library ships no widgets, so every value (e.g. `'slider'`) is a name you make up and handle yourself. Authored as a bare string (`widget: 'slider'`), it arrives as `{ type: 'slider' }`. The built-in panel ignores it and renders the default control for `type`. |
+| `options`      | `BindingOption[]?`                   | Present when the binding defines a fixed option set (render a `<select>`).                                                                                                                                                                                                                                                                                                                              |
+| `render`       | `BindingRenderMap?`                  | Present on `object`/`array` bindings whose nested keys/items declare their own types — walk it to type each nested field instead of treating the value as an opaque string.                                                                                                                                                                                                                             |
+| `min`          | `number?`                            | Minimum value for a `number` binding. Compared against the real number `value` delivers — pass it straight to `validateBindingValue`.                                                                                                                                                                                                                                                                   |
+| `max`          | `number?`                            | Maximum value for a `number` binding.                                                                                                                                                                                                                                                                                                                                                                   |
+| `pattern`      | `string?`                            | A regex source the value must match.                                                                                                                                                                                                                                                                                                                                                                    |
+| `required`     | `boolean?`                           | Whether an empty value should fail validation.                                                                                                                                                                                                                                                                                                                                                          |
+| `meta`         | `Record<string, unknown>?`           | Any authored key that isn't one of the fields above (a group name, help text, ...) — see below, and [Common `meta` keys](./data-binding.mdx#common-meta-keys) for a shared set of names. Control settings such as a step or unit belong on `widget` instead. `undefined` when nothing extra was authored, not an empty object.                                                                          |
+| `value`        | `unknown`                            | Current value as its real JS type — a `number` for a `number` binding, a `boolean`, an `object`/`array`, a `string` otherwise. Switch on it without re-parsing.                                                                                                                                                                                                                                         |
+| `rawValue`     | `string`                             | The exact source text behind `value`, for cases that can't round-trip through a JS value (`jsx`/`richtext`, or an expression attribute you want to edit as text). Use it for an `<input>` `defaultValue` and for `flattenEditableValue`/`setEditableValue`.                                                                                                                                             |
+| `canEditValue` | `boolean?`                           | `false` when reconstructing the modeled value could discard a reference, call, spread, hole, or computed property. Hide or disable the value control and direct the user to the code editor. `undefined` means the value is editable.                                                                                                                                                                   |
+| `element`      | `{ tagName: string; text: string }?` | The element the binding belongs to: its tag name as written and its own text, trimmed (`''` when it has none). The built-in panel heads each element's fields with these. Absent for a binding that isn't an element's, such as an array item's property.                                                                                                                                               |
+| `present`      | `boolean?`                           | `false` when the binding names an attribute the element doesn't carry. `onChange(undefined)` removes an attribute and `onChange(value)` adds it back, so this is what an on/off control reads. `undefined` means the attribute is there, or the binding is content (`innerText`, `innerHTML`, `children`). See [Optional attributes](./data-binding.mdx#optional-attributes).                           |
+| `onChange`     | `(value: unknown) => void`           | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). Pass the value as its real type — it's serialized once, at the AST boundary, where the declared `type` is known, so no string quoting on your side.                                                                                                                                                      |
 
 `BindingType` is a closed union of 10 data kinds: `array`, `object`,
 `string`, `number`, `boolean`, `color`, `jsx`, `richtext`, `date`, `url`.
@@ -879,7 +901,7 @@ authored and what the built-in panel does with it.
 
 ### Choosing a control is the panel's job
 
-The library owns what a value *is* (`type`) and what it may be
+The library owns what a value _is_ (`type`) and what it may be
 (`min`/`max`/`pattern`/`required`). How it is drawn is yours: `widget` is
 passed through untouched, and the built-in panel never reads it.
 
@@ -941,7 +963,7 @@ Two things a `data-binding` entry has to satisfy for its edits to actually
 commit, neither enforced at parse time:
 
 - **`property` must already exist as an attribute on the element.** `binding.onChange` writes through the same AST-update pipeline the built-in panel uses, which updates an existing JSX attribute — it doesn't add a new one. A binding whose `property` names something not already present in the markup (as a prop, or as the element's own `innerText`/`children`/etc.) parses fine and shows up in `bindings`, but every `onChange` call fails on the built-in panel's side (a "Failed to update" toast, or an `onEditError` call) or returns `success: false` if you're calling `update()` yourself.
-- **`label` must be unique per element.** `label` is a display string, not an identifier, but where a binding doesn't declare `property` it's still how the built-in AST utilities resolve *which* binding you mean. Two bindings on the same element sharing a label is an authoring mistake `update()` refuses to silently guess at — it returns `success: false` instead of writing whichever one happened to match first.
+- **`label` must be unique per element.** `label` is a display string, not an identifier, but where a binding doesn't declare `property` it's still how the built-in AST utilities resolve _which_ binding you mean. Two bindings on the same element sharing a label is an authoring mistake `update()` refuses to silently guess at — it returns `success: false` instead of writing whichever one happened to match first.
 
 ### Escaping the binding system entirely
 

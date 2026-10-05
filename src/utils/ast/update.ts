@@ -462,6 +462,9 @@ export type UpdateFailure =
       count: number;
     }
   | { reason: 'attribute-not-found'; dataId: string; property: string }
+  // `innerText` or `innerHTML` written to a self-closing element, which has
+  // nowhere between its tags to put them (#552).
+  | { reason: 'self-closing'; dataId: string; property: string }
   | { reason: 'unsupported-syntax'; dataId: string; property: string }
   | { reason: 'parse-error'; error: unknown };
 
@@ -628,8 +631,18 @@ export const update = (
           return;
         }
 
+        // Text and HTML go between the tags, so a self-closing element can't
+        // take them. Clearing them is fine: there's nothing to clear (#552).
+        const contentWithoutSlot =
+          !unset && String(value) !== '' && !childrenRange(path.node);
+
         switch (prop) {
           case BINDING_PROP.INNER_TEXT: {
+            if (contentWithoutSlot) {
+              failure = { reason: 'self-closing', dataId, property: prop };
+              break;
+            }
+
             collect(
               editInnerText(wrapped, path.node, unset ? '' : String(value)),
               () => ({
@@ -641,6 +654,12 @@ export const update = (
           }
 
           case BINDING_PROP.INNER_HTML: {
+            // `richtext` is written to an attribute, so it doesn't need one.
+            if (contentWithoutSlot && propertyBinding.type !== 'richtext') {
+              failure = { reason: 'self-closing', dataId, property: prop };
+              break;
+            }
+
             collect(
               propertyBinding.type === 'richtext'
                 ? editRichtext(path.node, unset ? '' : String(value))

@@ -98,6 +98,8 @@ export const KO_MESSAGES: LiveMessages = {
     elementNotFound: '이 섹션에서 대상 요소를 찾을 수 없습니다.',
     unsupportedSyntax: property =>
       `"${property}" 표현식은 보존했습니다. 코드 편집기에서 바꾸세요.`,
+    selfClosing: property =>
+      `이 요소는 self-closing 태그라 "${property}"을(를) 넣을 내용이 없습니다. 코드 편집기에서 닫는 태그를 추가하세요.`,
     checkConsole: '자세한 내용은 콘솔을 확인하세요.',
     syntaxError: '문서에 문법 오류가 있습니다',
     syntaxErrorDetail:
