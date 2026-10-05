@@ -9,19 +9,15 @@ import { useDndInspector } from './inspector';
 import { useDndRegions } from './layout-context';
 import PropertyPanel from './panel';
 
-// The regions take their content from context, so `children` is never a
-// consumer's to pass — everything else about the wrapper div is (className
-// is tailwind-merged over the defaults, so overriding one of them wins
-// rather than fighting).
+// A region's props: everything a `div` takes except `children`, which comes
+// from context. `className` is merged over the defaults, so yours wins.
 export type DndRegionProps = Omit<
   React.ComponentPropsWithRef<'div'>,
   'children'
 >;
 
-// The built-in palette and panel without their region wrapper. Both exist
-// because `Layout` renders them twice on mobile — once in a pane, once in a
-// Drawer that's already the scroll container and shouldn't inherit the
-// pane's background.
+// The built-in palette and panel without their region wrapper, for the
+// mobile Drawers, which are already the scroll container.
 const PaletteItems = ({ subject }: { subject: string }) => {
   const {
     palette: { items, onAdd },
@@ -72,10 +68,9 @@ const PanelFields = ({ subject }: { subject: string }) => {
   );
 };
 
-// The built-in palette, in the scroll container the desktop pane wants.
-// Replace it by putting your own component in `Layout`'s `palette` slot, or
-// anywhere in `Live.Dnd`'s children — `useDndPalette()` hands over the same
-// items and `onAdd` this reads.
+// The built-in palette in its scroll container. To replace it, put your
+// own component in `Layout`'s `palette` slot or anywhere in `Live.Dnd`'s
+// children, and read `useDndPalette()`.
 export const Palette = ({ className, ...restProps }: DndRegionProps) => (
   <div
     className={cn(
@@ -89,14 +84,11 @@ export const Palette = ({ className, ...restProps }: DndRegionProps) => (
   </div>
 );
 
-// Owns the scroll container each section's iframe resolves by
-// `closest('[data-frame-container]')` to size itself against (see
-// frame/iframe.tsx), plus the containment/isolation styles that keep a
-// section's compiled CSS out of the editor chrome — hence a region rather
-// than a plain slot: a custom layout can move it, not lose it. Needs a
-// height-constrained parent, since it fills one (`h-full`). Render it
-// exactly once — the droppable and the sortable list inside use fixed ids,
-// and a second instance would duplicate both.
+// The canvas in its scroll container, which each section's iframe sizes
+// itself against (`data-frame-container`), with the styles that keep a
+// section's CSS out of the editor. Needs a parent with a fixed height.
+// Render it exactly once: the drop area and sortable list inside use fixed
+// ids.
 export const Canvas = ({ className, style, ...restProps }: DndRegionProps) => {
   const { canvas, documentError } = useDndRegions('<Live.Dnd.Canvas>');
   const inspector = useDndInspector();
@@ -145,9 +137,8 @@ export const Canvas = ({ className, style, ...restProps }: DndRegionProps) => {
   );
 };
 
-// The built-in property panel. Same deal as `Palette`: replace it via
-// `Layout`'s `panel` slot or by placing your own component in `Live.Dnd`'s
-// children, driving it from `useDndPanel()`.
+// The built-in property panel. Replace it like `Palette`, through
+// `Layout`'s `panel` slot or `Live.Dnd`'s children, reading `useDndPanel()`.
 export const Panel = ({ className, ...restProps }: DndRegionProps) => (
   <div
     className={cn(
@@ -162,21 +153,15 @@ export const Panel = ({ className, ...restProps }: DndRegionProps) => (
 );
 
 export interface DndLayoutProps {
-  // Replacements for the palette/panel regions, kept as slots so swapping
-  // one out doesn't mean rebuilding the 3-pane Splitter and the mobile
-  // Drawers around it. A slot is placed raw — it owns its own container,
-  // unlike the built-in regions, which bring theirs. Drive it from
-  // `useDndPalette()` / `useDndPanel()`.
+  // Your own palette or panel in place of the built-in one, keeping the
+  // rest of the layout. A slot is placed as is and brings its own
+  // container. Read `useDndPalette()` / `useDndPanel()` in it.
   palette?: React.ReactNode;
   panel?: React.ReactNode;
 }
 
-// What `Live.Dnd` renders when given no children — the 3-pane desktop
-// Splitter, the stacked mobile canvas, and the mobile FAB/Drawers. Exported
-// so children can keep the built-in arrangement while wrapping it (a toolbar
-// above it, say) or while replacing just one region — and because
-// `@jbpark/ui-kit` is a dependency rather than a peer, so `Splitter` isn't
-// necessarily importable on the consumer's side.
+// What `Live.Dnd` renders without children: a three-pane Splitter on
+// desktop, and on mobile the canvas with a button and Drawers.
 export const Layout = ({ palette, panel }: DndLayoutProps) => {
   const { isMobile, selectedId, clearSelection, paletteOpen, setPaletteOpen } =
     useDndRegions('<Live.Dnd.Layout>');

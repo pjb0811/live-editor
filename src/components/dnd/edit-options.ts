@@ -7,14 +7,12 @@ import type { UpdateFailure } from '~/utils/ast/update';
 
 import type { FieldProps } from './panel/field';
 
-// Everything the editor reports instead of applying an edit. `title` and
-// `description` are the messages the built-in toast shows, so a host that
-// routes these elsewhere can reuse them rather than rewording every case.
+// An edit the editor didn't apply. `title` and `description` are what the
+// built-in toast shows, so a host can show them its own way.
 export type DndEditError =
   | {
-      // `update()` rejected a field edit. `failure.reason` says why — most
-      // often a `property`/`label` in the element's data-binding that doesn't
-      // match its markup.
+      // `update()` rejected a field edit. `failure.reason` says why, most
+      // often a `property` or `label` that doesn't match the markup.
       type: 'update';
       id: string;
       label: string;
@@ -33,10 +31,9 @@ export type DndEditError =
       description?: string;
     }
   | {
-      // An edit was refused because the document doesn't parse. The canvas
-      // and panel show the last version that did, and nothing can be
-      // committed against it (#433). Reported when an edit is attempted, not
-      // whenever the source stops parsing.
+      // An edit was refused because the document doesn't parse; the canvas
+      // and panel show the last version that did (#433). Reported when an
+      // edit is attempted, not when the source stops parsing.
       type: 'parse';
       target: 'document';
       reason: 'parse-error';
@@ -90,11 +87,9 @@ export const toastEditError = (error: DndEditError) => {
   );
 };
 
-// A context rather than props threaded through every editor: `Field` renders
-// itself recursively and inside `Items`/`Children`, and a custom panel
-// renders it directly, so this is the one way every field sees the same
-// options. The default keeps `Field`/`useDndItems` working outside
-// `Live.Dnd`, reporting through the toast as before.
+// The edit options every `Field` reads, wherever it renders: nested, inside
+// `Items` or `Children`, or in a custom panel. The default lets `Field` and
+// `useDndItems` work outside `Live.Dnd`, reporting through the toast.
 export const DndEditOptionsContext = createContext<DndEditOptions>({
   reportError: toastEditError,
 });

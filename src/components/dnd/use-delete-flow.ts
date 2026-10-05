@@ -8,17 +8,18 @@ interface Options {
   onBeforeDelete?: (section: Section) => boolean | Promise<boolean>;
 }
 
-// Deleting a section, from the canvas, the panel or a custom panel's
-// `onDelete`. Asks `onBeforeDelete` first when there is one, then removes the
-// section. `onDeleted` runs only once it's actually gone (#435).
+// Returns the function that deletes a section, from the canvas, the panel
+// or a custom panel's `onDelete`. It asks `onBeforeDelete` first, when
+// there is one. Its optional `onDeleted` runs only once the section is
+// gone (#435).
 export const useDeleteFlow = ({
   sections,
   remove,
   onBeforeDelete,
 }: Options) => {
-  // Read through a ref after an async `onBeforeDelete`: while a confirmation
-  // is open the document can change, and the `remove` from the render that
-  // asked would commit against the document as it was then.
+  // Read through a ref after an async `onBeforeDelete`: the document can
+  // change while a confirmation is open, and an old `remove` would commit
+  // against the old one.
   const removeRef = useRef(remove);
 
   useEffect(() => {

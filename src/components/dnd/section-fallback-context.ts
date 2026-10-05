@@ -18,9 +18,9 @@ export type DndRenderSectionFallback = (
   args: DndSectionFallbackArgs,
 ) => React.ReactNode | undefined;
 
-// Only `SectionFallback` reads this, and it renders only for a failed
-// section, so a host passing a fresh inline function each render re-renders
-// those fallbacks alone, never a healthy memoized section (#97).
+// Read only by `SectionFallback`, which renders only for a failed section,
+// so a new inline function each render never re-renders a working section
+// (#97).
 export const SectionFallbackContext = createContext<
   DndRenderSectionFallback | undefined
 >(undefined);

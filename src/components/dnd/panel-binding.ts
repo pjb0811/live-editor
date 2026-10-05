@@ -15,9 +15,8 @@ import {
 } from '~/utils/ast/types';
 import { canLosslesslyEvaluateSource } from '~/utils/ast/value';
 
-// The node-level commit callback's shape, named because it's part of the
-// public surface in two places (`DndPanel`, `Field`) and was previously
-// spelled out inline in each — see #308.
+// Commits one field by its element's `data-id`. Used by `DndPanel` and
+// `Field` (#308).
 export interface PanelNodeChange {
   (params: {
     id: string;
@@ -27,88 +26,72 @@ export interface PanelNodeChange {
   }): void;
 }
 
-// Several `PanelNodeChange`s committed as one edit (#425). They apply in array
-// order, all or none: if any is refused nothing is committed and the error
-// names the one that failed. That is what makes it worth using over calling
-// `PanelNodeChange` in a row, which lands as one document change per call and
-// leaves the earlier ones applied when a later one fails. An empty array does
+// Several `PanelNodeChange`s as one edit, applied in order, all or none: if
+// one is refused, nothing is committed and the error names it (#425).
+// Calling `PanelNodeChange` several times instead makes one change per call
+// and keeps the earlier ones when a later one fails. An empty array does
 // nothing.
 export interface PanelNodesChange {
   (changes: Parameters<PanelNodeChange>[0][]): void;
 }
 
-// One editable data-binding, flattened out of the selected section for a
-// custom panel. Exposes just what a consumer needs to render its own
-// control — the declared `type`, the current `value`, and an `onChange`
-// that commits through Dnd's AST-update pipeline — so it never has to touch
-// DataAttrNode/parseBinding/getCurrentValue itself.
+// One editable binding of the selected section: what a custom panel needs
+// to render its own control, with an `onChange` that commits the edit.
 export interface PanelBinding {
-  // `data-id` of the owning element — stable across edits.
+  // The element's `data-id`, stable across edits.
   id: string;
   // Human-readable label from the binding definition.
   label: string;
   // The bound prop/attribute name (e.g. `children`, `src`, `color`).
   property: string;
-  // The declared data-binding type — switch on this to pick a control
-  // (`string`/`url` -> <input>, `jsx`/`richtext` -> <textarea>, `boolean`
-  // -> checkbox, ...). `undefined` means a plain string binding.
+  // The declared type. Switch on it to pick a control: an input for
+  // `string` or `url`, a text area for `jsx` or `richtext`, a checkbox for
+  // `boolean`, and so on. `undefined` means a plain string.
   type?: BindingType;
-  // Presentation, as opposed to `type`'s data kind — switch on `widget.type`,
-  // an open string rather than a closed enum, since a custom panel can
-  // declare any control it wants (e.g. `'slider'`) along with that control's
-  // own config (`step`, `unit`, ...). Always the object form even when
-  // authored as a bare string. Passed through untouched: the built-in panel
-  // ignores it and renders the `type`-appropriate default control.
-  //
-  // Value constraints are *not* in here — `min`/`max`/`pattern`/`required`
-  // below apply with or without a widget.
+  // The control the binding asks for, such as `{ type: 'slider', step: 5 }`,
+  // always in object form. Switch on `widget.type`, any string. The built-in
+  // panel ignores it. Constraints are the fields below, not part of this.
   widget?: BindingWidget;
-  // Present when the binding defines a fixed option set (render a <select>).
+  // A fixed set of choices, for a select.
   options?: BindingOption[];
-  // Present for `object`/`array` bindings whose nested keys/items declare
-  // their own types — the same map the built-in panel uses to type each
-  // nested field instead of falling back to a plain string input.
+  // For `object` and `array` bindings: the types of the nested keys or
+  // items, which the built-in panel uses for their fields.
   render?: BindingRenderMap;
-  // Constraints declared on the binding. `min`/`max` compare against the
-  // real number `value` delivers for `type: 'number'` bindings (see
-  // `validateBindingValue`).
+  // Constraints, as `validateBindingValue` checks them. `min` and `max`
+  // apply to the number a `type: 'number'` binding's `value` holds.
   min?: number;
   max?: number;
   pattern?: string;
   required?: boolean;
-  // Consumer-defined keys carried straight through from the authored
-  // data-binding — namespaced instead of spread onto PanelBinding so they
-  // can't collide with a future first-class field. Absent when nothing
-  // extra was authored. See #234.
+  // The binding's own keys, such as `group` or `tab`, kept apart so they
+  // can't collide with a field added later. Absent when there are none
+  // (#234).
   meta?: Record<string, unknown>;
-  // Current value as its real JS type — a number for `type: 'number'`, a
-  // boolean for `type: 'boolean'`, an object/array for `object`/`array`,
-  // a string otherwise. Switch on this without re-parsing. See #238.
+  // The current value as its JS type: a number for `number`, a boolean for
+  // `boolean`, an object or array for `object` and `array`, otherwise a
+  // string (#238).
   value: unknown;
-  // The exact source text behind `value`, for cases that can't round-trip
-  // through a JS value — `jsx`/`richtext` bindings, or an attribute whose
-  // source is an expression you want to edit as text.
+  // The source text behind `value`, for what a JS value can't hold: `jsx`
+  // and `richtext`, or an expression to edit as text.
   rawValue: string;
-  // False when the built-in control would have to reconstruct a partial
-  // literal and could discard an expression, spread, hole or reference.
-  // Raw array/JSX editors retain their own narrower source-safe contracts.
+  // `false` when editing the value would mean rebuilding it and losing an
+  // expression, spread, hole or reference. The array and JSX editors apply
+  // their own, narrower checks.
   canEditValue?: boolean;
-  // `false` when the binding names an attribute the element doesn't carry.
-  // Absent otherwise, including for content (`innerText`, `innerHTML`,
-  // `children`), which is always there. `onChange(undefined)` removes an
-  // attribute and `onChange(value)` adds one back, so this is what a panel
-  // reads to draw an on/off control. `prop=""` counts as present (#426).
+  // `false` when the element doesn't have the attribute. Absent otherwise,
+  // and always for content (`innerText`, `innerHTML`, `children`).
+  // `onChange(undefined)` removes the attribute and `onChange(value)` adds it,
+  // so a panel can draw an on/off control from this. `prop=""` counts as
+  // present (#426).
   present?: boolean;
-  // The element the binding belongs to, for telling apart bindings that share
-  // a label (#514): its tag name as written, and its own text, trimmed (`''`
-  // when it has none). The built-in panel heads each element's fields with
-  // these. Absent for a binding that isn't an element's, such as an array
-  // item's property.
+  // The element the binding belongs to: its tag name as written and its own
+  // text, trimmed (`''` when it has none). The built-in panel heads each
+  // element's fields with these, to tell apart bindings with the same label
+  // (#514). Absent for an array item's property.
   element?: PanelBindingElement;
-  // Commit a new value through the same AST-update pipeline the built-in
-  // panel uses (including the error Toast on a bad edit). Pass the value as
-  // its real type; it's serialized once, at the AST boundary, where the
-  // declared `type` is known — so no string quoting/guessing on your side.
+  // Commits a new value the same way the built-in panel does, errors
+  // included. Pass the value as its JS type; it's written according to the
+  // declared `type`.
   onChange: (value: unknown) => void;
 }
 
@@ -117,19 +100,16 @@ export interface PanelBindingElement {
   text: string;
 }
 
-// A `PanelBinding` before a commit callback is attached. The split is the
-// point of this module: reading a node is pure and cacheable, while
-// `onChange` belongs to the render that made it. Binding the two together
-// too early is what caused #336 — a memo keyed on the parsed section handed
-// back callbacks still closed over a previous document.
+// A `PanelBinding` without `onChange`. Reading a node can be cached;
+// `onChange` must come from the current render, so it's added separately
+// (#336).
 export type PanelBindingData = Omit<PanelBinding, 'onChange'>;
 
-// One data-bound element resolved into panel currency.
+// One data-bound element and its panel bindings.
 export interface PanelBindingSource {
   // `data-id` of the element every binding below belongs to.
   id: string;
-  // Falls back to `'element'` so a caller rendering a heading never has to
-  // repeat that default.
+  // `'element'` when the tag has no name.
   tagName: string;
   bindings: PanelBindingData[];
 }
@@ -171,11 +151,9 @@ const canEditBindingValue = (node: DataAttrNode, binding: BindingItem) => {
   );
 };
 
-// Every field a binding declares, listed exactly once. The mapped return type
-// makes leaving one out a type error, so a field added to `BindingItem`
-// reaches the built-in panel, a custom panel, nested item editors and
-// render-map leaves together instead of whichever path the author happened
-// to edit (#340, #383).
+// Every field a binding declares. The return type makes leaving one out a
+// type error, so a field added to `BindingItem` reaches every panel and
+// nested editor at once (#340, #383).
 export const toBindingFields = (
   binding: BindingItem,
 ): { [K in keyof Required<BindingItem>]: BindingItem[K] } => ({
@@ -192,11 +170,10 @@ export const toBindingFields = (
   meta: binding.meta,
 });
 
-// The binding a nested key of an `object`/`array` value would have if it were
-// declared at the top level. A render-map leaf carries its own field spec;
-// `label` and `property` fall back to the key, which is what the property is
-// actually called. A nested map (or nothing) yields an untyped field that
-// still hands its sub-map down.
+// The binding for a nested key of an `object` or `array` value. A
+// render-map leaf brings its own fields; `label` and `property` default to
+// the key. A nested map, or no entry, gives an untyped field that passes
+// its sub-map down.
 export const resolveRenderEntry = (
   render: BindingRenderMap | undefined,
   key: string,
@@ -241,15 +218,9 @@ const toPanelBindingData = (
   },
 });
 
-// Read one extracted element's `data-id` and bindings into panel bindings.
-// Returns `null` for anything not editable — a node without a `data-id`, or
-// one with no bindings — so callers keep a single "skip this node" branch
-// instead of re-deriving the rule.
-//
-// The bindings are the ones `extract()` already read into `node.bindings`:
-// the element's own `data-binding`, or its tag's registry entry (#509). Only
-// a node built some other way falls back to parsing the attribute, which is
-// what keeps this cheap enough to run on every node of a section.
+// An extracted element's panel bindings, without `onChange`. `null` when it
+// isn't editable: no `data-id`, or no bindings. Uses the bindings `extract()`
+// already resolved (#509, #513), so it's cheap enough for every element.
 export const resolvePanelBindings = (
   node: DataAttrNode,
 ): PanelBindingSource | null => {
@@ -272,10 +243,9 @@ export const resolvePanelBindings = (
   };
 };
 
-// Attach the node-level commit to already-read bindings. Call this during
-// render, not inside a memo keyed on the parsed source: `commit` closes over
-// the current document, and reusing a stale one writes an older source back
-// over a newer one (#336).
+// Adds `onChange` to bindings read by `resolvePanelBindings`. Call it during
+// render, not inside a memo: `commit` belongs to the current document, and an
+// old one would write older source over newer (#336).
 export const withPanelCommit = (
   bindings: PanelBindingData[],
   commit: PanelNodeChange | undefined,
