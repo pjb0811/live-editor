@@ -72,13 +72,9 @@ import { useDndKeyboard } from './use-dnd-keyboard';
 import { useInspectorState } from './use-inspector-state';
 import { useSectionDocument } from './use-section-document';
 
-// Turn a structured `update` failure into a toast that names the actual
-// fault. Before #270 every failure showed "Failed to update this field /
-// Check the console for details" — but nothing was logged, so the console
-// was empty. Most of these are a wrong `property`/`label` in the element's
-// `data-binding`, not the value the author just typed, so the message points
-// there. `description` is only set for paths that genuinely log (parse
-// errors), so "check the console" is never a dead end again.
+// Turns an `update` failure into the edit error's title and description.
+// The description names the cause, which is usually in the element's
+// `data-binding` rather than in the value just typed (#270).
 const describeUpdateFailure = (
   failure: UpdateFailure | undefined,
   label: string,
@@ -152,62 +148,50 @@ const blockedEditError = (
   description: m.syntaxErrorDetail,
 });
 
-// What `useDndPalette()` returns. Deliberately just data: the drag wiring is
-// a component (`Live.Dnd.DraggableItem`) and the breakpoint belongs to
-// `useDndLayout()`, so a custom palette takes each from where it lives
-// rather than having all three funnelled through one object.
+// What `useDndPalette()` returns. Data only: dragging comes from
+// `Live.Dnd.DraggableItem`, and the breakpoint from `useDndLayout()`.
 export interface DndPalette {
   items: Section[];
-  // Appends the item to the canvas. Closes the mobile palette Drawer too,
-  // which is a no-op wherever it isn't open.
+  // Adds the item at the end of the canvas and closes the mobile palette
+  // Drawer.
   onAdd: (item: Section) => void;
 }
 
-// `PanelNodeChange`/`PanelBinding` live in `./panel-binding` alongside the
-// DataAttrNode -> PanelBinding conversion they describe, and are re-exported
-// here so `Live.Dnd`'s public types keep their original import path (#340).
+// Defined in `./panel-binding`, and re-exported here so these public types
+// keep their import path (#340).
 export type {
   PanelBinding,
   PanelNodeChange,
   PanelNodesChange,
 } from './panel-binding';
 
-// What `useDndPanel()` returns — everything the built-in property panel runs
-// on, so a custom panel starts from the same place rather than re-deriving
-// any of it.
+// What `useDndPanel()` returns: everything the built-in panel uses, so a
+// custom panel works from the same data.
 export interface DndPanel {
   item?: Section;
   onChange: (next: Partial<Section>) => void;
   onDelete: (id: string) => void;
-  // Alternative to dragging a section to reorder it — needed since the
-  // canvas sits behind the mobile Drawer the panel renders in, so
-  // there's nothing visible to drag onto there.
+  // Move the selected section. On mobile the panel covers the canvas, so
+  // these replace dragging there.
   onMoveUp: () => void;
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
-  // `item`'s editable data-binding fields, already flattened to one entry
-  // per bound property (across every non-<section> descendant carrying a
-  // `data-binding` attribute). Each entry carries the binding's `type` and
-  // current `value` plus an `onChange` wired straight into the same
-  // AST-update pipeline the built-in panel uses — including the error Toast
-  // on a bad edit. Switch on `type` to render your own control (an
-  // `<input>`, `<textarea>`, `<select>`, ...) instead of the built-in one.
+  // The editable fields of `item`, one entry per bound property. Each has
+  // the binding's `type`, its current `value`, and an `onChange` that commits
+  // the same way the built-in panel does, errors included. Switch on `type`
+  // to render your own control.
   bindings: PanelBinding[];
-  // Node-level commit for elements that aren't in `bindings` — the nested
-  // data-bound JSX held inside an `items`/`children` value, which the
-  // built-in Items/Children editors discover by re-extracting that value's
-  // own JSX. Those `data-id`s never reach `bindings` (the top-level
-  // `extract()` doesn't walk into an attribute expression), and no single
-  // `PanelBinding.onChange` can address them since each one closes over a
-  // fixed `id` — hence this `(id, label, property, value)` channel. Hand it
-  // to `Live.Dnd.Field` along with the binding, otherwise nested
-  // array/children edits inside it silently don't commit (#308).
+  // Commits one field by its element's `data-id`. It reaches elements that
+  // aren't in `bindings`: data-bound JSX inside an `items` or `children`
+  // value, which the top-level `extract()` doesn't read. Pass it to
+  // `Live.Dnd.Field` with the binding, or edits inside those values aren't
+  // saved (#308).
   onNodeChange: PanelNodeChange;
-  // Several node-level edits as one commit: applied in array order, all or
-  // none. Reach for it when one interaction writes more than one binding (an
-  // image picker setting `src` and `alt`, say), so the host sees a single
-  // `onChange` and a failure can't leave half of it behind (#425).
+  // Several field edits as one commit, applied in order, all or none. Use it
+  // when one action writes more than one binding, such as an image picker
+  // that sets `src` and `alt`: the host gets one `onChange`, and a failure
+  // leaves nothing half-applied (#425).
   onNodesChange: PanelNodesChange;
   // True while the document doesn't parse: `item` and `bindings` are from the
   // last version that did, and every commit is refused (and reported through
@@ -312,11 +296,9 @@ const conditionalModifiers: Modifier = args => {
   return restrictToVerticalAxis(args);
 };
 
-// Shared, not `= {}` in the parameter list: a fresh object on every render
-// is a new `modules` prop for every section, which defeats `Renderer`'s memo
-// (#97) and re-runs `compile()` for every section on every edit. Past the
-// compilation cache's limit that meant recompiling most sections with Babel
-// per keystroke-commit — 1.4 s per edit at 90 sections (#348).
+// One shared empty object. A new `{}` on every render would be a new
+// `modules` prop for every section, which breaks `Renderer`'s memo and
+// recompiles every section on every edit (#97, #348).
 const NO_MODULES: Record<string, unknown> = {};
 
 const Dnd = ({
@@ -348,11 +330,7 @@ const Dnd = ({
   const { breakpoint } = useResponsiveSize();
   const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
 
-  // Read-only here — `useSectionDocument` below owns `setCode` (the commit
-  // side). `code` is still needed locally: it feeds `value`'s fallback
-  // chain just below, and `value` itself is read again further down for
-  // the drag overlay's `fullCode` — not something `useSectionDocument`
-  // exposes back out.
+  // Only read here, for `value` below. `useSectionDocument` writes it.
   const { code } = usePreview();
 
   // A throwing predicate is treated as "not forced" rather than taking the
@@ -367,24 +345,16 @@ const Dnd = ({
     }
   };
 
-  // Uncontrolled usage (`<Live.Dnd />` with no `value`) used to read
-  // nothing but DEFAULT_TEMPLATE forever: every edit committed through
-  // useSectionDocument writes into PreviewContext, but this component
-  // never read `code` back — so the section a reader just dragged in
-  // vanished on the very next render. `Client` (preview/client.tsx)
-  // resolves the same dual-source situation by distinguishing an omitted
-  // prop from an explicitly empty string; mirror that contract here. The
-  // ContextProvider supplies DEFAULT_TEMPLATE for a fresh document.
+  // The host's `value` when it passes one (controlled), otherwise the
+  // provider's code. An empty string counts as a value, as in `Live.Preview`.
   const value = _value === undefined ? code : _value;
 
   const messages = useLiveMessages();
   const reportError = onEditError ?? toastEditError;
 
-  // Read through a ref so the effects below fire once per failure, not again
-  // on every render a host passes a fresh inline `onEditError`.
+  // Read through refs, so the effects below report each failure once, even
+  // when the host passes a new `onEditError` or new messages every render.
   const reportErrorRef = useRef(reportError);
-  // Read through a ref by the same effects, so new messages don't report the
-  // same failure again.
   const messagesRef = useRef(messages);
 
   useEffect(() => {
@@ -392,9 +362,9 @@ const Dnd = ({
     messagesRef.current = messages;
   });
 
-  // Reported only when an author tries to edit, not whenever the source
-  // stops parsing: that happens on most keystrokes in the code editor, and
-  // the canvas already says it's showing the last valid version (#433).
+  // Reports an edit refused because the source doesn't parse. A source that
+  // stops parsing isn't reported by itself: that happens on most keystrokes,
+  // and the canvas already says so (#433).
   const onBlockedEdit = useCallback((problem: DocumentProblem) => {
     if (problem.reason === 'parse-error') {
       reportErrorRef.current(
@@ -495,18 +465,14 @@ const Dnd = ({
     patch(next as Partial<Section> & { id: string });
   };
 
-  // Reads only the extracted `code` local, not `selectedItem`, so the
-  // compiler can verify this dependency array actually matches what the
-  // body reads — matches Panel's own former version of this same logic,
-  // now shared here so both the built-in Panel and a custom one built on
-  // `useDndPanel()` get the same extraction/update pipeline instead of each
-  // needing it.
-  // One object for every reader below, renewed only when a map changes, so
-  // memos keyed on it don't re-run every render (#513).
+  // One object for everything below, renewed only when a map changes, so
+  // memos that depend on it don't re-run every render (#513).
   const bindingOptions = useMemo<BindingOptions>(
     () => ({ bindings: bindingRegistry, bindingKeys }),
     [bindingRegistry, bindingKeys],
   );
+  // The selected section's elements, parsed again only when its code or id
+  // changes.
   const selectedCode = selectedItem?.code;
   const selectedSectionId = selectedItem?.id;
   const { fields, updatedCode, parseError } = useMemo(() => {
@@ -522,10 +488,8 @@ const Dnd = ({
       // The same ids the canvas preview fills this section with, so an
       // element's `data-id` there matches its fields here (#432).
       const updated = fillIdsFrom(selectedCode, selectedSectionId ?? '');
-      // Every element, the section's own root included: a `<section>` with a
-      // `data-binding` is editable like any other element, and one without
-      // resolves to no bindings below. It used to be dropped here, so a
-      // binding written on the section itself was silently ignored (#429).
+      // Every element, the `<section>` itself included, so a binding on the
+      // section is editable too (#429).
       const allNodes = extract(updated, bindingOptions);
 
       return {
@@ -574,9 +538,8 @@ const Dnd = ({
     }
   }, [parseError]);
 
-  // The one commit path for panel edits, whether one node or several. A single
-  // `PanelNodeChange` is a batch of one, so the guards and the base document
-  // below can't drift between the two (#425).
+  // The one commit path for panel edits. A single edit is a batch of one
+  // (#425).
   const commitChanges = (changes: Parameters<PanelNodeChange>[0][]) => {
     if (changes.length === 0) {
       return;
@@ -589,12 +552,10 @@ const Dnd = ({
       return;
     }
 
-    // Builds on an earlier commit from this same tick when that commit
-    // changed this section: `updatedCode` is this render's snapshot, so a
-    // second commit made from it would write the first one's edit back out
-    // (#450). A section the earlier commit left alone (a sibling was added,
-    // say) still reads as `selectedCode`, whose empty `data-id`s haven't been
-    // filled yet — `updatedCode` holds the ids the bindings point at.
+    // If an earlier commit in this same tick changed this section, build on
+    // its result: starting from this render's `updatedCode` would undo it
+    // (#450). Otherwise use `updatedCode`, which has the filled ids the
+    // bindings point at.
     const committed =
       selectedItem && getCommittedSection(selectedItem.id)?.code;
     const base =
@@ -631,33 +592,16 @@ const Dnd = ({
 
   const onFieldChange: PanelNodeChange = change => commitChanges([change]);
 
-  // Flattens the extracted `fields` (one DataAttrNode per element) down to
-  // one descriptor per bound property — the same walk the built-in
-  // FieldEditor/Node does internally (data-id + parsed data-binding +
-  // current value). Everything here is derived from `fields` alone, so the
-  // memo key is honest and the parse/read work still happens once per
-  // parsed section.
-  //
-  // Deliberately no `onChange`: a callback belongs to the render that made
-  // it, not to the parse. Keeping the two in one memo is what caused #336 —
-  // editing another section leaves `selectedCode` (and therefore `fields`)
-  // identical, so the memo was reused and handed back callbacks still bound
-  // to the previous document, whose commit wrote the sibling's old source
-  // back over the newer one.
+  // One entry per bound property, from `fields` alone. Don't add `onChange`
+  // here: a callback must come from the current render, and this memo can
+  // outlive it (#336).
   const bindingFields = useMemo(
     () => fields.flatMap(node => resolvePanelBindings(node)?.bindings ?? []),
     [fields],
   );
 
-  // Bound fresh each render on top of the memo above — the same split
-  // `useDndItems` uses for its `items`. This is a plain walk of an
-  // already-parsed result with no Babel in it, and it's what guarantees a
-  // commit reads the current `updatedCode`/`selectedItem`/`onChange`.
-  //
-  // The identity churn the previous memo was guarding against was never
-  // real: the `DndRegionContext` value and the `panel` object holding this
-  // array are both fresh object literals every render, so every
-  // `useDndPanel()` consumer already re-rendered regardless.
+  // Adds each binding's `onChange`, made fresh every render so a commit uses
+  // the current section and code. It's a cheap walk with no parsing.
   const bindings: PanelBinding[] = withPanelCommit(
     bindingFields,
     onFieldChange,
@@ -669,10 +613,9 @@ const Dnd = ({
     }
   }, [frame?.scripts]);
 
-  // Data, not nodes: the built-in palette and panel read these back through
-  // `useDndPalette()`/`useDndPanel()` exactly as a custom one does, so
-  // there's a single path and no way for the public surface to drift into a
-  // subset of what the built-ins use — the point of #237.
+  // Data, not components: the built-in palette and panel read these through
+  // `useDndPalette()` and `useDndPanel()`, the same way a custom one does
+  // (#237).
   const palette: DndPalette = {
     items: items?.length ? items : DRAGGABLE_ITEMS,
     onAdd: (item: Section) => {
@@ -696,9 +639,8 @@ const Dnd = ({
     bindingOptions,
   };
 
-  // Content only — the frame container that wraps this (`data-frame-container`
-  // plus the containment styles) belongs to `Live.Dnd.Canvas`, so a custom
-  // layout can't accidentally drop it while still placing the canvas.
+  // The canvas content. Its frame container belongs to `Live.Dnd.Canvas`, so
+  // a custom layout can't leave it out.
   const canvas = (
     <>
       {stale && (
@@ -827,9 +769,8 @@ const Dnd = ({
           )}
           {...restProps}
         >
-          {/* Not memoized: `palette`, `panel` and `canvas` are all rebuilt
-              each render anyway, so a memo would only add a dependency list
-              to keep in sync. */}
+          {/* Not memoized: `palette`, `panel` and `canvas` are new every
+              render anyway. */}
           <DndEditOptionsContext.Provider
             value={{ renderField, reportError, bindingOptions }}
           >
@@ -846,12 +787,9 @@ const Dnd = ({
                 documentError: problem?.reason ?? null,
               }}
             >
-              {/* `Children.toArray` rather than a plain `children ??`: a JSX
-                comment, or a `{cond && <MyLayout />}` that fell through,
-                leaves `children` set but empty — and honouring that
-                literally renders an editor with no regions at all, which
-                looks like a broken build rather than a mistake in the
-                layout. Falling back keeps the failure legible. */}
+              {/* The built-in layout when `children` renders nothing, such
+                as only a JSX comment or a `{cond && <MyLayout />}` that is
+                false. An editor with no regions would look broken. */}
               <DndInspectorContext.Provider value={inspector}>
                 {Children.toArray(children).length ? children : <Layout />}
               </DndInspectorContext.Provider>

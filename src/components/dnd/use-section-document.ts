@@ -24,8 +24,8 @@ export interface SectionDocument {
   selectedItem?: Section;
   selectedIndex: number;
   select: (id: string) => void;
-  // Selects `id` outright, where `select` toggles. For keyboard navigation,
-  // which lands on a section and must not deselect it (#435).
+  // Selects `id` without toggling, unlike `select`. Keyboard navigation uses
+  // it, since landing on a section must not deselect it (#435).
   selectOnly: (id: string) => void;
   clearSelection: () => void;
   add: (item: Pick<Section, 'name' | 'code'>, atIndex?: number) => void;
@@ -34,16 +34,16 @@ export interface SectionDocument {
   move: (id: string | null, direction: 'up' | 'down') => void;
   reorder: (activeId: string, overId: string) => void;
   patch: (next: Partial<Section> & { id: string }) => void;
-  // The section as the latest commit left it, when a commit has landed since
-  // this render; `undefined` when nothing has, or when that commit removed
-  // it. Lets a caller that edits inside a section build on a same-tick
-  // commit instead of this render's `sections` (#450).
+  // The section as the latest commit left it, or `undefined` when nothing
+  // has been committed since this render (or that commit removed it). Lets
+  // an edit inside a section build on a commit from the same tick (#450).
   getCommittedSection: (id: string) => Section | undefined;
   // Why `value` isn't a usable document, or `null` when it is (#433, #449).
   problem: DocumentProblem | null;
-  // True while `value` doesn't parse and `sections`/`previews` are the last
-  // ones that did. Every mutation is refused then, through `onBlockedEdit`:
-  // the only ranges to edit are from a different source (#433).
+  // True while `value` doesn't parse and `sections`/`previews` are from the
+  // last version that did. Every mutation is then refused through
+  // `onBlockedEdit`, because their source ranges belong to that version
+  // (#433).
   stale: boolean;
 }
 
@@ -53,9 +53,9 @@ export interface SectionDocumentOptions extends SectionOptions {
   onBlockedEdit?: (problem: DocumentProblem) => void;
 }
 
-// The last document that parsed, per container id. A box held in `useState`
-// and written from the derivation below, like `createSectionPreviewCache`:
-// it only remembers a value, it never decides what renders on its own.
+// Remembers the last document that parsed, per container id. Kept in
+// `useState` and written from the derivation below; it never decides what
+// renders by itself.
 const createLastParsed = () => {
   let last: { containerId?: string; document: string } | null = null;
 
@@ -68,13 +68,9 @@ const createLastParsed = () => {
   };
 };
 
-// Owns the document side of the DnD canvas: deriving sections from the code
-// string, tracking which one is selected, and committing every mutation.
-//
-// Extracted from Dnd (#245), where the commit sequence
-// `replaceSections -> onChange -> setCode` was spelled out seven separate
-// times. Naming it once means no mutation can perform half of it, and it
-// puts the section logic somewhere reachable without rendering dnd-kit.
+// The document side of `Live.Dnd`: reads the sections out of the code,
+// tracks the selected one, and commits every section operation through one
+// `commit` (#245).
 export const useSectionDocument = (
   value: string,
   onChange?: (value: string) => void,
@@ -87,38 +83,27 @@ export const useSectionDocument = (
   const { setCode } = usePreview();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Every read of a document into sections goes through here, so a section
-  // without `data-name` is named the same way wherever it's read (#448).
+  // Every read of sections goes through here, so a section without
+  // `data-name` gets the same name everywhere (#448).
   const readSections = useCallback(
     (code: string) =>
       extractSections(code, { containerId, sectionNameFallback }),
     [containerId, sectionNameFallback],
   );
 
-  // Sections identify themselves by `data-id`; `getSections` falls back to a
-  // positional id for documents predating that (see #245). Filling the gap
-  // here makes the ids below real identities rather than positions, so a
-  // held `selectedId` survives an insert, copy, move or delete.
-  //
-  // Deliberately not committed on its own — like dnd.tsx's existing use of
-  // fillIds for field ids, the filled document only reaches
-  // `onChange`/`setCode` when a real mutation commits, so merely opening a
-  // document never rewrites the author's code.
+  // Gives every section a unique `data-id`, so `selectedId` follows its
+  // section through an insert, copy, move or delete (#245). The filled ids
+  // reach the source only with the next commit: opening a document never
+  // rewrites it.
   const document = useMemo(
     () => fillSectionIds(value, undefined, { containerId }),
     [containerId, value],
   );
 
-  // What the canvas and panel show. Normally `document` itself. While the
-  // source doesn't parse, which is usually the moment an author is typing in
-  // the code editor, it's the last version that did, so the canvas and panel
-  // keep their content instead of emptying on every keystroke (#433). A
-  // missing container isn't covered: that isn't a passing state, and the
-  // canvas says what's wrong instead (#449).
-  //
-  // Not a regex scan of the broken source: section ranges are where every
-  // commit writes back, and a guessed range could put an edit in the wrong
-  // place. The last parsed version is shown read-only instead.
+  // What the canvas and panel show: `document`, or while it doesn't parse,
+  // the last version that did, read-only (#433). This keeps them from
+  // emptying on every keystroke in the code editor. A missing container shows
+  // the problem instead (#449).
   const [lastParsed] = useState(createLastParsed);
   const view = useMemo(() => {
     const inspection = inspectDocument(document, { containerId });
@@ -143,13 +128,9 @@ export const useSectionDocument = (
     [readSections, view.document],
   );
 
-  // One cache per hook instance (lazy `useState` initializer, never
-  // replaced) — see createSectionPreviewCache (#131). It's stateful by
-  // design (remembers the previous render's previews to reuse the ones that
-  // didn't change), which a `useMemo`/`useRef` can't do without touching a
-  // ref during render; a cache object stored via `useState` and only ever
-  // mutated through its own method isn't subject to that restriction the way
-  // `ref.current` is.
+  // One preview cache per hook instance, which reuses the previews of
+  // sections that didn't change (#131). Held in `useState` because it keeps
+  // state between renders, which `useMemo` can't.
   const [previewCache] = useState(() => createSectionPreviewCache());
   const previews = useMemo(
     () => previewCache.compute(view.document, sections, { containerId }),
@@ -159,16 +140,13 @@ export const useSectionDocument = (
   const selectedIndex = sections.findIndex(s => s.id === selectedId);
   const selectedItem = selectedIndex >= 0 ? sections[selectedIndex] : undefined;
 
-  // The document the last commit produced, tagged with the render document
-  // it was built on. A commit's own `document`/`sections` are this render's
-  // snapshot, and the host only hands the new value back on the next render,
-  // so two commits in the same tick both started from the snapshot and the
-  // second wrote the first one's section back as it was (#450). Every
-  // mutation below reads through `latestDocument()` instead.
+  // The document the last commit produced, and the render document it was
+  // built on. Mutations read through `latestDocument()`, so a second commit
+  // in the same tick builds on the first instead of undoing it (#450).
   //
-  // Dropped after each render: from then on the render's own `value` is the
-  // source of truth, including when the host chose not to accept a commit.
-  // The `from` check covers the window between that render and this effect.
+  // Cleared after each render, when the new `value` takes over, including
+  // when the host didn't accept the commit. The `from` check covers the time
+  // between that render and this effect.
   const pendingRef = useRef<{ from: string; code: string } | null>(null);
 
   useEffect(() => {
@@ -181,23 +159,17 @@ export const useSectionDocument = (
     return pending?.from === document ? pending.code : document;
   }, [document]);
 
-  // `extractSections` goes through the document parse cache, so re-reading
-  // an unchanged document here costs a cache hit, not a parse.
+  // Re-reading an unchanged document is a parse-cache hit, not a new parse.
   const latestSections = useCallback(
     () => readSections(latestDocument()),
     [latestDocument, readSections],
   );
 
-  // The single place a set of sections becomes a new document. Takes only
-  // `code` because that is genuinely all a commit reads — ids and names are
-  // re-derived from the result, never carried across.
-  //
-  // Runs `fillSectionIds` on the way out so a section that arrived without
-  // one still lands with an id: a palette template is a bare `<section>`
-  // snippet with no `#app-container`, so it cannot be filled until after
-  // it's spliced in. Returns the resulting sections so a caller that needs
-  // to select what it just created can read the real id back rather than
-  // inventing one.
+  // The one place a list of sections becomes a new document, sent to the
+  // host's `onChange` and the provider. Ids and names are read again from the
+  // result, so only `code` is taken. `fillSectionIds` gives an id to a
+  // section added without one, such as a palette template. Returns the new
+  // sections so a caller can select one by its real id.
   const commit = useCallback(
     (nextSections: { code: string }[]): Section[] => {
       const nextCode = fillSectionIds(
@@ -232,10 +204,8 @@ export const useSectionDocument = (
     [document, readSections],
   );
 
-  // Every mutation starts here. Refusing up front, rather than letting the
-  // edit reach `replaceSections`, matters: on a source that doesn't parse
-  // that returns the source unchanged, so the edit used to "commit" nothing
-  // and say nothing.
+  // Every mutation starts here. It refuses, and reports through
+  // `onBlockedEdit`, while the document is stale.
   const { problem, stale } = view;
   const refuse = useCallback(() => {
     if (!stale || !problem) {
@@ -281,19 +251,16 @@ export const useSectionDocument = (
 
       const current = latestSections();
 
-      // Removes by position, not by predicate: `fillSectionIds` keeps ids
-      // unique, but a filter would delete every match if that invariant ever
-      // slipped — and this is the one destructive operation here, so it
-      // shouldn't be the one relying on it.
+      // Removes by position, so a duplicated id could never delete two
+      // sections.
       const index = current.findIndex(s => s.id === id);
 
       if (index < 0) {
         return;
       }
 
-      // Only the deleted section loses the selection. The previous
-      // implementation cleared it unconditionally, so deleting any section
-      // closed the panel for whichever one was open.
+      // Clear the selection only when the selected section is the one
+      // deleted.
       if (id === selectedId) {
         setSelectedId(null);
       }
@@ -318,18 +285,15 @@ export const useSectionDocument = (
         return;
       }
 
-      // replaceIds refreshes every data-id in the snippet, the section's own
-      // included, so the copy carries a distinct identity into the document.
+      // New `data-id`s for the copy, its own included, so it's a distinct
+      // section.
       const committed = commit([
         ...current.slice(0, index + 1),
         { code: replaceIds(source.code) },
         ...current.slice(index + 1),
       ]);
 
-      // Read the new id back from the committed document. This used to
-      // select a `uuidv4()` that was never written into the code and so
-      // didn't exist after the next parse, leaving the panel empty right
-      // after a copy (#245).
+      // Select the copy by the id the committed document gave it (#245).
       setSelectedId(committed[index + 1]?.id ?? null);
     },
     [commit, refuse, latestSections],
@@ -350,8 +314,7 @@ export const useSectionDocument = (
         return;
       }
 
-      // No `setSelectedId` compensation needed any more: the id travels with
-      // the section's own markup, so the selection follows it across a move.
+      // The selection follows the section, since its id moves with it.
       commit(arrayMove(current, index, targetIndex));
     },
     [commit, refuse, latestSections],
