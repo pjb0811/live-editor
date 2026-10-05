@@ -1,46 +1,26 @@
-// Positional source patching: the write-side counterpart to `extract`'s
-// read-side `loc`. `update` records the exact byte spans it wants to change
-// and everything else is copied through verbatim, so an edit can no longer
-// reformat code it didn't touch. See #239.
-//
-// Deliberately not `magic-string`: it is the usual tool for this, but it is
-// only available here transitively (via Vite) and would have to become a
-// real runtime dependency shipped to consumers' browsers. Its value is
-// source maps and interleaved insert/move semantics — neither of which this
-// needs. Edits here are non-overlapping span replacements applied in one
-// forward pass, which is the whole implementation below.
+// Applies source edits by position: the spans `update` records are
+// replaced, and everything else is copied as is, so an edit never reformats
+// code it didn't touch (#239). Not `magic-string`, which would become a
+// runtime dependency for features (source maps, moves) this doesn't need.
 export interface SourceEdit {
   start: number;
   end: number;
   content: string;
-  // Re-indent `content`'s continuation lines to the indentation of the line
-  // it lands on. Opt-in because it must apply to *generated* fragments only:
-  // a generated fragment is printed from column zero and would otherwise
-  // land ragged inside indented markup, whereas a raw user-authored value
-  // (an innerHTML string, a hand-written JSX attribute) has to go in byte
-  // for byte — re-indenting it would silently rewrite the value itself.
-  //
-  // Even within a generated fragment this is applied only when every
-  // newline is provably layout; see `hasOnlyLayoutNewlines`.
+  // Indent `content`'s later lines to match the line it lands on. Only for
+  // generated code, which is printed from column zero; a value the author
+  // wrote must go in exactly as written. Applied only when every newline is
+  // layout (`hasOnlyLayoutNewlines`).
   indent?: boolean;
 }
 
-// Whether every newline in generated code is layout rather than part of a
-// value. Babel escapes newlines inside ordinary string literals, so the only
-// newlines that carry meaning come from a template literal or from JSX text
-// — and both announce themselves with a backtick or a `<`.
+// Whether every newline in generated code is layout, not part of a value.
+// Babel escapes newlines in ordinary strings, so a meaningful newline can
+// only come from a template literal or JSX text, which start with a
+// backtick or `<`. Indenting such a newline would change the value, again
+// on every edit.
 //
-// This matters because indenting a value-newline silently rewrites the
-// value, and the damage compounds: the built-in array editor re-serializes
-// its own output and feeds it back through `update`, so an `innerHTML` leaf
-// stored as a template literal would gain a level of indentation on every
-// single edit.
-//
-// The scan is deliberately conservative. Quotes, comments and regex
-// literals can all hide a backtick, and telling a regex from a division
-// needs real parsing — so anything ambiguous returns false. A false
-// "unsafe" only costs a fragment that isn't re-indented; a false "safe"
-// corrupts the value.
+// Anything ambiguous returns false: a missed indent is harmless, a changed
+// value is not.
 const hasOnlyLayoutNewlines = (content: string): boolean => {
   let index = 0;
 
@@ -94,10 +74,9 @@ const hasOnlyLayoutNewlines = (content: string): boolean => {
   return true;
 };
 
-// Index just past the closing quote, or -1 if the literal doesn't terminate
-// before the end of its line. Valid generated JS never contains a bare
-// newline inside a string literal, so hitting one means the scan has lost
-// track of where it is and the caller should stop trusting it.
+// The index just past the closing quote, or -1 when the literal doesn't end
+// on its line. Generated JS never has a bare newline in a string, so one
+// means the scan is lost.
 const skipStringLiteral = (content: string, start: number): number => {
   const quote = content[start];
 
@@ -105,11 +84,9 @@ const skipStringLiteral = (content: string, start: number): number => {
     const char = content[index];
 
     if (char === '\\') {
-      // A backslash immediately before a newline is a line continuation:
-      // legal JS, and Babel re-emits it verbatim because it contributes
-      // nothing to the value. The newline is then part of the literal's raw
-      // text, so indenting it would rewrite the string — bail out instead
-      // of treating the continuation as an ordinary escape.
+      // A backslash before a newline is a line continuation, so the newline
+      // is part of the string's source. Indenting it would change the
+      // string: give up.
       const escaped = content[index + 1];
 
       if (escaped === '\n' || escaped === '\r') {
@@ -140,21 +117,16 @@ const lineIndentAt = (source: string, offset: number): string => {
   return match?.[0] ?? '';
 };
 
-// Babel always emits LF. Inserting that straight into a CRLF file leaves it
-// with mixed endings, so a generated fragment adopts whichever the file
-// already uses. Only ever applied alongside re-indentation, where the
-// newlines are known to be layout rather than part of a value.
+// The file's own line ending, so generated code (always LF from Babel)
+// doesn't mix endings in a CRLF file. Used only with re-indentation.
 const lineTerminatorOf = (source: string): string => {
   return source.includes('\r\n') ? '\r\n' : '\n';
 };
 
-// Applies non-overlapping edits to `source` in a single forward pass.
-// An edit with `start === end` is an insertion at that offset.
-//
-// Throws on overlapping or out-of-bounds edits rather than silently
-// producing corrupt output: callers build spans from parsed node offsets,
-// so an overlap means the caller's model of the tree is wrong, and a
-// half-applied patch would be far harder to diagnose than a failure.
+// Applies non-overlapping edits to `source` in one pass. An edit with
+// `start === end` inserts. Throws on overlapping or out-of-range edits,
+// which mean the caller's offsets are wrong, instead of returning broken
+// source.
 export const applyEdits = (source: string, edits: SourceEdit[]): string => {
   if (edits.length === 0) {
     return source;

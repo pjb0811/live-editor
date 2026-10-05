@@ -19,10 +19,9 @@ import {
   valueToExpression,
 } from './value';
 
-// Every editor below returns the source spans it wants to change rather
-// than mutating the tree, so `update` can patch the original text and leave
-// untouched bytes byte-identical. An empty array means "nothing to write,
-// but this counts as handled"; `null` means the edit failed. See #239.
+// What each editor below returns: the source spans to change, never a
+// changed tree, so everything else stays byte-identical (#239). An empty
+// array means "handled, nothing to write"; `null` means the edit failed.
 type EditResult = SourceEdit[] | null;
 
 // The span between `>` and `</`, i.e. everything the element encloses.
@@ -55,36 +54,21 @@ const findAttribute = (
   );
 };
 
-// Where a brand-new attribute should be inserted: after the last existing
-// attribute, or straight after the element name when there are none.
+// Where a new attribute goes: after the last attribute, or after the
+// element name when there are none.
 const attributeInsertPoint = (opening: t.JSXOpeningElement): number | null => {
   const last = opening.attributes[opening.attributes.length - 1];
 
   return last?.end ?? opening.name.end ?? null;
 };
 
-// Drops the element's JSXText children and writes `value` just before the
-// closing tag — the positional equivalent of the previous "splice out every
-// JSXText, then push a new one" mutation, including its handling of mixed
-// children (a nested element stays, the text around it doesn't).
+// Replaces the element's text. With a single text child, only the trimmed
+// text is replaced, so the line breaks and indentation around it stay
+// (#239). Otherwise every text child is removed and `value` is written just
+// before the closing tag; nested elements stay.
 //
-// The common case — a single text child — is narrowed further: only the
-// text's *trimmed* span is replaced, so the author's line breaks and
-// indentation around it survive. Rewriting the whole children region would
-// collapse
-//
-//   >
-//     Old Title
-//   </h1>
-//
-// down to `>New Title</h1>`, which is exactly the formatting loss #239 is
-// about, just at a smaller scale.
-//
-// A self-closing element yields no edits: there is no children region to
-// write into. That matches the old behaviour, which pushed onto a `children`
-// array the generator then ignored — a silent no-op still reported as
-// success. Left as-is here deliberately; it is a reporting bug, tracked
-// with the rest of that class in #270.
+// A self-closing element has nowhere to put text: this returns no edits,
+// and `update` reports success without changing anything.
 const editInnerText = (
   source: string,
   element: t.JSXElement,
@@ -104,12 +88,9 @@ const editInnerText = (
     only.start != null &&
     only.end != null
   ) {
-    // Measured on the raw source slice, never on `only.value`: the latter is
-    // Babel's *cooked* text, with HTML entities decoded and CRLF collapsed
-    // to LF, so its character counts don't line up with the raw offsets the
-    // span is built from. `&nbsp;Old&nbsp;` would put the span six bytes
-    // inside the entity (yielding `&New;`), and a CRLF file would lose a
-    // byte off each end of every innerText edit.
+    // Measure the raw source, not `only.value`: Babel decodes entities and
+    // CRLF in `value`, so its lengths don't match the source offsets.
+    // `&nbsp;Old&nbsp;` would otherwise become `&New;`.
     const raw = source.slice(only.start, only.end);
 
     if (raw.trim() !== '') {
@@ -139,12 +120,7 @@ const editInnerText = (
   return edits;
 };
 
-// Raw HTML replaces the children region verbatim. This is what the old
-// `__HTML_<id>__` placeholder existed to achieve: the value can't be
-// represented as an AST literal, so it had to be smuggled past the
-// generator and string-substituted back in afterwards. Writing directly
-// into the source removes that round-trip — and with it the `$&`/`$$`
-// substitution hazard that the replacement step had to guard against.
+// Replaces the element's children with the raw HTML, as written.
 const editInnerHTML = (element: t.JSXElement, value: string): EditResult => {
   const range = childrenRange(element);
 
@@ -239,19 +215,17 @@ const editJsxAttribute = (
   return [{ start: insertAt, end: insertAt, content: `=${content}` }];
 };
 
-// Whether the attribute being replaced was authored as an array or object
-// literal inside a JSX expression container. Narrower than "is an
-// expression" on purpose: `className={cn(...)}` and `items={rows}` are
-// expressions too, but their value doesn't round-trip through the panel as
-// source text, so a string committed against them stays a string.
+// Whether the attribute holds an array or object literal, such as
+// `items={[...]}`. Other expressions (`className={cn(...)}`,
+// `items={rows}`) don't count: the panel doesn't edit their source, so a
+// string committed to them stays a string.
 const holdsStructuralExpression = (value?: t.JSXAttribute['value']): boolean =>
   t.isJSXExpressionContainer(value) &&
   (t.isArrayExpression(unwrapExpression(value.expression)) ||
     t.isObjectExpression(unwrapExpression(value.expression)));
 
-// Parses committed text back into the array/object literal it claims to be.
-// Requiring that exact shape is what keeps a plain string from silently
-// becoming something else: `"hello"` parses fine as an identifier, and
+// Parses committed text as an array or object literal, or `null`. Only
+// those shapes are accepted: `hello` also parses, as an identifier, and
 // writing `items={hello}` would turn a value into a variable reference.
 const structuralSource = (value: string): t.Expression | null => {
   try {
@@ -268,25 +242,17 @@ const structuralSource = (value: string): t.Expression | null => {
   }
 };
 
-// Serialize a structured value into a JSX attribute value, once, at the AST
-// boundary — the single point where the declared `type` is known. Replaces
-// the old first-character heuristic (`startsWith('{')` ...) that guessed
-// string-vs-expression and then let `attrValue` guess again. See #238.
-//
-// `current` is the attribute value being replaced. The declared `type` is
-// authoritative when there is one, but most shipped `items` bindings declare
-// none (`{ label: 'FAQ Items', property: 'items' }`), so the source is the
-// only remaining evidence of what the attribute holds — the same evidence
-// `getStructuredValue` reads on the way out via `attr.isStringLiteral`.
+// Builds the JSX attribute value for a value and its declared `type`
+// (#238). `current` is the value being replaced. Without a declared type,
+// as in most `items` bindings, `current` decides whether the value is
+// source code or a string, the same way `getStructuredValue` reads it.
 const buildAttributeValue = (
   value: unknown,
   type?: BindingType,
   current?: t.JSXAttribute['value'],
 ): t.JSXAttribute['value'] => {
-  // Declared object/array bindings: an expression container. A string here
-  // is already-serialized source text (from the built-in Items/flatten
-  // editor, which re-emits the whole array/object as code) — parse it back
-  // to an expression rather than quoting it as a literal.
+  // Declared object or array: an expression. A string here is source text
+  // from the Items or object editor, so parse it instead of quoting it.
   if (type === 'array' || type === 'object') {
     if (typeof value === 'string') {
       try {
@@ -302,16 +268,12 @@ const buildAttributeValue = (
     return expr ? t.jsxExpressionContainer(expr) : t.stringLiteral('');
   }
 
-  // Everything else maps one JS type to one literal kind — no guessing. A
-  // string stays a string literal whatever it contains, so a genuine
-  // `"{not an expression}"` no longer becomes a JSX expression container.
+  // Otherwise each JS type maps to one kind of literal. A string stays a
+  // string literal whatever it contains.
   if (typeof value === 'string') {
-    // ...except when the attribute being replaced is itself an array/object
-    // literal expression. Those hand the panel their *source text* as
-    // `rawValue`, and the array editors commit that same source text back,
-    // so quoting it would rewrite `items={[...]}` into an `items="[{\n ..."`
-    // string literal and leave the document unparseable. Undeclared-type
-    // `items`/`data` bindings only reach here, which is why they broke.
+    // Except when the attribute holds an array or object literal: then the
+    // string is its source text from the array editor. Quoting it would turn
+    // `items={[...]}` into a string and break the document.
     if (
       holdsStructuralExpression(current) &&
       !(type && STRING_VALUED_TYPES.has(type))
@@ -342,9 +304,8 @@ const editAttribute = (
     return null;
   }
 
-  // Serialized array/object edits already carry preserved source. Validate
-  // their shape, then replace only the expression value instead of printing
-  // the attribute (which would reformat every untouched array sibling).
+  // Array or object source from the editors: check its shape, then replace
+  // only the expression, so the unchanged items keep their formatting.
   if (
     typeof value === 'string' &&
     (type === 'array' ||
@@ -370,11 +331,9 @@ const editAttribute = (
     }
   }
 
-  // Generate the whole attribute rather than just its value, so Babel's
-  // JSX-attribute printing path decides the quoting and escaping — the same
-  // path that produced this text before, when the enclosing tree was
-  // regenerated. Reuses the parsed name node instead of building a fresh
-  // identifier so namespaced/dashed names survive untouched.
+  // Print the whole attribute, so Babel decides the quoting and escaping.
+  // The parsed name node is reused, so namespaced and dashed names stay as
+  // written.
   const content = generateCode(
     t.jsxAttribute(
       attribute.name,
@@ -387,10 +346,9 @@ const editAttribute = (
   ];
 };
 
-// Removes an attribute along with the whitespace before it, so no gap or
-// blank line is left where it was. `undefined` is how a caller asks for this:
-// to React an `undefined` prop and a missing one are the same, and writing it
-// used to leave the literal text `"undefined"` in the source (#426).
+// Removes an attribute and the whitespace before it, leaving no gap. A
+// caller asks for this with `undefined`, since React treats an `undefined`
+// prop like a missing one (#426).
 const removeAttribute = (
   source: string,
   attribute: t.JSXAttribute,
@@ -408,14 +366,10 @@ const removeAttribute = (
   return [{ start, end: attribute.end, content: '' }];
 };
 
-// Adds an attribute the element doesn't have yet, after its last attribute.
-// Only for a real value: an empty string or `undefined` for a missing
-// attribute leaves the element as it is, so clearing a field never creates
-// the attribute it was clearing (#426).
-//
-// Follows the tag's own layout: when its last attribute sits on a line of its
-// own, the new one goes on the next line with the same indentation, instead
-// of trailing the last one.
+// Adds a missing attribute after the last one. Only for a real value:
+// clearing a field never creates the attribute (#426). When the last
+// attribute is on its own line, the new one goes on the next line with the
+// same indentation.
 const addAttribute = (
   source: string,
   opening: t.JSXOpeningElement,
@@ -429,9 +383,8 @@ const addAttribute = (
     return null;
   }
 
-  // `indent: true` below re-indents every line after the first to the
-  // indentation of the line the edit starts on, so a bare newline is enough
-  // to line the new attribute up under the last one.
+  // With `indent: true`, a newline is enough to line the new attribute up
+  // under the last one.
   const lastStart = opening.attributes[opening.attributes.length - 1]?.start;
   const lineStart =
     lastStart == null ? -1 : source.lastIndexOf('\n', lastStart - 1) + 1;
@@ -474,9 +427,8 @@ const canEditAttributeValue = (
     return true;
   }
 
-  // Array/object editors commit validated source strings rather than a
-  // partially evaluated JS value. Their own patch engines preserve every
-  // expression, so accept that raw-source handoff here.
+  // The array and object editors commit checked source text, which keeps
+  // every expression, so accept it.
   return (
     typeof value === 'string' &&
     holdsStructuralExpression(attribute.value) &&
@@ -485,13 +437,9 @@ const canEditAttributeValue = (
   );
 };
 
-// Why an edit failed. Before #270 every one of these collapsed into a bare
-// `success: false`, so the panel showed one generic "Failed to update this
-// field / check the console" toast for structurally different problems — and
-// nothing was ever logged, so the console it pointed at was empty. Each
-// variant carries the identifiers a caller needs to name the real fault
-// (usually a wrong `property`/`label` in the element's `data-binding`, not
-// the value the author just typed).
+// Why an edit failed, with what a caller needs to name the cause (#270).
+// The cause is usually a wrong `property` or `label` in the element's
+// `data-binding`, not the value just typed.
 export type UpdateFailure =
   | { reason: 'element-not-found'; dataId: string }
   | { reason: 'no-binding'; dataId: string }
@@ -520,23 +468,19 @@ export type UpdateFailure =
 export interface UpdateResult {
   code: string;
   success: boolean;
-  // Present iff `success === false`. The deprecated `bulkUpdate` reports
-  // per-entry failures via `failures` instead, since one boolean can't say
-  // how many of several entries failed or which ones.
+  // Set when `success` is false. The deprecated `bulkUpdate` reports
+  // per-entry failures in `failures` instead.
   failure?: UpdateFailure;
   failures?: UpdateFailure[];
 }
 
-// `label` is a display string — reworded, duplicated, or translated at
-// authors' whim — so it identifies a binding only as a fallback. `property`
-// (an actual key, unique per element) is the real identity; pass it
-// whenever the caller has it (every internal caller does, via
-// PanelBinding.property). See #240: two bindings sharing a label used to
-// resolve to whichever `.find()` hit first, silently dropping the other's
-// edit while still reporting success.
-// `options` holds the binding sources the bindings were read with (#509,
-// #513). An element without its own `data-binding` is validated against the
-// entry its `data-binding-key` names, or its component's entry.
+// Sets one bound property of the element with `dataId` to `value`, and
+// returns the new source or why it couldn't.
+//
+// The binding is found by `property` when given, otherwise by `label`.
+// Pass `property` when you have it: a label is display text and can repeat
+// (#240). `options` are the binding sources the bindings were read with
+// (#509, #513).
 export const update = (
   code: string,
   dataId: string,
@@ -556,9 +500,8 @@ export const update = (
     let failure: UpdateFailure | undefined;
     const edits: SourceEdit[] = [];
 
-    // Records an editor's outcome. `null` is a failure — the caller passes
-    // the reason so it isn't discarded; anything else counts as handled,
-    // even when it produces no edits.
+    // Records an editor's result. `null` is a failure, with the reason from
+    // `onNull`; anything else counts as handled, even with no edits.
     const collect = (result: EditResult, onNull: () => UpdateFailure) => {
       if (!result) {
         failure = onNull();
@@ -643,11 +586,9 @@ export const update = (
           return;
         }
 
-        // Prefer `property` (an actual key) over `label` (a display
-        // string) — see the module-level comment on `update`. Either way,
-        // more than one match on this element is an authoring ambiguity
-        // (duplicate labels, or a genuine property collision), not a case
-        // to silently resolve by picking the first — see #240.
+        // By `property` when given, otherwise by `label`. More than one
+        // match is an authoring mistake, reported rather than resolved by
+        // picking one (#240).
         const matches = bindings.filter(binding =>
           property !== undefined
             ? binding.property === property
@@ -713,8 +654,8 @@ export const update = (
           }
 
           case BINDING_PROP.CHILDREN: {
-            // Children are edited as a structure (move, add, remove one), so
-            // there is no whole-value removal to map `undefined` onto.
+            // Children are edited one at a time (move, add, remove), so they
+            // can't be removed as a whole.
             if (unset) {
               failure = {
                 reason: 'unsupported-syntax',
@@ -809,11 +750,8 @@ export const update = (
       };
     }
 
-    // Patch the original source instead of re-emitting the tree: every byte
-    // outside a recorded span is copied through unchanged, so an edit to
-    // one field can no longer reflow the author's formatting elsewhere in
-    // the section — including the `data-binding` array itself, which is now
-    // authored as a JSX expression. See #239.
+    // Patch the original source: everything outside the recorded spans is
+    // copied unchanged (#239).
     return { code: unwrap(applyEdits(wrapped, edits)), success: true };
   } catch (error) {
     console.error('❌ Code update error:', error);
