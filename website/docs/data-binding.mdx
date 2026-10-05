@@ -72,13 +72,19 @@ entry still works.
 
 `property` names what the field edits:
 
-| `property`       | Edits                                                                                              |
-| ---------------- | -------------------------------------------------------------------------------------------------- |
-| `innerText`      | The element's text content.                                                                        |
-| `innerHTML`      | The element's HTML content. Used by `type: 'richtext'`.                                            |
-| `children`       | The element's JSX children, as a reorderable list.                                                 |
-| `items` / `data` | An array prop, as a list of items you can add, move, duplicate and delete.                         |
+| `property`       | Edits                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
+| `innerText`      | The element's text content.                                                                            |
+| `innerHTML`      | The element's HTML content. Used by `type: 'richtext'`.                                                |
+| `children`       | The element's JSX children, as a reorderable list.                                                     |
+| `items` / `data` | An array prop, as a list of items you can add, move, duplicate and delete.                             |
 | any other name   | That JSX attribute, e.g. `size`, `href`, `style`. It doesn't have to be on the element yet: see below. |
+
+`innerText` and plain `innerHTML` go between the element's tags, so they need
+an element with a closing tag. Writing either to a self-closing element such
+as `<img />` is refused with the reason `self-closing`; clearing it does
+nothing and succeeds. `type: 'richtext'` writes `dangerouslySetInnerHTML`, so
+it works on a self-closing element too.
 
 ### Optional attributes
 

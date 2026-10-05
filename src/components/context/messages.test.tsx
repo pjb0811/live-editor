@@ -141,6 +141,63 @@ describe('Live messages', () => {
     );
   });
 
+  it('reports text written to a self-closing element as an edit error (#552)', () => {
+    const onEditError = vi.fn();
+    const onChange = vi.fn();
+    const IMAGE =
+      '<section data-id="s1" data-name="Hero"><img data-id="i" data-binding={[{ label: "Caption", property: "innerText" }]} /></section>';
+    const WriteCaption = () => {
+      const { onNodeChange } = useDndPanel();
+
+      return (
+        <button
+          type="button"
+          onClick={() =>
+            onNodeChange({
+              id: 'i',
+              label: 'Caption',
+              property: 'innerText',
+              value: 'New',
+            })
+          }
+        >
+          write
+        </button>
+      );
+    };
+
+    render(
+      <ContextProvider
+        messages={{
+          editErrors: {
+            selfClosing: property => `self-closing: ${property}`,
+          },
+        }}
+      >
+        <Dnd
+          value={replaceSections(createDocument(), [IMAGE])}
+          onChange={onChange}
+          onEditError={onEditError}
+        >
+          <Dnd.Canvas />
+          <WriteCaption />
+        </Dnd>
+      </ContextProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('renderer'));
+    fireEvent.click(screen.getByText('write'));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onEditError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'update',
+        failure: expect.objectContaining({ reason: 'self-closing' }),
+        description: 'self-closing: innerText',
+      }),
+    );
+  });
+
   it('translates the error box outside the editor too', () => {
     render(
       <ContextProvider messages={ko}>

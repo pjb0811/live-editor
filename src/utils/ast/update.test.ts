@@ -395,6 +395,61 @@ describe('update', () => {
       expect(result.failure).toEqual({ reason: 'no-binding', dataId: 'a' });
     });
 
+    it.each([
+      [
+        'innerText',
+        `<img data-id="a" data-binding="[{label:'Caption',property:'innerText'}]" />`,
+      ],
+      [
+        'innerHTML',
+        `<div data-id="a" data-binding="[{label:'Body',property:'innerHTML'}]" />`,
+      ],
+    ])(
+      'F: self-closing when %s is written to a self-closing element (#552)',
+      (property, code) => {
+        const result = update(code, 'a', '', 'New', property);
+
+        expect(result).toEqual({
+          code,
+          success: false,
+          failure: { reason: 'self-closing', dataId: 'a', property },
+        });
+      },
+    );
+
+    it('F: clearing content on a self-closing element still succeeds', () => {
+      const code = `<img data-id="a" data-binding="[{label:'Caption',property:'innerText'}]" />`;
+
+      expect(update(code, 'a', '', '', 'innerText')).toEqual({
+        code,
+        success: true,
+      });
+      expect(update(code, 'a', '', undefined, 'innerText').success).toBe(true);
+    });
+
+    it('F: richtext on a self-closing element is written to an attribute', () => {
+      const code = `<div data-id="a" data-binding="[{label:'Body',property:'innerHTML',type:'richtext'}]" />`;
+      const result = update(code, 'a', '', '<b>New</b>', 'innerHTML');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toContain('dangerouslySetInnerHTML');
+    });
+
+    it('F: updateAll stops at a self-closing element and keeps the source', () => {
+      const code = `<div><p data-id="p" data-binding="[{label:'T',property:'innerText'}]">Old</p><img data-id="a" data-binding="[{label:'Caption',property:'innerText'}]" /></div>`;
+      const result = updateAll(code, [
+        { dataId: 'p', label: 'T', property: 'innerText', value: 'New' },
+        { dataId: 'a', label: 'Caption', property: 'innerText', value: 'x' },
+      ]);
+
+      expect(result).toMatchObject({
+        success: false,
+        code,
+        index: 1,
+        failure: { reason: 'self-closing' },
+      });
+    });
+
     it('control: a successful update carries no failure', () => {
       const result = update(CODE, 'a', 'Text', 'new text', 'innerText');
 
