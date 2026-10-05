@@ -1,0 +1,151 @@
+---
+sidebar_position: 1.5
+title: How It Works
+---
+
+# How It Works
+
+This page explains the model behind Live Editor: what the editor reads, what
+an edit changes, and the words the API uses for each part. It's worth reading
+before building a custom panel or debugging an edit that didn't land.
+
+To change Live Editor itself, the repository's
+[ARCHITECTURE.md](https://github.com/pjb0811/live-editor/blob/main/ARCHITECTURE.md)
+walks through the same model file by file.
+
+## The source is the state
+
+Live Editor keeps one piece of state: **the source code string**. Everything on
+screen is read from it, and every edit is a change to it.
+
+- The canvas re-reads its sections from the code whenever the code changes.
+- The panel reads each field's value from the selected section's code.
+- An edit finds the exact span of source that holds the value and replaces
+  only that span. Formatting, comments and code the editor doesn't understand
+  stay as they were.
+
+That's why `Live.Editor`, `Live.Dnd` and `Live.Preview` stay in sync without
+any extra wiring: they all read the same string from `Live`, and an edit on
+any of them writes a new string back.
+
+```text
+            Live (provider) — holds the code
+           ▲      │        ▲      │       │
+   typing  │      │        │edit  │       │
+           │      ▼        │      ▼       ▼
+     Live.Editor        Live.Dnd       Live.Preview
+                           │
+                           └─► your onChange (when you pass `value`)
+```
+
+When you pass `value` and `onChange` to `Live.Dnd`, your app owns the code and
+`Live` passes it on to the other surfaces.
+
+## The document model
+
+`Live.Dnd` doesn't edit any component tree you give it. It edits a
+**document**: a module whose default export is a component.
+
+```tsx
+import * as ui from 'ui-kit';
+
+const App = () => (
+  <main id="app-container">
+    {/* each <section> in here is one section on the canvas */}
+    <section data-id="hero" data-name="Hero">
+      <h1
+        data-id="title"
+        data-binding={[{ label: 'Title', property: 'innerText' }]}
+      >
+        Hello
+      </h1>
+    </section>
+  </main>
+);
+
+export default App;
+```
+
+| Term             | Meaning                                                                                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Document**     | The whole source string.                                                                                                                             |
+| **Container**    | The element whose `<section>` children are the sections: `id="app-container"`, or the `containerId` you pass.                                        |
+| **Section**      | One `<section>` directly inside the container. The API's `Section` type is `{ id, name, code }`: its `data-id`, its `data-name`, and its JSX source. |
+| **Palette item** | A section template the palette offers. `Live.Dnd`'s `items` prop is a list of them. Dropping one inserts its `code` into the container.              |
+
+The canvas renders **each section separately**, as the document with only that
+section in the container. Imports and helper components at the top of the
+document work in every section, a section that didn't change isn't rendered
+again, and a section that fails shows its error in its own slot without
+affecting the others. See [Sections that fail](./drag-and-drop.mdx#sections-that-fail).
+
+## Elements, ids and bindings
+
+Inside a section, the panel edits **elements** through their **bindings**.
+
+| Term          | Meaning                                                                                                                                                                                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`data-id`** | An element's identity. It connects the element you click in the preview with its JSX in the source, and every edit addresses its target by it. Leave it empty (`data-id=""`) and the editor fills it in, writing it into the source with the first edit to a field in that section. An element with no `data-id` at all can't be edited. |
+| **Binding**   | A declaration that one property of an element can be edited, with a `label`, a `type` and constraints. Its type is `BindingItem`.                                                                                                                                                                                                        |
+| **Property**  | What a binding edits: an attribute such as `src`, or one of `innerText`, `innerHTML`, `children` and `items`. See [Properties](./data-binding.mdx#properties).                                                                                                                                                                           |
+| **Field**     | The control the panel draws for one binding. `useDndPanel().bindings` gives each one as a `PanelBinding`, with its current `value` and an `onChange`.                                                                                                                                                                                    |
+
+An element's bindings come from the first of these it has:
+
+1. its own `data-binding` attribute,
+2. the entry its `data-binding-key` names in `bindingKeys`
+   ([Binding by key](./data-binding.mdx#binding-by-key)),
+3. its component's entry in `bindings`
+   ([Binding every element of a component](./data-binding.mdx#binding-every-element-of-a-component)).
+
+## What happens when you edit
+
+Every edit ends as a new document, but it can start at three levels:
+
+| You...                                                         | Level    | What changes                                                                     |
+| -------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------- |
+| Drop, move, copy or delete a section                           | Document | The list of sections inside the container                                        |
+| Change a field in the panel                                    | Section  | The span of the selected section that holds that property                        |
+| Move, copy, add or delete a row in an Items or Children editor | Value    | The array literal or the JSX children, which then goes through the section level |
+
+At the section level, the editor:
+
+1. finds the element by its `data-id` in the selected section,
+2. finds the binding for that property,
+3. replaces the span of source that holds the value, and nothing else,
+4. writes the new document to your `onChange` and to `Live`.
+
+If it can't do this safely, it **refuses the edit and leaves the source
+unchanged**, and you get a `DndEditError` through `onEditError` (or a toast)
+that says why. Common reasons:
+
+- The element's `data-binding` doesn't declare that property.
+- The value is written in a way the editor won't rewrite, such as a variable,
+  a spread or a function call. [Editable Syntax](./editable-syntax.mdx) lists
+  what's supported.
+- The document has a syntax error. While it does, the canvas and panel keep
+  showing the last version that parsed, read-only, until you fix it in the
+  code.
+
+## Where the code runs
+
+`Live.Preview` and each canvas section **compile the code in the browser**
+with Babel and run it in your page's JavaScript context. The result renders
+into an iframe, a shadow root, or in place ([Preview Modes](./preview-modes.mdx)).
+
+The iframe isolates DOM and CSS, not JavaScript: the code can reach your page
+like any other script. Only run code you trust.
+
+Compiled code can import `react`, `ui-kit`, `ui-kit/utils`, and whatever you
+pass in `modules`.
+
+## One word, several meanings
+
+"Item" appears in several unrelated places in the API:
+
+| Where                                              | Means                            |
+| -------------------------------------------------- | -------------------------------- |
+| `Live.Dnd`'s `items` prop, `useDndPalette().items` | Palette items: section templates |
+| `BindingItem`                                      | One binding                      |
+| `useDndItems`, the `items` property                | The rows of an array value       |
+| `useDndPanel().item`                               | The selected section             |
