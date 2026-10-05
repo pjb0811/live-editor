@@ -1,6 +1,7 @@
 import { Button, Checkbox } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 
+import { useLiveMessages } from '~/components/context/messages';
 import type { BindingRenderMap } from '~/utils/ast/types';
 
 import type { PanelNodeChange } from '../dnd';
@@ -83,6 +84,7 @@ const NestedGroup = ({
 // array source lives in that hook, which is exported so a consumer can put
 // their own markup over the same engine — see its doc comment (#237/#308).
 const Items = ({ value, render, onChange, onChildChange }: Props) => {
+  const messages = useLiveMessages();
   const {
     kind,
     items,
@@ -99,7 +101,9 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
 
   const header = (
     <div className="flex items-center justify-between">
-      <div className="text-sm font-semibold">Items ({items.length})</div>
+      <div className="text-sm font-semibold">
+        {messages.items.heading(items.length)}
+      </div>
       {/* Add copies an existing item, so it is offered only once there is
           one to copy — see the empty-list notice below (#316). */}
       {items.length > 0 && canEditStructure && (
@@ -110,7 +114,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           color="green"
           onClick={actions.add}
         >
-          Add Item
+          {messages.items.add}
         </Button>
       )}
     </div>
@@ -124,7 +128,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           className="rounded border border-dashed border-red-200 p-3 text-xs
             text-red-600"
         >
-          This value could not be read as a list. Edit it in the code editor.
+          {messages.items.unreadable}
         </div>
       </div>
     );
@@ -142,9 +146,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           className="rounded border border-dashed border-gray-200 p-3 text-xs
             text-gray-500"
         >
-          No editable items. The panel copies an existing item rather than
-          guessing the shape of a new one — add the first item in the code
-          editor.
+          {messages.items.empty}
         </div>
       </div>
     );
@@ -167,12 +169,14 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
       <Button
         size="small"
         icon={<ArrowUp />}
+        aria-label={messages.items.moveUp}
         disabled={!canEditStructure || item.index === 0}
         onClick={() => actions.move(item.elementIndex, item.index - 1)}
       />
       <Button
         size="small"
         icon={<ArrowDown />}
+        aria-label={messages.items.moveDown}
         disabled={!canEditStructure || item.index === items.length - 1}
         onClick={() => actions.move(item.elementIndex, item.index + 1)}
       />
@@ -180,6 +184,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
         danger
         size="small"
         icon={<X />}
+        aria-label={messages.items.delete}
         disabled={!canEditStructure || items.length <= 1}
         onClick={() => actions.remove(item.elementIndex)}
       />
@@ -228,7 +233,9 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
             />
           ))
         ) : (
-          <div className="text-xs text-gray-500">✓ No JSX bindings found</div>
+          <div className="text-xs text-gray-500">
+            {messages.items.noNestedBindings}
+          </div>
         )}
       </div>
     </>
@@ -251,7 +258,9 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
               )
             }
           >
-            {allExpanded ? 'Collapse all' : 'Expand all'}
+            {allExpanded
+              ? messages.items.collapseAll
+              : messages.items.expandAll}
           </Button>
         </div>
       )}
@@ -263,9 +272,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           className="rounded border border-dashed border-amber-200 p-3 text-xs
             text-amber-700"
         >
-          Values remain editable, but moving, copying, adding, and deleting
-          require a dense array without spreads or parenthesized top-level
-          items. Use the code editor for those structural changes.
+          {messages.items.structureLocked}
         </div>
       )}
 
@@ -278,7 +285,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           <ItemCard
             key={item.id}
             id={item.id}
-            title={`Item ${item.index + 1}`}
+            title={messages.items.item(item.index + 1)}
             disabled={!canEditStructure}
             expanded={expansion.isExpanded(item.id)}
             onToggle={() => expansion.toggle(item.id)}

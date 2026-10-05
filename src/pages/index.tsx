@@ -4,6 +4,8 @@ import { Button, Layout, Radio } from '@jbpark/ui-kit';
 import { useLocalStorage } from '@jbpark/use-hooks';
 import { Moon, Sun } from 'lucide-react';
 
+import { MessagesContext, mergeMessages } from '~/components/context/messages';
+
 import './index.css';
 
 import CustomPanel from './custom-panel';
@@ -12,6 +14,7 @@ import Inspector from './inspector';
 import PanelMeta from './panel-meta';
 import Playground from './playground';
 import PreviewModes from './preview-modes';
+import { KO_MESSAGES } from './shared/ko-messages';
 import { type Theme, ThemeContext } from './shared/theme';
 
 // The dev app is a set of pages, one per feature to check by hand. Each page
@@ -29,6 +32,13 @@ const PAGES = [
 type PageKey = (typeof PAGES)[number]['key'];
 
 const THEME_KEY = 'live-editor-dev-theme';
+const LANGUAGE_KEY = 'live-editor-dev-language';
+
+type Language = 'en' | 'ko';
+
+// Every page's `<Live>` inherits these, so one switch translates them all
+// (#524).
+const MESSAGES = { en: mergeMessages(), ko: KO_MESSAGES };
 
 // The page lives in the URL hash, so a reload or a shared link opens the same
 // page without a router.
@@ -48,6 +58,7 @@ const App = () => {
   const current = useSyncExternalStore(subscribe, readPage);
   const { Page } = PAGES.find(page => page.key === current)!;
   const [theme, setTheme] = useLocalStorage<Theme>(THEME_KEY, 'light');
+  const [language, setLanguage] = useLocalStorage<Language>(LANGUAGE_KEY, 'en');
 
   // ui-kit's dark tokens key off `[data-theme="dark"]` on an ancestor, the
   // same switch a docs site flips on `<html>`. Setting it here also checks
@@ -78,13 +89,28 @@ const App = () => {
             }}
           />
         </div>
-        <Button
-          aria-label={
-            theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
-          }
-          icon={theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        />
+        <div className="flex shrink-0 items-center gap-2">
+          <Radio.Group
+            size="small"
+            value={language}
+            options={[
+              { label: 'EN', value: 'en' },
+              { label: '한국어', value: 'ko' },
+            ]}
+            optionType="button"
+            buttonStyle="solid"
+            onChange={value => setLanguage(value as Language)}
+          />
+          <Button
+            aria-label={
+              theme === 'dark'
+                ? 'Switch to light theme'
+                : 'Switch to dark theme'
+            }
+            icon={theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          />
+        </div>
       </Layout.Header>
       {/*
         `min-h-0` lets this flex child shrink below its content's intrinsic
@@ -93,7 +119,9 @@ const App = () => {
       */}
       <Layout.Content className="min-h-0">
         <ThemeContext value={theme}>
-          <Page key={current} />
+          <MessagesContext value={MESSAGES[language]}>
+            <Page key={current} />
+          </MessagesContext>
         </ThemeContext>
       </Layout.Content>
     </Layout>

@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
+import { useLiveMessages } from '~/components/context/messages';
 import type { Section } from '~/types';
 
 import type { SectionNavigation } from './sortable';
@@ -19,11 +20,6 @@ const KEYBOARD_CODES = {
   start: ['Space'],
   cancel: ['Escape'],
   end: ['Space', 'Enter'],
-};
-
-export const SCREEN_READER_INSTRUCTIONS: ScreenReaderInstructions = {
-  draggable:
-    'On a palette item, press Enter to add it to the canvas. On a canvas section, press Enter to select it, the up and down arrow keys to go to the previous or next section, and Delete to remove it. Press Space to pick a section up, the arrow keys to move it, and Space or Enter to drop it. Press Escape to cancel.',
 };
 
 // Section wrappers by id, with one stable ref callback per id so React
@@ -80,6 +76,8 @@ export const useDndKeyboard = ({
   move,
   requestDelete,
 }: Options) => {
+  const { announcements: say } = useLiveMessages();
+
   // Space picks a focused section up, the arrow keys move it, and Space or
   // Enter drops it (Escape cancels). Enter doesn't pick up, unlike dnd-kit's
   // default: a focused section is a `role="button"`, and Enter selects it
@@ -104,7 +102,7 @@ export const useDndKeyboard = ({
     return (
       current?.item?.name ??
       sections.find(section => section.id === id)?.name ??
-      'section'
+      say.section
     );
   };
 
@@ -112,17 +110,28 @@ export const useDndKeyboard = ({
     sections.findIndex(section => section.id === id) + 1;
 
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${nameOf(active.id, active.data)}.`,
+    onDragStart: ({ active }) => say.pickedUp(nameOf(active.id, active.data)),
     onDragOver: ({ active, over }) =>
       over && positionOf(over.id) > 0
-        ? `${nameOf(active.id, active.data)} moved to position ${positionOf(over.id)} of ${sections.length}.`
-        : `${nameOf(active.id, active.data)} is no longer over a position.`,
+        ? say.movedTo(
+            nameOf(active.id, active.data),
+            positionOf(over.id),
+            sections.length,
+          )
+        : say.notOver(nameOf(active.id, active.data)),
     onDragEnd: ({ active, over }) =>
       over && positionOf(over.id) > 0
-        ? `${nameOf(active.id, active.data)} dropped at position ${positionOf(over.id)} of ${sections.length}.`
-        : `${nameOf(active.id, active.data)} dropped.`,
-    onDragCancel: ({ active }) =>
-      `Moving ${nameOf(active.id, active.data)} was cancelled.`,
+        ? say.droppedAt(
+            nameOf(active.id, active.data),
+            positionOf(over.id),
+            sections.length,
+          )
+        : say.dropped(nameOf(active.id, active.data)),
+    onDragCancel: ({ active }) => say.cancelled(nameOf(active.id, active.data)),
+  };
+
+  const screenReaderInstructions: ScreenReaderInstructions = {
+    draggable: say.instructions,
   };
 
   // The focusable wrapper of each section, so the keyboard can move focus
@@ -199,6 +208,7 @@ export const useDndKeyboard = ({
   return {
     sensors,
     announcements,
+    screenReaderInstructions,
     sectionNodes,
     onNavigate,
     onDeleteKey,

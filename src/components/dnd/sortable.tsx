@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button, Space } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Copy, Trash } from 'lucide-react';
 
+import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
 interface Props {
@@ -82,6 +83,7 @@ const Sortable = ({
     isOver,
     active,
   } = useSortable({ id, disabled: inspecting });
+  const messages = useLiveMessages();
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -213,7 +215,7 @@ const Sortable = ({
               icon={<ChevronUp />}
               disabled={!canMoveUp}
               onClick={press(onMoveUp)}
-              aria-label="Move section up"
+              aria-label={messages.section.moveUp}
             />
           )}
           {onMoveDown && (
@@ -221,19 +223,19 @@ const Sortable = ({
               icon={<ChevronDown />}
               disabled={!canMoveDown}
               onClick={press(onMoveDown)}
-              aria-label="Move section down"
+              aria-label={messages.section.moveDown}
             />
           )}
           <Button
             icon={<Copy />}
             onClick={onCopy}
-            aria-label="Duplicate section"
+            aria-label={messages.section.duplicate}
           />
           <Button
             danger
             icon={<Trash />}
             onClick={onDelete}
-            aria-label="Delete section"
+            aria-label={messages.section.delete}
           />
         </Space>
       )}

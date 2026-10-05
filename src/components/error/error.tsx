@@ -1,3 +1,4 @@
+import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
 export interface Props extends React.ComponentPropsWithRef<'div'> {
@@ -6,12 +7,9 @@ export interface Props extends React.ComponentPropsWithRef<'div'> {
   onReset?: () => void;
 }
 
-const Error = ({
-  message,
-  title = 'An error occurred',
-  className,
-  onReset,
-}: Props) => {
+const Error = ({ message, title, className, onReset }: Props) => {
+  const messages = useLiveMessages();
+
   if (!message) {
     return null;
   }
@@ -28,7 +26,7 @@ const Error = ({
       }}
     >
       <h3 style={{ fontSize: '14px', fontWeight: 'bold', margin: 0 }}>
-        {title}
+        {title ?? messages.errors.default}
       </h3>
       <pre
         style={{
@@ -54,7 +52,7 @@ const Error = ({
           }}
           onClick={onReset}
         >
-          Try Again
+          {messages.errors.tryAgain}
         </button>
       )}
     </div>

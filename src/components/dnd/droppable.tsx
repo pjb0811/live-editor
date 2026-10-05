@@ -1,6 +1,7 @@
 import { useDroppable } from '@dnd-kit/core';
 import { Typography } from '@jbpark/ui-kit';
 
+import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
 const Droppable = ({
@@ -18,6 +19,7 @@ const Droppable = ({
   const isNewItemDragging = active?.data.current?.type === 'new-item';
   const shouldHighlight = isOver && isNewItemDragging;
   const shouldHighlightBottom = isBottomOver && isNewItemDragging;
+  const messages = useLiveMessages();
 
   return (
     <div
@@ -44,7 +46,9 @@ const Droppable = ({
           )}
         >
           <Typography.Text className="text-sm text-gray-500">
-            {shouldHighlightBottom ? 'Drop here' : 'Drag here to add at bottom'}
+            {shouldHighlightBottom
+              ? messages.canvas.dropHere
+              : messages.canvas.dropAtBottom}
           </Typography.Text>
         </div>
       )}

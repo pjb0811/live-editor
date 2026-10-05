@@ -1,0 +1,238 @@
+---
+sidebar_position: 6.6
+title: Localization
+---
+
+# Localization
+
+The editor's own text is English by default: the section toolbar, the panel,
+empty states, error messages, what a screen reader hears during a drag, and
+validation messages. Pass `messages` to `Live` to replace any of it.
+
+```tsx
+import Live, { type LiveMessagesInput } from '@jbpark/live-editor';
+
+// Defined once, outside the component.
+const messages = {
+  section: { delete: '섹션 삭제' },
+  panel: { selectSection: '섹션을 선택하세요.' },
+  validation: { max: max => `${max} 이하여야 합니다.` },
+} satisfies LiveMessagesInput;
+
+<Live messages={messages}>
+  <Live.Dnd value={code} onChange={setCode} />
+</Live>;
+```
+
+- **Partial, by group.** Give only the keys you want to change. Every other key
+  keeps its English default.
+- **Functions for text with values.** A message that includes a label, a
+  count or a limit is a function, so a translation can put the value where its
+  grammar needs it.
+- **Define it once.** A new object on every render re-renders everything that
+  shows text. Keep it at module level, or memoize it.
+- **Nested `Live`s inherit.** A `Live` inside another starts from the outer
+  one's messages, with its own on top. One `Live` around a page can set the
+  language for every editor in it.
+
+## Groups
+
+| Group           | Where it shows                                                                               |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| `section`       | The section toolbar on the canvas and the panel header: move, duplicate, delete.             |
+| `canvas`        | Empty states, the drop zone, the element picker, the mobile Drawer titles, the stale banner. |
+| `panel`         | The panel's notices, placeholders and the fallback validation message.                       |
+| `items`         | The built-in editor for an array value.                                                      |
+| `children`      | The built-in editor for child elements.                                                      |
+| `selection`     | The bar shown while items or children are selected.                                          |
+| `editErrors`    | The `title` and `description` of every `DndEditError`, which the default toast shows.        |
+| `announcements` | What a screen reader hears during a drag, and the drag instructions.                         |
+| `errors`        | The error boxes of `Live.Preview`, `Live.Error` and canvas sections.                         |
+| `validation`    | `validateBindingValue`'s messages. See [below](#validation).                                 |
+
+`LiveMessages` is the full type, and `defaultMessages` the English set, both
+exported from `@jbpark/live-editor`.
+
+Text that comes from elsewhere stays as it is: section and field names come
+from your documents and bindings, and compiler messages from Babel.
+
+## In a custom palette or panel
+
+`useLiveMessages()` returns the messages in effect, so your own components can
+show the same text as the built-in ones:
+
+```tsx
+import { useLiveMessages } from '@jbpark/live-editor';
+
+const DeleteButton = ({ onClick }: { onClick: () => void }) => {
+  const messages = useLiveMessages();
+
+  return <button onClick={onClick}>{messages.section.delete}</button>;
+};
+```
+
+`onEditError` receives the translated `title` and `description` too.
+
+## Validation
+
+`validateBindingValue` is a plain function, so it takes its messages as an
+option. The built-in panel passes the provider's `validation` group. A custom
+panel can do the same:
+
+```ts
+import { validateBindingValue } from '@jbpark/live-editor/utils/ast';
+
+const messages = useLiveMessages();
+const result = validateBindingValue(binding, value, {
+  messages: messages.validation,
+});
+```
+
+## A complete Korean set
+
+The package ships English only. This is every message in Korean, typed as the
+full `LiveMessages` so a key added in a later version shows up as a type error.
+Copy it and adjust the wording to your product.
+
+```ts
+import type { LiveMessages } from '@jbpark/live-editor';
+
+export const koMessages: LiveMessages = {
+  section: {
+    moveUp: '섹션 위로 이동',
+    moveDown: '섹션 아래로 이동',
+    duplicate: '섹션 복제',
+    delete: '섹션 삭제',
+  },
+  canvas: {
+    palette: '컴포넌트',
+    properties: '속성',
+    pickElement: '요소 선택',
+    pickElementActive: '편집할 요소를 클릭하세요. Esc로 취소합니다.',
+    dropHere: '여기에 놓기',
+    dropAtBottom: '맨 아래에 추가하려면 여기로 끌어 놓으세요',
+    empty: '섹션이 없습니다',
+    emptyHintTouch: '컴포넌트를 탭해 추가하세요',
+    emptyHintDrag: '왼쪽에서 컴포넌트를 끌어 와 추가하세요',
+    syntaxError: '문서에 문법 오류가 있습니다',
+    syntaxErrorHint: '코드에서 오류를 고치면 섹션이 보입니다',
+    missingContainer: containerId => `문서에 #${containerId} 요소가 없습니다`,
+    missingContainerHint: containerId =>
+      `섹션은 id="${containerId}"인 요소 안에 둡니다`,
+    stale:
+      '마지막으로 파싱된 버전을 보여 주고 있습니다. 여기서 다시 편집하려면 코드의 문법 오류를 고치세요.',
+  },
+  panel: {
+    selectSection: '섹션을 선택하세요.',
+    noEditableElements: '편집할 수 있는 요소가 없습니다.',
+    readOnly:
+      '문서에 문법 오류가 있습니다. 이 필드는 마지막으로 파싱된 버전의 것이며, 다시 파싱될 때까지 편집할 수 없습니다.',
+    expressionPreserved: '이 표현식은 보존되지만 여기서는 편집할 수 없습니다.',
+    useCodeEditor: '코드 편집기에서 바꾸세요.',
+    invalidValue: '올바르지 않은 값입니다.',
+    urlPlaceholder: 'https://example.com',
+    numberPlaceholder: '숫자를 입력하세요',
+    textPlaceholder: '값을 입력하세요',
+  },
+  items: {
+    heading: count => `항목 (${count})`,
+    add: '항목 추가',
+    item: position => `항목 ${position}`,
+    reorder: item => `${item} 순서 변경`,
+    moveUp: '항목 위로 이동',
+    moveDown: '항목 아래로 이동',
+    delete: '항목 삭제',
+    collapseAll: '모두 접기',
+    expandAll: '모두 펼치기',
+    unreadable:
+      '이 값을 목록으로 읽을 수 없습니다. 코드 편집기에서 편집하세요.',
+    empty:
+      '편집할 항목이 없습니다. 패널은 새 항목의 모양을 추측하지 않고 기존 항목을 복사하므로, 첫 항목은 코드 편집기에서 추가하세요.',
+    structureLocked:
+      '값은 편집할 수 있지만, 이동·복사·추가·삭제는 spread나 괄호로 감싼 최상위 항목이 없는 배열에서만 됩니다. 이런 구조 변경은 코드 편집기를 쓰세요.',
+    noNestedBindings: '✓ JSX 바인딩이 없습니다',
+  },
+  children: {
+    heading: count => `자식 항목 (${count})`,
+    add: '자식 추가',
+    child: (position, tagName) => `자식 ${position} (${tagName})`,
+    editableBindings: '편집할 수 있는 바인딩:',
+    childNodes: '자식 노드:',
+  },
+  selection: {
+    count: count => `${count}개 선택됨`,
+    duplicate: '선택 항목 복제',
+    moveUp: '선택 항목 위로 이동',
+    moveDown: '선택 항목 아래로 이동',
+    delete: '선택 항목 삭제',
+    clear: '선택 해제',
+  },
+  editErrors: {
+    updateFailed: label => `"${label}"을(를) 수정하지 못했습니다`,
+    cannotEdit: label => `"${label}"은(는) 패널에서 편집할 수 없습니다`,
+    cannotRemove: label => `"${label}"은(는) 지울 수 없습니다`,
+    attributeNotFound: property =>
+      `이 요소에 "${property}" 속성이 없습니다. data-binding의 property를 확인하세요.`,
+    bindingNotDeclared: ({ label, property }) =>
+      `이 요소의 data-binding에 ${
+        property ? `property "${property}"` : `label "${label}"`
+      } 바인딩이 선언되어 있지 않습니다.`,
+    duplicateBinding: ({ count, label, property }) =>
+      `이 요소에서 바인딩 ${count}개가 ${
+        property ? `property "${property}"` : `label "${label}"`
+      }을(를) 함께 씁니다. data-binding에서 중복을 지우세요.`,
+    reservedProperty: property =>
+      `"${property}"은(는) 에디터가 관리하므로 바인딩으로 바꿀 수 없습니다.`,
+    requiredProperty: property =>
+      `"${property}"은(는) data-binding에서 필수로 지정되어 지울 수 없습니다.`,
+    noBinding: '이 요소에는 data-binding 선언이 없습니다.',
+    elementNotFound: '이 섹션에서 대상 요소를 찾을 수 없습니다.',
+    unsupportedSyntax: property =>
+      `"${property}" 표현식은 보존했습니다. 코드 편집기에서 바꾸세요.`,
+    checkConsole: '자세한 내용은 콘솔을 확인하세요.',
+    documentSyntaxError: '문서에 문법 오류가 있습니다',
+    documentSyntaxErrorDetail:
+      '캔버스는 마지막으로 파싱된 버전을 보여 줍니다. 코드의 오류를 고친 뒤 다시 편집하세요.',
+    missingContainer: containerId => `문서에 #${containerId} 요소가 없습니다`,
+    missingContainerDetail: containerId =>
+      `섹션은 id="${containerId}"인 요소 안의 <section> 요소입니다. createDocument()로 시작하거나, containerId를 문서에 맞추세요.`,
+    sectionParseFailed: '이 섹션을 파싱하지 못했습니다',
+    itemsParseFailed: '항목을 파싱하지 못했습니다',
+    itemUpdateFailed: '이 항목을 수정하지 못했습니다',
+    itemUpdateFailedDetail:
+      '원본은 그대로 두었습니다. 구조 편집은 spread가 없는 배열에서만 됩니다. 지원하지 않는 문법은 코드 편집기를 쓰세요.',
+  },
+  announcements: {
+    instructions:
+      '팔레트 항목에서 Enter를 누르면 캔버스에 추가합니다. 캔버스 섹션에서 Enter는 선택, 위아래 화살표는 이전·다음 섹션으로 이동, Delete는 삭제입니다. Space로 섹션을 들고, 화살표로 옮기고, Space나 Enter로 내려놓습니다. Escape로 취소합니다.',
+    section: '섹션',
+    pickedUp: name => `${name}을(를) 들었습니다.`,
+    movedTo: (name, position, total) =>
+      `${name}을(를) ${total}개 중 ${position}번째로 옮겼습니다.`,
+    notOver: name => `${name}이(가) 놓을 위치를 벗어났습니다.`,
+    droppedAt: (name, position, total) =>
+      `${name}을(를) ${total}개 중 ${position}번째에 놓았습니다.`,
+    dropped: name => `${name}을(를) 놓았습니다.`,
+    cancelled: name => `${name} 이동을 취소했습니다.`,
+    itemOver: (name, over) => `${name}이(가) ${over} 위에 있습니다.`,
+    itemMoved: (name, over) => `${name}을(를) ${over} 자리로 옮겼습니다.`,
+  },
+  errors: {
+    default: '오류가 발생했습니다',
+    compile: '컴파일 오류',
+    runtime: '런타임 오류',
+    rendering: '렌더링 오류',
+    sectionUnavailable: '섹션을 표시할 수 없음',
+    sectionNotRendered: '이 섹션은 이 에디터에서 렌더링하지 않습니다.',
+    tryAgain: '다시 시도',
+  },
+  validation: {
+    required: '필수 항목입니다.',
+    min: min => `${min} 이상이어야 합니다.`,
+    max: max => `${max} 이하여야 합니다.`,
+    pattern: '형식이 맞지 않습니다.',
+    url: '올바른 URL이 아닙니다.',
+    date: '올바른 날짜가 아닙니다.',
+  },
+};
+```

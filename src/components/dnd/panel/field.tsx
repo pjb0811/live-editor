@@ -22,6 +22,7 @@ import type {
   ViewUpdate,
 } from '@uiw/react-codemirror';
 
+import { useLiveMessages } from '~/components/context/messages';
 import CoreEditor from '~/components/editor/core';
 import { type DataAttrNode } from '~/utils/ast/types';
 import { validateBindingValue } from '~/utils/ast/validate';
@@ -237,6 +238,8 @@ const FieldError = ({ message }: { message: string | null }) =>
   message ? <p className="mt-1 mb-0 text-xs text-red-500">{message}</p> : null;
 
 const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
+  const messages = useLiveMessages();
+  const validationOptions = { messages: messages.validation };
   // `value` is already structured (its real JS type); `rawValue` is the exact
   // source text used for the raw editors (Items/code/textarea) and as the
   // <input> defaultValue. See #238.
@@ -270,9 +273,9 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
         className="space-y-1 rounded border border-dashed border-amber-200 p-3
           text-xs text-amber-700"
       >
-        <div>This expression is preserved but is not editable here.</div>
+        <div>{messages.panel.expressionPreserved}</div>
         <code className="block overflow-x-auto text-amber-800">{rawValue}</code>
-        <div>Use the code editor to change it.</div>
+        <div>{messages.panel.useCodeEditor}</div>
       </div>
     );
   }
@@ -404,10 +407,14 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           value={parseDateValue(stringValue)}
           onChange={date => {
             const next = date ? formatDateValue(date) : '';
-            const result = validateBindingValue(binding, next);
+            const result = validateBindingValue(
+              binding,
+              next,
+              validationOptions,
+            );
 
             if (!result.valid) {
-              setValidationError(result.message ?? 'Invalid value.');
+              setValidationError(result.message ?? messages.panel.invalidValue);
               return;
             }
 
@@ -428,13 +435,17 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           type="url"
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder="https://example.com"
+          placeholder={messages.panel.urlPlaceholder}
           onBlur={e => {
             const next = e.target.value.trim();
-            const result = validateBindingValue(binding, next);
+            const result = validateBindingValue(
+              binding,
+              next,
+              validationOptions,
+            );
 
             if (!result.valid) {
-              setValidationError(result.message ?? 'Invalid value.');
+              setValidationError(result.message ?? messages.panel.invalidValue);
               return;
             }
 
@@ -455,7 +466,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           type="number"
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder="Enter a numeric value"
+          placeholder={messages.panel.numberPlaceholder}
           onBlur={e => {
             const raw = e.target.value.trim();
             // Commit a real number, not a numeric string — the AST boundary
@@ -465,10 +476,14 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
             // rather than becoming `NaN`.
             const next: unknown =
               raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : raw;
-            const result = validateBindingValue(binding, next);
+            const result = validateBindingValue(
+              binding,
+              next,
+              validationOptions,
+            );
 
             if (!result.valid) {
-              setValidationError(result.message ?? 'Invalid value.');
+              setValidationError(result.message ?? messages.panel.invalidValue);
               return;
             }
 
@@ -487,7 +502,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
       <Input.TextArea
         value={text}
         onChange={e => setText(e.target.value)}
-        placeholder="Enter a value"
+        placeholder={messages.panel.textPlaceholder}
         onBlur={e => {
           const raw = e.target.value.trim();
           // Untyped field: infer the value's type from the text the user
@@ -496,10 +511,10 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           // the AST pipeline. A declared string-family type keeps the text
           // verbatim, so `"{x}"` stays a string.
           const next: unknown = binding.type ? raw : parseValue(raw);
-          const result = validateBindingValue(binding, next);
+          const result = validateBindingValue(binding, next, validationOptions);
 
           if (!result.valid) {
-            setValidationError(result.message ?? 'Invalid value.');
+            setValidationError(result.message ?? messages.panel.invalidValue);
             return;
           }
 

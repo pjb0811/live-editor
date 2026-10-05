@@ -147,3 +147,26 @@ describe('validateBindingValue', () => {
     ).toEqual({ valid: true });
   });
 });
+
+// Translated messages for a host's own language (#524).
+describe('validateBindingValue messages', () => {
+  const binding = makeBinding({ required: true, max: 40 });
+
+  it('returns the given messages, and the English default for the rest', () => {
+    const messages = {
+      required: '필수 항목입니다.',
+      max: (max: number) => `최댓값은 ${max}입니다.`,
+    };
+
+    expect(validateBindingValue(binding, '', { messages }).message).toBe(
+      '필수 항목입니다.',
+    );
+    expect(validateBindingValue(binding, 99, { messages }).message).toBe(
+      '최댓값은 40입니다.',
+    );
+    expect(
+      validateBindingValue(makeBinding({ type: 'url' }), 'nope', { messages })
+        .message,
+    ).toBe('Must be a valid URL.');
+  });
+});

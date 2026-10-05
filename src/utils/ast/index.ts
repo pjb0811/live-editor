@@ -75,8 +75,12 @@ export type {
 } from './update';
 export { getChildrenSignatures } from './children';
 export type { ChildrenAction, ChildrenEdit } from './children';
-export type { ValidationResult } from './validate';
-export { validateBindingValue } from './validate';
+export type {
+  ValidationMessages,
+  ValidationOptions,
+  ValidationResult,
+} from './validate';
+export { defaultValidationMessages, validateBindingValue } from './validate';
 
 // Internal helpers this entry used to export. Each still works, and leaves
 // the entry in the next major (#522). Most are `const` aliases, so their

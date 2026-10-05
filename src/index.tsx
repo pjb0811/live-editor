@@ -1,6 +1,10 @@
 import './index.css';
 
-import Context from './components/context';
+import Context, {
+  type Props as ContextProps,
+  type LiveMessages,
+  type LiveMessagesInput,
+} from './components/context';
 import LiveDnd, {
   type DndEditError,
   type DndInspector,
@@ -34,11 +38,16 @@ import type {
   BindingSchema,
 } from './utils/ast/types';
 
-const App = ({ children }: { children?: React.ReactNode }) => {
-  return <Context>{children}</Context>;
+const App = ({ children, messages }: ContextProps) => {
+  return <Context messages={messages}>{children}</Context>;
 };
 
 const LiveRenderer = LivePreview;
+
+// The editor's text, for a host that translates it (#524). This is the
+// package entry, which Fast Refresh never reloads.
+// eslint-disable-next-line react-refresh/only-export-components
+export { defaultMessages, useLiveMessages } from './components/context';
 
 export {
   LivePreview,
@@ -78,6 +87,8 @@ export type {
   BindingKeyMap,
   BindingOptions,
   BindingSchema,
+  LiveMessages,
+  LiveMessagesInput,
 };
 
 App.Preview = LivePreview;

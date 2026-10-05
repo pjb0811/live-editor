@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useEventListener } from '@jbpark/use-hooks';
 
+import { useLiveMessages } from '~/components/context/messages';
+
 import ErrorComponent from './error';
 
 export interface Props {
@@ -11,6 +13,7 @@ export interface Props {
 
 const Guard = ({ children, onError }: Props) => {
   const [error, setError] = useState<string | null>(null);
+  const messages = useLiveMessages();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const errorHandled = useRef(false);
@@ -84,7 +87,7 @@ const Guard = ({ children, onError }: Props) => {
   if (error) {
     return (
       <ErrorComponent
-        title="Runtime Error"
+        title={messages.errors.runtime}
         message={error}
         className="m-4"
         onReset={() => {

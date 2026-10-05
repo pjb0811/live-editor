@@ -4,6 +4,7 @@ import * as t from '@babel/types';
 import type { useMultiSelect } from '@jbpark/use-hooks';
 import { nanoid } from 'nanoid';
 
+import { useLiveMessages } from '~/components/context/messages';
 import { canStructurallyEditArray } from '~/utils/ast/array-source';
 import { findEditableChildren } from '~/utils/ast/binding';
 import { extract } from '~/utils/ast/extract';
@@ -411,6 +412,7 @@ export const useDndItems = (
   { render, onChange, onNodeChange }: DndItemsOptions = {},
 ): DndItems => {
   const { reportError, bindingOptions } = useDndEditOptions();
+  const messages = useLiveMessages();
   const { objectItems, primitiveItems, parseError } = useMemo(
     () => parseSource(value, bindingOptions),
     [value, bindingOptions],
@@ -423,9 +425,13 @@ export const useDndItems = (
   // Read through a ref so the effect below fires once per parse failure, not
   // again on every render a host passes a fresh inline `onEditError`.
   const reportErrorRef = useRef(reportError);
+  // Read in the effect below the same way, so new messages don't report the
+  // same parse failure again.
+  const messagesRef = useRef(messages);
 
   useEffect(() => {
     reportErrorRef.current = reportError;
+    messagesRef.current = messages;
   });
 
   useEffect(() => {
@@ -433,8 +439,8 @@ export const useDndItems = (
       reportErrorRef.current({
         type: 'parse',
         target: 'items',
-        title: 'Failed to parse items',
-        description: 'Check the console for details.',
+        title: messagesRef.current.editErrors.itemsParseFailed,
+        description: messagesRef.current.editErrors.checkConsole,
       });
     }
   }, [parseError]);
@@ -538,9 +544,8 @@ export const useDndItems = (
     if (next === null) {
       reportError({
         type: 'items',
-        title: 'Failed to update this item',
-        description:
-          'The source was preserved. Structural edits require a dense array without spreads; use the code editor for unsupported syntax.',
+        title: messages.editErrors.itemUpdateFailed,
+        description: messages.editErrors.itemUpdateFailedDetail,
       });
 
       return false;

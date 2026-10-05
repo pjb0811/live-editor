@@ -18,7 +18,7 @@ live-editor/
 │  └─ commands/             # publish-check.md
 ├─ src/
 │  ├─ components/
-│  │  ├─ context/           # 전역 상태 (PreviewContext, ErrorContext)
+│  │  ├─ context/           # 전역 상태 (PreviewContext, ErrorContext, MessagesContext — UI 문구 `messages`)
 │  │  ├─ dnd/               # DnD 시스템 (Canvas + Panel + Renderer)
 │  │  │  ├─ panel/          # 프로퍼티 편집 패널 (children/field/items/node.tsx)
 │  │  │  ├─ layout.tsx      # Palette/Canvas/Panel/Layout 합성 컴포넌트

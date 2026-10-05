@@ -5,17 +5,44 @@ export interface ValidationResult {
   message?: string;
 }
 
+// The messages a failed check returns. Pass your own through `options` to
+// translate them; the built-in panel passes the provider's `validation`
+// messages (#524).
+export interface ValidationMessages {
+  required: string;
+  min: (min: number) => string;
+  max: (max: number) => string;
+  pattern: string;
+  url: string;
+  date: string;
+}
+
+export const defaultValidationMessages: ValidationMessages = {
+  required: 'This field is required.',
+  min: min => `Must be at least ${min}.`,
+  max: max => `Must be at most ${max}.`,
+  pattern: 'Value does not match the required format.',
+  url: 'Must be a valid URL.',
+  date: 'Must be a valid date.',
+};
+
+export interface ValidationOptions {
+  messages?: Partial<ValidationMessages>;
+}
+
 const VALID: ValidationResult = { valid: true };
 
 export const validateBindingValue = (
   binding: BindingItem,
   value: unknown,
+  options: ValidationOptions = {},
 ): ValidationResult => {
+  const messages = { ...defaultValidationMessages, ...options.messages };
   const isEmpty = value === '' || value === null || value === undefined;
 
   if (isEmpty) {
     if (binding.required) {
-      return { valid: false, message: 'This field is required.' };
+      return { valid: false, message: messages.required };
     }
     return VALID;
   }
@@ -26,10 +53,10 @@ export const validateBindingValue = (
   // type. A non-number value simply isn't range-checked.
   if (typeof value === 'number') {
     if (binding.min !== undefined && value < binding.min) {
-      return { valid: false, message: `Must be at least ${binding.min}.` };
+      return { valid: false, message: messages.min(binding.min) };
     }
     if (binding.max !== undefined && value > binding.max) {
-      return { valid: false, message: `Must be at most ${binding.max}.` };
+      return { valid: false, message: messages.max(binding.max) };
     }
   }
 
@@ -47,7 +74,7 @@ export const validateBindingValue = (
     if (!regex.test(value)) {
       return {
         valid: false,
-        message: 'Value does not match the required format.',
+        message: messages.pattern,
       };
     }
   }
@@ -56,13 +83,13 @@ export const validateBindingValue = (
     try {
       new URL(value);
     } catch {
-      return { valid: false, message: 'Must be a valid URL.' };
+      return { valid: false, message: messages.url };
     }
   }
 
   if (typeof value === 'string' && binding.type === 'date') {
     if (Number.isNaN(Date.parse(value))) {
-      return { valid: false, message: 'Must be a valid date.' };
+      return { valid: false, message: messages.date };
     }
   }
 
