@@ -51,9 +51,9 @@ const producedBy = (
   };
 };
 
-// Domain adapter: serializes a structural command for the existing binding
-// onChange/update path. The AST layer owns source validation and mutation;
-// selection follows the shared rule in useStructuralSelection.
+// What the built-in Children editor runs on. Sends each command as the
+// `children` value through `onChange`, where `update` applies it, and
+// keeps the selection by `useStructuralSelection`'s rule.
 export const useDndChildren = (
   items: DataAttrNode[],
   { onChange }: DndChildrenOptions = {},

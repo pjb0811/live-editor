@@ -11,33 +11,21 @@ import type { PanelBinding, PanelNodeChange } from '../dnd';
 import { DndInspectorContext } from '../inspector';
 import FieldGroup from './field-group';
 
-// The built-in property panel. Reached publicly as `Live.Dnd.Panel`, which
-// is this in the container the desktop pane wants, driven from
-// `useDndPanel()` — every field here lines up with what that hook returns
-// (drop `onChange`, which this panel never needed), so the built-in panel and
-// a custom one run on the same data and the public surface can't drift into a
-// subset of it (#237).
-//
-// `onNodeChange` is the node-level escape hatch `Items`/`Children` use to
-// commit a *different* element's edit than any single
-// `PanelBinding.onChange` can express (see field.tsx's items/children
-// boundary note from step 1). Optional here only so this can be rendered
-// read-only for nested edits; leave it out with real data and nested
-// array/children edits silently don't commit (#308).
+// Props of the built-in property panel, which `Live.Dnd.Panel` renders from
+// `useDndPanel()`. They match that hook's fields, so the built-in panel and
+// a custom one use the same data (#237). Without `onNodeChange`, edits
+// inside `items` and `children` values aren't saved (#308).
 export interface PanelProps {
   item?: Section;
   onDelete?: (id: string) => void;
-  // Reordering by dragging a section on the canvas doesn't work from
-  // inside this panel on mobile — the canvas sits behind the Drawer this
-  // panel renders in, so there's nothing visible to drag onto. These give
-  // an explicit alternative that works regardless of layout.
+  // Move the section. On mobile the panel covers the canvas, so these
+  // replace dragging there.
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
-  // `item`'s editable fields, already resolved to PanelBindings by Dnd —
-  // the same data a custom panel receives, so this panel doesn't re-derive
-  // it from DataAttrNode a second time (#237).
+  // `item`'s editable fields, the same `bindings` a custom panel gets
+  // (#237).
   bindings: PanelBinding[];
   onNodeChange?: PanelNodeChange;
   // The document doesn't parse, so these fields are from the last version
@@ -45,17 +33,9 @@ export interface PanelProps {
   readOnly?: boolean;
 }
 
-// `bindings` is flat (one entry per bound property, across every editable
-// element in the section) — regroup by `id` to render the same "one
-// bordered box per element" layout as before. `bindings` is already
-// ordered element-by-element, property-by-property (dnd.tsx builds it by
-// flat-mapping the extracted fields), so a Map preserves both the element
-// order and each element's own property order with no extra sorting.
-//
-// Not memoized: Dnd rebinds `bindings` every render so its commit callbacks
-// can't go stale against the document (#336), which means a dependency on
-// it would miss every time. This is a single pass over an already-parsed
-// list, so the miss costs more than the walk.
+// Groups the flat `bindings` by element `id`, keeping their order, for one
+// box per element. Not memoized: `bindings` is new every render (#336),
+// and the walk is cheap.
 const groupBindingsById = (bindings: PanelBinding[]): PanelBinding[][] => {
   const groups = new Map<string, PanelBinding[]>();
 

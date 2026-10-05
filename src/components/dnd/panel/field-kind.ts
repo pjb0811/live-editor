@@ -2,10 +2,9 @@ import { BINDING_PROP } from '~/constants';
 
 import type { PanelBinding } from '../panel-binding';
 
-// Which built-in control `Field` renders for a binding. `BuiltinField`
-// dispatches on this, so a custom panel that asks the same question (most
-// often "does this binding need a structural editor?") gets the library's
-// answer rather than a copy of it that can drift.
+// Which built-in control `Field` renders for a binding. Exported so a
+// custom panel can ask the same question, most often whether a binding
+// needs a structural editor.
 export type FieldKind =
   // `canEditValue: false` — shown as preserved source, not editable.
   | 'readonly'
@@ -36,10 +35,8 @@ export type FieldKindBinding = Pick<
 const isColorProperty = (property: string): boolean =>
   property.toLowerCase().includes('color');
 
-// Order matters: the first match wins, exactly as the built-in control
-// chooses. `renderField` runs before any of this and can replace the result,
-// so this describes the built-in control, not what a `renderField` override
-// draws.
+// The first match wins. Describes the built-in control only: `renderField`
+// runs first and can replace it.
 export const getFieldKind = (binding: FieldKindBinding): FieldKind => {
   const { property, type, value } = binding;
 
