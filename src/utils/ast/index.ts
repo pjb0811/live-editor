@@ -82,8 +82,8 @@ export type {
 } from './validate';
 export { defaultValidationMessages, validateBindingValue } from './validate';
 
-// Internal helpers this entry used to export. Each still works, and leaves
-// the entry in the next major (#522). Most are `const` aliases, so their
+// Internal helpers, deprecated. Each still works, and leaves this entry in
+// the next major (#522). Most are `const` aliases, so their
 // `@deprecated` reaches the built declarations. The document layer stays a
 // plain re-export: as an alias here, its Babel AST types move this entry's
 // declarations into the chunk that also pulls in React, and

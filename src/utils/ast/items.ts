@@ -71,12 +71,9 @@ const resolveRenderLeaf = (
   return leaf && 'type' in leaf ? (leaf as BindingRenderLeaf) : null;
 };
 
-// Escapes text for a template literal's raw slot. `@babel/types` rejects a
-// raw containing an unescaped backtick or `${`, a lone backslash would
-// otherwise be read back as an escape sequence, and a carriage return is
-// normalized to a newline by the spec's raw-value rules — so raw markup
-// pasted into an innerHTML field used to throw straight out of the edit
-// handler, and CRLF would not survive a round trip.
+// Escapes text for a template literal's raw source: backticks, `${`,
+// backslashes and carriage returns. Without this, pasted markup can throw
+// in `@babel/types`, and CRLF doesn't survive a round trip.
 const toTemplateRaw = (value: string): string => {
   return value
     .replace(/\\/g, '\\\\')
@@ -94,8 +91,7 @@ const buildPropertyValue = (
   renderLeaf: BindingRenderLeaf | null,
   current: t.Expression,
 ): t.Expression | undefined => {
-  // innerHTML carries raw markup, which has to survive as written — a
-  // template literal keeps it verbatim without escaping.
+  // innerHTML is raw markup: a template literal keeps it as written.
   if (renderLeaf?.property === BINDING_PROP.INNER_HTML) {
     const raw = String(value);
 
@@ -105,11 +101,8 @@ const buildPropertyValue = (
     );
   }
 
-  // A declared `render[key].type === 'jsx'` covers a schema-declared JSX
-  // property; a property whose *current* value is already JSX (e.g. the
-  // items panel's fallback editor for a JSX-valued property with no
-  // extractable bindings, see #298) needs the same treatment even without
-  // that declaration, so it round-trips as JSX rather than as a string.
+  // JSX when the render map declares `jsx`, or when the current value is
+  // already JSX without a declaration, so it stays JSX (#298).
   if (
     renderLeaf?.type === 'jsx' ||
     t.isJSXElement(current) ||
@@ -130,10 +123,8 @@ const buildPropertyValue = (
   }
 
   if (declaredType === 'array' || declaredType === 'object') {
-    // The nested Items editor commits serialized source text, while the
-    // object editor and the fallback TextArea commit a real JS value.
-    // Parsing the former directly avoids evaluating it and `String()`-ing
-    // it back to `1,2` (a sequence expression).
+    // The nested Items editor commits source text; parse it as is. The
+    // object editor and the fallback text area commit a JS value instead.
     if (typeof value === 'string') {
       try {
         return parseExpression(value, { plugins: ['jsx', 'typescript'] });
@@ -142,10 +133,8 @@ const buildPropertyValue = (
       }
     }
 
-    // The latter has already been through `evaluateLiteral`, so it can only
-    // be rebuilt faithfully when the property held nothing but literals to
-    // begin with. Otherwise the edit is refused and the source is left
-    // alone, which is the safe half of what this path used to do.
+    // A JS value can be rebuilt exactly only when the property held nothing
+    // but literals. Otherwise the edit is refused and the source stays.
     if (!isLosslesslyEvaluable(current)) {
       return undefined;
     }
@@ -153,9 +142,8 @@ const buildPropertyValue = (
     return valueToExpression(value) ?? undefined;
   }
 
-  // Scalars arrive as the text typed into the field, so coerce before
-  // building the literal — `createNodeFromValue('boolean', 'true')` would
-  // otherwise compare the string against `true` and yield `false`.
+  // Scalars arrive as typed text, so convert first: the string `'true'`
+  // would otherwise become `false` for a boolean.
   return createNodeFromValue(declaredType, parseValue(value)) ?? undefined;
 };
 
@@ -466,14 +454,11 @@ export const duplicateArrayItems = (
     : null;
 };
 
-// Appends a copy of the first item of `kind`. There is deliberately no
-// "create from scratch" path: the shape of an item is defined by its
-// siblings, and inventing one (`{}`, or a guess from the render map) would
-// either be uneditable or silently impose a shape the consumer never
-// declared. An array binding is therefore editable only while it holds at
-// least one item — the same invariant `removeArrayItems` maintains by
-// refusing any edit that would empty the array. `null` here means the array
-// has no item of `kind` to copy; the first one belongs in the source (#316).
+// Appends a copy of the first item of `kind`. Items are never created from
+// scratch, because their shape comes from their siblings. So an array
+// needs at least one item to be editable, and `removeArrayItems` never
+// empties it. `null` means there is no item of `kind` to copy; the first
+// one has to be written in the source (#316).
 export const appendArrayItem = (
   code: string,
   kind: ItemKind,

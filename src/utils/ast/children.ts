@@ -181,9 +181,9 @@ export const editChildrenSource = (
     };
 
     if (Array.isArray(value)) {
-      // Preserve the existing JSON API. Unchanged modeled children reuse
-      // their full original source; arbitrary replacements are allowed only
-      // when every original child can be represented without information loss.
+      // A full list of children (the JSON form). Unchanged children keep
+      // their original source; other replacements are allowed only when
+      // every original child can be represented without loss.
       const desired = modeledSignatures(value);
       const lossless = raw.every(
         (text, index) =>
@@ -220,8 +220,8 @@ export const editChildrenSource = (
         return signature;
       });
 
-      // Legacy callers may supply entirely new modeled children. Do not
-      // accept a duplicated identity that would make later edits ambiguous.
+      // The list may contain new children. Refuse a repeated `data-id`,
+      // which would make later edits ambiguous.
       const countIds = (text: string) => {
         const counts = new Map<string, number>();
         t.traverseFast(

@@ -47,10 +47,8 @@ export const validateBindingValue = (
     return VALID;
   }
 
-  // `min`/`max` compare against a real number. Since #238, a `type:
-  // 'number'` binding delivers an actual number across the panel boundary,
-  // so callers pass one here directly — no string coercion to re-derive the
-  // type. A non-number value simply isn't range-checked.
+  // `min` and `max` apply to numbers only; a `type: 'number'` field passes
+  // a number (#238). Other values aren't range-checked.
   if (typeof value === 'number') {
     if (binding.min !== undefined && value < binding.min) {
       return { valid: false, message: messages.min(binding.min) };
@@ -66,8 +64,8 @@ export const validateBindingValue = (
     try {
       regex = new RegExp(binding.pattern);
     } catch {
-      // Malformed pattern authored on the binding itself — don't block the
-      // user's input for an authoring mistake that isn't theirs to fix.
+      // An invalid `pattern` is the binding's mistake, so don't block the
+      // input.
       return VALID;
     }
 
