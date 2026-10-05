@@ -1,11 +1,8 @@
 import { compile } from 'tailwindcss';
 
-// Loaded as `theme(reference)` below so utilities can resolve theme-dependent
-// values (colors, spacing, font sizes, ...) without re-emitting the `@theme`
-// block itself — see https://tailwindcss.com/docs/functions-and-directives#reference-directive.
-// A checked-in copy (not a `?raw` import of the real file) because `?raw` is
-// a Vite convention tsdown's bundler doesn't resolve, which would otherwise
-// ship an unresolved specifier in dist/ that breaks for non-Vite consumers.
+// Loaded with `reference`, so utilities can use theme values without
+// emitting the `@theme` block (https://tailwindcss.com/docs/functions-and-directives#reference-directive).
+// A copied file, not a `?raw` import, which only Vite understands.
 import themeCSS from './theme-css';
 
 const compileClasses = async (classes: string[]): Promise<string> => {
@@ -27,15 +24,9 @@ const compileClasses = async (classes: string[]): Promise<string> => {
   return compiler.build(classes);
 };
 
-// Scans an already-rendered DOM subtree for `class` attributes, rather than
-// regex-scanning the compiled source text. Source-text scanning can only see
-// classes the reader typed literally (e.g. `className="p-6"`) — it has no
-// way to know what classes an imported component (e.g. ui-kit's `Button`,
-// `Typography.Title`) renders internally, since those live in that
-// component's own compiled output, not the previewed source. Scanning the
-// real DOM after mount catches both, because by then every class — reader-
-// authored or contributed by a component — is actually present as an
-// attribute.
+// Collects the classes in a rendered DOM subtree. Reading the DOM, not the
+// source, finds classes that imported components (such as ui-kit's
+// `Button`) render too.
 export const generateTailwindCSSFromDOM = async (
   root: Element,
 ): Promise<string> => {

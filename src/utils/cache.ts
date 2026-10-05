@@ -7,13 +7,10 @@ export interface BoundedCache<K, V> {
   readonly size: number;
 }
 
-// Fixed-capacity LRU cache shared by compile()/getCachedScriptBlob()/
-// extract() — evicts the *least recently used* entry once `limit` is
-// reached. Relies on Map's insertion-order iteration: the first key is
-// always the least recently touched, because both get() (on a hit) and
-// set() (when overwriting an existing key) delete-then-reinsert the entry
-// to move it to the end. `onEvict` lets callers release resources tied to
-// an evicted value (e.g. revoking a blob URL).
+// A fixed-size LRU cache, used by `compile()`, the script cache and
+// `extract()`. A `Map` keeps insertion order, and `get` and `set` move an
+// entry to the end, so the first key is always the least recently used.
+// `onEvict` releases what an evicted value holds, such as a blob URL.
 export const createBoundedCache = <K, V>(
   limit: number,
   onEvict?: (key: K, value: V) => void,

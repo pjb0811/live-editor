@@ -29,9 +29,9 @@ export type {
   SectionOptions,
 } from './sections';
 
-// Internal helpers this entry used to export. Each still works, and leaves
-// the entry in the next major (#522). Re-exports only: a declaration here,
-// such as `export const x = _x`, moves the entry's types into the shared
+// Internal helpers, deprecated. Each still works, and leaves this entry in
+// the next major (#522). Re-exports only: a declaration here, such as
+// `export const x = _x`, moves the entry's types into the shared
 // declaration chunk that also pulls in React.
 /** @deprecated Internal. Use `compile`. Removed in the next major. */
 export const transformCode = _transformCode;

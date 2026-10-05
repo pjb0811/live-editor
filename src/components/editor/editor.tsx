@@ -10,9 +10,8 @@ import { useFormatCode } from './use-format-code';
 export interface EditorRenderData {
   value: string;
   onChange: (value: string) => void;
-  // Same prettier-based formatting Core's own Cmd+S uses - reused rather
-  // than reimplemented, so a custom editor can offer equivalent
-  // format-on-save behavior without duplicating the prettier wiring.
+  // The same Prettier formatting the built-in editor uses on Cmd+S, for a
+  // custom editor's own format-on-save.
   formatCode: (code: string) => Promise<string>;
 }
 
@@ -20,9 +19,8 @@ export interface Props extends Omit<CoreProps, 'value' | 'onSave' | 'onError'> {
   value?: string;
   defaultValue?: string;
   debounce?: number;
-  // Full replacement for the built-in CodeMirror editor. Editor still owns
-  // syncing `value` to the shared preview code (debounced), regardless of
-  // which UI renders it - only the editing surface itself is customizable.
+  // Replaces the built-in CodeMirror editor. `Live.Editor` still sends the
+  // value to the provider, debounced; only the editing surface changes.
   renderEditor?: (data: EditorRenderData) => React.ReactNode;
 }
 
@@ -39,10 +37,9 @@ const Editor = ({
   const { code, setCode } = usePreview();
   const { setError } = useError();
 
-  // Controlled, the host owns the document. Uncontrolled, the provider does
-  // (#341): `draft` shows each keystroke at once, while the provider only
-  // hears about it after `debounce`. Without a draft, the editor had nowhere
-  // to keep what was typed, so an uncontrolled editor dropped every edit.
+  // Controlled, the host owns the document; uncontrolled, the provider does
+  // (#341). `draft` shows each keystroke at once, while the provider hears
+  // about it after `debounce`.
   const controlled = _value !== undefined;
   const [draft, setDraft] = useState(() => defaultValue ?? code);
 

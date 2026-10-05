@@ -7,14 +7,10 @@ import { compile } from '~/utils/compile';
 import { baseModules } from './base-modules';
 import { useStableModules } from './use-stable-modules';
 
-// Shared by `preview/client.tsx` and `dnd/renderer.tsx`, which both turn a
-// code string into a renderable component in exactly the same way. They used
-// to implement this separately, which is how the two paths drifted apart on
-// error handling (see #246).
-//
-// Returns `null` for empty code so a caller can tell "nothing to render"
-// apart from "compiled, but failed" — the latter is a Module carrying
-// `error`, which callers should surface rather than render as blank.
+// Compiles code into a component, for `Live.Preview` and each canvas
+// section, so both handle errors the same way (#246). `null` for empty code,
+// so a caller can tell "nothing to render" from a failed compile, which
+// comes back as a module with `error`.
 export const useCompiledModule = (
   code: string,
   _modules?: Record<string, unknown>,

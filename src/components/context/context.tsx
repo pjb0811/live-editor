@@ -21,9 +21,9 @@ import { ErrorContext, PreviewContext } from './states';
 
 export interface Props {
   children?: React.ReactNode;
-  // Replaces any of the editor's built-in text, group by group: the rest
-  // stays English, or the enclosing `Live`'s. Define it once outside render, or memoize it, since a
-  // new object re-renders every component that shows text (#524).
+  // Replaces any of the editor's text, group by group; the rest stays
+  // English, or the enclosing `Live`'s. Define it outside render or memoize
+  // it: a new object re-renders everything that shows text (#524).
   messages?: LiveMessagesInput;
 }
 
@@ -31,31 +31,19 @@ const ContextProvider = ({ children, messages }: Props) => {
   const [code, setCodeState] = useState(DEFAULT_TEMPLATE);
   const [error, setError] = useState<ErrorContextType['error']>(null);
 
-  // Clears any stale runtime/compile error in the same update batch that
-  // changes `code`, rather than in a separate useEffect — a useEffect here
-  // would race with componentDidCatch/Guard's onError firing for the *new*
-  // code's own errors within the same commit (layout effects run before
-  // passive effects, so a passive-effect reset could wipe out an error the
-  // new code just threw). Batching setError(null) into the same update as
-  // setCode guarantees stale errors are gone by the time the new code even
-  // renders, with nothing left afterward that could clobber a fresh one.
+  // Clears the last error in the same update that sets the code. An effect
+  // would run after the new code's own error was reported, and wipe it.
   const setCode = useCallback<PreviewContextType['setCode']>(next => {
     setError(null);
     setCodeState(next);
   }, []);
 
-  // The provider is the ownership boundary for every editor-owned cache, not
-  // just the compilation one it used to clear here: parsed documents,
-  // extracted bindings and the blob URLs generated for external scripts all
-  // outlive an editing session otherwise, released only when the LRU happens
-  // to evict them. registerEditorSession both counts this session and hands
-  // back the release, so the caches go when the last provider does.
+  // Counts this editor, so the page-wide caches are released when the last
+  // one unmounts (`utils/editor-caches.ts`).
   useEffect(() => registerEditorSession(), []);
 
-  // Without this, a new object identity on every ContextProvider render
-  // (even ones that don't touch code/error at all, e.g. a parent
-  // re-rendering) meant every usePreview()/useError() consumer re-rendered
-  // too, regardless of whether the values they care about actually changed.
+  // Memoized, so a parent re-render doesn't re-render every `usePreview()`
+  // and `useError()` consumer.
   const previewValue = useMemo<PreviewContextType>(
     () => ({ code, setCode }),
     [code, setCode],

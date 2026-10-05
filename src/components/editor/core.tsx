@@ -23,11 +23,9 @@ export interface Props {
   onUpdate?: ComponentProps<typeof CodeEditor>['onUpdate'];
 }
 
-// The CodeMirror surface, the Cmd+S save transaction and the JS/TS + line-wrap
-// extensions now live in `@jbpark/ui-kit`'s CodeEditor (#346/#309). This stays
-// only to keep live-editor's own vocabulary: `raw`/`fragment`/`prettierOptions`
-// shape the injected prettier formatter, and `onError` maps to the component's
-// `onFormatError`.
+// `@jbpark/ui-kit`'s CodeEditor with this library's options (#346, #309):
+// `raw`, `fragment` and `prettierOptions` shape the Prettier formatter, and
+// `onError` is its `onFormatError`.
 const Core = ({
   value,
   theme,
