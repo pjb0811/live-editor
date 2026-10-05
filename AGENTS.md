@@ -147,6 +147,13 @@ TypeScript와 Vite/Vitest 설정에 같은 별칭을 사용합니다.
 
 ---
 
+### Changeset
+
+- PR에 `.changeset/*.md`가 없으면 `changeset-draft.yml`이 PR 브랜치에 초안 changeset 커밋을 push합니다. 모델이 쓴 문구와 bump라 실제 변경과 맞지 않을 수 있습니다.
+- 일부러 changeset을 넣지 않는 PR(아직 배포되지 않은 변경을 다듬는 PR, 문서·CI·리팩터링만 바꾸는 PR 등)에는 `pnpm changeset --empty`로 빈 changeset을 넣습니다. bump와 CHANGELOG 항목 없이 draft만 건너뜁니다. 빈 changeset만 쌓인 상태의 Version PR은 그 파일을 지우기만 하고 버전은 그대로입니다.
+- 머지를 확인할 때 PR head SHA가 로컬 tip과 다르면, 추가된 커밋(`git log <local>..<head>`)을 확인합니다. 봇이 넣은 changeset이 다음 Version PR의 CHANGELOG와 GitHub Release로 그대로 나갑니다(4.5.0에서 실제로 발생).
+- 버전·배포 흐름 전체는 [version-management 스킬](.claude/skills/version-management/SKILL.md)을 참고합니다.
+
 ## ⚙️ 개발 명령어
 
 개발·빌드는 CI와 같은 Node 24 계열(24.11 이상)과 `package.json`의 `packageManager`에 고정된 pnpm 버전을 사용합니다(Corepack을 켜면 자동으로 그 버전이 쓰입니다). 루트와 `website/`는 각각 잠금 파일 기준으로 설치합니다.
