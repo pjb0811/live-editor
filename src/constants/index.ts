@@ -4,19 +4,12 @@ export const STORAGE_KEY = 'live-editor-code';
 
 export const CONFIG = {
   CACHE_LIMIT: 50,
-  // Separate, much smaller limit for document.ts's parsed-AST cache — its
-  // entries are full Babel Files (~10-20x source size), not the compiled
-  // Module/string entries CACHE_LIMIT was sized for, and real hits only ever
-  // land on the document being actively edited (current + previous
-  // version), so keeping up to CACHE_LIMIT of them resident just wastes
-  // memory. See #106 (measured ~0.66MB/document, ~2.6MB at this limit).
+  // The document parse cache. Its entries are whole Babel ASTs (about
+  // 0.66 MB per document), and only the current and previous version get hits,
+  // so it keeps few (#106).
   DOCUMENT_CACHE_LIMIT: 4,
-  // Separate limit for utils/index.ts's scriptCache — those entries are
-  // live blob URLs handed to <script src>, and its onEvict immediately
-  // revokes the URL, unlike compilationCache's evictions which just discard
-  // a cheap-to-recompute Module. Sharing CACHE_LIMIT with compilationCache
-  // was coincidental, not a sizing decision for scriptCache's actual usage
-  // (a handful of distinct external preview scripts). See #104.
+  // The script cache (`utils/scripts.ts`). Its entries are live blob URLs,
+  // revoked on eviction, and a preview loads only a few scripts (#104).
   SCRIPT_CACHE_LIMIT: 10,
 } as const;
 
@@ -29,12 +22,10 @@ export const DATA_ATTR = {
   ITEM: 'data-item',
 } as const;
 
-// Attributes the editor owns. `data-id` is the key between the canvas and the
-// source, `data-name` is a section's name in the palette and panel, and
-// `data-binding` and `data-binding-key` say which schema every edit is
-// checked against. A binding can't
-// target them: rewriting one from the panel would break the mapping or the
-// declaration the edit itself depends on (#429).
+// Attributes the editor owns. `data-id` links the canvas to the source,
+// `data-name` is a section's name, and `data-binding` and `data-binding-key`
+// declare what each edit is checked against. A binding can't target them,
+// since rewriting one would break that link (#429).
 export const RESERVED_BINDING_PROPERTIES: readonly string[] = [
   DATA_ATTR.ID,
   'data-name',

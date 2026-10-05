@@ -22,11 +22,9 @@ const sameModules = (a: Modules, b: Modules): boolean => {
   );
 };
 
-// Hosts usually pass `modules` inline (`modules={{ Chart }}`), a new object
-// on every render. Compared by identity, that re-rendered and recompiled
-// every section on every edit, and past the compilation cache's limit sent
-// them back through Babel (#397). This keeps the previous object while the
-// entries are the same, so everything keyed on it sees no change.
+// Keeps the previous `modules` object while its entries are the same, since
+// hosts usually pass a new inline object every render, which would recompile
+// every section (#397).
 export const useStableModules = <T extends Modules>(modules: T): T => {
   const [stable, setStable] = useState(modules);
 

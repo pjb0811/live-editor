@@ -2,10 +2,8 @@ import { useCallback, useMemo } from 'react';
 
 import { detectTypeScript } from '~/utils/detect-typescript';
 
-// prettier is an optional peer dependency (#282): the editor subpath is the
-// only thing that needs it, so consumers who don't use format-on-save
-// shouldn't have to install ~9.6 MB. It's loaded lazily below and its absence
-// degrades gracefully (the code is returned unformatted) instead of throwing.
+// Prettier is an optional peer dependency (#282), loaded on first use.
+// Without it, code comes back unformatted.
 const loadPrettier = async () => {
   const [prettier, babel, estree, typescript] = await Promise.all([
     import('prettier'),
@@ -34,9 +32,8 @@ export interface UseFormatCodeOptions {
   prettierOptions?: Record<string, unknown>;
 }
 
-// Extracted out of Core so a custom renderEditor (see editor.tsx's
-// renderEditor prop) can reuse the exact same formatting behavior instead
-// of reimplementing prettier wiring from scratch.
+// The formatter the built-in editor uses, shared with a custom
+// `renderEditor`.
 export const useFormatCode = ({
   fragment,
   prettierOptions,

@@ -39,11 +39,9 @@ export const generateSection = (
   return generateSectionPreview(fullCode, code, options);
 };
 
-// Batched form of generateSection() — computes every section's preview from
-// a single parse of fullCode instead of one parseDocument call per section
-// (see generateSectionPreviews). Unchanged sections come back byte-identical
-// to their previous preview string, which is what lets a caller pass each
-// one down as a stable prop (see Renderer's React.memo).
+// `generateSection()` for every section, from one parse of `fullCode`. An
+// unchanged section gets the same string as before, so `React.memo` can skip
+// it.
 export const generateSections = (
   codes: string[],
   fullCode: string,
@@ -90,10 +88,8 @@ export const checkDocument = (
   return { ...inspection };
 };
 
-// Incremental counterpart to generateSections() — see createSectionPreviewCache
-// (#131). Pass a fresh instance's `compute` in place of generateSections()
-// where the caller can keep it alive across renders (e.g. Dnd holds one via
-// `useState(() => createSectionPreviewCache())`).
+// `generateSections()` that reuses unchanged previews between calls (#131).
+// Keep one instance per editor, as `Live.Dnd` does.
 export { createSectionPreviewCache };
 export type {
   DocumentOptions,

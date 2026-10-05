@@ -13,13 +13,9 @@ interface Props {
   // thing the built-in error's reset button does.
   fallback?: (message?: string, reset?: () => void) => React.ReactNode;
   onError?: (e: Error, info: React.ErrorInfo) => void;
-  // Values whose identity changing (typically the code/module that produced
-  // `children`) should auto-recover a caught error without needing a
-  // remount — compared shallowly, one entry at a time, same idea as
-  // react-error-boundary's resetKeys. Without this, once tripped, render()
-  // never even attempts `children` again (see below), so a fix to the
-  // underlying code has no way to reach the screen until this array changes
-  // or something remounts the boundary via `key`.
+  // When any of these values changes (compared one by one, by identity), a
+  // caught error resets and `children` render again, such as when the code
+  // that failed is edited.
   resetKeys?: readonly unknown[];
 }
 

@@ -13,11 +13,8 @@ export interface ErrorContextType {
   setError: Dispatch<SetStateAction<string | null>>;
 }
 
-// `undefined` (rather than a no-op default) so usePreview/useError can tell
-// "no <Live>/ContextProvider ancestor" apart from "a real value" and throw
-// instead of silently no-op'ing — forgetting to wrap with <Live> previously
-// failed silently (setCode/setError did nothing, code/error just stayed at
-// their hardcoded defaults) instead of surfacing as a clear error.
+// `undefined` outside a provider, so `usePreview` and `useError` can throw
+// there instead of silently doing nothing.
 export const PreviewContext = createContext<PreviewContextType | undefined>(
   undefined,
 );

@@ -1,27 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 
-// Compiles the Tailwind classes found in rendered output and returns them as
-// a CSS string for the caller to inject as a `<style>` tag. Shared by
-// `preview/client.tsx` and `dnd/renderer.tsx`, which previously carried
-// byte-identical copies of this logic and of the comments below (see #246).
+// Compiles the Tailwind classes in the rendered DOM into CSS for a `<style>`
+// tag, for `Live.Preview` and each canvas section. Reading the DOM, not the
+// source, finds the classes imported components add too.
 //
-// Scans the live DOM (whatever the returned `ref` is attached to) rather than
-// the source text it was rendered from, so classes contributed by an imported
-// component (e.g. ui-kit's `Button`) are picked up too — those never appear as
-// literal text in the previewed source, only in that component's own compiled
-// output.
-//
-// The scanned element is tracked as state via a callback ref rather than a
-// plain `useRef`, because in shadow mode it isn't mounted on the caller's
-// first commit at all — `Shadow` creates its portal target in its own effect
-// and only re-renders with it afterwards, one commit later. A plain ref read
-// in a `[code, enabled]`-keyed effect would see `null` on that first pass and
-// never retry; making the element itself a dependency re-runs the scan once
-// it actually exists.
-//
-// The Tailwind compiler and its theme are imported on first use rather than
-// with this module: they only matter with `dynamicTailwind` on, and were
-// otherwise ~300 kB of every consumer's initial bundle (#332).
+// The element is held in state through a callback ref: in shadow mode it
+// appears a commit later, and an effect reading a plain ref would miss it.
+// The compiler and theme load on first use, since they're large (#332).
 export const useDynamicTailwind = (code: string, enabled: boolean) => {
   const [css, setCss] = useState('');
   const [element, setElement] = useState<HTMLDivElement | null>(null);

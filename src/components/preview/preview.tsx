@@ -15,12 +15,9 @@ export interface Props extends React.ComponentPropsWithRef<'div'> {
   provider?: (children: React.ReactNode) => React.ReactNode;
 }
 
-// A thin wrapper around Client, which does the actual compiling, error
-// handling, and frame wrapping. This used to have its own duplicate
-// compile-and-render branch for the `code` prop that never wrapped its
-// output in <Frame>, so `frame` was silently ignored whenever `code` was
-// passed — see #187. Client already handles `code` (falling back to
-// context when absent) and `frame`, so there is only one render path now.
+// `Live.Preview`: a thin wrapper around `Client`, which compiles, handles
+// errors and wraps the frame. One render path for both `code` and the
+// provider's code (#187).
 const Preview = ({
   code,
   props = NO_PROPS,

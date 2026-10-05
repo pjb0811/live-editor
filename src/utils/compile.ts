@@ -14,9 +14,9 @@ interface CompilationKey {
   modules: [string, unknown][];
 }
 
-// The index holds only the keys still in the bounded LRU. Comparing at most
-// CACHE_LIMIT snapshots avoids an unbounded identity registry for symbols
-// or serializing module objects/functions (which may be cyclic or closures).
+// The keys still in the LRU. Comparing at most `CACHE_LIMIT` of them avoids
+// keeping every module object ever seen, or serializing modules, which can be
+// cyclic or closures.
 const compilationKeys = new Set<CompilationKey>();
 const compilationCache = createBoundedCache<CompilationKey, Module>(
   CONFIG.CACHE_LIMIT,
@@ -70,17 +70,10 @@ export const clearCompilationCache = () => {
   compilationCache.clear();
 };
 
-// TypeScript source used to go through `ts.transpileModule` and then this
-// same Babel pass — a double transpile, and one that required an eagerly
-// awaited top-level `import('typescript')` (a 3.4 MB chunk with none of the
-// laziness a dynamic import would normally buy, since it was awaited at
-// module scope). `@babel/standalone` already ships `preset-typescript` and
-// already runs this exact pass for the non-TS case, so folding TS in here
-// removes the `typescript` dependency entirely — see #192. Babel transpiles
-// per-file with no type information, so `const enum` comes out as a real
-// enum object and legacy decorators aren't supported; neither matters for
-// previewing React components, and errors here already fall back to
-// returning the input unchanged, same as compileTypeScript did.
+// Transforms JSX and TypeScript with `@babel/standalone`'s presets, without
+// the `typescript` package (#192). Babel works per file without types, so a
+// `const enum` becomes a real enum and legacy decorators aren't supported.
+// On an error, the input comes back unchanged.
 export const transformCode = (code: string, isTypeScript = false): string => {
   try {
     const result = Babel.transform(code, {
@@ -134,9 +127,8 @@ const compileModule = (
       return React;
     }
 
-    // Presence, not truthiness: a module may legitimately *be* a falsy
-    // primitive (`0`, `''`, `false`, `null`), which compile() supports and
-    // compares by value. A truthiness check reported those as missing.
+    // Check presence, not truthiness: a module can be a falsy value (`0`, `''`,
+    // `false`, `null`).
     if (name in modules) {
       return modules[name];
     }
