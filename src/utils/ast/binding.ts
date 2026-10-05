@@ -25,10 +25,9 @@ const bindingOptionSchema = z.object({
   value: z.string(),
 });
 
-// `widget.type` is deliberately just `z.string()`, not an enum — see #236. The
-// library implements no widgets, so every value is a custom panel author's
-// own. `.passthrough()` keeps that panel's own control config
-// (`{ type: 'slider', snapTo: [...] }`) instead of stripping it.
+// `widget.type` is any string, not an enum: the library implements no
+// widgets, so every value belongs to a custom panel (#236). `.passthrough()`
+// keeps that control's own config, such as `{ type: 'slider', snapTo: [...] }`.
 const bindingWidgetSchema = z
   .object({
     type: z.string().min(1),
@@ -37,17 +36,16 @@ const bindingWidgetSchema = z
   })
   .passthrough();
 
-// Parse one field on its own, degrading a malformed value to absent instead
-// of failing the whole binding — a typo'd `min` or an unrecognized `type`
-// costs that one axis, not the field. See #234.
+// Parses one key on its own. A malformed value becomes absent instead of
+// failing the whole binding, so a typo in `min` loses only `min` (#234).
 const pick = <T>(schema: z.ZodType<T>, value: unknown): T | undefined => {
   const parsed = schema.safeParse(value);
 
   return parsed.success ? parsed.data : undefined;
 };
 
-// The bare-string form (`widget: 'slider'`) means the control with no extra
-// config; normalizing it to `{ type }` leaves consumers one shape to switch on.
+// Turns the string form (`widget: 'slider'`) into `{ type }`, so consumers
+// see one shape.
 const sanitizeWidget = (value: unknown): BindingWidget | undefined => {
   if (typeof value === 'string') {
     return value ? { type: value } : undefined;
@@ -56,9 +54,7 @@ const sanitizeWidget = (value: unknown): BindingWidget | undefined => {
   return pick(bindingWidgetSchema, value);
 };
 
-// Drop individually malformed options instead of rejecting them all — a
-// select field with 3 valid options and 1 malformed one should still work
-// with the 3 valid ones.
+// Drops only the malformed options and keeps the valid ones.
 const sanitizeOptions = (value: unknown): BindingOption[] | undefined => {
   if (!Array.isArray(value)) {
     return undefined;
@@ -73,9 +69,8 @@ const sanitizeOptions = (value: unknown): BindingOption[] | undefined => {
   return options.length > 0 ? options : undefined;
 };
 
-// Every key this library reads off a binding — anything else authored on it
-// is consumer-defined and belongs in `meta`, not treated as one of this
-// library's own fields.
+// Every key the library reads from a binding. Any other key is the app's
+// own and goes into `meta`.
 const KNOWN_BINDING_KEYS = new Set([
   'label',
   'property',
@@ -93,9 +88,9 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
 
-// The one sanitizer for what a binding declares about itself, shared by a
-// top-level item and a render-map leaf so a field added later reaches both.
-// Absent fields are left off rather than set to `undefined`.
+// Sanitizes the fields a binding declares. Shared by top-level bindings and
+// render-map leaves, so a new field reaches both. Absent fields are left
+// off, not set to `undefined`.
 const sanitizeField = (raw: Record<string, unknown>): BindingRenderLeaf => {
   const metaEntries = Object.entries(raw).filter(
     ([key]) => !KNOWN_BINDING_KEYS.has(key),
@@ -119,9 +114,8 @@ const sanitizeField = (raw: Record<string, unknown>): BindingRenderLeaf => {
   );
 };
 
-// A render map entry is either a "leaf" (has its own `type`) or a nested
-// map of further entries — recurse into whichever it looks like, and drop
-// anything that matches neither instead of failing the whole map.
+// A render map entry is a leaf (it has `type`) or a nested map. Anything
+// else is dropped, without failing the whole map.
 function sanitizeRenderMap(value: unknown): BindingRenderMap | undefined {
   if (!isPlainObject(value)) {
     return undefined;
@@ -135,10 +129,9 @@ function sanitizeRenderMap(value: unknown): BindingRenderMap | undefined {
     }
 
     if ('type' in raw) {
-      // `type` is always set, even to `undefined` when it didn't survive
-      // sanitization, so `'type' in leaf` keeps identifying it as a leaf: a
-      // typo'd/future leaf type still shows up as a plain field instead of
-      // vanishing (#234).
+      // Keep the `type` key even when its value was dropped, so
+      // `'type' in leaf` still marks it as a leaf: an unknown type shows as a
+      // plain field instead of disappearing (#234).
       map[key] = { type: undefined, ...sanitizeField(raw) };
       continue;
     }
@@ -153,10 +146,8 @@ function sanitizeRenderMap(value: unknown): BindingRenderMap | undefined {
   return Object.keys(map).length > 0 ? map : undefined;
 }
 
-// Shared tail of `parseBinding`/`parseBindingExpression`: turn the raw,
-// already-evaluated array literal into validated `BindingItem[]`. The two
-// callers differ only in how they reach this array — from a source string
-// (public API) or straight off an expression AST (extract's hot path).
+// Validates an evaluated `data-binding` array into `BindingItem[]`. Used by
+// `parseBinding` (from a string) and `parseBindingExpression` (from an AST).
 const buildBindingItems = (raw: unknown): BindingItem[] => {
   if (!Array.isArray(raw)) {
     return [];
@@ -181,9 +172,8 @@ const buildBindingItems = (raw: unknown): BindingItem[] => {
   });
 };
 
-// A registry entry goes through the same validation as an inline
-// `data-binding`, so both give a tag the same fields. Kept per registry
-// object, which a host is expected to define once rather than per render.
+// Registry entries are validated like an inline `data-binding`. Cached per
+// registry object, which a host defines once rather than every render.
 const registryEntries = new WeakMap<
   BindingRegistry,
   Map<string, BindingItem[]>
@@ -348,11 +338,8 @@ export const parseBinding = (bindingValue: string | null): BindingItem[] => {
   return buildBindingItems(evaluateLiteral(ast));
 };
 
-// Same result as `parseBinding`, but fed the array-literal expression the
-// parser already produced instead of a source string. `extract` authors
-// `data-binding` as a real JSX object-array expression, so re-serializing it
-// to a string only to `parseExpression` it straight back was a wasted Babel
-// round-trip (#241's "two parsers"); evaluate that AST in place.
+// `parseBinding` for an array expression that is already parsed, as
+// `extract` has it. Saves printing it and parsing it again (#241).
 export const parseBindingExpression = (
   expression: t.ArrayExpression,
 ): BindingItem[] => buildBindingItems(evaluateLiteral(expression));
@@ -367,7 +354,7 @@ export const getCurrentValue = (
     }
 
     case BINDING_PROP.INNER_HTML: {
-      // richtext 타입: dangerouslySetInnerHTML={{ __html }} 에서 읽기
+      // A `richtext` value lives in `dangerouslySetInnerHTML={{ __html }}`.
       const dsiAttr = node.attributes.find(
         a => a.name === 'dangerouslySetInnerHTML',
       );
@@ -400,7 +387,7 @@ export const getCurrentValue = (
             }
           }
         } catch {
-          // ignore
+          // Not a readable object: fall back to the children below.
         }
       }
       return node.rawChildren || node.textContent || '';
@@ -419,11 +406,9 @@ export const getCurrentValue = (
   }
 };
 
-// Declared types whose value is genuinely text — never re-parsed into a
-// number/object/array even when the text happens to look like one. `jsx`
-// and `richtext` carry source that is an expression, not a literal, so they
-// stay as their exact source string too (the update pipeline re-inserts
-// them as expressions, not string literals).
+// Types whose value stays a string, even when the text looks like a number
+// or an object. `jsx` and `richtext` hold source code, which `update` writes
+// back as an expression.
 export const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
   'string',
   'url',
@@ -433,17 +418,11 @@ export const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
   'richtext',
 ]);
 
-// Structured counterpart to `getCurrentValue`: returns the value as its real
-// JS type (number/boolean/object/array/string) rather than always as a
-// string, so both the built-in panel and a custom panel receive
-// `PanelBinding.value` already typed. `getCurrentValue` still supplies the
-// exact source text (`PanelBinding.rawValue`). See #238.
-//
-// The string-vs-structure decision is made *here*, from information the AST
-// still has — an attribute that was a string literal in source is a genuine
-// string whatever its contents, so `"{not an expression}"` stays a string
-// instead of being re-parsed into an object. Only genuine expressions
-// (`count={3}`, `data={[...]}`) are recovered into their real shape.
+// The value as its JS type (number, boolean, object, array or string), for
+// `PanelBinding.value`. `getCurrentValue` gives the source text, for
+// `PanelBinding.rawValue` (#238). A string literal in the source stays a
+// string whatever it contains; only expressions such as `count={3}` or
+// `data={[...]}` are read into their real shape.
 export const getStructuredValue = (
   node: DataAttrNode,
   property: string,
@@ -472,9 +451,9 @@ export const getStructuredValue = (
   }
 };
 
-// `extract()` fills `bindings` from the element's own `data-binding` or, when
-// it has none, from the registry it was given (#509). A node built some
-// other way may only have the attribute.
+// The node's bindings. `extract()` resolves them from all three sources
+// (#509, #513); a node built some other way may only have its
+// `data-binding` attribute, which is parsed here.
 export const readNodeBindings = (node: DataAttrNode): BindingItem[] => {
   if (node.bindings) {
     return node.bindings;

@@ -23,11 +23,10 @@ export const fillIds = (
   });
 };
 
-// Fills each empty `data-id=""` from `prefix` and the slot's order, skipping
-// any id `code` already uses, so the same code always gets the same ids. The
-// panel and the canvas preview both fill a section's code this way, which
-// is what lets an element in the preview be matched to its fields by
-// `data-id` before any edit has written the ids into the source (#432).
+// Fills each empty `data-id=""` with `prefix-1`, `prefix-2`, ..., skipping
+// ids already in `code`, so the same code always gets the same ids. The
+// canvas preview and the panel both fill a section this way, so an element
+// in the preview matches its fields before the ids are in the source (#432).
 export const fillIdsFrom = (code: string, prefix: string): string => {
   const taken = new Set(
     Array.from(

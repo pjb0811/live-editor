@@ -11,18 +11,10 @@ import { registerEditorCache } from '../editor-caches';
 import { getJSXTagName } from './jsx-name';
 import { fillIdsFrom } from './tree';
 
-// @babel/traverse's own CJS build re-exports itself as `{ default: traverse,
-// ...everything else }` for ESM interop. Vite's dev-server dependency
-// pre-bundling (esbuild) doesn't unwrap that inner `.default` when it
-// re-exports the CJS module for ESM consumption, so `import traverse from
-// '@babel/traverse'` resolves to that whole object instead of the function
-// in the browser — "traverse is not a function" at runtime, silently
-// breaking every feature that parses a document (add via drag-and-drop,
-// double-click, or the Editor's canvas sync). Vitest's Node-based module
-// resolution doesn't hit this, so this went undetected by the test suite.
-//
-// Exported so extract.ts/update.ts share this same safe binding instead of
-// each re-importing '@babel/traverse' directly and re-triggering the bug.
+// `traverse` as a function. In the browser, Vite's dependency pre-bundling
+// can hand back `@babel/traverse`'s CJS module object, with the function
+// under `.default`. Tests run in Node and don't see this. Import `traverse`
+// from here, not from '@babel/traverse', everywhere in the AST layer.
 type Traverse = (parent: t.Node, opts?: TraverseOptions) => void;
 
 export const traverse: Traverse =
@@ -36,8 +28,7 @@ const DATA_NAME_ATTR = 'data-name';
 export interface DocumentOptions {
   // The `id` of the element whose `<section>` children are the document's
   // sections. Defaults to `app-container`, the id `DEFAULT_TEMPLATE` and
-  // `createDocument()` use. It used to be fixed, so a document built around
-  // any other id had no sections and every edit silently did nothing (#449).
+  // `createDocument()` use (#449).
   containerId?: string;
 }
 
@@ -47,10 +38,9 @@ export interface SectionOptions extends DocumentOptions {
   sectionNameFallback?: (index: number) => string;
 }
 
-// Why a source isn't a usable document. Kept apart because they call for
-// different responses: a parse error is usually a transient state while
-// the source is being edited, a missing container is a structural mistake
-// nothing will fix on its own (#449, and #433 for the parse-error side).
+// Why a source isn't a usable document. The two need different responses:
+// a parse error is usually temporary while the source is being typed (#433),
+// and a missing container is a mistake in the document (#449).
 export type DocumentProblem =
   | { reason: 'parse-error'; error: unknown }
   | { reason: 'container-not-found'; containerId: string };
@@ -107,10 +97,9 @@ const findContainer = (
   return container;
 };
 
-// Recursively finds every *outermost* <section> under a container — a
-// <section> nested inside another <section> is left to its parent, so the
-// document's section count stays unambiguous (matches how the old
-// regex-based path treated nesting, and how #96 asked for it).
+// Every outermost `<section>` under the container, at any depth. A
+// `<section>` inside another one belongs to its parent, not to the list
+// (#96).
 const findOutermostSections = (
   children: t.JSXElement['children'],
 ): t.JSXElement[] => {
@@ -130,12 +119,10 @@ const findOutermostSections = (
   return sections;
 };
 
-// Caches the outcome for a source string, success or failure, keyed by the
-// container id as well as the code: the same source can have a container
-// under one id and not another. Without this, an in-progress syntax error
-// (the document mid-edit, before the next keystroke fixes it) would get
-// re-parsed from scratch by every one of the N call sites that ask for it
-// on every render (#97).
+// Caches each parse result, failures included, by container id and code:
+// the same source can have a container under one id and not another. Many
+// callers read the same document every render, so caching failures matters
+// too while the source has a syntax error (#97).
 const documentCache = createBoundedCache<string, DocumentInspection>(
   CONFIG.DOCUMENT_CACHE_LIMIT,
 );
@@ -164,9 +151,8 @@ const buildDocument = (
     : { ok: false, reason: 'container-not-found', containerId };
 };
 
-// `parseDocument`, plus why it failed when it did. `Live.Dnd` uses it to
-// tell an author their document has no container, instead of every edit
-// quietly returning the source unchanged.
+// `parseDocument`, plus why it failed when it did. `Live.Dnd` uses the
+// reason to tell the author what's wrong with the document.
 export const inspectDocument = (
   code: string,
   { containerId = DEFAULT_CONTAINER_ID }: DocumentOptions = {},
@@ -185,18 +171,10 @@ export const inspectDocument = (
   return inspection;
 };
 
-// Parses the whole source once into a single Babel AST — the shared "document
-// tree" that section-level (this file) and field-level (extract.ts/update.ts)
-// operations both read via @babel/* instead of the previous regex-based
-// section slicing living in a separate, conflicting parser.
-//
-// document.ts locates positions in the *original* source (section start/end
-// offsets, the container's opening/closing tag positions) and edits by
-// slicing that string — see replaceDocumentSections/generateSectionPreview
-// below. It never round-trips through @babel/generator and never mutates
-// the parsed tree, so every caller can safely share the same cached
-// DocumentTree: unlike an approach that hands out a tree for the caller to
-// edit in place, a cache hit here needs no clone at all.
+// Parses the source into a cached `DocumentTree`, or `undefined` when it
+// doesn't parse or has no container. Callers share the cached tree, so never
+// mutate it: this module reads positions from it and edits the source text
+// instead.
 export const parseDocument = (
   code: string,
   options?: DocumentOptions,
@@ -212,23 +190,12 @@ export const clearDocumentParseCache = () => {
 
 registerEditorCache(clearDocumentParseCache);
 
-// `id` prefers the section's own `data-id`, falling back to its position.
+// The document's sections, in order. `id` is the section's `data-id`, or
+// its position when it has none. A position isn't a stable identity, so run
+// `fillSectionIds` first when the id has to survive an edit (#245).
 //
-// A positional id is not an identity: it is re-derived from scratch on every
-// parse, so any insert, delete, copy or move silently re-points every id at
-// or after the edit. A caller holding one across a mutation — which the DnD
-// canvas does, via `selectedId` — ends up pointing at whatever content moved
-// into that slot. See #245.
-//
-// The fallback stays for documents authored before sections carried
-// `data-id` (localStorage, existing user code, hand-written JSX). Those keep
-// exactly the old behaviour until `fillSectionIds` gives them real ids, so
-// this is additive rather than a breaking change to the document format.
-//
-// `name` is the section's `data-name`. A section without one is named by
-// `sectionNameFallback`, from its 0-based position; the default gives
-// "Section 1", "Section 2", ... It used to be a fixed Korean label, which
-// reached every consumer whatever their locale (#448).
+// `name` is the section's `data-name`, or `sectionNameFallback(index)`:
+// "Section 1", "Section 2", ... by default (#448).
 export const getSections = (
   doc: DocumentTree,
   { sectionNameFallback = defaultSectionName }: SectionOptions = {},
@@ -239,27 +206,15 @@ export const getSections = (
     code: doc.code.slice(node.start!, node.end!),
   }));
 
-// Gives every top-level <section> a `data-id` that is present *and* unique
-// within the document, so `getSections` can return a real identity instead of
-// a position (#245). Sections ship with `data-name` only, which is a display
-// string — two "Hero" sections collide, exactly the way duplicate binding
-// labels did in #240.
+// Gives every outermost `<section>` a `data-id` that is present and unique,
+// so `getSections` returns a real identity (#245). A missing, empty or
+// non-string id gets a new one, and so does a repeat of an earlier id: a
+// section pasted twice in the code editor would otherwise let one delete
+// remove both. Only the id attributes change; the rest of the source is
+// kept as is.
 //
-// Uniqueness is enforced, not just presence. A positional id was unique by
-// construction; `data-id` is authored text, and the Editor/DnD modes share one
-// document, so copy-pasting a `<section data-id="abc">` block in the code
-// editor is an ordinary way to end up with two. Callers key destructive
-// operations off this id, so a duplicate would let one delete take both
-// sections with it. A repeat is therefore re-minted, keeping the first
-// occurrence.
-//
-// Splices into the original source rather than regenerating the tree, matching
-// how the rest of this module edits (see parseDocument's note): the author's
-// formatting everywhere else is left byte-identical.
-//
-// Callers should treat the result the way dnd.tsx treats fillIds' output —
-// derive from it, but only let it reach the document when a real edit
-// commits, so merely opening a file doesn't rewrite it.
+// Derive from the result, and let it reach the document only with a real
+// edit, so opening a document never rewrites it.
 export const fillSectionIds = (
   code: string,
   generateId: () => string = () => nanoid(6),
@@ -287,9 +242,8 @@ export const fillSectionIds = (
     const nextId = generateId();
     seen.add(nextId);
 
-    // Replace the whole attribute when one is already there — including a
-    // non-string form like `data-id={x}`, which would otherwise get a second
-    // `data-id` spliced in beside it.
+    // Replace the whole attribute when there is one, including a non-string
+    // `data-id={x}`, so the element never ends up with two.
     edits.push(
       attr
         ? {
@@ -320,9 +274,9 @@ export const fillSectionIds = (
 
 export const generateDocumentCode = (doc: DocumentTree): string => doc.code;
 
-// The span of source text occupied by `container`'s children — right after
-// its opening tag's `>` through right before its closing tag's `<`.
-// undefined for a self-closing container, which has no children slot.
+// The source span of `container`'s children: from just after the opening
+// tag's `>` to just before the closing tag's `<`. `undefined` for a
+// self-closing container.
 const getContainerInnerSpan = (
   container: t.JSXElement,
 ): { start: number; end: number } | undefined => {
@@ -372,29 +326,15 @@ const commonSuffixLength = (
   return i;
 };
 
-// Replaces the container's <section> children with `sectionCodes`. Rather
-// than treating "all the sections" as one contiguous block to overwrite —
-// which silently deleted whatever sat between them, including entire
-// wrapper elements around sections that live in different parents (#102) —
-// this diffs the old and new section-code lists by common prefix/suffix
-// (matching by exact content, same idea as a line-based text diff) and only
-// touches the byte range spanning the run that actually changed. Everything
-// outside that run — unchanged leading/trailing sections and all
-// non-section content around them, including different wrappers — is left
-// byte-for-byte untouched. A no-op call (sectionCodes identical to the
-// current sections) touches nothing at all.
+// Replaces the container's sections with `sectionCodes`. The old and new
+// lists are compared by their common prefix and suffix, and only the source
+// between them is replaced, so unchanged sections and the markup around
+// them (such as wrapper elements) stay as they are (#102). Calls that make
+// one change at a time, as `Live.Dnd` does, are exact. Swapping two sections
+// replaces everything between them, markup included.
 //
-// This doesn't reach full minimal-diff generality for content that's
-// simultaneously reordered *and* unchanged (e.g. swapping two sections with
-// nothing else different still replaces the whole swapped run, so content
-// sitting between them isn't preserved) — every real caller (dnd.tsx) only
-// ever performs one edit/add/delete/reorder per call, which this handles
-// precisely; see #102 for the general case this doesn't cover.
-//
-// `sectionCodes` are spliced in as raw text with no parsing or validation:
-// an invalid entry still lands in the output rather than being silently
-// dropped, and gets surfaced through the normal compile-error path instead
-// of vanishing (#96).
+// `sectionCodes` are inserted as text without checks: an invalid section
+// shows up as a compile error instead of disappearing (#96).
 export const replaceDocumentSections = (
   fullCode: string,
   sectionCodes: string[],
@@ -409,9 +349,8 @@ export const replaceDocumentSections = (
   const sections = findOutermostSections(doc.container.children);
 
   if (sections.length === 0) {
-    // No existing sections to diff against — append after whatever the
-    // container already holds (e.g. a still-empty <main id="app-container">)
-    // instead of discarding it.
+    // No sections yet: append after whatever the container holds, keeping
+    // it.
     const span = getContainerInnerSpan(doc.container);
 
     return span
@@ -436,9 +375,8 @@ export const replaceDocumentSections = (
   );
 
   if (oldChangedStart >= oldChangedEndExclusive) {
-    // Nothing removed — either a pure no-op (newChanged also empty) or a
-    // pure insertion, anchored right before the first untouched section
-    // that follows it (or after the last section, if inserted at the end).
+    // Nothing removed: either no change, or an insertion placed before the
+    // next unchanged section (or after the last one).
     if (newChanged.length === 0) {
       return fullCode;
     }
@@ -460,24 +398,18 @@ export const replaceDocumentSections = (
   return spliceCode(fullCode, start, end, newChanged.join('\n'));
 };
 
-// Produces a document whose container holds only `sectionCode`, discarding
-// any other container content — used for Renderer's isolated per-section
-// preview compile, not as a general-purpose section-list edit.
+// The document with only `sectionCode` in the container, for compiling one
+// section on its own. Not an edit: everything else in the container is
+// dropped.
 export const generateSectionPreview = (
   fullCode: string,
   sectionCode: string,
   options?: DocumentOptions,
 ): string => generateSectionPreviews(fullCode, [sectionCode], options)[0]!;
 
-// Same as generateSectionPreview, but for every section in one call —
-// parses `fullCode` once and reuses the same container span for each,
-// instead of the N separate parseDocument calls one-at-a-time callers would
-// otherwise make per render (#97). Each entry only depends on the
-// container's surrounding code and that one section's own code, so an
-// unrelated edit elsewhere in `sectionCodes` still yields byte-identical
-// strings for the sections that didn't change — letting a caller pass
-// each one down as a stable prop instead of forcing every section to
-// recompute (and, with React.memo, re-render) on every edit.
+// `generateSectionPreview` for every section, parsing `fullCode` once
+// (#97). A section that didn't change gets the same string as before, so
+// `React.memo` can skip it.
 export const generateSectionPreviews = (
   fullCode: string,
   sectionCodes: string[],
@@ -496,10 +428,9 @@ export const generateSectionPreviews = (
 };
 
 export interface SectionPreviewCache {
-  // Recomputes only the sections that actually need it — see below. Call
-  // once per render with the full current section list; each entry needs
-  // a stable `id` (matched against the previous call, not position) since
-  // drag-reordering doesn't change any section's own code.
+  // Previews for `sections`, reusing the last call's preview of any section
+  // whose code didn't change. Call it once per render with every section.
+  // Sections are matched by `id`, which must be stable.
   compute: (
     fullCode: string,
     sections: { id: string; code: string }[],
@@ -507,37 +438,13 @@ export interface SectionPreviewCache {
   ) => string[];
 }
 
-// Stateful counterpart to generateSectionPreviews (#131) — that function
-// already returns character-for-character identical strings for an
-// untouched section (splicing the same container span with the same
-// section code can't produce anything else), which is enough for
-// React.memo's default Object.is comparison to bail on its own, since JS
-// compares string *primitives* by value, not by which computation produced
-// them. What this cache actually skips is redoing the N splices for
-// sections that didn't change, reusing their previous preview string
-// outright instead.
+// `generateSectionPreviews` that remembers its last result and reuses the
+// previews of unchanged sections instead of building them again (#131).
+// The saving is small: re-parsing the edited document costs far more, and
+// happens on every edit regardless (`document.bench.ts`).
 //
-// Measured honestly (document.bench.ts's "one section edited" pair, which
-// — unlike comparing against a same-fullCode-every-call baseline — rebuilds
-// fullCode with the edit first, the same way a real Dnd edit does): the
-// splices this avoids cost low-single-digit microseconds even at 50
-// sections, dwarfed by the several-milliseconds-and-up cost of re-parsing
-// the changed `fullCode` itself, which every edit pays regardless of this
-// cache (parseDocument's own cache only helps for a *repeated* fullCode
-// string, and an edit's fullCode is new by definition). So don't expect
-// this alone to explain #131's originally-cited per-edit cost — most of
-// that appears to actually be the unavoidable re-parse, which is #82's
-// "share one AST across edits instead of re-parsing" territory, not
-// something a preview-level cache can reach. This is still a correct,
-// harmless, always-at-least-as-fast micro-optimization on its own terms,
-// just a smaller win in practice than the splice-count math alone suggests.
-//
-// One instance is meant to live for the lifetime of one document/editor
-// (e.g. `useState(() => createSectionPreviewCache())` in dnd.tsx) — it's
-// deliberately not a plain function so it can hold that document's last
-// result between calls, the same shape as createBoundedCache elsewhere in
-// this module, just keyed by section id instead of a bounded LRU since
-// there's normally only a few dozen sections open at once.
+// Create one per editor and keep it for the editor's lifetime, as
+// `useSectionDocument` does.
 export const createSectionPreviewCache = (): SectionPreviewCache => {
   let containerPrefix: string | null = null;
   let containerSuffix: string | null = null;
@@ -558,11 +465,9 @@ export const createSectionPreviewCache = (): SectionPreviewCache => {
       return sections.map(() => fullCode);
     }
 
-    // Everything outside the container's inner span is what the splice
-    // leaves untouched — if it reads the same as last time (regardless of
-    // where `span` itself now falls in `fullCode`, which shifts whenever
-    // any section's length changes), an unchanged section's spliced
-    // output is guaranteed identical too, so it's safe to skip.
+    // When the source around the container's children is the same as last
+    // time, an unchanged section's preview is the same too, wherever the
+    // span now starts.
     const prefix = fullCode.slice(0, span.start);
     const suffix = fullCode.slice(span.end);
     const containerUnchanged =

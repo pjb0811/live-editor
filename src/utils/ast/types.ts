@@ -27,10 +27,9 @@ export interface BindingOption {
   value: string;
 }
 
-// Data kinds only — what a value *is*, never how to draw it. How a field is
-// rendered belongs to `BindingItem.widget`, which the library passes through
-// without interpreting: choosing a control is the consumer's job, so the
-// built-in panel only ever renders the default control for each kind.
+// The kinds of data a binding can hold: what a value is, not how to draw
+// it. How to draw it is `widget`, which the library passes through without
+// reading; the built-in panel renders the default control for each kind.
 export const BINDING_TYPES = [
   'array',
   'object',
@@ -46,44 +45,31 @@ export const BINDING_TYPES = [
 
 export type BindingType = (typeof BINDING_TYPES)[number];
 
-// Presentation config for one field, as opposed to `BindingItem.type`'s data
-// kind. Authored either as the bare control name (`widget: 'slider'`) or as
-// this object; `parseBinding` normalizes the string form into `{ type }`, so
-// consumers only ever see one shape.
+// How to draw one field, as opposed to `type`, which is what its data is.
+// Written as a control name (`widget: 'slider'`) or as this object; parsing
+// turns the string into `{ type }`, so consumers see one shape.
 //
-// Value *constraints* deliberately stay on the item, not here: `min`/`max`/
-// `pattern`/`required` are enforced by `validateBindingValue` whether or not
-// a widget was declared, so a plain number input still range-checks. Putting
-// them here too would make the range unexpressible without a widget, and
-// give a slider a second, conflicting source for the same bounds.
+// Constraints (`min`, `max`, `pattern`, `required`) stay on the binding, not
+// here, so `validateBindingValue` checks them with or without a widget.
 export interface BindingWidget {
-  // The control name. Open string, not an enum: the library implements no
-  // controls of its own, so every value (e.g. `'slider'`) is a custom
-  // panel's to switch on. The built-in panel ignores it.
+  // The control name, any string (such as `'slider'`). A custom panel
+  // switches on it; the built-in panel ignores it.
   type: string;
-  // Presentation hints general enough to be worth typing. Both were already
-  // authorable before this object existed — they just landed in the untyped
-  // `meta` bag, where nothing checked their names or value types.
+  // Common presentation hints, typed.
   step?: number;
   unit?: string;
-  // Any further widget-specific config the consumer declared. Open for the
-  // same reason `type` is: a custom control's options are not this library's
-  // to enumerate. See #234 on keeping unknown keys rather than stripping.
+  // Any other config for the control, kept as written (#234).
   [key: string]: unknown;
 }
 
-// The fields a binding declares about itself, shared by a top-level
-// `BindingItem` and a nested render-map leaf so the two can't drift apart:
-// a leaf is a field in the panel like any other and can say everything a
-// flat field can. See #383.
+// The fields a binding declares about itself. Shared by `BindingItem` and
+// render-map leaves, so a nested field can say everything a top-level one
+// can (#383).
 export interface BindingFieldSpec {
-  // Data kind — what the value *is*. Closed, since the library's own
-  // validation/coercion (validateBindingValue, parseValue) has to be able
-  // to switch on it exhaustively.
+  // What the value is. A closed set, because validation and parsing switch
+  // on it.
   type?: BindingType;
-  // Presentation — how to *render* it, plus that control's own config. Always
-  // the object form here even when authored as a bare string; see
-  // BindingWidget.
+  // How to draw it, always in object form. See `BindingWidget`.
   widget?: BindingWidget;
   options?: BindingOption[];
   render?: BindingRenderMap;
@@ -91,20 +77,16 @@ export interface BindingFieldSpec {
   max?: number;
   pattern?: string;
   required?: boolean;
-  // Consumer-defined keys that aren't one of the fields above — namespaced
-  // here rather than spread onto the item itself so they can't collide with
-  // a future first-class field. Per-widget config belongs in `widget`, not
-  // here; this is for metadata about the field as a whole.
-  // Undefined when nothing extra was authored, not an empty object. See
-  // #234: `parseBinding` used to silently strip these.
+  // The app's own keys, anything not listed above, such as `group` or `tab`.
+  // Kept apart so they can't collide with a field added later. Config for
+  // the control goes in `widget` instead. `undefined` when there are none
+  // (#234).
   meta?: Record<string, unknown>;
 }
 
-// A render-map entry is a leaf when it declares `type` — even one that didn't
-// survive sanitization, so an unrecognized leaf type degrades to untyped
-// instead of dropping the entry (see sanitizeRenderMap in binding.ts and
-// #234). `label`/`property` are optional here, unlike on BindingItem: both
-// fall back to the entry's key.
+// A render-map entry is a leaf when it declares `type`, even an unknown
+// one, which then shows as an untyped field (#234). `label` and `property`
+// default to the entry's key.
 export interface BindingRenderLeaf extends BindingFieldSpec {
   label?: string;
   property?: string;

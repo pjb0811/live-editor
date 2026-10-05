@@ -5,14 +5,9 @@ import * as t from '@babel/types';
 import { REGEX } from '../../constants';
 import type { Attribute } from './types';
 
-// Same @babel/* CJS/ESM interop issue as document.ts's traverse import:
-// @babel/generator's CJS build re-exports itself as `{ default: generate,
-// generate, CodeGenerator }`, and Vite's browser dependency pre-bundling
-// doesn't unwrap that inner `.default` again — `generate` resolved to the
-// whole exports object, not the function. Every generateCode() call threw,
-// which extract.ts's extractAttributes() silently swallows into a `null`
-// attribute value, and update.ts's callers surface as "Failed to parse/
-// update this section" toasts.
+// `generate` as a function. Like `traverse` in `document.ts`, Vite's
+// dependency pre-bundling can hand back `@babel/generator`'s CJS module
+// object in the browser, with the function under `.default`.
 const generate =
   typeof _generate === 'function'
     ? _generate

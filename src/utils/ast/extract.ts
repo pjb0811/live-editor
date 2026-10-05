@@ -61,10 +61,9 @@ const extractCache = createBoundedCache<string, DataAttrNode[]>(
   CONFIG.CACHE_LIMIT,
 );
 
-// The same source extracts differently under other binding sources, since
-// bindings decide how children are read, so each combination of registry and
-// key map keeps a cache of its own (#509, #513). An absent map is keyed by
-// `NO_MAP`.
+// One cache per combination of `bindings` and `bindingKeys`, since they
+// change what the same source extracts to (#509, #513). An absent map is
+// keyed by `NO_MAP`.
 const NO_MAP = {};
 let optionExtractCaches = new WeakMap<
   object,
@@ -381,19 +380,9 @@ interface NodeBindingInfo {
   rawChildren: string | undefined;
 }
 
-// Shared prefix for the top-level traverse() visitor below and the manual
-// recursive descent in extractFromNode: read the tag name, attributes, and
-// parsed bindings off one JSXElement. What differs between the two callers
-// is how childrenNodes gets computed and whether the result is pushed at
-// all — traverse() only records elements with data-* attributes, while
-// extractFromNode always records the children it's asked to (see each call
-// site for details).
-// `data-binding` is authored as a JSX object-array expression, so the
-// original `ArrayExpression` node is still on hand here. Return it so
-// `readNodeBindingInfo` can evaluate bindings straight off the AST instead
-// of re-parsing the stringified form. Null when the attribute is absent or
-// written as a plain string literal (bench/tests) — those still go through
-// `parseBinding(string)`.
+// The `data-binding` array expression, so bindings can be read from the AST
+// without printing and parsing it again. `null` when the attribute is
+// missing or a plain string, which goes through `parseBinding` instead.
 const getBindingExpression = (
   opening: t.JSXOpeningElement,
 ): t.ArrayExpression | null => {
@@ -405,8 +394,7 @@ const getBindingExpression = (
       attr.value &&
       t.isJSXExpressionContainer(attr.value)
     ) {
-      // Unwrap `satisfies BindingItem[]`/`as const`/parentheses so the array
-      // is still recognized when authored with an editor type annotation.
+      // Unwrap `satisfies BindingItem[]`, `as const` and parentheses.
       const expression = unwrapExpression(attr.value.expression);
 
       if (t.isArrayExpression(expression)) {
@@ -418,6 +406,8 @@ const getBindingExpression = (
   return null;
 };
 
+// Reads one element's tag name, attributes and bindings. Shared by the
+// top-level visitor in `parseToNodes` and by `extractFromNode`.
 const readNodeBindingInfo = (
   node: t.JSXElement,
   source?: string,
@@ -430,9 +420,9 @@ const readNodeBindingInfo = (
   const bindingAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING);
   const bindingExpr = getBindingExpression(opening);
   const keyAttr = dataAttrs.find(attr => attr.name === DATA_ATTR.BINDING_KEY);
-  // The element's own `data-binding` wins whenever it's there, an empty one
-  // included, which is how a single element opts out. Then the key it names,
-  // then its component's registry entry (#509, #513).
+  // Its own `data-binding` first, even an empty one (how an element opts
+  // out), then its `data-binding-key`, then its component's entry
+  // (#509, #513).
   const bindings = resolveBindings(
     bindingExpr
       ? parseBindingExpression(bindingExpr)
@@ -487,18 +477,9 @@ const parseToNodes = (
 
   const results: DataAttrNode[] = [];
 
-  // babel's traverse() below visits every JSXElement in the tree, top to
-  // bottom, regardless of structure. But some elements are meant to be
-  // recorded as *structural* children of another result — e.g. a node
-  // wrapped by processChildrenBinding()/extractFromNode() into a parent's
-  // `children` array, or an element sitting inside an `items` binding's
-  // array literal (skipped via skipItemsChildren()/markProcessedJSX()) —
-  // not as their own top-level entry in `results`. Without this WeakSet,
-  // traverse() would independently re-visit those same elements once it
-  // reaches them in the tree and add a second, duplicate entry for them.
-  // Each helper below adds a node here the moment it pulls that node out
-  // of the normal top-level flow, and the JSXElement() visitor skips
-  // anything already marked.
+  // Elements already recorded as another result's children, or skipped
+  // inside an `items` array. `traverse()` visits every element, so the
+  // visitor skips these to avoid recording them twice.
   const processedNodes = new WeakSet<t.JSXElement | t.JSXFragment>();
 
   traverse(ast, {
@@ -564,9 +545,9 @@ const parseToNodes = (
   return results;
 };
 
-// `options` gives elements without their own `data-binding` the bindings
-// their `data-binding-key` names in `bindingKeys`, or their component's in
-// `bindings` (#509, #513).
+// The elements of `raw` that carry `data-*` attributes, with their
+// bindings, as `DataAttrNode`s. Cached. `options` supplies bindings for
+// elements without their own `data-binding` (#509, #513).
 export function extract(
   raw: string,
   options: BindingOptions = {},

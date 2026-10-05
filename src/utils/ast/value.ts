@@ -24,12 +24,9 @@ const dedent = (str: string): string => {
     : lines.map(line => line.slice(indent)).join('\n');
 };
 
-// Peel type-only wrappers and parentheses off an expression so the literal
-// underneath can be read. Authored bindings may carry `satisfies BindingItem[]`
-// (or `as const`, a type assertion, ...) for editor type-safety; those are
-// erased at build time and mean nothing to this literal evaluator, so without
-// unwrapping them the value — or the whole binding array — would be silently
-// dropped as "not a literal".
+// Removes type-only wrappers (`satisfies`, `as const`, type assertions) and
+// parentheses, so the literal underneath can be read. Without this, a
+// `data-binding={[...] satisfies BindingItem[]}` would read as no bindings.
 export const unwrapExpression = (node: t.Node): t.Node => {
   let current = node;
 
@@ -46,10 +43,10 @@ export const unwrapExpression = (node: t.Node): t.Node => {
   return current;
 };
 
-// Whether evaluateLiteral() and valueToExpression() can round-trip a value
-// without dropping calls, references, spreads, holes or computed properties.
-// Presentation uses this to disable partial editors and mutation reuses it as
-// the final guard, so both layers share one editable-syntax boundary.
+// Whether `evaluateLiteral()` and `valueToExpression()` can round-trip the
+// value without losing calls, references, spreads, holes or computed keys.
+// The panel uses it to disable editors, and edits use it as the last check,
+// so both agree on what is editable.
 export const isLosslesslyEvaluable = (node: t.Node): boolean => {
   const value = unwrapExpression(node);
 
@@ -105,10 +102,9 @@ export const canLosslesslyEvaluateSource = (source: string): boolean => {
   }
 };
 
-// AST 노드를 코드 실행(new Function/eval) 없이 순수 리터럴 구조만 재귀적으로
-// 실제 JS 값으로 변환한다. 함수 호출, 변수 참조 등 리터럴이 아닌 표현식은
-// 평가하지 않고 undefined를 반환한다 — 사용자 코드는 iframe 안에서만 실행한다는
-// 이 저장소의 원칙(AGENTS.md)을 이 패널 UI(메인 문서에서 렌더링됨)에서도 지키기 위함.
+// Reads a literal's value from its AST without running any code. Calls,
+// references and other non-literal expressions give `undefined`, so reading
+// a field never executes the document's code.
 export const evaluateLiteral = (rawNode: t.Node): unknown => {
   const node = unwrapExpression(rawNode);
 
@@ -228,7 +224,7 @@ export const parseValue = (value: unknown): unknown => {
         return evaluateLiteral(ast);
       }
     } catch {
-      /* ignore */
+      /* Not an object or array literal: keep the string. */
     }
 
     return value;
@@ -252,23 +248,11 @@ const isEditablePrimitive = (value: unknown): value is EditablePrimitive =>
   typeof value === 'number' ||
   typeof value === 'boolean';
 
-// A binding's data-binding declaration is one way to know a value is
-// structured (`type: 'object'` + a `render` map — see #225), but most
-// existing content declares neither; it's just an object/array-shaped
-// string because that's what the bound prop actually is (e.g. `style`).
-// This recovers editable leaves from the *parsed value's own shape*
-// instead, so it works on content authored without a custom panel in mind
-// — including an array of objects whose own members embed further JSX
-// (Live Editor's shipped Stats/FAQ sections both look like this: an
-// `items` array of `{ key, children }`, where `children` is itself a
-// nested, separately data-bound element). A JSX-bearing string is never
-// parsed further here — `parseValue` already reduced it to plain text
-// (see `evaluateLiteral`'s JSXElement case), and this function only ever
-// recurses into genuine object/array structure, treating every string,
-// number, and boolean as a leaf regardless of what the string contains.
-// Depth is capped defensively (pathological/deeply-recursive input
-// shouldn't be able to blow the stack); anything past that depth is
-// treated as a leaf-less dead end and simply omitted, not thrown.
+// Lists the editable leaves of an object or array value, with their paths.
+// It follows the value's own shape, so it works without a `render` map
+// (#225), as for `style` or an `items` array of `{ key, children }`. Strings,
+// numbers and booleans are leaves, whatever a string contains. Deeply nested
+// values stop at a fixed depth, and anything deeper is left out.
 export const flattenEditableValue = (
   value: string,
 ): EditableValueEntry[] | null => {
@@ -305,9 +289,8 @@ export const flattenEditableValue = (
       );
     }
 
-    // null/undefined/function/symbol values have no editable leaf form —
-    // silently omitted rather than represented as, say, an empty string,
-    // which would misrepresent what's actually stored there.
+    // `null`, `undefined`, functions and symbols have no editable form and
+    // are left out.
   };
 
   walk(parsed, [], 0);
@@ -438,17 +421,12 @@ const leafSource = (
   return quoteString(next, quote);
 };
 
-// Companion to `flattenEditableValue`: replaces the single leaf at `path`
-// and returns `value` with only that leaf's source text changed, so the
-// rest of the value keeps its formatting, comments, JSX, functions and
-// references. The result is a plain string for `PanelBinding.onChange`,
-// like any other committed value. It used to re-serialize the whole value
-// as JSON, which turned JSX into text and dropped functions and comments
-// on every edit (#427). Fails safe: a path `flattenEditableValue` wouldn't
-// report (a missing key, an out-of-range index, a step through something
-// that isn't an object or array, a non-literal leaf) or a `value` that
-// doesn't parse returns `value` unchanged rather than writing to the wrong
-// place. It never adds a key or grows an array.
+// Replaces the leaf at `path` (as `flattenEditableValue` reports it) and
+// returns `value` with only that leaf's source changed, so formatting,
+// comments, JSX, functions and references stay (#427). The result is a
+// string for `PanelBinding.onChange`. A path it can't find, or a `value`
+// that doesn't parse, returns `value` unchanged. It never adds a key or
+// grows an array.
 export const setEditableValue = (
   value: string,
   path: EditablePathSegment[],
@@ -561,15 +539,10 @@ export const createNodeFromValue = (
   }
 };
 
-// Faithfully rebuilds a JS value into an AST expression node — the inverse
-// of `evaluateLiteral`, and the single serialization point #238 moves the
-// panel's value contract onto. Because the caller already knows what the
-// value *is* (a real number/boolean/object/array, not a string that has to
-// be re-guessed), there is no string-vs-expression heuristic here: each JS
-// type maps to exactly one literal kind. Values with no literal form
-// (`undefined`, functions, symbols) are dropped — an object property whose
-// value is `undefined` is omitted rather than emitted as `undefined`,
-// mirroring `flattenEditableValue`, which also treats them as absent.
+// Builds an expression for a JS value: the inverse of `evaluateLiteral`
+// (#238). Each JS type maps to one kind of literal. Values with no literal
+// form (`undefined`, functions, symbols) give `null`. Inside an object the
+// property is left out; inside an array the item becomes `null`.
 export const valueToExpression = (value: unknown): t.Expression | null => {
   if (typeof value === 'string') {
     return t.stringLiteral(value);
@@ -641,10 +614,8 @@ export const extractObjectProperties = (
     if (t.isObjectProperty(prop) && t.isIdentifier(prop.key)) {
       const key = prop.key.name;
 
-      // `children` and any other JSX-valued property (e.g. `label`) are
-      // handled separately, via `items.tsx`'s `jsxBindings`/fallback
-      // extraction, which parses the JSX subtree properly instead of
-      // stringifying it into a raw-source textarea. See #298.
+      // `children` and other JSX-valued properties (such as `label`) are
+      // edited through `useDndItems`'s nested elements instead (#298).
       if (
         key === 'children' ||
         t.isJSXElement(prop.value) ||
