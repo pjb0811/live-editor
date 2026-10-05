@@ -81,8 +81,7 @@ export const useDndKeyboard = ({
   // Space picks a focused section up, the arrow keys move it, and Space or
   // Enter drops it (Escape cancels). Enter doesn't pick up, unlike dnd-kit's
   // default: a focused section is a `role="button"`, and Enter selects it
-  // like a click does (see Sortable). Before, sections could be reached with
-  // Tab but neither selected nor moved from the keyboard.
+  // like a click (see `Sortable`).
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {

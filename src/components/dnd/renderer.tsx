@@ -11,9 +11,8 @@ import SectionFallback from './section-fallback';
 
 interface Props {
   preview: string;
-  // The section's identity for `renderSectionFallback`, as primitives rather
-  // than the `Section` object: sections are re-extracted on every document
-  // change, so an object prop would defeat the memo below.
+  // The section for `renderSectionFallback`, as strings: a `Section` object
+  // is new on every document change and would break the memo below.
   sectionId?: string;
   sectionName?: string;
   sectionCode?: string;
@@ -26,11 +25,9 @@ interface Props {
   provider?: (children: React.ReactNode) => React.ReactNode;
 }
 
-// Wrapped in memo() because `preview` is a plain string: for a section that
-// didn't change, the parent hands back the same content it computed last
-// render (see generateSections()/dnd.tsx), so a shallow prop comparison
-// lets React skip both the recompile below and reconciling this section's
-// iframe tree at all — see #97.
+// One canvas section: compiles its preview and renders it in its frame.
+// Memoized: an unchanged section gets the same `preview` string, so React
+// skips it entirely (#97).
 const Renderer = ({
   preview,
   sectionId = '',
@@ -43,18 +40,14 @@ const Renderer = ({
   dynamicTailwind = false,
   provider,
 }: Props) => {
-  // Empty code compiles to nothing, so a forced section never reaches the
-  // compiler or runs any of its top-level code.
+  // A forced section compiles empty code, so none of its code runs.
   const module = useCompiledModule(forceFallback ? '' : preview, modules);
   const section = { id: sectionId, name: sectionName, code: sectionCode };
   const messages = useLiveMessages();
 
-  // In `shadow` mode there's no separate document to load a stylesheet into
-  // — the shadow root only gets whatever CSS naturally inherits across the
-  // boundary (see `frame/shadow.tsx`), not utility classes. So this section's
-  // own Tailwind classes are compiled and portalled in as a `<style>` tag
-  // alongside the rendered content, which crosses the shadow boundary fine
-  // since it lives inside the same portal target.
+  // The section's Tailwind classes, compiled into a `<style>` rendered next
+  // to its content. A shadow root has no stylesheet of its own, and only
+  // inherited CSS crosses into it (`frame/shadow.tsx`).
   const { ref: wrapperRef, css: dynamicCSS } = useDynamicTailwind(
     preview,
     dynamicTailwind && !forceFallback,
@@ -64,10 +57,8 @@ const Renderer = ({
     return provider ? provider(component) : component;
   };
 
-  // Rendered in place of the frame rather than inside it: there is nothing to
-  // portal into an iframe for code that never produced a component, and a
-  // silent blank slot (the previous behaviour) gives the author no clue why
-  // their section vanished. Mirrors preview/client.tsx's compile-error branch.
+  // A section with no component shows its fallback in place of the frame,
+  // as `Live.Preview` does for a compile error.
   if (forceFallback) {
     return (
       <SectionFallback
@@ -108,29 +99,15 @@ const Renderer = ({
           data-editor-mode
         >
           {/*
-            Without this, a render error in any single canvas section
-            propagated past Dnd and unmounted the whole editor — palette,
-            canvas and panel — while the same error in <Preview> was caught
-            and displayed (see #246). Kept inside the frame so the failure is
-            reported in the slot the broken section occupies, and so a
-            transient error while the author is mid-edit doesn't tear down and
-            rebuild the iframe (script loading, style sync, resize observers)
-            on every keystroke. `Error` is inline-styled, so it stays readable
-            even in a frame that never received the host's CSS.
+            Keeps a render error in this section, so it can't unmount the
+            editor (#246). Inside the frame, so a passing error while typing
+            doesn't rebuild the iframe. The next edit gives a new `preview`,
+            which resets it.
 
-            resetKeys={[preview]} makes the fix itself the recovery signal: the
-            next edit to this section produces a new preview string, which
-            clears the caught error without needing a remount.
-
-            No `Error.Guard` here, unlike client.tsx: it listens on `window`,
-            not on its subtree, so one per section would mean N global
-            listeners all tripping on any single error — every section would
-            show a runtime error regardless of which one actually threw.
-
-            Errors also stay local rather than going to ErrorContext, whose
-            `error` is a single string shared by the whole tree: N sections
-            reporting into it would overwrite each other with no way to tell
-            which section failed.
+            No `Error.Guard`, unlike `Live.Preview`: it listens on `window`,
+            so one per section would make every section show any section's
+            error. Errors also don't go to `ErrorContext`, which holds one
+            string for the whole tree.
           */}
           <ErrorBoundary
             resetKeys={[preview]}
@@ -164,12 +141,10 @@ const Renderer = ({
   );
 };
 
-// `frame` is configuration — strings, flags, string arrays, a style object —
-// and callers usually write it inline (`frame={{ mode: 'iframe' }}`), so it is
-// a new object on every render. Compared by identity, that alone re-rendered
-// every section on every edit (#348). Compare it by value instead: arrays by
-// their entries, objects (`style`) shallowly, anything else — a callback
-// included — by identity, so a changed `onLoaded` still re-renders.
+// Compares `frame` by value, since it's usually written inline and is a new
+// object every render (#348): arrays by their entries, objects (`style`)
+// shallowly, anything else by identity, so a new `onLoaded` still
+// re-renders.
 const sameValue = (a: unknown, b: unknown): boolean => {
   if (Object.is(a, b)) {
     return true;

@@ -15,11 +15,9 @@ export interface DraggableItemProps {
   children: (drag: DraggableItemDragState) => React.ReactNode;
 }
 
-// Owns the dnd-kit wiring (useDraggable + the `type: 'new-item'` data shape
-// Dnd's onDragEnd expects) so a custom palette only has to decide how
-// an item *looks*, not how dragging itself works. Exported as
-// Dnd.DraggableItem for that purpose; also used internally for the default
-// palette rendering, so both paths share the exact same drag wiring.
+// Makes a palette item draggable, with the `type: 'new-item'` data the
+// canvas expects on drop. `Live.Dnd.DraggableItem`; the built-in palette
+// uses it too.
 const DraggableItem = ({ item, children }: DraggableItemProps) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: item.id,
@@ -33,19 +31,14 @@ const DraggableItem = ({ item, children }: DraggableItemProps) => {
   });
 };
 
-// The built-in card look, shared by the default (non-custom) palette
-// rendering and the drag overlay's floating preview — both rendered a plain
-// `<Draggable>` before this became a children-render-prop component.
+// The built-in palette card, used by the palette and the drag overlay.
 export interface DefaultDraggableItemProps {
   item: Section;
   onAdd?: (item: Section) => void;
-  // Double-click is the desktop convenience shortcut alongside drag — a
-  // single click there would fire on every aborted/failed drag attempt.
-  // On mobile there's nowhere to drag *to* (the palette lives in a Drawer
-  // stacked over the canvas), so a tap can't be a failed drag, and
-  // double-tap-to-dblclick synthesis from touch is unreliable anyway
-  // (iOS Safari inconsistently fires it, and it can compete with the
-  // browser's native double-tap-to-zoom gesture). Tapping just adds there.
+  // Add on a single tap instead of a double-click. On desktop a click could
+  // be a drag that didn't start, so a double-click adds. On mobile there's
+  // nothing to drag onto behind the Drawer, and a double-tap doesn't reliably
+  // fire `dblclick`, so a tap adds.
   tapToAdd?: boolean;
 }
 

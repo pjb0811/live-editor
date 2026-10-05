@@ -52,34 +52,26 @@ import type {
 } from './section-fallback-context';
 
 type DndComponent = typeof DndImpl & {
-  // Owns the dnd-kit wiring for a palette item and hands back `ref` /
-  // `dragProps` / `isDragging`, so a custom palette decides how an item
-  // *looks* without reimplementing how dragging works.
+  // Makes a palette item draggable and hands back `ref`, `dragProps` and
+  // `isDragging`, so a custom palette only decides how the item looks.
   DraggableItem: typeof DraggableItem;
-  // The built-in control for one binding, exported so a custom panel can mix
-  // its own controls with the built-in one per binding rather than choosing
-  // all-or-nothing. Takes a `PanelBinding` straight out of `bindings` plus
-  // `onNodeChange` — both `useDndPanel()` fields, so nothing internal is
-  // needed to drive it. Most useful for `items`/`children` bindings, whose
-  // editors find nested data-bound elements a consumer can't reach through
-  // `bindings`. Renders the control only — supply your own label.
+  // The built-in control for one binding, so a custom panel can use it for
+  // some bindings and its own controls for others. Takes a `PanelBinding`
+  // and `onNodeChange`, both from `useDndPanel()`. Most useful for `items`
+  // and `children`, whose editors reach nested elements that `bindings`
+  // doesn't list. Renders the control only, without a label.
   Field: typeof Field;
-  // The three built-in regions, each in the container it needs. Pass them as
-  // `children` of `Live.Dnd` in any arrangement to own the layout, mixing in
-  // your own components where you want to replace one. `Canvas` is the one
-  // that can't be replaced — the droppable, the sortable list and each
-  // section's compiled iframe are Dnd's own machinery — so render it exactly
-  // once wherever the canvas belongs.
+  // The three built-in regions, each in the container it needs. Place them
+  // in `Live.Dnd`'s `children` in any arrangement, with your own components
+  // in place of any of them except `Canvas`, which can't be replaced. Render
+  // `Canvas` exactly once.
   Palette: typeof Palette;
   Canvas: typeof Canvas;
   Panel: typeof Panel;
-  // The built-in arrangement: the 3-pane desktop Splitter, the stacked
-  // mobile canvas, and the mobile FAB/Drawers. What `Live.Dnd` renders when
-  // given no children, exported so children can wrap it (a toolbar above it,
-  // say) or replace one region through its `palette`/`panel` slots without
-  // rebuilding the rest. Also the only way to reach the built-in Splitter
-  // layout without importing `@jbpark/ui-kit` directly, which a consumer may
-  // not have as a direct dependency.
+  // The built-in arrangement, which `Live.Dnd` renders without children: a
+  // three-pane Splitter on desktop, and on mobile the canvas with a button
+  // and Drawers. Use it to wrap the editor (a toolbar above it, say) or to
+  // replace one region through its `palette` or `panel` slot.
   Layout: typeof Layout;
 };
 
@@ -94,46 +86,41 @@ Dnd.Layout = Layout;
 
 export { DraggableItem, Field };
 export { Palette, Canvas, Panel, Layout };
-// The data behind each region, so a component placed in `Live.Dnd`'s children
-// can replace one without losing what drives it: the palette's items and
-// `onAdd`, the panel's selected section/bindings/commit callbacks, and the
-// layout state the built-in mobile chrome runs on (`isMobile`, `selectedId` /
-// `clearSelection`, the palette Drawer's open state) — needed because
-// supplying children replaces that chrome along with the Splitter.
+// The data behind each region, for components in `Live.Dnd`'s children:
+// the palette's items and `onAdd`, the panel's section, bindings and
+// commits, and the layout state the mobile Drawers run on, which a custom
+// layout replaces.
 export { useDndPalette, useDndPanel, useDndLayout };
 // The element picker: turn it on, and clicking an element in the canvas
 // preview selects its section and reports the element's `data-id` (#432).
 export { useDndInspector };
-// The array-editing engine behind the built-in Items panel, exposed for a
-// consumer who wants their own markup rather than the built-in control
-// (`Field` covers the latter). Everything it returns is `PanelBinding`s, so
-// the two compose: render the hook's own layout and hand individual
-// bindings to `Field` where the built-in control is good enough.
+// What the built-in Children editor runs on, for your own markup. It works
+// on the children as extracted nodes; read their fields with the two
+// functions below.
 export { useDndChildren };
 export type { DndChildren, DndChildrenOptions };
+// What the built-in Items editor runs on, for your own markup. Its items'
+// fields are `PanelBinding`s, so `Field` can render any of them.
 export { useDndItems };
-// The two steps behind `useDndPanel().bindings`, for an element the panel
-// doesn't hand over itself — most often a child's fields under
-// `useDndChildren`, which returns raw `DataAttrNode`s. `resolvePanelBindings`
-// reads a node into bindings without a commit; `withPanelCommit` attaches
-// `onNodeChange`. Together they produce `PanelBinding`s ready for `Field`.
+// The two steps behind `useDndPanel().bindings`, for elements the panel
+// doesn't list, such as the children `useDndChildren` returns.
+// `resolvePanelBindings` reads the bindings; `withPanelCommit` adds
+// `onNodeChange`. The result is `PanelBinding`s for `Field`.
 export { resolvePanelBindings, withPanelCommit } from './panel-binding';
 export type {
   PanelBindingData,
   PanelBindingElement,
   PanelBindingSource,
 } from './panel-binding';
-// The rule `Field` uses to pick its built-in control, so a custom panel that
-// routes some bindings to `Field` or a hook (most often the structural
-// `items`/`children` ones) asks the library instead of copying the checks.
+// How `Field` picks its built-in control, for a custom panel that sends
+// some bindings (often `items` and `children`) to `Field` or a hook.
 export { getFieldKind, isStructuralFieldKind } from './panel/field-kind';
 export type { FieldKind, FieldKindBinding } from './panel/field-kind';
 
-// The names these hooks and types shipped under before they joined the
-// `useDnd*` family. Kept as aliases so existing imports keep compiling; drop
-// them in the next major. Each maps mechanically: `useItemsEditor` →
-// `useDndItems`, `useChildrenEditor` → `useDndChildren`, `ItemsEditor*` →
-// `DndItems*`, `ChildrenEditor*` → `DndChildren*`.
+// The earlier names of these hooks and types, kept as deprecated aliases
+// until the next major: `useItemsEditor` → `useDndItems`,
+// `useChildrenEditor` → `useDndChildren`, `ItemsEditor*` → `DndItems*`,
+// `ChildrenEditor*` → `DndChildren*`.
 /** @deprecated Renamed to `useDndItems`. */
 export const useItemsEditor = useDndItems;
 /** @deprecated Renamed to `useDndChildren`. */
