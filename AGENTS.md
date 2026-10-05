@@ -130,6 +130,10 @@ live-editor/
 
 TypeScript와 Vite/Vitest 설정에 같은 별칭을 사용합니다.
 
+### 주석
+
+- 주석은 지금 코드를 처음 읽는 사람을 위해 씁니다. 무엇을 하는지 먼저 쓰고, 이유는 지켜야 할 제약일 때만 현재형으로 쓰며, 과거 이야기는 이슈 번호(`(#450)`)로 대신합니다. 자세한 규칙과 예시는 `.claude/skills/coding-style/SKILL.md`의 "E. 주석 작성"을 따릅니다.
+
 ### CSS
 
 - **Tailwind CSS 4** + `cn()` 유틸리티 (`clsx` + `tailwind-merge`)
