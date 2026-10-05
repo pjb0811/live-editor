@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.5.0
+
+### Minor Changes
+
+- bd47c70: Add `checkDocument(code, options?)` to `@jbpark/live-editor/utils`. It tells a host whether `Live.Dnd` can edit a document before saving or loading it, with the same reasons `onEditError` reports: `{ ok: true }`, or `{ ok: false, reason: 'parse-error' | 'container-not-found', ... }`.
+
+  Deprecate the internal helpers exported from `./utils` and `./utils/ast`, such as the array-literal editing functions behind `useDndItems`, the binding resolution behind `extract`, and the document layer under `extractSections` and `replaceSections`. They keep working and leave those entries in the next major. The new Utilities page lists each one with what to use instead.
+
+- a6baa08: Update message keys and add new error handling for unknown errors and unhandled rejections, including child panel actions and syntax error details.
+- 0705b01: Translate the editor's own text. `Live` takes a `messages` prop that replaces any of it, group by group, while every other message keeps its English default: the section toolbar, the panel, empty states, edit errors and the toast, screen-reader announcements, the error boxes of `Live.Preview` and `Live.Error`, and validation messages. A `Live` nested in another inherits its messages. `useLiveMessages()` gives a custom palette or panel the same text, `defaultMessages` is the English set, and `validateBindingValue(binding, value, { messages })` takes translated validation messages. The Items and Children editors' move and delete buttons now have accessible names. A complete Korean set is on the new Localization docs page.
+
+### Patch Changes
+
+- 9df5d76: `bindings` and `bindingKeys` entries typed with `BindingRegistry` or `BindingKeyMap` now accept keys of your own, such as `group`, `tab` or `description`. They arrive in `binding.meta`, as they already did at runtime and from an inline `data-binding`, but the types rejected them. One entry's type is exported as `BindingSchema`.
+- ec56235: Drop the `pnpm` field from the published `engines`. It described how to develop this repository, not what installing the package needs, and made pnpm with `engine-strict` refuse to install the package on pnpm 9 or older. `engines.node` stays `>=20`, and CI now checks that the entries meant for Node load on Node 20.
+
 ## 4.4.0
 
 ### Minor Changes
