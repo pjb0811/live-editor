@@ -12,7 +12,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_TEMPLATE } from '~/constants';
 
 import { PreviewContext } from '../context/states';
-import Dnd, { type DndPanel, type PanelBinding } from './dnd';
+import Dnd from './dnd';
 import {
   type DndEditError,
   DndEditOptionsContext,
@@ -20,9 +20,11 @@ import {
 } from './edit-options';
 import { Canvas } from './layout';
 import { useDndPanel } from './layout-context';
+import type { PanelBinding } from './panel-binding';
 import Field from './panel/field';
 import Items from './panel/items';
 import { useDndItems } from './panel/use-dnd-items';
+import type { DndPanel } from './types';
 
 vi.mock('./renderer', () => ({
   default: () => <div data-testid="renderer" />,

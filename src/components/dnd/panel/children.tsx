@@ -7,7 +7,7 @@ import { useLiveMessages } from '~/components/context/messages';
 import { findEditableChildren } from '~/utils/ast/binding';
 import { type DataAttrNode } from '~/utils/ast/types';
 
-import type { PanelNodeChange } from '../dnd';
+import type { PanelNodeChange } from '../panel-binding';
 import BulkActionsBar from './bulk-actions-bar';
 import Node from './node';
 import { useDndChildren } from './use-dnd-children';

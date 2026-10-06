@@ -9,7 +9,7 @@ import type {
 } from '@uiw/react-codemirror';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { PanelBinding } from '../dnd';
+import type { PanelBinding } from '../panel-binding';
 import Field from './field';
 
 interface CoreEditorTestProps {

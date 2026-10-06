@@ -1,11 +1,4 @@
-import DndImpl, {
-  type DndPalette,
-  type DndPanel,
-  type PanelBinding,
-  type PanelNodeChange,
-  type PanelNodesChange,
-  type Props,
-} from './dnd';
+import DndImpl from './dnd';
 import DraggableItem, {
   type DraggableItemDragState,
   type DraggableItemProps,
@@ -30,6 +23,11 @@ import {
   useDndPalette,
   useDndPanel,
 } from './layout-context';
+import type {
+  PanelBinding,
+  PanelNodeChange,
+  PanelNodesChange,
+} from './panel-binding';
 import Field, { type FieldProps } from './panel/field';
 import {
   type DndChildren,
@@ -50,6 +48,7 @@ import type {
   DndRenderSectionFallback,
   DndSectionFallbackArgs,
 } from './section-fallback-context';
+import type { DndPalette, DndPanel, Props } from './types';
 
 type DndComponent = typeof DndImpl & {
   // Makes a palette item draggable and hands back `ref`, `dragProps` and

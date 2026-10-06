@@ -295,6 +295,10 @@ Dnd (dnd.tsx)
 └─ children ?? <Layout />  the built-in Palette / Canvas / Panel arrangement
 ```
 
+- **Public types live apart from the component.** `DndPanel`, `DndPalette`
+  and the props are in `types.ts`; `PanelBinding` and the commit callbacks are
+  in `panel-binding.ts`. Files that need a type import it from there, not
+  from `dnd.tsx`.
 - **Data, not components.** The built-in palette and panel read
   `useDndPalette()` and `useDndPanel()` exactly as a custom one would, so the
   public surface can't fall behind what the built-ins use (#237).
@@ -394,7 +398,7 @@ provider to unmount clears them (`utils/editor-caches.ts`).
 | Change what a section operation does                      | `dnd/use-section-document.ts`                                                                     |
 | Change how panel edits commit                             | `commitChanges` in `dnd/dnd.tsx`                                                                  |
 | Change array or children editing                          | `panel/use-dnd-items.ts` / `use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`            |
-| Expose something to custom panels                         | `DndPanel` in `dnd/dnd.tsx`, then `dnd/index.ts` and the public API snapshot                      |
+| Expose something to custom panels                         | `DndPanel` in `dnd/types.ts`, then `dnd/index.ts` and the public API snapshot                     |
 | Change preview isolation or sizing                        | `components/frame/`                                                                               |
 | Add UI text                                               | `components/context/messages.ts` and the Korean set                                               |
 
@@ -408,9 +412,6 @@ They're candidates for cleanup, not rules to follow.
 
 - **"Item" has four meanings** (see the glossary). Internal names could say
   which one they mean.
-- **`dnd.tsx` is the hub for everything** and also defines public types
-  (`DndPanel`, `DndPalette`) and re-exports others (`PanelBinding`). Files under
-  `panel/` import those types from `../dnd`, the largest component file.
 - **`components/dnd/` is flat.** Components, state hooks, pure helpers and
   contexts sit side by side in one folder.
 - **Large AST files.** `update.ts`, `value.ts` and `extract.ts` each hold more

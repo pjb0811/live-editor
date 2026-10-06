@@ -25,6 +25,7 @@ live-editor/
 │  │  │  ├─ panel/          # 프로퍼티 편집 패널 (children/field/items/node.tsx)
 │  │  │  ├─ layout.tsx      # Palette/Canvas/Panel/Layout 합성 컴포넌트
 │  │  │  ├─ layout-context.ts # 커스텀 레이아웃·팔레트·패널 훅
+│  │  │  ├─ types.ts        # DndPanel·DndPalette·Props 공개 타입 (dnd.tsx와 분리)
 │  │  │  ├─ renderer.tsx    # 선택 요소 JSX 구조 렌더링
 │  │  │  ├─ draggable.tsx   # 드래그 가능한 섹션 아이템
 │  │  │  ├─ droppable.tsx   # 드롭 영역

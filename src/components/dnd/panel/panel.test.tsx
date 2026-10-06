@@ -8,8 +8,8 @@ import {
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { PanelBinding } from '../dnd';
 import { type DndInspector, DndInspectorContext } from '../inspector';
+import type { PanelBinding } from '../panel-binding';
 import Panel from './panel';
 
 const binding = (
