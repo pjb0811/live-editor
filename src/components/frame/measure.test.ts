@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   computeProbeHeight,
-  estimatePositionedElementHeight,
   isAnimationActive,
   isVisuallyHidden,
-  parseTranslateY,
+  positionedElementBottom,
   verticalInsets,
 } from './measure';
 
@@ -117,58 +116,28 @@ describe('isAnimationActive (#374)', () => {
   });
 });
 
-describe('parseTranslateY (#132 stage 3)', () => {
-  it('reads the Y component of translate(x, y)', () => {
-    expect(parseTranslateY('translate(10px, 24px)')).toBe(24);
+describe('positionedElementBottom (#565)', () => {
+  it('reads the bottom edge, so `top` and transforms count', () => {
+    expect(positionedElementBottom(250, 550, 1000)).toBe(550);
   });
 
-  it('reads a negative Y offset', () => {
-    expect(parseTranslateY('translate(0px, -12px)')).toBe(-12);
+  it('reaches the bottom for an element pinned there, such as a bottom drawer', () => {
+    expect(positionedElementBottom(500, 1000, 1000)).toBe(1000);
   });
 
-  it('reads translateY(y) alone', () => {
-    expect(parseTranslateY('translateY(40px)')).toBe(40);
+  it('caps the bottom at probeHeight, so one element cannot stretch the preview', () => {
+    expect(positionedElementBottom(500, 2500, 800)).toBe(800);
   });
 
-  it('reads the ty component of matrix(a, b, c, d, tx, ty)', () => {
-    expect(parseTranslateY('matrix(1, 0, 0, 1, 10, 50)')).toBe(50);
+  it('skips an element entirely below the viewport', () => {
+    expect(positionedElementBottom(800, 1200, 800)).toBeNull();
   });
 
-  it('returns 0 for no transform', () => {
-    expect(parseTranslateY('none')).toBe(0);
-    expect(parseTranslateY('')).toBe(0);
+  it('skips an element entirely above the viewport', () => {
+    expect(positionedElementBottom(-300, 0, 800)).toBeNull();
   });
 
-  it('returns 0 for an X-only translate rather than throwing', () => {
-    expect(parseTranslateY('translateX(10px)')).toBe(0);
-  });
-
-  it('returns 0 for an unrecognized transform rather than throwing', () => {
-    expect(parseTranslateY('rotate(45deg)')).toBe(0);
-    expect(parseTranslateY('scale(1.5)')).toBe(0);
-  });
-});
-
-describe('estimatePositionedElementHeight (#132 stage 3)', () => {
-  it('adds the translateY offset to offsetHeight', () => {
-    expect(
-      estimatePositionedElementHeight(100, 'translate(0px, 50px)', 1000),
-    ).toBe(150);
-  });
-
-  it('caps the estimate at probeHeight — a positioned element cannot inflate the document past one viewport', () => {
-    expect(
-      estimatePositionedElementHeight(2000, 'translate(0px, 500px)', 800),
-    ).toBe(800);
-  });
-
-  it('is unaffected by transform when there is none', () => {
-    expect(estimatePositionedElementHeight(300, 'none', 1000)).toBe(300);
-  });
-
-  it('does not cap when the estimate is already under probeHeight', () => {
-    expect(
-      estimatePositionedElementHeight(100, 'translate(0px, 20px)', 1000),
-    ).toBe(120);
+  it('counts an element partly above the viewport by its visible bottom', () => {
+    expect(positionedElementBottom(-100, 200, 800)).toBe(200);
   });
 });

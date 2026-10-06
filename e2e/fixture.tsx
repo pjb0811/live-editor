@@ -269,6 +269,43 @@ export const TransitionFixture = () => (
   </Live>
 );
 
+// #565: overlays placed by `top`, `bottom` or a percentage `height`, which
+// resolve against the iframe's viewport. A bottom sheet half the viewport
+// tall, a dialog centred with `top: 50%` and `translateY(-50%)`, and a sheet
+// moved below the viewport, as a closed drawer is. Each section also has
+// 40px of flow content.
+const positionedOverlay = (style: string) =>
+  `<div style={{ position: 'fixed', left: 0, right: 0, ${style}, background: 'salmon' }} />`;
+
+const positionedCode = `const App = () => (
+  <main id="app-container">
+    <section data-id="s-sheet" data-name="sheet">
+      ${flowBlock(40)}
+      ${positionedOverlay("bottom: 0, height: '50%'")}
+    </section>
+    <section data-id="s-dialog" data-name="dialog">
+      ${flowBlock(40)}
+      ${positionedOverlay("top: '50%', transform: 'translateY(-50%)', height: 300")}
+    </section>
+    <section data-id="s-offscreen" data-name="offscreen">
+      ${flowBlock(40)}
+      ${positionedOverlay("bottom: 0, height: '50%', transform: 'translateY(100%)'")}
+    </section>
+  </main>
+);
+
+export default App;`;
+
+export const PositionedFixture = () => (
+  <Live>
+    <div style={{ height: 900 }}>
+      <Live.Dnd value={positionedCode} frame={{ mode: 'iframe' }}>
+        <Live.Dnd.Canvas />
+      </Live.Dnd>
+    </div>
+  </Live>
+);
+
 // A healthy section beside one that throws while rendering, in either frame
 // mode. The host drives two things a real frame has to get right: fixing the
 // broken section's code (recovery without tearing its frame down), and
@@ -440,6 +477,7 @@ const fixtures = {
   surfaces: <SurfaceFixture />,
   autoheight: <AutoHeightFixture />,
   transitions: <TransitionFixture />,
+  positioned: <PositionedFixture />,
   frames: <FramesFixture />,
   reorder: <ReorderFixture />,
   history: <HistoryFixture />,
