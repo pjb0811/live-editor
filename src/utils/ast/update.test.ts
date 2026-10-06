@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { PALETTE_SECTIONS } from '~/constants';
 
 import { getCurrentValue } from './binding';
+import { setEditableValue } from './editable-value';
 import { extract } from './extract';
 import { appendArrayItem, parseItems } from './items';
 import type { DataAttrNode } from './types';
 import { bulkUpdate, update, updateAll } from './update';
-import { setEditableValue } from './value';
 
 const CODE = `
 <div data-id="a" data-binding="[{label:'Text',property:'innerText'}]">old text</div>

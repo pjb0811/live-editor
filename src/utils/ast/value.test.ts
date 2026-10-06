@@ -2,18 +2,19 @@ import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 import { describe, expect, it, vi } from 'vitest';
 
+import { flattenEditableValue, setEditableValue } from './editable-value';
 import { generateCode } from './helpers';
+import {
+  extractNodeValue,
+  extractObjectProperties,
+  parseArrayExpression,
+  parseValue,
+} from './value';
 import {
   arrayExpressionToCode,
   createNodeFromValue,
-  extractNodeValue,
-  extractObjectProperties,
-  flattenEditableValue,
-  parseArrayExpression,
-  parseValue,
-  setEditableValue,
   valueToExpression,
-} from './value';
+} from './value-expression';
 
 describe('parseValue', () => {
   it('parses integer and float strings as numbers', () => {

@@ -5,11 +5,8 @@ import { STRING_VALUED_TYPES } from './binding';
 import { generateCode } from './helpers';
 import type { SourceEdit } from './patch';
 import type { BindingType } from './types';
-import {
-  isLosslesslyEvaluable,
-  unwrapExpression,
-  valueToExpression,
-} from './value';
+import { isLosslesslyEvaluable, unwrapExpression } from './value';
+import { valueToExpression } from './value-expression';
 
 // The source editors behind `update`: each turns one property edit on one
 // element into source spans, and never touches the tree.
