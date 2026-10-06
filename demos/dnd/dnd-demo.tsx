@@ -10,13 +10,13 @@ import { useState } from 'react';
 // path. Context + Dnd is all the drag-and-drop canvas needs.
 import Context from '~/components/context';
 import Dnd from '~/components/dnd';
-import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/constants';
+import { DEFAULT_TEMPLATE, PALETTE_SECTIONS } from '~/constants';
 import { SECTION_ROOT_EXAMPLE } from '~/pages/shared/section-root-example';
 
 // The default palette plus a Banner whose own `<section>` carries a
 // `data-binding`, so its background and padding are editable from the panel
 // (see "Binding the section itself" in the Data Binding guide).
-const ITEMS = [...DRAGGABLE_ITEMS, SECTION_ROOT_EXAMPLE];
+const ITEMS = [...PALETTE_SECTIONS, SECTION_ROOT_EXAMPLE];
 
 // The interactive Drag & Drop demo embedded in the docs' DnD page. Mirrors the
 // app's own `pages/docs/dnd` (same props, same starting template) so the

@@ -2,7 +2,7 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/constants';
+import { DEFAULT_TEMPLATE, PALETTE_SECTIONS } from '~/constants';
 
 import { PreviewContext } from '../context/states';
 import Dnd from './dnd';
@@ -39,7 +39,7 @@ afterEach(() => {
   withViewportWidth(0);
 });
 
-const stats = DRAGGABLE_ITEMS.find(item => item.id === 'stats')!;
+const stats = PALETTE_SECTIONS.find(item => item.id === 'stats')!;
 
 const document_ = DEFAULT_TEMPLATE.replace(
   '<main id="app-container"></main>',
@@ -59,7 +59,7 @@ describe('the built-in layout', () => {
 
     const { container } = renderDnd();
 
-    // Palette (a draggable per DRAGGABLE_ITEMS entry), canvas, and the
+    // Palette (a draggable per PALETTE_SECTIONS entry), canvas, and the
     // property panel's unselected state — one assertion per pane.
     expect(container.textContent).toContain(stats.name);
     expect(container.querySelector('[data-frame-container]')).not.toBeNull();
@@ -125,7 +125,7 @@ describe("the built-in layout's slots", () => {
     const slot = document.body.querySelector('[data-testid="my-palette"]')!;
 
     expect(slot).not.toBeNull();
-    expect(slot.textContent).toBe(`${DRAGGABLE_ITEMS.length} items`);
+    expect(slot.textContent).toBe(`${PALETTE_SECTIONS.length} items`);
   });
 });
 

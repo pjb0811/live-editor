@@ -81,7 +81,7 @@ export default App;
 
 export const DEFAULT_TEMPLATE = documentTemplate(DEFAULT_CONTAINER_ID);
 
-export const DRAGGABLE_ITEMS: Section[] = [
+export const PALETTE_SECTIONS: Section[] = [
   {
     id: 'hero',
     name: 'Hero',

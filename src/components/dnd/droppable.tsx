@@ -4,6 +4,8 @@ import { Typography } from '@jbpark/ui-kit';
 import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
+import { paletteSectionOf } from './palette-drag';
+
 const Droppable = ({
   children,
   className,
@@ -16,9 +18,9 @@ const Droppable = ({
     id: 'sortable-area-bottom',
   });
 
-  const isNewItemDragging = active?.data.current?.type === 'new-item';
-  const shouldHighlight = isOver && isNewItemDragging;
-  const shouldHighlightBottom = isBottomOver && isNewItemDragging;
+  const isPaletteSectionDragging = !!paletteSectionOf(active?.data);
+  const shouldHighlight = isOver && isPaletteSectionDragging;
+  const shouldHighlightBottom = isBottomOver && isPaletteSectionDragging;
   const messages = useLiveMessages();
 
   return (
@@ -32,7 +34,7 @@ const Droppable = ({
       )}
     >
       {children}
-      {isNewItemDragging && (
+      {isPaletteSectionDragging && (
         <div
           ref={setBottomRef}
           className={cn(

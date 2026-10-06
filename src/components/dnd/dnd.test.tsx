@@ -2,7 +2,7 @@
 import { act, fireEvent, render, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_TEMPLATE, DRAGGABLE_ITEMS } from '~/constants';
+import { DEFAULT_TEMPLATE, PALETTE_SECTIONS } from '~/constants';
 import type { Section } from '~/types';
 
 import { PreviewContext } from '../context/states';
@@ -41,7 +41,7 @@ beforeAll(() => {
   };
 });
 
-const stats = DRAGGABLE_ITEMS.find(item => item.id === 'stats')!;
+const stats = PALETTE_SECTIONS.find(item => item.id === 'stats')!;
 
 const documentWith = (sectionCode: string) =>
   DEFAULT_TEMPLATE.replace(

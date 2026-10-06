@@ -5,6 +5,7 @@ import type { Section } from '~/types';
 import { generateSection } from '~/utils/sections';
 
 import { DefaultDraggableItem } from './draggable';
+import { paletteSectionOf } from './palette-drag';
 import Renderer from './renderer';
 import Sortable from './sortable';
 
@@ -27,10 +28,10 @@ const Overlay = ({ sections, isForced, renderProps }: Props) => {
     return null;
   }
 
-  if (active.data.current?.type === 'new-item') {
-    const item = active.data.current.item;
+  const paletteSection = paletteSectionOf(active.data);
 
-    return <DefaultDraggableItem item={item} />;
+  if (paletteSection) {
+    return <DefaultDraggableItem item={paletteSection} />;
   }
 
   const section = sections.find(s => s.id === active.id);

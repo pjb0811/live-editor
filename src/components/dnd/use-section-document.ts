@@ -21,14 +21,14 @@ export interface SectionDocument {
   sections: Section[];
   previews: string[];
   selectedId: string | null;
-  selectedItem?: Section;
+  selectedSection?: Section;
   selectedIndex: number;
   select: (id: string) => void;
   // Selects `id` without toggling, unlike `select`. Keyboard navigation uses
   // it, since landing on a section must not deselect it (#435).
   selectOnly: (id: string) => void;
   clearSelection: () => void;
-  add: (item: Pick<Section, 'name' | 'code'>, atIndex?: number) => void;
+  add: (section: Pick<Section, 'name' | 'code'>, atIndex?: number) => void;
   remove: (id: string) => void;
   copy: (id: string) => void;
   move: (id: string | null, direction: 'up' | 'down') => void;
@@ -138,7 +138,8 @@ export const useSectionDocument = (
   );
 
   const selectedIndex = sections.findIndex(s => s.id === selectedId);
-  const selectedItem = selectedIndex >= 0 ? sections[selectedIndex] : undefined;
+  const selectedSection =
+    selectedIndex >= 0 ? sections[selectedIndex] : undefined;
 
   // The document the last commit produced, and the render document it was
   // built on. Mutations read through `latestDocument()`, so a second commit
@@ -226,13 +227,13 @@ export const useSectionDocument = (
   const clearSelection = useCallback(() => setSelectedId(null), []);
 
   const add = useCallback(
-    (item: Pick<Section, 'name' | 'code'>, atIndex?: number) => {
+    (section: Pick<Section, 'name' | 'code'>, atIndex?: number) => {
       if (refuse()) {
         return;
       }
 
       const current = latestSections();
-      const next = { code: item.code };
+      const next = { code: section.code };
 
       commit(
         atIndex === undefined || atIndex < 0
@@ -357,7 +358,7 @@ export const useSectionDocument = (
     sections,
     previews,
     selectedId,
-    selectedItem,
+    selectedSection,
     selectedIndex,
     select,
     selectOnly,

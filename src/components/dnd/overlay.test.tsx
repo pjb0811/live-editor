@@ -69,8 +69,8 @@ describe('Overlay', () => {
       id: 'new',
       data: {
         current: {
-          type: 'new-item',
-          item: { id: 'p', name: 'Pricing', code: '' },
+          type: 'palette-section',
+          section: { id: 'p', name: 'Pricing', code: '' },
         },
       },
     };

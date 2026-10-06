@@ -4,7 +4,7 @@ import { Switch } from '@jbpark/ui-kit';
 import { TriangleAlert } from 'lucide-react';
 
 import type { DndRenderSectionFallback } from '~/components/dnd';
-import { DRAGGABLE_ITEMS } from '~/constants';
+import { PALETTE_SECTIONS } from '~/constants';
 import Live from '~/index';
 import type { Section } from '~/types';
 
@@ -41,7 +41,7 @@ const FORCEABLE: Section = {
 };
 
 const INITIAL_DOCUMENT = documentWith([
-  DRAGGABLE_ITEMS[0],
+  PALETTE_SECTIONS[0],
   THROWING,
   FORCEABLE,
 ]);
@@ -106,7 +106,7 @@ const Fallback = () => {
           ) : (
             <Live.Dnd
               frame={IFRAME_FRAME}
-              items={DRAGGABLE_ITEMS}
+              items={PALETTE_SECTIONS}
               value={value}
               onChange={setValue}
               renderSectionFallback={custom ? customFallback : undefined}
