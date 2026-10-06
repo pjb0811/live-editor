@@ -1859,9 +1859,14 @@ describe('element picker', () => {
     act(() => state.inspector!.activate());
     fireEvent.pointerMove(overlay, { clientX: 10, clientY: 10 });
 
-    expect(
-      document.body.querySelector('[data-dnd-inspector-highlight]'),
-    ).not.toBeNull();
+    const highlight = document.body.querySelector(
+      '[data-dnd-inspector-highlight]',
+    );
+
+    expect(highlight).not.toBeNull();
+    // Inside the canvas, so whatever covers the canvas (the mobile panel
+    // Drawer, a host's modal) covers the outline too.
+    expect(highlight!.closest('[data-frame-container]')).not.toBeNull();
 
     fireEvent.pointerLeave(overlay);
 

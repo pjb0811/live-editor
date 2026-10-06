@@ -63,7 +63,7 @@ export const useInspectorState = ({
   }, [inspecting, stopInspecting]);
 
   // Follows the element a panel field points at, through canvas scrolls and
-  // resizes, since the outline is drawn in fixed viewport coordinates.
+  // resizes, measuring its box again in viewport coordinates.
   useEffect(() => {
     const section = selectedId === null ? null : sectionNodes.get(selectedId);
 

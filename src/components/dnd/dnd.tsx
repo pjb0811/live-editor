@@ -602,6 +602,7 @@ const Dnd = ({
           </SortableContext>
         )}
       </Droppable>
+      <InspectorHighlight rect={highlightRect} />
     </>
   );
 
@@ -653,7 +654,6 @@ const Dnd = ({
                 {Children.toArray(children).length ? children : <Layout />}
               </DndInspectorContext.Provider>
             </DndRegionContext.Provider>
-            <InspectorHighlight rect={highlightRect} />
           </DndEditOptionsContext.Provider>
         </div>
         <DragOverlay>
