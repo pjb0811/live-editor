@@ -13,6 +13,7 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useLiveMessages } from '~/components/context/messages';
 import type { Section } from '~/types';
 
+import { paletteSectionOf } from './palette-drag';
 import type { SectionNavigation } from './sortable';
 
 // Enter is left out of `start` so it can select the focused section (#435).
@@ -96,10 +97,8 @@ export const useDndKeyboard = ({
 
   // dnd-kit announces drags by id, which here is a generated `data-id`.
   const nameOf = (id: string | number, data?: { current?: unknown }) => {
-    const current = data?.current as { item?: Section } | undefined;
-
     return (
-      current?.item?.name ??
+      paletteSectionOf(data)?.name ??
       sections.find(section => section.id === id)?.name ??
       say.section
     );

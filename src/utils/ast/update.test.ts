@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DRAGGABLE_ITEMS } from '~/constants';
+import { PALETTE_SECTIONS } from '~/constants';
 
 import { getCurrentValue } from './binding';
 import { extract } from './extract';
@@ -848,7 +848,7 @@ describe('adding an item to a shipped section', () => {
     ['FAQ', 'FAQ Items'],
     ['Stats', 'Stats Items'],
   ])('keeps the %s section parseable', (name, label) => {
-    const section = DRAGGABLE_ITEMS.find(item => item.name === name)!;
+    const section = PALETTE_SECTIONS.find(item => item.name === name)!;
     const node = flatten(extract(section.code)).find(candidate =>
       candidate.bindings?.some(binding => binding.property === 'items'),
     )!;

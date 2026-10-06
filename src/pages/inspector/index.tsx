@@ -11,7 +11,7 @@ import {
   useDndInspector,
 } from '~/components/dnd';
 import { toastEditError } from '~/components/dnd/edit-options';
-import { DEFAULT_CONTAINER_ID, DRAGGABLE_ITEMS } from '~/constants';
+import { DEFAULT_CONTAINER_ID, PALETTE_SECTIONS } from '~/constants';
 import Live from '~/index';
 import type { Section } from '~/types';
 
@@ -27,14 +27,14 @@ import {
 import { SECTION_ROOT_EXAMPLE } from '../shared/section-root-example';
 
 const PALETTE = [
-  ...DRAGGABLE_ITEMS,
+  ...PALETTE_SECTIONS,
   SECTION_ROOT_EXAMPLE,
   REGISTRY_EXAMPLE,
   KEYED_EXAMPLE,
 ];
 
 const INITIAL_DOCUMENT = documentWith([
-  DRAGGABLE_ITEMS[0],
+  PALETTE_SECTIONS[0],
   SECTION_ROOT_EXAMPLE,
   REGISTRY_EXAMPLE,
   KEYED_EXAMPLE,

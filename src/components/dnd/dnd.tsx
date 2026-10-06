@@ -22,7 +22,7 @@ import {
 import { Space, Typography } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 
-import { DRAGGABLE_ITEMS } from '~/constants';
+import { PALETTE_SECTIONS } from '~/constants';
 import type { Section } from '~/types';
 import { type DocumentProblem } from '~/utils/ast/document';
 import { extract } from '~/utils/ast/extract';
@@ -47,6 +47,7 @@ import InspectorHighlight from './inspector-highlight';
 import Layout from './layout';
 import { DndRegionContext } from './layout-context';
 import Overlay from './overlay';
+import { paletteSectionOf } from './palette-drag';
 import {
   type PanelBinding,
   type PanelNodeChange,
@@ -146,7 +147,7 @@ const blockedEditError = (
 const conditionalModifiers: Modifier = args => {
   const { active } = args;
 
-  if (active?.data.current?.type === 'new-item') {
+  if (paletteSectionOf(active?.data)) {
     return args.transform;
   }
 
@@ -234,12 +235,12 @@ const Dnd = ({
     sections,
     previews,
     selectedId,
-    selectedItem,
+    selectedSection,
     selectedIndex,
     select,
     selectOnly,
     clearSelection,
-    add: addItem,
+    add: addSection,
     remove,
     copy: onCopy,
     move: moveSection,
@@ -265,13 +266,14 @@ const Dnd = ({
       return;
     }
 
-    if (active.data.current?.type === 'new-item') {
-      const item = active.data.current.item as Section;
+    const section = paletteSectionOf(active.data);
+
+    if (section) {
       const atBottom =
         over.id === 'sortable-area' || over.id === 'sortable-area-bottom';
 
-      addItem(
-        item,
+      addSection(
+        section,
         atBottom ? undefined : sections.findIndex(s => s.id === over.id),
       );
       return;
@@ -330,8 +332,8 @@ const Dnd = ({
   );
   // The selected section's elements, parsed again only when its code or id
   // changes.
-  const selectedCode = selectedItem?.code;
-  const selectedSectionId = selectedItem?.id;
+  const selectedCode = selectedSection?.code;
+  const selectedSectionId = selectedSection?.id;
   const { fields, updatedCode, parseError } = useMemo(() => {
     if (!selectedCode) {
       return {
@@ -414,7 +416,7 @@ const Dnd = ({
     // (#450). Otherwise use `updatedCode`, which has the filled ids the
     // bindings point at.
     const committed =
-      selectedItem && getCommittedSection(selectedItem.id)?.code;
+      selectedSection && getCommittedSection(selectedSection.id)?.code;
     const base =
       committed && committed !== selectedCode ? committed : updatedCode;
     const result = updateAll(
@@ -442,8 +444,8 @@ const Dnd = ({
       return;
     }
 
-    if (selectedItem) {
-      onChange({ ...selectedItem, code: result.code });
+    if (selectedSection) {
+      onChange({ ...selectedSection, code: result.code });
     }
   };
 
@@ -474,15 +476,15 @@ const Dnd = ({
   // `useDndPalette()` and `useDndPanel()`, the same way a custom one does
   // (#237).
   const palette: DndPalette = {
-    items: items?.length ? items : DRAGGABLE_ITEMS,
-    onAdd: (item: Section) => {
-      addItem(item);
+    items: items?.length ? items : PALETTE_SECTIONS,
+    onAdd: (section: Section) => {
+      addSection(section);
       setMobilePaletteOpen(false);
     },
   };
 
   const panel: DndPanel = {
-    item: selectedItem,
+    item: selectedSection,
     onChange,
     onDelete,
     onMoveUp: () => moveSection(selectedId, 'up'),

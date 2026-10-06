@@ -27,7 +27,8 @@ live-editor/
 │  │  │  ├─ layout-context.ts # 커스텀 레이아웃·팔레트·패널 훅
 │  │  │  ├─ types.ts        # DndPanel·DndPalette·Props 공개 타입 (dnd.tsx와 분리)
 │  │  │  ├─ renderer.tsx    # 선택 요소 JSX 구조 렌더링
-│  │  │  ├─ draggable.tsx   # 드래그 가능한 섹션 아이템
+│  │  │  ├─ draggable.tsx   # 드래그 가능한 팔레트 섹션
+│  │  │  ├─ palette-drag.ts # 팔레트 섹션의 드래그 데이터 (paletteDragData/paletteSectionOf)
 │  │  │  ├─ droppable.tsx   # 드롭 영역
 │  │  │  ├─ sortable.tsx    # 정렬 가능한 리스트
 │  │  │  ├─ overlay.tsx     # 드래그 인디케이터
@@ -102,7 +103,7 @@ live-editor/
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/utils/index.ts`                | `compile()`, `cn()`, `getCachedScriptBlob()`. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                                                        |
 | `src/utils/ast/`                    | 공개: `extract()`, `update()`/`updateAll()`, `validateBindingValue()` 등. 내부 코드는 배럴 대신 모듈 파일에서 import — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
-| `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `DRAGGABLE_ITEMS`                                                                                                     |
+| `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `PALETTE_SECTIONS`                                                                                                    |
 | `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                                                        |
 | `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                                                  |
 | `src/components/preview/client.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                                                         |

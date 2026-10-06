@@ -4,6 +4,8 @@ import { Card } from '@jbpark/ui-kit';
 import type { Section } from '~/types';
 import { cn } from '~/utils/cn';
 
+import { paletteDragData } from './palette-drag';
+
 export interface DraggableItemDragState {
   ref: (node: HTMLElement | null) => void;
   dragProps: React.HTMLAttributes<HTMLElement>;
@@ -15,13 +17,13 @@ export interface DraggableItemProps {
   children: (drag: DraggableItemDragState) => React.ReactNode;
 }
 
-// Makes a palette item draggable, with the `type: 'new-item'` data the
-// canvas expects on drop. `Live.Dnd.DraggableItem`; the built-in palette
+// Makes a palette item draggable, with the drag data the canvas expects on
+// drop (`paletteDragData`). `Live.Dnd.DraggableItem`; the built-in palette
 // uses it too.
 const DraggableItem = ({ item, children }: DraggableItemProps) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: item.id,
-    data: { type: 'new-item', item },
+    data: paletteDragData(item),
   });
 
   return children({

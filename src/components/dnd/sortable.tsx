@@ -6,6 +6,8 @@ import { ChevronDown, ChevronUp, Copy, Trash } from 'lucide-react';
 import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
+import { paletteSectionOf } from './palette-drag';
+
 interface Props {
   id: string;
   name?: string;
@@ -92,7 +94,7 @@ const Sortable = ({
     cursor: inspecting ? 'crosshair' : 'grab',
   };
 
-  const isNewItemOver = isOver && active?.data.current?.type === 'new-item';
+  const isPaletteSectionOver = isOver && !!paletteSectionOf(active?.data);
 
   // The wrapper is a `role="button"`, so Enter selects it the way a click
   // does. Only when the key lands on the wrapper itself, not on its copy and
@@ -166,7 +168,7 @@ const Sortable = ({
       className={cn(
         'relative',
         selected && 'z-10 outline-2 outline-offset-2 outline-blue-500',
-        isNewItemOver && 'border-t-4 border-t-green-500',
+        isPaletteSectionOver && 'border-t-4 border-t-green-500',
         //
       )}
     >

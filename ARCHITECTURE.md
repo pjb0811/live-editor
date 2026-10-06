@@ -70,15 +70,16 @@ the meanings the code uses.
 
 ### "Item" means four things
 
-This is the most overloaded word in the codebase. Check which one you're
-looking at.
+The public API uses "item" for four different things. Internal code says
+"section" for the first and last of them; the public names stay until a
+major version.
 
-| Where you see it                                                                         | It means                                                                          |
-| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `DRAGGABLE_ITEMS`, `Live.Dnd`'s `items` prop, `'new-item'` drag data, `DndPalette.items` | A **palette item**: a section template you drag onto the canvas. Typed `Section`. |
-| `BindingItem`                                                                            | A **binding** (see above).                                                        |
-| `useDndItems`, `Items`, `SortableItems`, `items.ts`, the `items` property                | An **array item**: one element of an array literal bound to a field.              |
-| `DndPanel.item`                                                                          | The **selected section**.                                                         |
+| Where you see it                                                          | It means                                                                                                         |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `Live.Dnd`'s `items` prop, `DndPalette.items`, `Live.Dnd.DraggableItem`   | A **palette item**: a section template you drag onto the canvas. Typed `Section`. Internally `PALETTE_SECTIONS`. |
+| `BindingItem`                                                             | A **binding** (see above).                                                                                       |
+| `useDndItems`, `Items`, `SortableItems`, `items.ts`, the `items` property | An **array item**: one element of an array literal bound to a field.                                             |
+| `DndPanel.item`                                                           | The **selected section**.                                                                                        |
 
 ### The editor around them
 
@@ -306,9 +307,9 @@ Dnd (dnd.tsx)
   (`layout.tsx`) wrap the region's content in the container it needs. A custom
   layout passes its own `children` and places them anywhere inside the drag
   context.
-- **Drag and drop** is `@dnd-kit`. A palette drop carries `type: 'new-item'`
-  and its `Section`; `onDragEnd` turns it into `add`, and a canvas drag into
-  `reorder`. `overlay.tsx` renders the dragged section.
+- **Drag and drop** is `@dnd-kit`. A palette section carries the drag data
+  from `palette-drag.ts`, which everything reads with `paletteSectionOf`;
+  `onDragEnd` turns it into `add`, and a canvas drag into `reorder`. `overlay.tsx` renders the dragged section.
 - **The panel** (`panel/panel.tsx`) groups `bindings` by element and renders a
   `Field` for each. `Field` asks `renderField` first, then falls back to
   `BuiltinField`, which switches on `getFieldKind`.
@@ -410,8 +411,6 @@ Any change to what the package exports updates
 Known places where the structure is harder to follow than it needs to be.
 They're candidates for cleanup, not rules to follow.
 
-- **"Item" has four meanings** (see the glossary). Internal names could say
-  which one they mean.
 - **`components/dnd/` is flat.** Components, state hooks, pure helpers and
   contexts sit side by side in one folder.
 - **Large AST files.** `update.ts`, `value.ts` and `extract.ts` each hold more
