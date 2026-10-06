@@ -18,15 +18,67 @@ interface Props {
   // compiled CSS, its own utilities and theme included. `dynamicTailwind`
   // covers what the host's build never saw, such as a class typed at runtime.
   syncStyle?: boolean;
-  children: (hostContainer: HTMLElement | null) => ReactNode;
+  // Receives the overlay layer, the `container` to portal a modal or drawer
+  // into so it opens inside the preview.
+  children: (overlayLayer: HTMLElement | null) => ReactNode;
 }
+
+const OVERLAY_LAYER_ATTR = 'data-live-editor-overlay-layer';
+
+// The layer lets clicks through to the preview under it. What is portaled
+// into it takes them again.
+const OVERLAY_LAYER_STYLE = `[${OVERLAY_LAYER_ATTR}] > * { pointer-events: auto; }`;
+
+// The render target and the overlay layer in one grid cell, so the layer
+// covers exactly the preview's box. `min-height: 100%` stretches that box to
+// a parent with a set height, such as `Live.Preview`'s, so an overlay isn't
+// squeezed into short content. The wrapper isn't positioned, so it doesn't
+// change what an `absolute` element in the preview is placed against.
+// `isolation` keeps the layer's stacking inside the preview.
+const createFrameNodes = () => {
+  const wrapper = document.createElement('div');
+
+  wrapper.style.display = 'grid';
+  wrapper.style.gridTemplateColumns = 'minmax(0, 1fr)';
+  wrapper.style.minHeight = '100%';
+  wrapper.style.isolation = 'isolate';
+
+  const renderTarget = document.createElement('div');
+
+  renderTarget.style.gridArea = '1 / 1';
+
+  // `contain: layout` makes the layer the containing block of the fixed
+  // elements inside it, so an overlay covers the preview and not the page.
+  const overlayLayer = document.createElement('div');
+
+  overlayLayer.setAttribute(OVERLAY_LAYER_ATTR, '');
+  overlayLayer.style.gridArea = '1 / 1';
+  overlayLayer.style.zIndex = '1';
+  overlayLayer.style.contain = 'layout';
+  overlayLayer.style.pointerEvents = 'none';
+
+  const style = document.createElement('style');
+
+  style.textContent = OVERLAY_LAYER_STYLE;
+  wrapper.append(style, renderTarget, overlayLayer);
+
+  return { wrapper, renderTarget };
+};
+
+// The overlay layer `createFrameNodes` put next to `renderTarget`.
+const overlayLayerOf = (renderTarget: HTMLElement) => {
+  const layer = renderTarget.nextElementSibling;
+
+  return layer instanceof HTMLElement && layer.hasAttribute(OVERLAY_LAYER_ATTR)
+    ? layer
+    : null;
+};
 
 const Shadow = ({ syncStyle = false, children }: Props) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const shadowRootRef = useRef<ShadowRoot | null>(null);
   const renderTargetRef = useRef<HTMLDivElement | null>(null);
   const [renderTarget, setRenderTarget] = useState<HTMLDivElement | null>(null);
-  const [hostContainer, setHostContainer] = useState<HTMLElement | null>(null);
 
   // Added next to the portal target, not inside it: React owns that subtree
   // and would remove anything added there.
@@ -67,12 +119,6 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
       return;
     }
 
-    const container = hostRef.current.closest(
-      '[data-frame-container]',
-    ) as HTMLElement | null;
-
-    setHostContainer(container);
-
     let shadowRoot = shadowRootRef.current;
 
     if (!shadowRoot) {
@@ -85,8 +131,10 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
     let target = renderTargetRef.current;
 
     if (!target) {
-      target = document.createElement('div');
-      shadowRoot.appendChild(target);
+      const nodes = createFrameNodes();
+
+      shadowRoot.appendChild(nodes.wrapper);
+      target = nodes.renderTarget;
       renderTargetRef.current = target;
       setRenderTarget(target);
     }
@@ -106,7 +154,8 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
 
   return (
     <div ref={hostRef} style={{ display: 'contents' }}>
-      {renderTarget && createPortal(children(hostContainer), renderTarget)}
+      {renderTarget &&
+        createPortal(children(overlayLayerOf(renderTarget)), renderTarget)}
     </div>
   );
 };
