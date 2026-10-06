@@ -5,9 +5,9 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { clearCompilationCache } from '~/utils';
 
-import { PreviewContext } from '../context/states';
-import Dnd from './dnd';
-import { Canvas } from './layout';
+import { PreviewContext } from '../../context/states';
+import Dnd from '../dnd';
+import { Canvas } from '../layout';
 import Renderer from './renderer';
 import {
   type DndRenderSectionFallback,

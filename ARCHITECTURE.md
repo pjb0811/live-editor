@@ -105,7 +105,10 @@ src/
 │  ├─ preview/          Live.Preview — compile the whole document and render it
 │  ├─ frame/            iframe / shadow / in-place containers, style sync, auto height
 │  ├─ error/            Live.Error — error box, React error boundary, window error guard
-│  └─ dnd/              Live.Dnd — canvas, panel, palette (see "Inside Live.Dnd")
+│  └─ dnd/              Live.Dnd (see "Inside Live.Dnd")
+│     ├─ canvas/        Section slots: drop area, sortable, renderer, fallback, overlay
+│     ├─ palette/       Draggable palette sections and their drag data
+│     ├─ state/         Hooks: the section document, keyboard, element picker, delete
 │     └─ panel/         The built-in panel and its field editors
 └─ utils/
    ├─ compile.ts        Babel transform + `new Function`, with an LRU cache
@@ -186,8 +189,8 @@ Two things make this work:
   components outside the container still work, an unchanged section produces
   the same string (so `React.memo` skips it), and an error stays in its slot.
 
-Files: `components/dnd/use-section-document.ts` (top half),
-`components/dnd/dnd.tsx` (the `fields` memo), `components/dnd/renderer.tsx`,
+Files: `components/dnd/state/use-section-document.ts` (top half),
+`components/dnd/dnd.tsx` (the `fields` memo), `components/dnd/canvas/renderer.tsx`,
 `components/dnd/panel-binding.ts`, `utils/ast/document.ts`,
 `utils/ast/extract.ts`.
 
@@ -219,7 +222,7 @@ levels. Each level turns its edit into the level above's input.
 
 ### ① Document level — `useSectionDocument`
 
-`components/dnd/use-section-document.ts` owns the list of sections and the one
+`components/dnd/state/use-section-document.ts` owns the list of sections and the one
 `commit` function that turns a list of section sources back into a document.
 Every section operation (`add`, `remove`, `copy`, `move`, `reorder`, `patch`)
 is a different list passed to the same `commit`.
@@ -308,8 +311,8 @@ Dnd (dnd.tsx)
   layout passes its own `children` and places them anywhere inside the drag
   context.
 - **Drag and drop** is `@dnd-kit`. A palette section carries the drag data
-  from `palette-drag.ts`, which everything reads with `paletteSectionOf`;
-  `onDragEnd` turns it into `add`, and a canvas drag into `reorder`. `overlay.tsx` renders the dragged section.
+  from `palette/palette-drag.ts`, which everything reads with `paletteSectionOf`;
+  `onDragEnd` turns it into `add`, and a canvas drag into `reorder`. `canvas/overlay.tsx` renders the dragged section.
 - **The panel** (`panel/panel.tsx`) groups `bindings` by element and renders a
   `Field` for each. `Field` asks `renderField` first, then falls back to
   `BuiltinField`, which switches on `getFieldKind`.
@@ -366,7 +369,7 @@ code ─► compile(code, modules)          utils/compile.ts
 - `compile()` is cached on the code plus the identity of each module, up to 50
   entries. Pass a new `modules` object when a module's implementation changes.
 - `Live.Preview` compiles the whole document once (`preview/client.tsx`).
-  `Live.Dnd` compiles one section preview per slot (`dnd/renderer.tsx`). Both
+  `Live.Dnd` compiles one section preview per slot (`dnd/canvas/renderer.tsx`). Both
   use `useCompiledModule`, which adds the base modules
   (`preview/base-modules.ts`) to the host's `modules`.
 
@@ -378,7 +381,7 @@ code ─► compile(code, modules)          utils/compile.ts
 | ----------------------------------------------- | ------------------------------------------ | --------------------------------------- |
 | Compiling the preview                           | Error box, `messages.errors.compile`       | `preview/client.tsx`                    |
 | Rendering or an event handler in the preview    | Error box; also `ErrorContext`             | `error/boundary.tsx`, `error/guard.tsx` |
-| One canvas section (compile, render, or forced) | That slot only, or `renderSectionFallback` | `dnd/renderer.tsx`                      |
+| One canvas section (compile, render, or forced) | That slot only, or `renderSectionFallback` | `dnd/canvas/renderer.tsx`               |
 | An edit the editor refused                      | `DndEditError` → `onEditError`, or a toast | `dnd/edit-options.ts`                   |
 
 **UI text** lives in `components/context/messages.ts`. Every visible or
@@ -396,7 +399,7 @@ provider to unmount clears them (`utils/editor-caches.ts`).
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | Support a new authored syntax in a field                  | `utils/ast/update.ts` (write) and `extract.ts` / `value.ts` (read); then the Editable Syntax page |
 | Add a binding `type` or change which control a field gets | `BINDING_TYPES` in `utils/ast/types.ts`, `panel/field-kind.ts`, `panel/field.tsx`                 |
-| Change what a section operation does                      | `dnd/use-section-document.ts`                                                                     |
+| Change what a section operation does                      | `dnd/state/use-section-document.ts`                                                               |
 | Change how panel edits commit                             | `commitChanges` in `dnd/dnd.tsx`                                                                  |
 | Change array or children editing                          | `panel/use-dnd-items.ts` / `use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`            |
 | Expose something to custom panels                         | `DndPanel` in `dnd/types.ts`, then `dnd/index.ts` and the public API snapshot                     |
@@ -411,7 +414,5 @@ Any change to what the package exports updates
 Known places where the structure is harder to follow than it needs to be.
 They're candidates for cleanup, not rules to follow.
 
-- **`components/dnd/` is flat.** Components, state hooks, pure helpers and
-  contexts sit side by side in one folder.
 - **Large AST files.** `update.ts`, `value.ts` and `extract.ts` each hold more
   than one stage's worth of work.

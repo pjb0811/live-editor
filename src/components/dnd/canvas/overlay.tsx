@@ -4,8 +4,8 @@ import type { FrameProps } from '~/components/frame';
 import type { Section } from '~/types';
 import { generateSection } from '~/utils/sections';
 
-import { DefaultDraggableItem } from './draggable';
-import { paletteSectionOf } from './palette-drag';
+import { DefaultDraggableItem } from '../palette/draggable';
+import { paletteSectionOf } from '../palette/palette-drag';
 import Renderer from './renderer';
 import Sortable from './sortable';
 

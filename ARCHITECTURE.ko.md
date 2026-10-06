@@ -89,7 +89,10 @@ src/
 │  ├─ preview/          Live.Preview — 문서 전체를 컴파일하고 렌더링
 │  ├─ frame/            iframe / shadow / 제자리 컨테이너, 스타일 동기화, 자동 높이
 │  ├─ error/            Live.Error — 에러 박스, React error boundary, window 에러 guard
-│  └─ dnd/              Live.Dnd — 캔버스, 패널, 팔레트 ("Live.Dnd 내부" 참고)
+│  └─ dnd/              Live.Dnd ("Live.Dnd 내부" 참고)
+│     ├─ canvas/        섹션 칸: 드롭 영역, 정렬, renderer, fallback, overlay
+│     ├─ palette/       드래그할 수 있는 팔레트 섹션과 그 드래그 데이터
+│     ├─ state/         훅: 섹션 문서, 키보드, 요소 picker, 삭제
 │     └─ panel/         기본 패널과 필드 편집기들
 └─ utils/
    ├─ compile.ts        Babel 변환 + `new Function`, LRU 캐시
@@ -152,7 +155,7 @@ extractSections              → Section[] { id, name, code }
 - **양쪽이 id를 같은 방식으로 채웁니다.** 캔버스 미리보기와 패널은 비어 있는 `data-id=""`를 섹션 id와 요소 위치로 똑같이 채웁니다. 그래서 미리보기에서 요소를 클릭하면(요소 picker), 편집으로 id가 소스에 쓰이기 전에도 그 요소의 필드를 찾을 수 있습니다.
 - **섹션 미리보기는 각각 별도의 문서입니다.** 각 칸은 컨테이너에 자기 섹션만 넣은 문서 전체를 컴파일합니다. 그래서 컨테이너 밖의 import와 헬퍼 컴포넌트가 그대로 동작하고, 바뀌지 않은 섹션은 같은 문자열이 나와 `React.memo`가 건너뛰며, 에러는 그 칸 안에 머뭅니다.
 
-파일: `components/dnd/use-section-document.ts`(앞부분), `components/dnd/dnd.tsx`(`fields` memo), `components/dnd/renderer.tsx`, `components/dnd/panel-binding.ts`, `utils/ast/document.ts`, `utils/ast/extract.ts`.
+파일: `components/dnd/state/use-section-document.ts`(앞부분), `components/dnd/dnd.tsx`(`fields` memo), `components/dnd/canvas/renderer.tsx`, `components/dnd/panel-binding.ts`, `utils/ast/document.ts`, `utils/ast/extract.ts`.
 
 ## 쓰기 경로: 세 단계의 commit
 
@@ -181,7 +184,7 @@ extractSections              → Section[] { id, name, code }
 
 ### ① 문서 단계 — `useSectionDocument`
 
-`components/dnd/use-section-document.ts`는 섹션 목록과, 섹션 소스 목록을 다시 문서로 만드는 `commit` 함수 하나를 가지고 있습니다. 모든 섹션 작업(`add`, `remove`, `copy`, `move`, `reorder`, `patch`)은 같은 `commit`에 다른 목록을 넘기는 것입니다.
+`components/dnd/state/use-section-document.ts`는 섹션 목록과, 섹션 소스 목록을 다시 문서로 만드는 `commit` 함수 하나를 가지고 있습니다. 모든 섹션 작업(`add`, `remove`, `copy`, `move`, `reorder`, `patch`)은 같은 `commit`에 다른 목록을 넘기는 것입니다.
 
 - **stale이면 거절합니다.** 문서가 파싱되지 않으면 모든 작업이 commit 대신 `onBlockedEdit`를 부릅니다. 쓰려는 섹션 구간이 현재 소스가 아니라 마지막으로 파싱된 버전의 것이기 때문입니다.
 - **같은 tick의 commit.** 한 이벤트 안의 두 commit은 같은 렌더의 문서에서 시작합니다. `pendingRef`가 마지막 commit의 결과를 기억해서, 두 번째가 첫 번째를 덮어쓰지 않고 그 위에 쌓습니다(#450). `getCommittedSection`이 이것을 ② 단계에 알려 줍니다.
@@ -232,7 +235,7 @@ Dnd (dnd.tsx)
 - **공개 타입은 컴포넌트와 따로 있습니다.** `DndPanel`, `DndPalette`, props는 `types.ts`에, `PanelBinding`과 commit 콜백은 `panel-binding.ts`에 있습니다. 타입이 필요한 파일은 `dnd.tsx`가 아니라 거기서 가져옵니다.
 - **컴포넌트가 아니라 데이터를 넘깁니다.** 기본 팔레트와 패널도 커스텀 구현과 똑같이 `useDndPalette()`, `useDndPanel()`로 읽습니다. 그래서 공개 API가 기본 구현이 쓰는 것보다 뒤처질 수 없습니다(#237).
 - **영역은 배치만 담당합니다.** `Live.Dnd.Palette`, `Canvas`, `Panel`(`layout.tsx`)은 영역의 내용을 필요한 컨테이너로 감쌀 뿐입니다. 커스텀 레이아웃은 자기 `children`을 넘기고, 드래그 context 안이라면 어디든 배치할 수 있습니다.
-- **드래그 앤 드롭**은 `@dnd-kit`입니다. 팔레트 섹션은 `palette-drag.ts`의 드래그 데이터를 싣고, 모든 곳이 이를 `paletteSectionOf`로 읽습니다. `onDragEnd`가 이를 `add`로, 캔버스 안의 드래그는 `reorder`로 바꿉니다. 끌고 있는 섹션은 `overlay.tsx`가 그립니다.
+- **드래그 앤 드롭**은 `@dnd-kit`입니다. 팔레트 섹션은 `palette/palette-drag.ts`의 드래그 데이터를 싣고, 모든 곳이 이를 `paletteSectionOf`로 읽습니다. `onDragEnd`가 이를 `add`로, 캔버스 안의 드래그는 `reorder`로 바꿉니다. 끌고 있는 섹션은 `canvas/overlay.tsx`가 그립니다.
 - **패널**(`panel/panel.tsx`)은 `bindings`를 요소별로 묶고 각각 `Field`를 그립니다. `Field`는 먼저 `renderField`에 묻고, 없으면 `getFieldKind`로 분기하는 `BuiltinField`를 씁니다.
 
 ## AST 계층
@@ -274,7 +277,7 @@ code ─► compile(code, modules)          utils/compile.ts
 
 - **코드는 호스트 페이지의 JavaScript realm에서 실행됩니다.** iframe은 portal로 렌더링 결과만 받습니다. DOM과 CSS를 격리할 뿐 JavaScript는 격리하지 않으니, 신뢰할 수 있는 코드만 실행하세요.
 - `compile()`은 코드와 각 모듈의 identity를 키로 최대 50개까지 캐시합니다. 모듈 구현이 바뀌면 새 `modules` 객체를 넘기세요.
-- `Live.Preview`는 문서 전체를 한 번 컴파일합니다(`preview/client.tsx`). `Live.Dnd`는 칸마다 섹션 미리보기를 하나씩 컴파일합니다(`dnd/renderer.tsx`). 둘 다 `useCompiledModule`을 쓰며, 이 훅이 호스트의 `modules`에 기본 모듈(`preview/base-modules.ts`)을 더합니다.
+- `Live.Preview`는 문서 전체를 한 번 컴파일합니다(`preview/client.tsx`). `Live.Dnd`는 칸마다 섹션 미리보기를 하나씩 컴파일합니다(`dnd/canvas/renderer.tsx`). 둘 다 `useCompiledModule`을 쓰며, 이 훅이 호스트의 `modules`에 기본 모듈(`preview/base-modules.ts`)을 더합니다.
 
 ## 에러, 문구, 캐시
 
@@ -284,7 +287,7 @@ code ─► compile(code, modules)          utils/compile.ts
 | --------------------------------------- | -------------------------------------------- | --------------------------------------- |
 | 미리보기 컴파일                         | 에러 박스, `messages.errors.compile`         | `preview/client.tsx`                    |
 | 미리보기의 렌더링이나 이벤트 핸들러     | 에러 박스; `ErrorContext`에도 기록           | `error/boundary.tsx`, `error/guard.tsx` |
-| 캔버스 섹션 하나 (컴파일, 렌더링, 강제) | 그 칸에만, 또는 `renderSectionFallback`      | `dnd/renderer.tsx`                      |
+| 캔버스 섹션 하나 (컴파일, 렌더링, 강제) | 그 칸에만, 또는 `renderSectionFallback`      | `dnd/canvas/renderer.tsx`               |
 | 편집기가 거절한 편집                    | `DndEditError` → `onEditError`, 없으면 toast | `dnd/edit-options.ts`                   |
 
 **UI 문구**는 `components/context/messages.ts`에 있습니다. 화면에 보이거나 스크린 리더가 읽는 모든 문자열은 `useLiveMessages()`에서 옵니다. 새 문구를 추가하려면 거기와 `src/pages/shared/ko-messages.ts`에 키를 넣어야 합니다. 이 파일은 전체 타입으로 지정돼 있어서 키가 빠지면 타입 검사가 실패합니다.
@@ -297,7 +300,7 @@ code ─► compile(code, modules)          utils/compile.ts
 | ------------------------------------- | -------------------------------------------------------------------------------------------- |
 | 필드에서 새 작성 문법 지원            | `utils/ast/update.ts`(쓰기)와 `extract.ts` / `value.ts`(읽기), 그다음 Editable Syntax 페이지 |
 | 바인딩 `type` 추가나 필드 컨트롤 변경 | `utils/ast/types.ts`의 `BINDING_TYPES`, `panel/field-kind.ts`, `panel/field.tsx`             |
-| 섹션 작업의 동작 변경                 | `dnd/use-section-document.ts`                                                                |
+| 섹션 작업의 동작 변경                 | `dnd/state/use-section-document.ts`                                                          |
 | 패널 편집의 commit 방식 변경          | `dnd/dnd.tsx`의 `commitChanges`                                                              |
 | 배열이나 children 편집 변경           | `panel/use-dnd-items.ts` / `use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`       |
 | 커스텀 패널에 무언가 공개             | `dnd/types.ts`의 `DndPanel`, 그다음 `dnd/index.ts`와 공개 API 스냅샷                         |
@@ -310,5 +313,4 @@ code ─► compile(code, modules)          utils/compile.ts
 
 구조가 필요 이상으로 따라가기 어려운 곳입니다. 따라야 할 규칙이 아니라 정리할 후보입니다.
 
-- **`components/dnd/`가 평평합니다.** 컴포넌트, 상태 훅, 순수 헬퍼, context가 한 폴더에 나란히 있습니다.
 - **큰 AST 파일.** `update.ts`, `value.ts`, `extract.ts`는 각각 한 단계 이상의 일을 담고 있습니다.

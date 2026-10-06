@@ -5,10 +5,10 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { clearCompilationCache } from '~/utils';
 
-import { PreviewContext } from '../context/states';
-import type { FrameProps } from '../frame';
-import Dnd from './dnd';
-import { Canvas } from './layout';
+import { PreviewContext } from '../../context/states';
+import type { FrameProps } from '../../frame';
+import Dnd from '../dnd';
+import { Canvas } from '../layout';
 
 // The frame's iframe/shadow plumbing isn't under test: render sections inline.
 vi.mock('~/components/frame', () => ({

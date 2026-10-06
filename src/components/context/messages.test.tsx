@@ -24,7 +24,7 @@ import {
 } from './messages';
 
 // The canvas only needs to know a section is there, not to compile it.
-vi.mock('~/components/dnd/renderer', () => ({
+vi.mock('~/components/dnd/canvas/renderer', () => ({
   default: () => <div data-testid="renderer" />,
 }));
 

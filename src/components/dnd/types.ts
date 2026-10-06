@@ -6,6 +6,7 @@ import type {
 } from '~/utils/ast/types';
 
 import type { FrameProps } from '../frame';
+import type { DndRenderSectionFallback } from './canvas/section-fallback-context';
 import type { DndEditError, DndRenderField } from './edit-options';
 import type { DndNodePick } from './inspector';
 import type {
@@ -13,7 +14,6 @@ import type {
   PanelNodeChange,
   PanelNodesChange,
 } from './panel-binding';
-import type { DndRenderSectionFallback } from './section-fallback-context';
 
 // The public types of `Live.Dnd`, apart from the component, so the files
 // that use them don't import the component file.

@@ -21,19 +21,16 @@ live-editor/
 ├─ src/
 │  ├─ components/
 │  │  ├─ context/           # 전역 상태 (PreviewContext, ErrorContext, MessagesContext — UI 문구 `messages`)
-│  │  ├─ dnd/               # DnD 시스템 (Canvas + Panel + Renderer)
-│  │  │  ├─ panel/          # 프로퍼티 편집 패널 (children/field/items/node.tsx)
+│  │  ├─ dnd/               # DnD 시스템 (Canvas + Panel + Palette)
+│  │  │  ├─ dnd.tsx, index.ts # Live.Dnd 컴포넌트와 공개 export
+│  │  │  ├─ types.ts        # DndPanel·DndPalette·Props 공개 타입 (dnd.tsx와 분리)
 │  │  │  ├─ layout.tsx      # Palette/Canvas/Panel/Layout 합성 컴포넌트
 │  │  │  ├─ layout-context.ts # 커스텀 레이아웃·팔레트·패널 훅
-│  │  │  ├─ types.ts        # DndPanel·DndPalette·Props 공개 타입 (dnd.tsx와 분리)
-│  │  │  ├─ renderer.tsx    # 선택 요소 JSX 구조 렌더링
-│  │  │  ├─ draggable.tsx   # 드래그 가능한 팔레트 섹션
-│  │  │  ├─ palette-drag.ts # 팔레트 섹션의 드래그 데이터 (paletteDragData/paletteSectionOf)
-│  │  │  ├─ droppable.tsx   # 드롭 영역
-│  │  │  ├─ sortable.tsx    # 정렬 가능한 리스트
-│  │  │  ├─ overlay.tsx     # 드래그 인디케이터
-│  │  │  ├─ use-section-document.ts  # 섹션 문서 상태 훅
-│  │  │  └─ use-dnd-keyboard.ts, use-inspector-state.ts, use-delete-flow.ts  # Dnd의 키보드·요소 picker·삭제 흐름
+│  │  │  ├─ edit-options.ts, panel-binding.ts, inspector.ts # 편집 에러·패널 바인딩·요소 picker (여러 영역 공용)
+│  │  │  ├─ canvas/         # 캔버스: droppable, sortable, overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight
+│  │  │  ├─ palette/        # 팔레트: draggable, palette-drag(드래그 데이터)
+│  │  │  ├─ state/          # 상태 훅: use-section-document(섹션 문서), use-dnd-keyboard, use-inspector-state, use-delete-flow
+│  │  │  └─ panel/          # 프로퍼티 편집 패널 (children/field/items/node.tsx)
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx, measure.ts, viewport-units.ts)

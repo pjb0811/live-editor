@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp, Copy, Trash } from 'lucide-react';
 import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
-import { paletteSectionOf } from './palette-drag';
+import { paletteSectionOf } from '../palette/palette-drag';
 
 interface Props {
   id: string;

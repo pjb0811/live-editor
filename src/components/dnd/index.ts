@@ -1,8 +1,8 @@
+import type {
+  DndRenderSectionFallback,
+  DndSectionFallbackArgs,
+} from './canvas/section-fallback-context';
 import DndImpl from './dnd';
-import DraggableItem, {
-  type DraggableItemDragState,
-  type DraggableItemProps,
-} from './draggable';
 import type { DndEditError, DndRenderField } from './edit-options';
 import {
   type DndInspector,
@@ -23,6 +23,10 @@ import {
   useDndPalette,
   useDndPanel,
 } from './layout-context';
+import DraggableItem, {
+  type DraggableItemDragState,
+  type DraggableItemProps,
+} from './palette/draggable';
 import type {
   PanelBinding,
   PanelNodeChange,
@@ -44,10 +48,6 @@ import {
   type DndItemsOptions,
   useDndItems,
 } from './panel/use-dnd-items';
-import type {
-  DndRenderSectionFallback,
-  DndSectionFallbackArgs,
-} from './section-fallback-context';
 import type { DndPalette, DndPanel, Props } from './types';
 
 type DndComponent = typeof DndImpl & {
