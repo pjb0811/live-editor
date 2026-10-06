@@ -244,11 +244,14 @@ In `components/dnd/dnd.tsx`. One panel edit, or several as one commit
 code. `update()` (`utils/ast/update.ts`):
 
 1. Parses the section and finds the element whose `data-id` matches.
-2. Resolves its bindings (the same three sources `extract` used) and finds the
-   one matching the `property` (or the `label`).
-3. Runs the editor for that property: `innerText`, `innerHTML` (or richtext),
-   `children`, or an attribute (edit, add or remove).
-4. Each editor returns **source spans** to replace, never a modified tree.
+2. `findBinding`: resolves its bindings (the same three sources `extract`
+   used) and finds the one matching the `property` (or the `label`).
+3. `checkEdit`: refuses an attribute the editor owns, or removing a required
+   one.
+4. `editProperty`: runs the editor for that property (`edit-source.ts`):
+   `innerText`, `innerHTML` (or richtext), `children`, or an attribute (edit,
+   add or remove).
+5. Each editor returns **source spans** to replace, never a modified tree.
    `applyEdits` (`utils/ast/patch.ts`) writes those spans into the original text.
 
 A refused edit returns an `UpdateFailure` with a `reason`. `describeUpdateFailure`
@@ -322,14 +325,14 @@ Dnd (dnd.tsx)
 `utils/ast/` reads and edits JSX source with `@babel/standalone`. The files
 follow the pipeline:
 
-| Stage     | Files                                        | What they do                                                                                                                                    |
-| --------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared    | `types.ts`, `helpers.ts`, `jsx-name.ts`      | Types; `wrap`/`unwrap` (parse a JSX fragment as a program and back), `generateCode`; tag names as written                                       |
-| Document  | `document.ts`, `tree.ts`                     | Parse the document (cached), find the container and sections, splice section lists back in, build section previews; fill and replace `data-id`s |
-| Read      | `extract.ts`, `binding.ts`, `value.ts`       | JSX → `DataAttrNode[]`; resolve and parse bindings; read a literal's value without evaluating code                                              |
-| Write     | `update.ts`, `patch.ts`                      | Find the element and binding, produce source spans, apply them                                                                                  |
-| Structure | `items.ts`, `array-source.ts`, `children.ts` | Edit array literals and JSX children while keeping everything else byte-identical                                                               |
-| Check     | `validate.ts`                                | `validateBindingValue`: required, min/max, pattern, url, date                                                                                   |
+| Stage     | Files                                                            | What they do                                                                                                                                                    |
+| --------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared    | `types.ts`, `helpers.ts`, `jsx-name.ts`                          | Types; `wrap`/`unwrap` (parse a JSX fragment as a program and back), `generateCode`; tag names as written                                                       |
+| Document  | `document.ts`, `tree.ts`                                         | Parse the document (cached), find the container and sections, splice section lists back in, build section previews; fill and replace `data-id`s                 |
+| Read      | `extract.ts`, `binding.ts`, `value.ts`, `editable-value.ts`      | JSX → `DataAttrNode[]`; resolve and parse bindings; read a literal's value without evaluating code; list and replace an object or array value's editable leaves |
+| Write     | `update.ts`, `edit-source.ts`, `value-expression.ts`, `patch.ts` | Find the element and binding, check the edit, produce source spans (building expressions from values), apply them                                               |
+| Structure | `items.ts`, `array-source.ts`, `children.ts`                     | Edit array literals and JSX children while keeping everything else byte-identical                                                                               |
+| Check     | `validate.ts`                                                    | `validateBindingValue`: required, min/max, pattern, url, date                                                                                                   |
 
 Rules every change here follows (also in [the AST skill](./.github/skills/ast/SKILL.md)):
 
@@ -395,24 +398,21 @@ provider to unmount clears them (`utils/editor-caches.ts`).
 
 ## Where to start for common changes
 
-| You want to...                                            | Start in                                                                                          |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Support a new authored syntax in a field                  | `utils/ast/update.ts` (write) and `extract.ts` / `value.ts` (read); then the Editable Syntax page |
-| Add a binding `type` or change which control a field gets | `BINDING_TYPES` in `utils/ast/types.ts`, `panel/field-kind.ts`, `panel/field.tsx`                 |
-| Change what a section operation does                      | `dnd/state/use-section-document.ts`                                                               |
-| Change how panel edits commit                             | `commitChanges` in `dnd/dnd.tsx`                                                                  |
-| Change array or children editing                          | `panel/use-dnd-items.ts` / `use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`            |
-| Expose something to custom panels                         | `DndPanel` in `dnd/types.ts`, then `dnd/index.ts` and the public API snapshot                     |
-| Change preview isolation or sizing                        | `components/frame/`                                                                               |
-| Add UI text                                               | `components/context/messages.ts` and the Korean set                                               |
+| You want to...                                            | Start in                                                                                                               |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Support a new authored syntax in a field                  | `utils/ast/edit-source.ts` and `update.ts` (write) and `extract.ts` / `value.ts` (read); then the Editable Syntax page |
+| Add a binding `type` or change which control a field gets | `BINDING_TYPES` in `utils/ast/types.ts`, `panel/field-kind.ts`, `panel/field.tsx`                                      |
+| Change what a section operation does                      | `dnd/state/use-section-document.ts`                                                                                    |
+| Change how panel edits commit                             | `commitChanges` in `dnd/dnd.tsx`                                                                                       |
+| Change array or children editing                          | `panel/use-dnd-items.ts` / `use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`                                 |
+| Expose something to custom panels                         | `DndPanel` in `dnd/types.ts`, then `dnd/index.ts` and the public API snapshot                                          |
+| Change preview isolation or sizing                        | `components/frame/`                                                                                                    |
+| Add UI text                                               | `components/context/messages.ts` and the Korean set                                                                    |
 
 Any change to what the package exports updates
 `.github/scripts/api-surface.snapshot.json` (`pnpm check-api-surface --update`).
 
 ## Known rough edges
 
-Known places where the structure is harder to follow than it needs to be.
-They're candidates for cleanup, not rules to follow.
-
-- **Large AST files.** `update.ts`, `value.ts` and `extract.ts` each hold more
-  than one stage's worth of work.
+None listed right now. When you find a place where the structure is harder
+to follow than it needs to be, add it here as a candidate for cleanup.

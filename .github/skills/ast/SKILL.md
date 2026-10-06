@@ -10,24 +10,26 @@ description: 'Babel AST 변환 코드를 작성하거나 src/utils/ast/ 모듈�
 
 ## 모듈 맵 — 무엇을 고칠 때 어디를 보나
 
-| 상황                                                                                               | 파일                                                                                                       |
-| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| 새 `BindingType` 추가/바인딩 속성(label, property, options, render) 파싱 방식 변경                 | `types.ts` (`BINDING_TYPES`) 및 `binding.ts` (`parseBinding`)                                              |
-| 특정 property에서 "현재 값"을 읽는 방식 변경 (예: richtext처럼 특수 속성에서 읽기)                 | `binding.ts` (`getCurrentValue`)                                                                           |
-| raw JSX 문자열 → `DataAttrNode` 트리 변환 로직 (children/items 바인딩, fragment 처리 등)           | `extract.ts`                                                                                               |
-| 패널에서 입력한 값을 AST에 반영(write-back)하는 로직, 새 property 타입별 update 분기 추가          | `update.ts` (`update()`의 속성 분기 및 편집 헬퍼)                                                          |
-| JS 값 ↔ AST 리터럴(`t.StringLiteral` 등) 상호 변환                                                 | `value.ts`                                                                                                 |
-| `data-id` 재발급, 노드 clone                                                                       | `tree.ts`                                                                                                  |
-| 여러 파이프라인 단계가 공유하는 저수준 헬퍼 (`wrap`/`unwrap`/`attrValue`/`generateCode`)           | `helpers.ts` — 두 곳 이상에서 쓰지 않는 헬퍼는 여기 넣지 말고 사용처 파일에 로컬로 둔다                    |
-| JSX 태그 이름 해석 (`section`, `ui.Space` 같은 멤버 경로) — 섹션 탐색과 추출이 함께 쓰는 단일 구현 | `jsx-name.ts` (`getJSXTagName`) — `document.ts`가 `@babel/generator`를 끌어오지 않도록 `helpers.ts`와 분리 |
-| 타입/인터페이스 정의                                                                               | `types.ts`                                                                                                 |
+| 상황                                                                                               | 파일                                                                                                                        |
+| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 새 `BindingType` 추가/바인딩 속성(label, property, options, render) 파싱 방식 변경                 | `types.ts` (`BINDING_TYPES`) 및 `binding.ts` (`parseBinding`)                                                               |
+| 특정 property에서 "현재 값"을 읽는 방식 변경 (예: richtext처럼 특수 속성에서 읽기)                 | `binding.ts` (`getCurrentValue`)                                                                                            |
+| raw JSX 문자열 → `DataAttrNode` 트리 변환 로직 (children/items 바인딩, fragment 처리 등)           | `extract.ts`                                                                                                                |
+| 패널에서 입력한 값을 AST에 반영(write-back)하는 로직, 새 property 타입별 update 분기 추가          | `update.ts` (`findBinding` → `checkEdit` → `editProperty` 단계, 속성 분기는 `editProperty`), 소스 편집기는 `edit-source.ts` |
+| AST에서 JS 값 읽기 (코드 실행 없이)                                                                | `value.ts`                                                                                                                  |
+| 객체·배열 값의 편집 가능한 리프 나열과 교체                                                        | `editable-value.ts`                                                                                                         |
+| JS 값 → AST 표현식·소스 텍스트 만들기                                                              | `value-expression.ts`                                                                                                       |
+| `data-id` 재발급, 노드 clone                                                                       | `tree.ts`                                                                                                                   |
+| 여러 파이프라인 단계가 공유하는 저수준 헬퍼 (`wrap`/`unwrap`/`attrValue`/`generateCode`)           | `helpers.ts` — 두 곳 이상에서 쓰지 않는 헬퍼는 여기 넣지 말고 사용처 파일에 로컬로 둔다                                     |
+| JSX 태그 이름 해석 (`section`, `ui.Space` 같은 멤버 경로) — 섹션 탐색과 추출이 함께 쓰는 단일 구현 | `jsx-name.ts` (`getJSXTagName`) — `document.ts`가 `@babel/generator`를 끌어오지 않도록 `helpers.ts`와 분리                  |
+| 타입/인터페이스 정의                                                                               | `types.ts`                                                                                                                  |
 
 ## 새 바인딩 타입을 추가하는 절차 (예: `richtext`)
 
 1. `types.ts`의 `BINDING_TYPES`에 추가 (`BindingType`은 여기서 파생)
 2. `binding.ts`의 Zod 스키마와 `parseBinding()`이 새 타입을 처리하는지 확인
 3. 읽기 시 특수 처리가 필요하면 `binding.ts`의 `getCurrentValue()`에 분기 추가
-4. 쓰기 시 특수 처리가 필요하면 `update.ts`에 소스 구간 편집 헬퍼를 추가하고 `update()`의 해당 속성 분기에서 호출
+4. 쓰기 시 특수 처리가 필요하면 `edit-source.ts`에 소스 구간 편집기를 추가하고, `update.ts`의 `editProperty`에서 해당 속성 분기로 호출
 5. 패널 UI에서 새 타입을 렌더링해야 하면 `src/components/dnd/panel/field.tsx`에 분기 추가
 
 ## 의존 방향 (순환 참조 금지)
@@ -36,15 +38,19 @@ description: 'Babel AST 변환 코드를 작성하거나 src/utils/ast/ 모듈�
 
 ```text
 value → helpers, types
+editable-value → value
+value-expression → helpers, types
 binding → value, types
-document → jsx-name
+document → jsx-name, tree
 extract → binding, document, helpers, jsx-name, types, value
 children → extract, helpers, patch, types
-update → binding, children, document, helpers, patch, types, value
+items → array-source, helpers, patch, types, value, value-expression
+edit-source → binding, helpers, patch, types, value, value-expression
+update → binding, children, document, edit-source, helpers, jsx-name, patch, types
 tree → helpers
 ```
 
-- `binding.ts`는 `value.ts`를 사용합니다. 반대 방향의 import를 추가해 순환 참조를 만들지 않습니다.
+- `binding.ts`는 `value.ts`를 사용합니다. 반대 방향의 import를 추가해 순환 참조를 만들지 않습니다. `value.ts`(읽기)는 `editable-value.ts`나 `value-expression.ts`를 import하지 않습니다.
 - `document.ts`의 `traverse`는 Babel CJS/ESM 상호 운용을 처리한 공용 바인딩입니다.
 - `document.ts`는 문서 파싱·섹션 편집·미리보기 캐시, `items.ts`는 배열 편집, `patch.ts`는 소스 구간 편집 적용, `validate.ts`는 바인딩 검증을 담당합니다.
 
