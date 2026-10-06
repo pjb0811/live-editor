@@ -19,14 +19,13 @@ import type {
   NodeValueType,
 } from './types';
 import {
-  createNodeFromValue,
   extractNodeValue,
   extractObjectProperties,
   isLosslesslyEvaluable,
   parseArrayExpression,
   parseValue,
-  valueToExpression,
 } from './value';
+import { createNodeFromValue, valueToExpression } from './value-expression';
 
 // Array edits are source patches. Parsing locates the requested value or
 // element; unrelated expressions, comments and formatting are not printed

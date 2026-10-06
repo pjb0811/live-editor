@@ -32,11 +32,11 @@ import type { ExtractedNodeValue as _ExtractedNodeValue } from './types';
 import type { NodeValueType as _NodeValueType } from './types';
 import type { EditableNodeValueType as _EditableNodeValueType } from './types';
 import { parseArrayExpression as _parseArrayExpression } from './value';
-import { arrayExpressionToCode as _arrayExpressionToCode } from './value';
 import { extractNodeValue as _extractNodeValue } from './value';
 import { extractObjectProperties as _extractObjectProperties } from './value';
-import { createNodeFromValue as _createNodeFromValue } from './value';
 import { canLosslesslyEvaluateSource as _canLosslesslyEvaluateSource } from './value';
+import { arrayExpressionToCode as _arrayExpressionToCode } from './value-expression';
+import { createNodeFromValue as _createNodeFromValue } from './value-expression';
 
 export type {
   BindingFieldSpec,
@@ -58,8 +58,9 @@ export type {
   EditablePathSegment,
   EditablePrimitive,
   EditableValueEntry,
-} from './value';
-export { flattenEditableValue, parseValue, setEditableValue } from './value';
+} from './editable-value';
+export { parseValue } from './value';
+export { flattenEditableValue, setEditableValue } from './editable-value';
 export { extract } from './extract';
 export type {
   DocumentOptions,
