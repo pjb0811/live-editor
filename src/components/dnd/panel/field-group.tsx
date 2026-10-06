@@ -1,4 +1,4 @@
-import type { PanelBinding, PanelNodeChange } from '../dnd';
+import type { PanelBinding, PanelNodeChange } from '../panel-binding';
 import Field from './field';
 
 interface Props {

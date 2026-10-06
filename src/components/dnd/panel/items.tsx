@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
 import { useLiveMessages } from '~/components/context/messages';
 import type { BindingRenderMap } from '~/utils/ast/types';
 
-import type { PanelNodeChange } from '../dnd';
+import type { PanelNodeChange } from '../panel-binding';
 import BulkActionsBar from './bulk-actions-bar';
 import Field from './field';
 import { ItemCard, SortableItems } from './sortable-items';

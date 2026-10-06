@@ -7,8 +7,8 @@ import { useLiveMessages } from '~/components/context/messages';
 import type { Section } from '~/types';
 import { cn } from '~/utils/cn';
 
-import type { PanelBinding, PanelNodeChange } from '../dnd';
 import { DndInspectorContext } from '../inspector';
+import type { PanelBinding, PanelNodeChange } from '../panel-binding';
 import FieldGroup from './field-group';
 
 // Props of the built-in property panel, which `Live.Dnd.Panel` renders from

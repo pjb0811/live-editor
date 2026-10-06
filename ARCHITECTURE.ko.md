@@ -229,6 +229,7 @@ Dnd (dnd.tsx)
 └─ children ?? <Layout />  기본 Palette / Canvas / Panel 배치
 ```
 
+- **공개 타입은 컴포넌트와 따로 있습니다.** `DndPanel`, `DndPalette`, props는 `types.ts`에, `PanelBinding`과 commit 콜백은 `panel-binding.ts`에 있습니다. 타입이 필요한 파일은 `dnd.tsx`가 아니라 거기서 가져옵니다.
 - **컴포넌트가 아니라 데이터를 넘깁니다.** 기본 팔레트와 패널도 커스텀 구현과 똑같이 `useDndPalette()`, `useDndPanel()`로 읽습니다. 그래서 공개 API가 기본 구현이 쓰는 것보다 뒤처질 수 없습니다(#237).
 - **영역은 배치만 담당합니다.** `Live.Dnd.Palette`, `Canvas`, `Panel`(`layout.tsx`)은 영역의 내용을 필요한 컨테이너로 감쌀 뿐입니다. 커스텀 레이아웃은 자기 `children`을 넘기고, 드래그 context 안이라면 어디든 배치할 수 있습니다.
 - **드래그 앤 드롭**은 `@dnd-kit`입니다. 팔레트 드롭은 `type: 'new-item'`과 `Section`을 싣고 오며, `onDragEnd`가 이를 `add`로, 캔버스 안의 드래그는 `reorder`로 바꿉니다. 끌고 있는 섹션은 `overlay.tsx`가 그립니다.
@@ -299,7 +300,7 @@ code ─► compile(code, modules)          utils/compile.ts
 | 섹션 작업의 동작 변경                 | `dnd/use-section-document.ts`                                                                |
 | 패널 편집의 commit 방식 변경          | `dnd/dnd.tsx`의 `commitChanges`                                                              |
 | 배열이나 children 편집 변경           | `panel/use-dnd-items.ts` / `use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`       |
-| 커스텀 패널에 무언가 공개             | `dnd/dnd.tsx`의 `DndPanel`, 그다음 `dnd/index.ts`와 공개 API 스냅샷                          |
+| 커스텀 패널에 무언가 공개             | `dnd/types.ts`의 `DndPanel`, 그다음 `dnd/index.ts`와 공개 API 스냅샷                         |
 | 미리보기 격리나 크기 조절 변경        | `components/frame/`                                                                          |
 | UI 문구 추가                          | `components/context/messages.ts`와 한국어 세트                                               |
 
@@ -310,6 +311,5 @@ code ─► compile(code, modules)          utils/compile.ts
 구조가 필요 이상으로 따라가기 어려운 곳입니다. 따라야 할 규칙이 아니라 정리할 후보입니다.
 
 - **"item"이 네 가지 뜻입니다**(용어집 참고). 내부 이름이 어느 뜻인지 드러내면 좋습니다.
-- **`dnd.tsx`가 모든 것의 중심**이면서 공개 타입(`DndPanel`, `DndPalette`)을 정의하고 다른 타입(`PanelBinding`)을 재수출합니다. `panel/` 아래 파일들은 그 타입을 가장 큰 컴포넌트 파일인 `../dnd`에서 가져옵니다.
 - **`components/dnd/`가 평평합니다.** 컴포넌트, 상태 훅, 순수 헬퍼, context가 한 폴더에 나란히 있습니다.
 - **큰 AST 파일.** `update.ts`, `value.ts`, `extract.ts`는 각각 한 단계 이상의 일을 담고 있습니다.
