@@ -8,7 +8,7 @@ import {
   findElementById,
   pickElement,
   viewportRect,
-} from './inspector';
+} from '../inspector';
 import type { SectionNodes } from './use-dnd-keyboard';
 
 interface Options {

@@ -13,8 +13,8 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useLiveMessages } from '~/components/context/messages';
 import type { Section } from '~/types';
 
-import { paletteSectionOf } from './palette-drag';
-import type { SectionNavigation } from './sortable';
+import type { SectionNavigation } from '../canvas/sortable';
+import { paletteSectionOf } from '../palette/palette-drag';
 
 // Enter is left out of `start` so it can select the focused section (#435).
 const KEYBOARD_CODES = {

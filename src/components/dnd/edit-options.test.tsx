@@ -26,7 +26,7 @@ import Items from './panel/items';
 import { useDndItems } from './panel/use-dnd-items';
 import type { DndPanel } from './types';
 
-vi.mock('./renderer', () => ({
+vi.mock('./canvas/renderer', () => ({
   default: () => <div data-testid="renderer" />,
 }));
 

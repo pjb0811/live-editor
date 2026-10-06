@@ -36,32 +36,32 @@ import { preloadScripts } from '../../utils/scripts';
 import { type LiveMessages, useLiveMessages } from '../context/messages';
 import { usePreview } from '../context/states';
 import { useStableModules } from '../preview/use-stable-modules';
-import Droppable from './droppable';
+import Droppable from './canvas/droppable';
+import InspectorHighlight from './canvas/inspector-highlight';
+import Overlay from './canvas/overlay';
+import Renderer from './canvas/renderer';
+import { SectionFallbackContext } from './canvas/section-fallback-context';
+import Sortable from './canvas/sortable';
 import {
   type DndEditError,
   DndEditOptionsContext,
   toastEditError,
 } from './edit-options';
 import { DndInspectorContext } from './inspector';
-import InspectorHighlight from './inspector-highlight';
 import Layout from './layout';
 import { DndRegionContext } from './layout-context';
-import Overlay from './overlay';
-import { paletteSectionOf } from './palette-drag';
+import { paletteSectionOf } from './palette/palette-drag';
 import {
   type PanelBinding,
   type PanelNodeChange,
   resolvePanelBindings,
   withPanelCommit,
 } from './panel-binding';
-import Renderer from './renderer';
-import { SectionFallbackContext } from './section-fallback-context';
-import Sortable from './sortable';
+import { useDeleteFlow } from './state/use-delete-flow';
+import { useDndKeyboard } from './state/use-dnd-keyboard';
+import { useInspectorState } from './state/use-inspector-state';
+import { useSectionDocument } from './state/use-section-document';
 import type { DndPalette, DndPanel, Props } from './types';
-import { useDeleteFlow } from './use-delete-flow';
-import { useDndKeyboard } from './use-dnd-keyboard';
-import { useInspectorState } from './use-inspector-state';
-import { useSectionDocument } from './use-section-document';
 
 // Turns an `update` failure into the edit error's title and description.
 // The description names the cause, which is usually in the element's

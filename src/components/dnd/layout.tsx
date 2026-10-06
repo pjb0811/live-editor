@@ -4,9 +4,9 @@ import { Crosshair, LayoutGrid } from 'lucide-react';
 import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
-import { DefaultDraggableItem } from './draggable';
 import { useDndInspector } from './inspector';
 import { useDndRegions } from './layout-context';
+import { DefaultDraggableItem } from './palette/draggable';
 import PropertyPanel from './panel';
 
 // A region's props: everything a `div` takes except `children`, which comes

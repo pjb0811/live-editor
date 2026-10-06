@@ -4,7 +4,7 @@ import { Typography } from '@jbpark/ui-kit';
 import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
-import { paletteSectionOf } from './palette-drag';
+import { paletteSectionOf } from '../palette/palette-drag';
 
 const Droppable = ({
   children,

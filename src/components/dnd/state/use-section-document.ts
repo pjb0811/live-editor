@@ -15,7 +15,7 @@ import {
   replaceSections,
 } from '~/utils/sections';
 
-import { usePreview } from '../context/states';
+import { usePreview } from '../../context/states';
 
 export interface SectionDocument {
   sections: Section[];

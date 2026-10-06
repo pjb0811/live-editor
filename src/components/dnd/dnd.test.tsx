@@ -21,7 +21,7 @@ import type { DndPalette, DndPanel } from './types';
 // The last preview each section was rendered with, keyed by section id.
 const previews = vi.hoisted(() => new Map<string, string>());
 
-vi.mock('./renderer', () => ({
+vi.mock('./canvas/renderer', () => ({
   default: ({ sectionId, preview }: { sectionId: string; preview: string }) => {
     previews.set(sectionId, preview);
 

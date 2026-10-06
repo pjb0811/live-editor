@@ -11,7 +11,7 @@ import { useDndLayout, useDndPalette, useDndPanel } from './layout-context';
 
 // Same reason as dnd.test.tsx: each section compiles into an iframe, none of
 // which jsdom needs to do for us to see where the regions landed.
-vi.mock('./renderer', () => ({
+vi.mock('./canvas/renderer', () => ({
   default: () => <div data-testid="renderer" />,
 }));
 
