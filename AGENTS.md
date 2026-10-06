@@ -43,6 +43,7 @@ live-editor/
 │  │  ├─ inspector/         # 요소 선택, renderField, onEditError, onBeforeDelete
 │  │  ├─ fallback/          # renderSectionFallback, shouldForceSectionFallback
 │  │  ├─ preview-modes/     # iframe/shadow/in place 비교, syncStyle·테마 동기화
+│  │  ├─ overlays/          # 섹션의 ui-kit Modal·Drawer를 container로 미리보기 안에 띄우기 (iframe/shadow)
 │  │  └─ shared/            # 페이지 공용 예제 섹션, 프레임 설정
 │  ├─ utils/
 │  │  ├─ index.ts           # compile(), cn() 등 핵심 유틸 (UI kit을 import하지 않음 — Node에서 로드 가능해야 함)

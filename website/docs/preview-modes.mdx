@@ -94,18 +94,97 @@ Unlike the other demos on this site, this one is rendered directly in the
 page — not inside a sandboxed iframe — since it has no reader-authored code
 to isolate (the sample is a fixed string, not wired to an editor).
 
+## Modals and drawers
+
+A preview's default export receives a `container` prop when the preview has a
+frame. Pass it to an overlay's portal target, such as ui-kit's `Modal` and
+`Drawer`, so the overlay opens inside the preview instead of over the host
+page:
+
+```tsx
+import { useState } from 'react';
+
+import * as ui from 'ui-kit';
+
+const App = ({ container }) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <ui.Button onClick={() => setOpen(true)}>Open</ui.Button>
+      <ui.Modal
+        open={open}
+        container={container}
+        onCancel={() => setOpen(false)}
+      >
+        Opened inside the preview.
+      </ui.Modal>
+    </>
+  );
+};
+
+export default App;
+```
+
+<PreviewModesEmbed sample="overlays" />
+
+What `container` is, and where the overlay opens:
+
+| Mode     | `container`                                                     | The overlay opens                                                                                            |
+| -------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `iframe` | The iframe document's mount node                                | Inside the iframe. Its `position: fixed` resolves against the iframe's viewport.                             |
+| `shadow` | An overlay layer inside the shadow root, over the preview's box | Inside the preview's box, with the shadow root's styles. Clicks pass through the empty layer to the preview. |
+| none     | `document.body` in `Live.Dnd`; not passed in `Live.Preview`     | Over the whole page, wherever the component portals.                                                         |
+
+Overlays in `Live.Dnd` sections:
+
+- **Open them from the panel.** The canvas covers each section so a click
+  selects it, so a button inside a section can't open an overlay there. Bind
+  `open` as a `type: 'boolean'` field, and switch it in the panel. A button
+  still works in a preview outside the canvas.
+- **In `iframe` mode, a section grows to fit an open overlay.** `autoHeight`
+  lays fixed elements out against the height the canvas can show, so a bottom
+  drawer or a centred modal is measured where it appears.
+- **In `shadow` mode, a section doesn't grow.** There is no `autoHeight`, so
+  the overlay is laid out in the section's own box. Give a section that opens
+  one enough height, for example with `min-height`.
+
+The app component takes `container` and passes it down. A section that opens
+an overlay can use a component defined above `App` in the same document:
+
+```tsx
+const ModalExample = ({ open = false, container }) => (
+  <ui.Modal open={open} title="Modal" container={container}>
+    Opened from the panel.
+  </ui.Modal>
+);
+
+const App = ({ container }) => (
+  <main id="app-container">
+    <section data-name="Modal" style={{ minHeight: 320 }}>
+      <ModalExample
+        data-id=""
+        data-binding={[{ label: 'Open', property: 'open', type: 'boolean' }]}
+        open={false}
+        container={container}
+      />
+    </section>
+  </main>
+);
+```
+
 ## `frame` options
 
 `FrameProps` (importable from `@jbpark/live-editor`) is this shape:
 
-| Option | Type | Applies to | Description |
-| --- | --- | --- | --- |
-| `mode` | `'iframe' \| 'shadow'` | both | Isolation strategy. Omit it and nothing else in this table has any effect. |
-| `title` | `string` | iframe | The iframe's `title` attribute (accessibility). |
-| `sandbox` | `string` | iframe | Forwarded to the iframe's `sandbox` attribute, for DOM/CSS isolation only — **not** a security boundary (see the note above). |
-| `syncStyle` | `boolean` | both | Copy the host document's *already-compiled* `<link>`/`<style>` tags in (into the iframe document, or directly into the shadow root). In `iframe` mode it also mirrors the classes and `data-*` attributes of the host's `<html>` onto the iframe's, and follows changes, so a theme switched there (`.dark`, `data-theme="dark"`) reaches the preview. A shadow root sits under the host's `<html>` already. Can't include utility classes that only appear in code typed at runtime — see [How Tailwind reaches the preview](./intro.md#how-tailwind-reaches-the-preview). |
-| `scripts` | `string[]` | iframe | External script URLs to load into the iframe document (e.g. a Tailwind runtime). |
-| `styles` | `string[]` | iframe | Raw CSS strings to inject as `<style>` tags into the iframe. |
-| `stylesheets` | `string[]` | iframe | External stylesheet URLs to `<link>` into the iframe. |
-| `autoHeight` | `boolean` | iframe | Size the iframe to its content instead of a fixed height. |
-| `onLoaded` | `() => void` | iframe | Called once the iframe has finished its initial load. |
+| Option        | Type                   | Applies to | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------- | ---------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mode`        | `'iframe' \| 'shadow'` | both       | Isolation strategy. Omit it and nothing else in this table has any effect.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `title`       | `string`               | iframe     | The iframe's `title` attribute (accessibility).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `sandbox`     | `string`               | iframe     | Forwarded to the iframe's `sandbox` attribute, for DOM/CSS isolation only — **not** a security boundary (see the note above).                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `syncStyle`   | `boolean`              | both       | Copy the host document's _already-compiled_ `<link>`/`<style>` tags in (into the iframe document, or directly into the shadow root). In `iframe` mode it also mirrors the classes and `data-*` attributes of the host's `<html>` onto the iframe's, and follows changes, so a theme switched there (`.dark`, `data-theme="dark"`) reaches the preview. A shadow root sits under the host's `<html>` already. Can't include utility classes that only appear in code typed at runtime — see [How Tailwind reaches the preview](./intro.md#how-tailwind-reaches-the-preview). |
+| `scripts`     | `string[]`             | iframe     | External script URLs to load into the iframe document (e.g. a Tailwind runtime).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `styles`      | `string[]`             | iframe     | Raw CSS strings to inject as `<style>` tags into the iframe.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `stylesheets` | `string[]`             | iframe     | External stylesheet URLs to `<link>` into the iframe.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `autoHeight`  | `boolean`              | iframe     | Size the iframe to its content instead of a fixed height.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `onLoaded`    | `() => void`           | iframe     | Called once the iframe has finished its initial load.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
