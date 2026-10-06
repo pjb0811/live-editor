@@ -42,6 +42,13 @@ the fix and finds the tag again after. The other adds, changes and removes a
 host stylesheet and reads the section's computed color, so a style that
 lingers in the frame after removal fails (#338).
 
+`overlay` opens a ui-kit `Modal` portaled into a shadow preview's `container`,
+in a preview box placed away from the page's corner. It checks that the modal
+is inside the shadow root and its mask covers the preview's box rather than
+the viewport, and that the overlay layer still lets clicks reach the preview
+(#564). Fixed-position layout against a containing block is something jsdom
+doesn't do.
+
 `reorder` swaps two iframe sections that load a script through
 `frame.scripts`. Moving an iframe in the DOM reloads its document, which jsdom
 doesn't do, so only a real browser shows whether the new document gets the

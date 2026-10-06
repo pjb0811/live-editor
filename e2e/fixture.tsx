@@ -269,6 +269,55 @@ export const TransitionFixture = () => (
   </Live>
 );
 
+// #564: a ui-kit Modal portaled into the `container` a shadow preview
+// receives, in a preview box placed away from the page's corner. The counter
+// shows whether the overlay layer lets clicks through while nothing is open.
+const overlayCode = `import { useState } from 'react';
+import * as ui from 'ui-kit';
+
+const App = ({ container }) => {
+  const [open, setOpen] = useState(false);
+  const [count, setCount] = useState(0);
+
+  return (
+    <div style={{ padding: 16 }}>
+      <button id="count" onClick={() => setCount(count + 1)}>Count {count}</button>
+      <button id="open" onClick={() => setOpen(true)}>Open</button>
+      <ui.Modal
+        open={open}
+        title="Overlay"
+        container={container}
+        footer={<button id="close" onClick={() => setOpen(false)}>Close</button>}
+        onCancel={() => setOpen(false)}
+      >
+        <p id="modal-body">Modal body</p>
+      </ui.Modal>
+    </div>
+  );
+};
+
+export default App;`;
+
+export const OverlayFixture = () => (
+  <Live>
+    <div
+      id="preview-box"
+      style={{
+        position: 'absolute',
+        left: 300,
+        top: 200,
+        width: 500,
+        height: 400,
+      }}
+    >
+      <Live.Preview
+        code={overlayCode}
+        frame={{ mode: 'shadow', syncStyle: true }}
+      />
+    </div>
+  </Live>
+);
+
 // #565: overlays placed by `top`, `bottom` or a percentage `height`, which
 // resolve against the iframe's viewport. A bottom sheet half the viewport
 // tall, a dialog centred with `top: 50%` and `translateY(-50%)`, and a sheet
@@ -479,6 +528,7 @@ const fixtures = {
   transitions: <TransitionFixture />,
   positioned: <PositionedFixture />,
   frames: <FramesFixture />,
+  overlay: <OverlayFixture />,
   reorder: <ReorderFixture />,
   history: <HistoryFixture />,
   'field-error': <FieldErrorFixture />,

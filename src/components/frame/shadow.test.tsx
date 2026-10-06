@@ -38,3 +38,26 @@ describe('Shadow style synchronization', () => {
     sourceStyle.remove();
   });
 });
+
+describe('Shadow overlay layer (#564)', () => {
+  it('passes a container inside the shadow root, next to the preview', () => {
+    let received: HTMLElement | null = null;
+
+    const { container } = render(
+      <Shadow>
+        {overlayLayer => {
+          received = overlayLayer;
+
+          return <div id="preview-content">Preview</div>;
+        }}
+      </Shadow>,
+    );
+    const shadowRoot = container.firstElementChild?.shadowRoot;
+    const content = shadowRoot?.querySelector('#preview-content');
+
+    expect(received).not.toBeNull();
+    expect(received!.getRootNode()).toBe(shadowRoot);
+    expect(received!.contains(content ?? null)).toBe(false);
+    expect(received!.parentElement).toBe(content?.parentElement?.parentElement);
+  });
+});
