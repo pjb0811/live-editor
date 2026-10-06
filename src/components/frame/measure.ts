@@ -68,48 +68,19 @@ export const isVisuallyHidden = (
 export const isAnimationActive = (playState: string): boolean =>
   playState === 'running' || playState === 'paused';
 
-// The Y offset of a `translate(x, y)`, `translateY(y)` or
-// `matrix(a, b, c, d, tx, ty)` transform, or 0 for anything else. Positioned
-// overlays are often moved this way (Radix, floating-ui), so their bottom
-// edge is `offsetY + offsetHeight`. Browsers report computed transforms as
-// `matrix(...)`; the other forms cover an inline style.
-export const parseTranslateY = (transform: string): number => {
-  if (!transform || transform === 'none') {
-    return 0;
-  }
-
-  // `translateY(y)` has one argument, so it's matched on its own, before
-  // `translate(x, y)`.
-  const translateYMatch = transform.match(/translateY\(\s*([+-]?\d*\.?\d+)/);
-
-  if (translateYMatch?.[1]) {
-    return parseFloat(translateYMatch[1]);
-  }
-
-  const translateMatch = transform.match(
-    /translate\([^,]+,\s*([+-]?\d*\.?\d+)/,
-  );
-
-  if (translateMatch?.[1]) {
-    return parseFloat(translateMatch[1]);
-  }
-
-  const matrixMatch = transform.match(
-    /matrix\(\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*[^,]+,\s*([+-]?\d*\.?\d+)/,
-  );
-
-  return matrixMatch?.[1] ? parseFloat(matrixMatch[1]) : 0;
-};
-
-// The height a fixed or absolute element adds: its offset plus its height,
-// capped at `probeHeight`, so one element placed past the viewport can't
-// stretch the whole preview.
-export const estimatePositionedElementHeight = (
-  offsetHeight: number,
-  transform: string,
+// How far down a fixed or absolute element reaches, from its viewport `top`
+// and `bottom` read while the viewport is `probeHeight` tall: its bottom
+// edge, capped at `probeHeight` so one element placed past the viewport can't
+// stretch the whole preview. `null` for an element entirely outside the
+// viewport, such as a closed drawer moved off-screen, which shows nothing.
+export const positionedElementBottom = (
+  top: number,
+  bottom: number,
   probeHeight: number,
-): number => {
-  const offsetY = parseTranslateY(transform);
+): number | null => {
+  if (bottom <= 0 || top >= probeHeight) {
+    return null;
+  }
 
-  return Math.min(offsetY + offsetHeight, probeHeight);
+  return Math.min(bottom, probeHeight);
 };

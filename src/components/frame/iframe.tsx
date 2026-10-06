@@ -13,9 +13,9 @@ import { withScriptBlobs } from '~/utils/scripts';
 import {
   FALLBACK_PROBE_HEIGHT,
   computeProbeHeight,
-  estimatePositionedElementHeight,
   isAnimationActive,
   isVisuallyHidden,
+  positionedElementBottom,
   verticalInsets,
 } from './measure';
 import {
@@ -500,6 +500,15 @@ const IFrame = ({
 
     lastProbeHeightRef.current = probeHeight;
 
+    // Sizes the iframe's viewport to the probe height for the reads below, so
+    // a fixed element's percentage `height` or `top` resolves against what the
+    // section shows, not against the iframe's current height, which is itself
+    // what is being measured (#565). The final height replaces it before the
+    // next paint.
+    const previousHeight = iframe.style.height;
+
+    iframe.style.height = `${probeHeight}px`;
+
     withMeasurementOverrides(doc, freezeTransitions, () => {
       ensureContainerStyle(doc, probeHeight);
 
@@ -534,20 +543,22 @@ const IFrame = ({
           (style.position === 'fixed' || style.position === 'absolute') &&
           el.offsetHeight > 0
         ) {
-          const estimatedHeight = estimatePositionedElementHeight(
-            el.offsetHeight,
-            style.transform,
+          const rect = el.getBoundingClientRect();
+          const bottom = positionedElementBottom(
+            rect.top,
+            rect.bottom,
             probeHeight,
           );
 
-          contentHeight = Math.max(contentHeight, estimatedHeight);
+          if (bottom !== null) {
+            contentHeight = Math.max(contentHeight, bottom);
+          }
         }
       });
     });
 
-    if (contentHeight > 0) {
-      iframe.style.height = `${Math.ceil(contentHeight)}px`;
-    }
+    iframe.style.height =
+      contentHeight > 0 ? `${Math.ceil(contentHeight)}px` : previousHeight;
 
     // After the measurement window, which can cancel transitions, so this sees
     // the document's real animations.

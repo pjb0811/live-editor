@@ -113,3 +113,41 @@ test.describe('autoHeight with animated content (#374)', () => {
       .toBe(CLOSED_FLOW_HEIGHT);
   });
 });
+
+test.describe('autoHeight with overlays placed against the viewport (#565)', () => {
+  // Section order in the fixture's `positionedCode`.
+  const SHEET = 0;
+  const DIALOG = 1;
+  const OFFSCREEN = 2;
+
+  const FLOW_HEIGHT = 40;
+  const DIALOG_HEIGHT = 300;
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/e2e/fixture.html?scenario=positioned');
+    await expect(page.locator('iframe')).toHaveCount(3);
+  });
+
+  test('sizes the section to the viewport the overlay is placed in', async ({
+    page,
+  }) => {
+    // The bottom sheet is pinned to the viewport's bottom edge, so it needs
+    // the whole probe height. Before the fix its `50%` resolved against the
+    // 40px iframe, and the section stayed at its flow content.
+    await expect
+      .poll(async () => (await readHeights(page))[SHEET])
+      .toBeGreaterThan(800);
+
+    const heights = await readHeights(page);
+    const probeHeight = heights[SHEET]!;
+
+    // Centred with `top: 50%`, so it reaches half the probe height plus half
+    // its own. Before the fix `top` was ignored and it read as 150px.
+    expect(
+      Math.abs(heights[DIALOG]! - (probeHeight / 2 + DIALOG_HEIGHT / 2)),
+    ).toBeLessThanOrEqual(1);
+
+    // Moved entirely below the viewport, so it shows nothing.
+    expect(heights[OFFSCREEN]).toBe(FLOW_HEIGHT);
+  });
+});
