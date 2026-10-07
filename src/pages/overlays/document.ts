@@ -14,28 +14,28 @@ import { useEffect, useState } from 'react';
 import * as ui from 'ui-kit';
 
 // Opens from its button, or from \`open\` when the panel switches it.
-const useOpen = open => {
-  const [isOpen, setIsOpen] = useState(open);
+const useOpen = openProp => {
+  const [open, setOpen] = useState(openProp);
 
-  useEffect(() => setIsOpen(open), [open]);
+  useEffect(() => setOpen(openProp), [openProp]);
 
-  return [isOpen, setIsOpen];
+  return [open, setOpen];
 };
 
-const ModalExample = ({ open = false, title, container }) => {
-  const [isOpen, setIsOpen] = useOpen(open);
+const ModalExample = ({ open: openProp = false, title, container }) => {
+  const [open, setOpen] = useOpen(openProp);
 
   return (
     <>
-      <ui.Button type="primary" onClick={() => setIsOpen(true)}>
+      <ui.Button type="primary" onClick={() => setOpen(true)}>
         Open modal
       </ui.Button>
       <ui.Modal
-        open={isOpen}
+        open={open}
         title={title}
         container={container}
-        onOk={() => setIsOpen(false)}
-        onCancel={() => setIsOpen(false)}
+        onOk={() => setOpen(false)}
+        onCancel={() => setOpen(false)}
       >
         A ui-kit Modal portaled into the preview's container.
       </ui.Modal>
@@ -43,19 +43,19 @@ const ModalExample = ({ open = false, title, container }) => {
   );
 };
 
-const DrawerExample = ({ open = false, title, container }) => {
-  const [isOpen, setIsOpen] = useOpen(open);
+const DrawerExample = ({ open: openProp = false, title, container }) => {
+  const [open, setOpen] = useOpen(openProp);
 
   return (
     <>
-      <ui.Button type="primary" onClick={() => setIsOpen(true)}>
+      <ui.Button type="primary" onClick={() => setOpen(true)}>
         Open drawer
       </ui.Button>
       <ui.Drawer
-        open={isOpen}
+        open={open}
         title={title}
         container={container}
-        onClose={() => setIsOpen(false)}
+        onClose={() => setOpen(false)}
       >
         A ui-kit Drawer portaled into the preview's container.
       </ui.Drawer>
