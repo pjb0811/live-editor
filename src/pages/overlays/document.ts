@@ -14,16 +14,16 @@ import { useEffect, useState } from 'react';
 import * as ui from 'ui-kit';
 
 // Opens from its button, or from \`open\` when the panel switches it.
-const useOpen = openProp => {
-  const [open, setOpen] = useState(openProp);
+const useOpen = _open => {
+  const [open, setOpen] = useState(_open);
 
-  useEffect(() => setOpen(openProp), [openProp]);
+  useEffect(() => setOpen(_open), [_open]);
 
   return [open, setOpen];
 };
 
-const ModalExample = ({ open: openProp = false, title, container }) => {
-  const [open, setOpen] = useOpen(openProp);
+const ModalExample = ({ open: _open = false, title, container }) => {
+  const [open, setOpen] = useOpen(_open);
 
   return (
     <>
@@ -43,8 +43,8 @@ const ModalExample = ({ open: openProp = false, title, container }) => {
   );
 };
 
-const DrawerExample = ({ open: openProp = false, title, container }) => {
-  const [open, setOpen] = useOpen(openProp);
+const DrawerExample = ({ open: _open = false, title, container }) => {
+  const [open, setOpen] = useOpen(_open);
 
   return (
     <>
