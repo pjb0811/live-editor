@@ -11,6 +11,7 @@ import './index.css';
 import CustomPanel from './custom-panel';
 import Fallback from './fallback';
 import Inspector from './inspector';
+import Overlays from './overlays';
 import PanelMeta from './panel-meta';
 import Playground from './playground';
 import PreviewModes from './preview-modes';
@@ -27,6 +28,7 @@ const PAGES = [
   { key: 'inspector', label: 'Inspector & options', Page: Inspector },
   { key: 'fallback', label: 'Section fallback', Page: Fallback },
   { key: 'preview-modes', label: 'Preview modes', Page: PreviewModes },
+  { key: 'overlays', label: 'Overlays', Page: Overlays },
 ] as const;
 
 type PageKey = (typeof PAGES)[number]['key'];

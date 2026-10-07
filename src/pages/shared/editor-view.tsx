@@ -1,6 +1,7 @@
 import { Radio, Splitter } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 
+import type { FrameProps } from '~/components/frame';
 import Live from '~/index';
 
 import { IFRAME_FRAME } from './frames';
@@ -33,13 +34,18 @@ export const ModeSwitch = ({
 );
 
 // The document as code next to its preview. Render it inside `<Live>`: the
-// preview reads the code the editor shares through the provider.
+// preview reads the code the editor shares through the provider. The preview
+// is an iframe unless a page passes another `frame`.
 export const EditorView = ({
   value,
   onChange,
+  frame = IFRAME_FRAME,
+  dynamicTailwind,
 }: {
   value: string;
   onChange: (value: string) => void;
+  frame?: FrameProps;
+  dynamicTailwind?: boolean;
 }) => {
   const theme = useEditorTheme();
   const { breakpoint } = useResponsiveSize();
@@ -49,7 +55,11 @@ export const EditorView = ({
     <Splitter withHandle orientation={isMobile ? 'vertical' : 'horizontal'}>
       <Splitter.Panel defaultSize="50%" minSize="20%" maxSize="80%" collapsible>
         <div className="h-full overflow-auto p-2">
-          <Live.Preview showError frame={IFRAME_FRAME} />
+          <Live.Preview
+            showError
+            frame={frame}
+            dynamicTailwind={dynamicTailwind}
+          />
         </div>
       </Splitter.Panel>
       <Splitter.Panel collapsible>
