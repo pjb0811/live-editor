@@ -73,7 +73,6 @@ export type {
   DndItems,
   DndItemsItem,
   DndItemsOptions,
-  // Deprecated aliases of the three above, kept until the next major.
   EditorRenderData,
   FrameProps,
   Section,
