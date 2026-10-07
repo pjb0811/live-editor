@@ -43,10 +43,10 @@ export const EditorView = ({
 }) => {
   const theme = useEditorTheme();
   const { breakpoint } = useResponsiveSize();
-  const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
+  const mobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
 
   return (
-    <Splitter withHandle orientation={isMobile ? 'vertical' : 'horizontal'}>
+    <Splitter withHandle orientation={mobile ? 'vertical' : 'horizontal'}>
       <Splitter.Panel defaultSize="50%" minSize="20%" maxSize="80%" collapsible>
         <div className="h-full overflow-auto p-2">
           <Live.Preview showError frame={IFRAME_FRAME} />

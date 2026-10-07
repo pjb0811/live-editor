@@ -26,9 +26,9 @@ const Client = ({
   const { code } = usePreview();
   const { error, setError } = useError();
   const messages = useLiveMessages();
-  const isError = !!showError && !!error;
+  const errorVisible = !!showError && !!error;
 
-  const classNames = cn(isError && 'hidden', className);
+  const classNames = cn(errorVisible && 'hidden', className);
 
   const effectiveCode = _code === undefined ? code : _code;
 
@@ -58,7 +58,7 @@ const Client = ({
         <div className={cn('relative h-full w-full', classNames)}>
           <LiveError message={module.error} title={messages.errors.compile} />
         </div>
-        <LiveError.Runtime open={isError} />
+        <LiveError.Runtime open={errorVisible} />
       </>
     );
   }
@@ -119,7 +119,7 @@ const Client = ({
           </LiveError.Boundary>
         </div>
       )}
-      <LiveError.Runtime open={isError} />
+      <LiveError.Runtime open={errorVisible} />
     </>
   );
 };

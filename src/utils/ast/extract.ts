@@ -106,12 +106,12 @@ const extractAttributes = (
 
     const name = attr.name.name;
     let value: string | null = null;
-    let isStringLiteral = false;
+    let quoted = false;
 
     if (attr.value) {
       if (t.isStringLiteral(attr.value)) {
         value = attr.value.value;
-        isStringLiteral = true;
+        quoted = true;
       } else if (t.isJSXExpressionContainer(attr.value)) {
         try {
           const expression = attr.value.expression;
@@ -125,14 +125,14 @@ const extractAttributes = (
             expression.end != null
               ? source.slice(expression.start, expression.end)
               : generateCode(expression);
-          isStringLiteral = false;
+          quoted = false;
         } catch {
           value = null;
         }
       }
     }
 
-    const entry = { name, value, isStringLiteral };
+    const entry = { name, value, isStringLiteral: quoted };
 
     allAttrs.push(entry);
 

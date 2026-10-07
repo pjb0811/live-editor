@@ -48,7 +48,7 @@ export const useFormatCode = ({
 
   return useCallback(
     async (code: string) => {
-      const isTypeScript = detectTypeScript(code);
+      const typeScript = detectTypeScript(code);
       const source = fragment ? `<>${code}</>` : code;
 
       // Only a missing prettier is swallowed here; a genuine format error
@@ -62,7 +62,7 @@ export const useFormatCode = ({
       }
 
       const formatted = await prettier.format(source, {
-        parser: isTypeScript ? 'typescript' : 'babel',
+        parser: typeScript ? 'typescript' : 'babel',
         plugins: prettier.plugins,
         ...prettierConfig,
       });

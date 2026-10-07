@@ -533,9 +533,9 @@ const IFrame = ({
         // sheet, still have an `offsetHeight`, so they're skipped here
         // (`display: none` already reads 0). Animations are checked only for a fully
         // transparent element, to tell a fade-in apart from a hidden one.
-        const isAnimating = style.opacity === '0' && hasActiveAnimation(el);
+        const animating = style.opacity === '0' && hasActiveAnimation(el);
 
-        if (isVisuallyHidden(style, isAnimating)) {
+        if (isVisuallyHidden(style, animating)) {
           return;
         }
 

@@ -433,8 +433,8 @@ export const useDndItems = (
     primitiveItems.length > 0 && objectItems.length === 0
       ? 'primitive'
       : 'object';
-  const isPrimitive = kind === 'primitive';
-  const rawItems = isPrimitive ? primitiveItems : objectItems;
+  const primitive = kind === 'primitive';
+  const rawItems = primitive ? primitiveItems : objectItems;
   const [identityState, setIdentityState] = useState(() =>
     createIdentityState(value, kind, rawItems),
   );
@@ -451,7 +451,7 @@ export const useDndItems = (
   );
 
   const { selection, record } = useStructuralSelection(
-    isPrimitive ? primitiveItems.length : objectItems.length,
+    primitive ? primitiveItems.length : objectItems.length,
     value,
   );
 
@@ -486,7 +486,7 @@ export const useDndItems = (
 
     return {
       value: last.value,
-      items: isPrimitive ? parsed.primitiveItems : parsed.objectItems,
+      items: primitive ? parsed.primitiveItems : parsed.objectItems,
       ids: last.ids,
       selected: last.selected,
     };
@@ -702,7 +702,7 @@ export const useDndItems = (
       const parsed = parseArrayExpression(result.code);
       const visible =
         parsed?.elements.flatMap((node, index) =>
-          t.isExpression(node) && t.isObjectExpression(node) === !isPrimitive
+          t.isExpression(node) && t.isObjectExpression(node) === !primitive
             ? [index]
             : [],
         ) ?? [];
@@ -739,7 +739,7 @@ export const useDndItems = (
 
   // Built every render, outside the memo, because they close over
   // `onChange` and `onNodeChange`. A cheap walk with no parsing.
-  const items: DndItemsItem[] = isPrimitive
+  const items: DndItemsItem[] = primitive
     ? primitiveItems.map(item => ({
         id: identity.ids[item.index] ?? item.id,
         index: item.index,

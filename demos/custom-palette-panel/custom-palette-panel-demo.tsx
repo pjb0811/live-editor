@@ -636,10 +636,9 @@ const MyPanel = ({ mode }: { mode: PanelMode }) => {
         // in "Headless" mode) and keep the hand-rolled ones for the simple
         // types. This is the point of `Live.Dnd.Field`: the choice is per
         // binding, not all-or-nothing.
-        const isStructural = isStructuralBinding(binding);
+        const structural = isStructuralBinding(binding);
 
-        const isMultiline =
-          binding.type === 'jsx' || binding.type === 'richtext';
+        const multiline = binding.type === 'jsx' || binding.type === 'richtext';
         // Some `children` bindings hold a serialized document tree rather
         // than a few simple fields — Features' "Feature Cards" flattens to
         // 240 leaves (tag names, ids, individual attributes...), which is
@@ -649,7 +648,7 @@ const MyPanel = ({ mode }: { mode: PanelMode }) => {
         // plain string) falls back to a textarea rather than the single-line
         // ValidatedField either way.
         const flattened =
-          isMultiline || isStructural
+          multiline || structural
             ? null
             : flattenEditableValue(binding.rawValue);
         const entries =
@@ -657,7 +656,7 @@ const MyPanel = ({ mode }: { mode: PanelMode }) => {
             ? flattened
             : null;
         const useTextarea =
-          isMultiline || (!entries && binding.rawValue.length > 120);
+          multiline || (!entries && binding.rawValue.length > 120);
 
         return (
           <label
@@ -667,7 +666,7 @@ const MyPanel = ({ mode }: { mode: PanelMode }) => {
             <span className="text-xs font-semibold text-gray-700">
               {binding.label}
             </span>
-            {isStructural ? (
+            {structural ? (
               <StructuralField
                 binding={binding}
                 onNodeChange={onNodeChange}

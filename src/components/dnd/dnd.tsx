@@ -186,7 +186,7 @@ const Dnd = ({
   const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false);
 
   const { breakpoint } = useResponsiveSize();
-  const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
+  const mobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
 
   // Only read here, for `value` below. `useSectionDocument` writes it.
   const { code } = usePreview();
@@ -552,7 +552,7 @@ const Dnd = ({
                   {messages.canvas.empty}
                 </Typography.Paragraph>
                 <Typography.Text>
-                  {isMobile
+                  {mobile
                     ? messages.canvas.emptyHintTouch
                     : messages.canvas.emptyHintDrag}
                 </Typography.Text>
@@ -639,7 +639,7 @@ const Dnd = ({
                 palette,
                 panel,
                 canvas,
-                isMobile,
+                isMobile: mobile,
                 selectedId,
                 clearSelection,
                 paletteOpen: mobilePaletteOpen,

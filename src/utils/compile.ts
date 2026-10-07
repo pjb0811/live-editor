@@ -74,11 +74,11 @@ export const clearCompilationCache = () => {
 // the `typescript` package (#192). Babel works per file without types, so a
 // `const enum` becomes a real enum and legacy decorators aren't supported.
 // On an error, the input comes back unchanged.
-export const transformCode = (code: string, isTypeScript = false): string => {
+export const transformCode = (code: string, typeScript = false): string => {
   try {
     const result = Babel.transform(code, {
-      filename: isTypeScript ? 'preview.tsx' : 'preview.jsx',
-      presets: isTypeScript ? ['typescript', 'env', 'react'] : ['env', 'react'],
+      filename: typeScript ? 'preview.tsx' : 'preview.jsx',
+      presets: typeScript ? ['typescript', 'env', 'react'] : ['env', 'react'],
       sourceType: 'module',
       plugins: [Babel.availablePlugins['transform-modules-commonjs']],
     }).code;
@@ -94,7 +94,7 @@ const compileModule = (
   code: string,
   modules: Record<string, unknown>,
 ): Module => {
-  const isTypeScript = detectTypeScript(code);
+  const typeScript = detectTypeScript(code);
 
   type RenderFunction = (
     exports: Module['exports'],
@@ -113,7 +113,7 @@ const compileModule = (
       'require',
       'module',
       'React',
-      transformCode(code, isTypeScript),
+      transformCode(code, typeScript),
     ) as RenderFunction;
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Syntax error';

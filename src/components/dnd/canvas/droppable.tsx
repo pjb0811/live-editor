@@ -18,9 +18,9 @@ const Droppable = ({
     id: 'sortable-area-bottom',
   });
 
-  const isPaletteSectionDragging = !!paletteSectionOf(active?.data);
-  const shouldHighlight = isOver && isPaletteSectionDragging;
-  const shouldHighlightBottom = isBottomOver && isPaletteSectionDragging;
+  const paletteSectionDragging = !!paletteSectionOf(active?.data);
+  const shouldHighlight = isOver && paletteSectionDragging;
+  const shouldHighlightBottom = isBottomOver && paletteSectionDragging;
   const messages = useLiveMessages();
 
   return (
@@ -34,7 +34,7 @@ const Droppable = ({
       )}
     >
       {children}
-      {isPaletteSectionDragging && (
+      {paletteSectionDragging && (
         <div
           ref={setBottomRef}
           className={cn(

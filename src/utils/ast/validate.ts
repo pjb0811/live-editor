@@ -38,9 +38,9 @@ export const validateBindingValue = (
   options: ValidationOptions = {},
 ): ValidationResult => {
   const messages = { ...defaultValidationMessages, ...options.messages };
-  const isEmpty = value === '' || value === null || value === undefined;
+  const empty = value === '' || value === null || value === undefined;
 
-  if (isEmpty) {
+  if (empty) {
     if (binding.required) {
       return { valid: false, message: messages.required };
     }
