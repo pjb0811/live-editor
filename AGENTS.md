@@ -136,6 +136,10 @@ TypeScript와 Vite/Vitest 설정에 같은 별칭을 사용합니다.
 
 - 주석은 지금 코드를 처음 읽는 사람을 위해 씁니다. 무엇을 하는지 먼저 쓰고, 이유는 지켜야 할 제약일 때만 현재형으로 쓰며, 과거 이야기는 이슈 번호(`(#450)`)로 대신합니다. 자세한 규칙과 예시는 `.claude/skills/coding-style/SKILL.md`의 "E. 주석 작성"을 따릅니다.
 
+### boolean 이름
+
+- 값과 상태는 `isOpen`, `hasError`처럼 `is`/`has`/`can`을 붙이고, prop은 `open`, `disabled`처럼 접두사 없이 짓습니다. 판별 함수는 `isX(value)`입니다. 자세한 기준은 `.claude/skills/coding-style/SKILL.md`의 "F. boolean 이름 짓기"를 따릅니다.
+
 ### CSS
 
 - **Tailwind CSS 4** + `cn()` 유틸리티 (`clsx` + `tailwind-merge`)

@@ -1,6 +1,6 @@
 ---
 name: coding-style
-description: "Repo-agnostic coding-conventions toolkit — a growing set of procedures for working consistently within any codebase. Currently covers: (A) discovering and following a project's existing directory structure and coding conventions before writing/editing code (checks CLAUDE.md/AGENTS.md, README/CONTRIBUTING, formatter/linter configs, and neighboring files); (B) safely renaming directories/files to a different naming convention (e.g. PascalCase to kebab-case) across a codebase without breaking imports or losing git history; (C) restructuring a grouped/composition component (a parent with sub-components living in their own subdirectories, e.g. Error/Boundary, Input/Search) into named files with a thin composing barrel index.ts, matching ui-kit's own components/atoms/input/ pattern; (D) deciding whether a new reusable UI element or hook belongs in the shared ui-kit/use-hooks libraries first, before implementing it inline in an app repo; (E) writing and rewriting code comments: lead with what the code does, keep a reason only as a present-tense constraint, and replace history with an issue number. Use when the user says '코딩 스타일대로', '컨벤션 맞춰줘', '이 프로젝트 스타일로', 'follow the project conventions', 'match the existing style', '케밥 케이스로 바꿔줘', '폴더명 리네임', 'rename directories to kebab-case', '배럴 파일 규칙', '그룹화된 컴포넌트 구조', '재사용 가능한 컴포넌트', '공유 라이브러리에 먼저', '주석 정리', '주석 다시 써줘', 'rewrite the comments', or whenever writing a code comment, or before creating/editing a file in an unfamiliar repo without already having its conventions in context."
+description: "Repo-agnostic coding-conventions toolkit — a growing set of procedures for working consistently within any codebase. Currently covers: (A) discovering and following a project's existing directory structure and coding conventions before writing/editing code (checks CLAUDE.md/AGENTS.md, README/CONTRIBUTING, formatter/linter configs, and neighboring files); (B) safely renaming directories/files to a different naming convention (e.g. PascalCase to kebab-case) across a codebase without breaking imports or losing git history; (C) restructuring a grouped/composition component (a parent with sub-components living in their own subdirectories, e.g. Error/Boundary, Input/Search) into named files with a thin composing barrel index.ts, matching ui-kit's own components/atoms/input/ pattern; (D) deciding whether a new reusable UI element or hook belongs in the shared ui-kit/use-hooks libraries first, before implementing it inline in an app repo; (E) writing and rewriting code comments: lead with what the code does, keep a reason only as a present-tense constraint, and replace history with an issue number; (F) naming booleans: `is`/`has`/`can` on boolean values and state, a bare adjective on props, `isX(value)` for predicates. Use when the user says '코딩 스타일대로', '컨벤션 맞춰줘', '이 프로젝트 스타일로', 'follow the project conventions', 'match the existing style', '케밥 케이스로 바꿔줘', '폴더명 리네임', 'rename directories to kebab-case', '배럴 파일 규칙', '그룹화된 컴포넌트 구조', '재사용 가능한 컴포넌트', '공유 라이브러리에 먼저', '주석 정리', '주석 다시 써줘', 'rewrite the comments', 'boolean 이름', 'is 접두사', or whenever writing a code comment, or before creating/editing a file in an unfamiliar repo without already having its conventions in context."
 ---
 
 # Coding Style
@@ -12,6 +12,7 @@ description: "Repo-agnostic coding-conventions toolkit — a growing set of proc
 - **C. 그룹화된/합성 컴포넌트의 배럴 파일 구조** — 하위 컴포넌트가 서브디렉토리+자체 index.tsx로 흩어져 있는 걸 named file + 얇은 배럴로 평탄화할 때
 - **D. 재사용 가능한 UI/훅은 공유 라이브러리에 먼저 구현** — 새 컴포넌트/훅을 앱 저장소에 바로 만들지, `ui-kit`/`use-hooks`에 먼저 만들지 판단할 때
 - **E. 주석 작성** — 코드 주석을 새로 쓰거나 기존 주석을 다시 쓸 때
+- **F. boolean 이름 짓기** — boolean 값·상태·prop·판별 함수의 이름을 정할 때
 
 ---
 
@@ -323,3 +324,27 @@ const value = _value === undefined ? code : _value;
 - **우회 코드(workaround)**: 외부 라이브러리 버그 때문에 이상해 보이는 코드는 이유를 남긴다. 다만 "무엇을 우회하는지"와 "없애도 되는 조건"을 현재형으로 쓰고, 발견 경위는 이슈로 보낸다.
 - **이슈 번호가 없는 과거 이야기**: 이야기를 지우고 제약만 남긴다. 제약도 없다면 주석을 지운다.
 - **저장소 언어**: 주석 언어는 저장소 관례를 따른다(이 저장소들은 영어). 한국어 설명이 필요하면 코드가 아니라 문서(`ARCHITECTURE.ko.md` 등)에 둔다.
+
+---
+
+## F. boolean 이름 짓기
+
+boolean은 쓰이는 자리에 따라 이름 짓는 방식이 다르다. React 문서, React와 라이브러리가 돌려주는 값, 이 저장소의 공개 API가 모두 이 방식을 따른다.
+
+### F1. 규칙
+
+| 자리                       | 형태                                    | 예                                                                             |
+| -------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
+| 값, 상태, 반환 객체의 필드 | `is`/`has`/`can`/`should` + 형용사·분사 | `const [isOpen, setIsOpen]`, `isMobile`, `hasError`, `useDndLayout().isMobile` |
+| 컴포넌트 prop, HTML 속성   | 접두사 없는 형용사                      | `open`, `disabled`, `autoHeight`, `syncStyle`                                  |
+| 판별 함수                  | `isX(value)`, `hasX(value)`             | `isComponentTagName(name)`, `isVisuallyHidden(style)`                          |
+
+- prop은 `open`, 그 prop으로 만든 내부 상태는 `isOpen`으로 둔다. 이름이 겹치지 않으니 `_open`, `openProp` 같은 별칭이 필요 없다.
+- prop이 처음 한 번만 쓰이는 초기값이면 `defaultOpen`처럼 `default` 접두사를 붙인다(React의 `defaultValue`, `defaultChecked`).
+- `_`로 시작하는 이름은 "쓰지 않는 변수"로 남겨 둔다. ESLint의 `no-unused-vars`가 `^_`를 무시하도록 설정돼 있어서, 쓰는 변수에 `_`를 붙이면 나중에 안 쓰게 됐을 때 경고가 나오지 않는다.
+
+### F 엣지 케이스
+
+- **공개 API 이름은 바꾸지 않는다.** 규칙과 다른 공개 이름이 있어도 메이저 버전 전에는 그대로 두고, 내부 변수만 규칙을 따른다.
+- **외부 라이브러리가 정한 이름**(dnd-kit의 `isOver`, `isDragging` 등)은 그대로 쓴다.
+- **접두사 없는 이름이 boolean으로 읽히지 않을 때**(`empty`, `primitive`, `quoted`)는 특히 `is`를 붙인다. 값인지 boolean인지 이름만으로 알 수 있어야 한다.
