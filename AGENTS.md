@@ -63,7 +63,7 @@ live-editor/
 │  │  │  ├─ array-source.ts # 밀집 배열 구간/쉼표 보존 편집
 │  │  │  ├─ items.ts        # 배열 아이템 편집 (추가/이동/삭제)
 │  │  │  ├─ patch.ts        # 소스 스팬 기반 부분 편집 적용 (applyEdits)
-│  │  │  ├─ update.ts       # 값 → AST 반영 (update(), updateAll(); bulkUpdate()는 deprecated) — 바인딩 찾기·가드·속성 편집 단계
+│  │  │  ├─ update.ts       # 값 → AST 반영 (update(), updateAll()) — 바인딩 찾기·가드·속성 편집 단계
 │  │  │  ├─ edit-source.ts  # update의 소스 편집기 (innerText/innerHTML/richtext/속성 추가·수정·삭제)
 │  │  │  ├─ validate.ts     # 바인딩 값 검증
 │  │  │  └─ tree.ts         # replaceIds()/fillIds()/clone()

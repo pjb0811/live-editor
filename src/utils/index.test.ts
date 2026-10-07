@@ -2,16 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { clearDocumentParseCache, parseDocument } from './ast/document';
 import { clearExtractCache, extract } from './ast/extract';
+import { detectTypeScript } from './detect-typescript';
+import { registerEditorSession } from './editor-caches';
 import {
   clearCompilationCache,
   clearEditorCaches,
-  clearScriptCache,
   compile,
-  detectTypeScript,
-  getCachedScriptBlob,
   preloadScripts,
-  registerEditorSession,
 } from './index';
+import { clearScriptCache, getCachedScriptBlob } from './scripts';
 
 describe('detectTypeScript', () => {
   it('does not flag the default template as TypeScript', () => {

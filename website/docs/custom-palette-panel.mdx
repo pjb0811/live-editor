@@ -393,9 +393,7 @@ const pick = image =>
 
 `updateAll(code, entries)` in `@jbpark/live-editor/utils/ast` is the same
 operation on a source string. It returns `{ success: true, code }`, or
-`{ success: false, code, failure, index }` with the original source. The older
-`bulkUpdate` is deprecated: it applies the entries that succeed even when
-another fails.
+`{ success: false, code, failure, index }` with the original source.
 
 ### Reusing the built-in control for one binding
 
@@ -579,10 +577,9 @@ failed:
 
 :::note Renamed hooks
 
-Earlier releases called these two hooks `useItemsEditor` and
+Releases before 5.0 called these two hooks `useItemsEditor` and
 `useChildrenEditor`, with types named `ItemsEditor*` and `ChildrenEditor*`.
-The old names still work as deprecated aliases and will be removed in the
-next major. To migrate, rename `useItemsEditor` → `useDndItems`,
+5.0 removed those names. To migrate, rename `useItemsEditor` → `useDndItems`,
 `useChildrenEditor` → `useDndChildren`, `ItemsEditor` → `DndItems` and
 `ChildrenEditor` → `DndChildren` wherever they appear.
 

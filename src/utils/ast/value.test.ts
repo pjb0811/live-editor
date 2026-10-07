@@ -10,11 +10,7 @@ import {
   parseArrayExpression,
   parseValue,
 } from './value';
-import {
-  arrayExpressionToCode,
-  createNodeFromValue,
-  valueToExpression,
-} from './value-expression';
+import { createNodeFromValue, valueToExpression } from './value-expression';
 
 describe('parseValue', () => {
   it('parses integer and float strings as numbers', () => {
@@ -255,21 +251,6 @@ describe('extractObjectProperties', () => {
     const properties = extractObjectProperties(ast);
 
     expect(Object.keys(properties).sort()).toEqual(['a', 'b']);
-  });
-});
-
-describe('arrayExpressionToCode', () => {
-  it('generates array-literal code from a list of object expressions', () => {
-    const elements = [
-      parseExpression('{a: 1}') as t.ObjectExpression,
-      parseExpression('{b: 2}') as t.ObjectExpression,
-    ];
-
-    const code = arrayExpressionToCode(elements);
-
-    expect(code).toBe(generateCode(t.arrayExpression(elements)));
-    expect(code).toContain('a: 1');
-    expect(code).toContain('b: 2');
   });
 });
 

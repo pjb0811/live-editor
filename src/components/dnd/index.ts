@@ -116,30 +116,6 @@ export type {
 export { getFieldKind, isStructuralFieldKind } from './panel/field-kind';
 export type { FieldKind, FieldKindBinding } from './panel/field-kind';
 
-// The earlier names of these hooks and types, kept as deprecated aliases
-// until the next major: `useItemsEditor` → `useDndItems`,
-// `useChildrenEditor` → `useDndChildren`, `ItemsEditor*` → `DndItems*`,
-// `ChildrenEditor*` → `DndChildren*`.
-/** @deprecated Renamed to `useDndItems`. */
-export const useItemsEditor = useDndItems;
-/** @deprecated Renamed to `useDndChildren`. */
-export const useChildrenEditor = useDndChildren;
-/** @deprecated Renamed to `DndItems`. */
-export type ItemsEditor = DndItems;
-/** @deprecated Renamed to `DndItemsActions`. */
-export type ItemsEditorActions = DndItemsActions;
-/** @deprecated Renamed to `DndItemsItem`. */
-export type ItemsEditorItem = DndItemsItem;
-/** @deprecated Renamed to `DndItemsNestedElement`. */
-export type ItemsEditorNestedElement = DndItemsNestedElement;
-/** @deprecated Renamed to `DndItemsNestedGroup`. */
-export type ItemsEditorNestedGroup = DndItemsNestedGroup;
-/** @deprecated Renamed to `DndItemsOptions`. */
-export type ItemsEditorOptions = DndItemsOptions;
-/** @deprecated Renamed to `DndChildren`. */
-export type ChildrenEditor = DndChildren;
-/** @deprecated Renamed to `DndChildrenOptions`. */
-export type ChildrenEditorOptions = DndChildrenOptions;
 export type {
   Props,
   DndPalette,

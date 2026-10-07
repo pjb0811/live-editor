@@ -5,7 +5,6 @@ import {
   clearDocumentParseCache,
   createSectionPreviewCache,
   fillSectionIds,
-  generateDocumentCode,
   generateSectionPreview,
   generateSectionPreviews,
   getSections,
@@ -665,14 +664,6 @@ describe('createSectionPreviewCache (#131)', () => {
         { id: 'b', code: '<section />' },
       ]),
     ).toEqual([broken, broken]);
-  });
-});
-
-describe('generateDocumentCode', () => {
-  it('returns the document code the tree was parsed from', () => {
-    const doc = parseDocument(FULL_CODE)!;
-
-    expect(generateDocumentCode(doc)).toBe(FULL_CODE);
   });
 });
 
