@@ -1,6 +1,6 @@
 import { parse } from '@babel/parser';
 import _traverse from '@babel/traverse';
-import type { TraverseOptions } from '@babel/traverse';
+import type { TraverseOptions, Visitor } from '@babel/traverse';
 import * as t from '@babel/types';
 import { nanoid } from 'nanoid';
 
@@ -11,16 +11,11 @@ import { registerEditorCache } from '../editor-caches';
 import { getJSXTagName } from './jsx-name';
 import { fillIdsFrom } from './tree';
 
-// `traverse` as a function. In the browser, Vite's dependency pre-bundling
-// can hand back `@babel/traverse`'s CJS module object, with the function
-// under `.default`. Tests run in Node and don't see this. Import `traverse`
-// from here, not from '@babel/traverse', everywhere in the AST layer.
-type Traverse = (parent: t.Node, opts?: TraverseOptions) => void;
+// `traverse` with the one call shape the AST layer uses. Import it from here,
+// not from '@babel/traverse'.
+type Traverse = (parent: t.Node, opts: TraverseOptions & Visitor) => void;
 
-export const traverse: Traverse =
-  typeof _traverse === 'function'
-    ? _traverse
-    : (_traverse as unknown as { default: typeof _traverse }).default;
+export const traverse: Traverse = _traverse;
 
 const SECTION_TAG = 'section';
 const DATA_NAME_ATTR = 'data-name';
