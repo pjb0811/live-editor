@@ -204,7 +204,7 @@ export const nodeToJSX = (
     const closingElement = t.jsxClosingElement(elementName);
     const children = buildChildElements(node);
 
-    return t.jsxElement(openingElement, closingElement, children, false);
+    return t.jsxElement(openingElement, closingElement, children);
   } catch (error) {
     console.error('❌ DataAttrNode to JSX conversion error:', error);
     return null;

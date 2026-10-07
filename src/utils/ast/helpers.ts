@@ -1,17 +1,9 @@
-import _generate from '@babel/generator';
+import generate from '@babel/generator';
 import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 
 import { REGEX } from '../../constants';
 import type { Attribute } from './types';
-
-// `generate` as a function. Like `traverse` in `document.ts`, Vite's
-// dependency pre-bundling can hand back `@babel/generator`'s CJS module
-// object in the browser, with the function under `.default`.
-const generate =
-  typeof _generate === 'function'
-    ? _generate
-    : (_generate as unknown as { default: typeof _generate }).default;
 
 export const wrap = (code: string) => {
   return `<>${code}</>`;
