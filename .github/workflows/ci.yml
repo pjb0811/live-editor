@@ -85,7 +85,7 @@ jobs:
       - name: Setup the oldest supported Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22.18'
 
       - name: Check non-UI entries load in the oldest supported Node
         run: node .github/scripts/check-node-entries.mjs
