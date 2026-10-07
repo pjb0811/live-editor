@@ -70,6 +70,10 @@ export const clearCompilationCache = () => {
   compilationCache.clear();
 };
 
+// JSX compiles to `React.createElement` (the classic runtime). The module runs
+// with `React` in scope and has no `react/jsx-runtime` to import.
+const REACT_PRESET: [string, object] = ['react', { runtime: 'classic' }];
+
 // Transforms JSX and TypeScript with `@babel/standalone`'s presets, without
 // the `typescript` package (#192). Babel works per file without types, so a
 // `const enum` becomes a real enum and legacy decorators aren't supported.
@@ -78,10 +82,12 @@ export const transformCode = (code: string, isTypeScript = false): string => {
   try {
     const result = Babel.transform(code, {
       filename: isTypeScript ? 'preview.tsx' : 'preview.jsx',
-      presets: isTypeScript ? ['typescript', 'env', 'react'] : ['env', 'react'],
+      presets: isTypeScript
+        ? ['typescript', 'env', REACT_PRESET]
+        : ['env', REACT_PRESET],
       sourceType: 'module',
       plugins: [Babel.availablePlugins['transform-modules-commonjs']],
-    }).code;
+    })?.code;
 
     return result || '';
   } catch (e) {

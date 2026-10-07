@@ -132,7 +132,7 @@ export default function Example() {
 ## ⚙️ 요구 사항
 
 - Peer dependencies: `react >=19`, `react-dom >=19`
-- 패키지 메타데이터는 Node.js >=20을 선언합니다. 저장소 개발·빌드와 CI는 `.nvmrc`에 고정된 버전(현재 24.18.0)을 사용합니다.
+- 패키지 메타데이터는 Babel 8이 지원하는 범위인 Node.js `^22.18.0 || >=24.11.0`을 선언합니다. CI는 Node용 진입점(`utils`, `utils/ast`, `utils/tailwind`, `provider`, `error`)이 Node 22.18에서 로드되는지 확인합니다. 저장소 개발·빌드와 나머지 CI는 `.nvmrc`에 고정된 버전(현재 24.18.0)을 사용합니다.
 - **pnpm**: 10.x 이상 ([Corepack](https://nodejs.org/api/corepack.html)으로 관리)
 
 ## 🚀 개발 (이 저장소)
