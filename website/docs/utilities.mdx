@@ -87,11 +87,11 @@ is retried, and reported, when a preview loads the script.
 `cn(...classes)` joins class names and merges conflicting Tailwind classes
 (`clsx` with `tailwind-merge`), the way the editor's own components do.
 
-## Deprecated exports
+## Removed in 5.0
 
-These names are exported from `./utils` and `./utils/ast` but are internal
-helpers, so they're deprecated and leave those entries in the next major.
-Each still works until then.
+These internal helpers were exported from `./utils` and `./utils/ast` until
+4.x, deprecated since 4.5.0. 5.0 removed them. If your code imports one, use
+the replacement below.
 
 | Names                                                                                                                                                                                                                                                                  | Use instead                                                                      |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
@@ -103,7 +103,10 @@ Each still works until then.
 | `fillIds`, `replaceIds`, `clone`, `generateCode`                                                                                                                                                                                                                       | Nothing                                                                          |
 | `clearExtractCache`, `clearDocumentParseCache`, `clearScriptCache`                                                                                                                                                                                                     | `clearEditorCaches`                                                              |
 | `transformCode`, `detectTypeScript`                                                                                                                                                                                                                                    | `compile`                                                                        |
+| `bulkUpdate`                                                                                                                                                                                                                                                           | `updateAll`, which applies every entry or none                                   |
 | `registerEditorSession`, `getCachedScriptBlob`                                                                                                                                                                                                                         | Nothing. `Live` registers its session; use `preloadScripts`.                     |
 
-The `ItemsEditor*` and `ChildrenEditor*` names in `./dnd` were renamed
-earlier to `DndItems*` and `DndChildren*`, and leave at the same time.
+5.0 also removed the earlier names of the `./dnd` hooks and types:
+`useItemsEditor` and `useChildrenEditor` are `useDndItems` and
+`useDndChildren`, and the `ItemsEditor*` and `ChildrenEditor*` types are
+`DndItems*` and `DndChildren*`.

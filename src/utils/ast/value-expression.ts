@@ -1,6 +1,5 @@
 import * as t from '@babel/types';
 
-import { generateCode } from './helpers';
 import type { NodeValueType } from './types';
 
 // Builds AST expressions and source text from JS values: the inverse of
@@ -78,11 +77,4 @@ export const valueToExpression = (value: unknown): t.Expression | null => {
   }
 
   return null;
-};
-
-export const arrayExpressionToCode = (
-  elements: t.ObjectExpression[],
-): string => {
-  const nextAst = t.arrayExpression(elements);
-  return generateCode(nextAst);
 };

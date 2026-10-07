@@ -6,7 +6,7 @@ description: 'Babel AST 변환 코드를 작성하거나 src/utils/ast/ 모듈�
 # Babel AST 변환 코드 작성
 
 `src/utils/ast/`는 Canvas의 DnD/패널 편집 결과를 Babel AST 변환으로 소스 코드 문자열에 반영하는 핵심 모듈입니다.
-`index.ts`는 로직 없이 공개 API만 재수출하는 **배럴**이므로, 새 로직은 반드시 역할에 맞는 파일에 추가합니다. 배럴에는 호스트가 쓸 공개 API만 추가하고, 라이브러리 내부 코드는 배럴이 아니라 모듈 파일(`~/utils/ast/items` 등)에서 import합니다. 배럴 아래쪽의 `@deprecated` 이름은 다음 major에서 빠질 내부 helper입니다 (#522). `src/utils/barrels.test.ts`가 저장소 안에서 이 이름을 배럴로 import하면 실패합니다.
+`index.ts`는 로직 없이 공개 API만 재수출하는 **배럴**이므로, 새 로직은 반드시 역할에 맞는 파일에 추가합니다. 배럴에는 호스트가 쓸 공개 API만 추가하고, 라이브러리 내부 코드는 배럴이 아니라 모듈 파일(`~/utils/ast/items` 등)에서 import합니다. 내부 helper는 배럴에 넣지 않습니다(#522). 공개 export가 바뀌면 `pnpm check-api-surface`가 스냅샷과 비교해 실패하므로, 의도한 변경이면 `--update`로 스냅샷을 갱신합니다.
 
 ## 모듈 맵 — 무엇을 고칠 때 어디를 보나
 

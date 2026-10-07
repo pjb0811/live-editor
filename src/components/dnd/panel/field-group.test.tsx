@@ -23,7 +23,7 @@ const binding = (
 
 afterEach(cleanup);
 
-// `update()`/`bulkUpdate()` address a binding by `property`, not by label
+// `update()`/`updateAll()` address a binding by `property`, not by label
 // (58e2171). The panel's React keys have to agree, otherwise two bindings
 // sharing a label collide: React warns, and local control state can be
 // carried across to the wrong field (#318).

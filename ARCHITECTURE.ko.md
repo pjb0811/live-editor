@@ -258,7 +258,7 @@ Dnd (dnd.tsx)
 - **다시 생성하지 말고 구간을 편집합니다.** 바뀌는 바이트만 새로 씁니다. 요소나 섹션 전체를 다시 생성하면 포맷이 바뀌고 주석이 사라집니다.
 - **추측하지 말고 거절합니다.** 안전하게 편집할 수 없는 형태(spread, 빈 자리, 계산된 값)이면 실패를 돌려주고 소스를 그대로 둡니다. 지원 범위는 [Editable Syntax](./website/docs/editable-syntax.mdx) 페이지에 있습니다.
 - **JSX 조각을 파싱할 때만 `wrap()`과 `unwrap()`을 짝지어 씁니다.**
-- **배럴이 아니라 모듈 파일을 import합니다.** `utils/ast/index.ts`는 일부가 deprecated된 공개 진입점입니다. 라이브러리 코드는 `./update`, `./extract` 등을 직접 import하며, `barrels.test.ts`가 이를 검사합니다.
+- **배럴이 아니라 모듈 파일을 import합니다.** `utils/ast/index.ts`는 공개 API만 담은 공개 진입점입니다. 라이브러리 코드는 `./update`, `./extract` 등을 직접 import하므로 내부 helper를 export할 필요가 없습니다. `check-api-surface`가 공개 export를 스냅샷과 비교합니다.
 
 ## 컴파일과 렌더링
 

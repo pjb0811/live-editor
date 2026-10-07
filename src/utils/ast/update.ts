@@ -61,10 +61,8 @@ export type UpdateFailure =
 export interface UpdateResult {
   code: string;
   success: boolean;
-  // Set when `success` is false. The deprecated `bulkUpdate` reports
-  // per-entry failures in `failures` instead.
+  // Set when `success` is false.
   failure?: UpdateFailure;
-  failures?: UpdateFailure[];
 }
 
 // What one `update` call asks for.
@@ -455,35 +453,4 @@ export const updateAll = (
   }
 
   return { success: true, code: current };
-};
-
-/**
- * @deprecated Not atomic: when an entry fails, the ones before and after it
- * are still applied, and the returned `code` carries them. Use `updateAll`,
- * which applies every entry or none. Will be removed in the next major.
- */
-export const bulkUpdate = (
-  raw: string,
-  entries: UpdateEntry[],
-): UpdateResult => {
-  let current = raw;
-  const failures: UpdateFailure[] = [];
-
-  for (const entry of entries) {
-    const result = update(
-      current,
-      entry.dataId,
-      entry.label,
-      entry.value,
-      entry.property,
-    );
-    current = result.code;
-    if (!result.success && result.failure) {
-      failures.push(result.failure);
-    }
-  }
-
-  return failures.length > 0
-    ? { code: current, success: false, failures }
-    : { code: current, success: true };
 };

@@ -267,8 +267,6 @@ export const fillSectionIds = (
   );
 };
 
-export const generateDocumentCode = (doc: DocumentTree): string => doc.code;
-
 // The source span of `container`'s children: from just after the opening
 // tag's `>` to just before the closing tag's `<`. `undefined` for a
 // self-closing container.

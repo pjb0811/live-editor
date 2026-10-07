@@ -347,8 +347,9 @@ Rules every change here follows (also in [the AST skill](./.github/skills/ast/SK
   page lists what's supported.
 - **Pair `wrap()` with `unwrap()`** when parsing a JSX fragment, and only there.
 - **Import module files, not the barrel.** `utils/ast/index.ts` is the public
-  entry, partly deprecated. Library code imports `./update`, `./extract`, and
-  so on, which `barrels.test.ts` enforces.
+  entry and holds only the public API. Library code imports `./update`,
+  `./extract`, and so on, so an internal helper never needs to be exported.
+  `check-api-surface` compares the public exports with a snapshot.
 
 ## Compiling and rendering
 

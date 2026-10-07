@@ -7,7 +7,7 @@ import { setEditableValue } from './editable-value';
 import { extract } from './extract';
 import { appendArrayItem, parseItems } from './items';
 import type { DataAttrNode } from './types';
-import { bulkUpdate, update, updateAll } from './update';
+import { update, updateAll } from './update';
 
 const CODE = `
 <div data-id="a" data-binding="[{label:'Text',property:'innerText'}]">old text</div>
@@ -673,8 +673,7 @@ describe('update', () => {
   });
 });
 
-// All of it or none of it, in array order (#425). `bulkUpdate` above applies
-// what it can and reports the rest, which a single commit can't use.
+// All of it or none of it, in array order (#425).
 describe('updateAll', () => {
   it('applies every entry in array order, across elements', () => {
     const result = updateAll(CODE, [
@@ -764,76 +763,6 @@ describe('updateAll', () => {
   });
 });
 
-describe('bulkUpdate', () => {
-  it('applies every entry in order and reports overall success', () => {
-    const result = bulkUpdate(CODE, [
-      { dataId: 'a', label: 'Text', value: 'bulk text' },
-      { dataId: 'f', label: 'Placeholder', value: 'bulk placeholder' },
-      { dataId: 'e', label: 'Node', value: '<Bulk />' },
-    ]);
-
-    expect(result.success).toBe(true);
-    expect(result.code).toContain('>bulk text<');
-    expect(result.code).toContain('placeholder="bulk placeholder"');
-    expect(result.code).toContain('icon={<Bulk />}');
-  });
-
-  it('reports success: false if any entry fails, while still applying the ones that succeed', () => {
-    const result = bulkUpdate(CODE, [
-      { dataId: 'a', label: 'Text', value: 'bulk text' },
-      { dataId: 'missing', label: 'Text', value: 'nope' },
-    ]);
-
-    expect(result.success).toBe(false);
-    expect(result.code).toContain('>bulk text<');
-    expect(result.failures).toEqual([
-      { reason: 'element-not-found', dataId: 'missing' },
-    ]);
-  });
-
-  it("threads an entry's optional property through to update, same as calling it directly (#240)", () => {
-    const duplicateLabelCode = `<div data-id="b" data-binding="[{label:'Same',property:'title'},{label:'Same',property:'alt'}]" title="t" alt="a">x</div>`;
-
-    const result = bulkUpdate(duplicateLabelCode, [
-      { dataId: 'b', label: 'Same', property: 'alt', value: 'bulk alt' },
-    ]);
-
-    expect(result.success).toBe(true);
-    expect(result.code).toContain('alt="bulk alt"');
-    expect(result.code).toContain('title="t"');
-  });
-
-  // #239: each entry re-parses the already-patched source, so offsets are
-  // always fresh — batching must stay equivalent to applying one at a time.
-  it('produces the same result as applying each entry sequentially', () => {
-    const code = `<div
-  data-id="a"
-  data-binding={[{ label: 'T', property: 'title' }, { label: 'A', property: 'alt' }]}
-  title="t"
-  alt="a"
->x</div>`;
-
-    const batched = bulkUpdate(code, [
-      { dataId: 'a', label: 'T', value: 't2', property: 'title' },
-      { dataId: 'a', label: 'A', value: 'a2', property: 'alt' },
-    ]);
-
-    const sequential = update(
-      update(code, 'a', 'T', 't2', 'title').code,
-      'a',
-      'A',
-      'a2',
-      'alt',
-    );
-
-    expect(batched.success).toBe(true);
-    expect(batched.code).toBe(sequential.code);
-    expect(batched.code).toBe(
-      code.replace('title="t"', 'title="t2"').replace('alt="a"', 'alt="a2"'),
-    );
-  });
-});
-
 // The reported break, end to end on the shipped sections: the panel's array
 // editors (built-in `Items`, or a consumer's own markup over
 // `useDndItems`) re-serialize the whole array and commit it as source
@@ -915,19 +844,6 @@ describe('update: reserved attributes', () => {
     expect(result.success).toBe(true);
     expect(result.code).toContain('className="py-16"');
     expect(result.code).toContain('data-id="s1"');
-  });
-
-  it('reports a refused entry in a bulk update and applies the rest', () => {
-    const result = bulkUpdate(SECTION, [
-      { dataId: 's1', label: 'Id', value: 'x', property: 'data-id' },
-      { dataId: 's1', label: 'Pad', value: 'py-16', property: 'className' },
-    ]);
-
-    expect(result.success).toBe(false);
-    expect(result.failures).toEqual([
-      { reason: 'reserved-property', dataId: 's1', property: 'data-id' },
-    ]);
-    expect(result.code).toContain('className="py-16"');
   });
 });
 
