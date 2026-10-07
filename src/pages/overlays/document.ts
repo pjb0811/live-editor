@@ -14,28 +14,28 @@ import { useEffect, useState } from 'react';
 import * as ui from 'ui-kit';
 
 // Opens from its button, or from \`open\` when the panel switches it.
-const useOpen = _open => {
-  const [open, setOpen] = useState(_open);
+const useOpen = open => {
+  const [isOpen, setIsOpen] = useState(open);
 
-  useEffect(() => setOpen(_open), [_open]);
+  useEffect(() => setIsOpen(open), [open]);
 
-  return [open, setOpen];
+  return [isOpen, setIsOpen];
 };
 
-const ModalExample = ({ open: _open = false, title, container }) => {
-  const [open, setOpen] = useOpen(_open);
+const ModalExample = ({ open = false, title, container }) => {
+  const [isOpen, setIsOpen] = useOpen(open);
 
   return (
     <>
-      <ui.Button type="primary" onClick={() => setOpen(true)}>
+      <ui.Button type="primary" onClick={() => setIsOpen(true)}>
         Open modal
       </ui.Button>
       <ui.Modal
-        open={open}
+        open={isOpen}
         title={title}
         container={container}
-        onOk={() => setOpen(false)}
-        onCancel={() => setOpen(false)}
+        onOk={() => setIsOpen(false)}
+        onCancel={() => setIsOpen(false)}
       >
         A ui-kit Modal portaled into the preview's container.
       </ui.Modal>
@@ -43,19 +43,19 @@ const ModalExample = ({ open: _open = false, title, container }) => {
   );
 };
 
-const DrawerExample = ({ open: _open = false, title, container }) => {
-  const [open, setOpen] = useOpen(_open);
+const DrawerExample = ({ open = false, title, container }) => {
+  const [isOpen, setIsOpen] = useOpen(open);
 
   return (
     <>
-      <ui.Button type="primary" onClick={() => setOpen(true)}>
+      <ui.Button type="primary" onClick={() => setIsOpen(true)}>
         Open drawer
       </ui.Button>
       <ui.Drawer
-        open={open}
+        open={isOpen}
         title={title}
         container={container}
-        onClose={() => setOpen(false)}
+        onClose={() => setIsOpen(false)}
       >
         A ui-kit Drawer portaled into the preview's container.
       </ui.Drawer>
