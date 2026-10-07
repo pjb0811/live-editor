@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.6.0
+
+### Minor Changes
+
+- 6202a9a: Refuse `innerText` and plain `innerHTML` edits on a self-closing element such as `<img />`. They used to report success without changing the source, so the edit was lost without an error. `update()` and `updateAll()` now fail with the new `UpdateFailure` reason `self-closing`, and `Live.Dnd` shows the error toast or calls `onEditError`, with the new `messages.editErrors.selfClosing` text. Clearing the content of a self-closing element still succeeds, and `type: 'richtext'` still works there, since it writes `dangerouslySetInnerHTML`.
+
+### Patch Changes
+
+- b124cb5: Fix `autoHeight` cutting off overlays placed against the viewport, such as a bottom drawer. A `position: fixed` element's percentage `height` and its `top` or `bottom` resolve against the iframe's viewport, and the iframe's height was itself what was being measured, so a drawer with `height: 50%` stayed half of a section that never grew, and a dialog centred with `top: 50%` was cut in half. The measurement now sizes the viewport to the height the section can show, reads each fixed or absolute element's real bottom edge, and skips one moved entirely outside the viewport.
+- 240d17b: Draw the element outline inside the canvas instead of on top of the whole page. The outline shows which element a panel field edits, or which one the element picker points at. It used to be portaled to `document.body` with the highest possible `z-index`, so on a phone it appeared above the panel Drawer that covers the canvas, and above any host modal. It now sits in the canvas's scroll container, under anything that covers the canvas, and it scrolls and clips with it.
+- 7ec9e08: Open overlays inside the preview in `frame.mode: 'shadow'`. The `container` a preview component receives is now an overlay layer inside the shadow root that covers the preview's box, instead of an element outside the shadow root (the canvas, or `document.body` in `Live.Preview`). A modal or drawer portaled into it, such as ui-kit `Modal` or `Drawer` with `container={container}`, now opens over the preview rather than over the whole page, and gets the preview's styles. The layer lets clicks through to the preview under it, and the preview's own `fixed` and `absolute` elements are placed as before.
+
 ## 4.5.0
 
 ### Minor Changes
