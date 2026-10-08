@@ -975,3 +975,57 @@ describe('update: removing and adding attributes', () => {
     expect(result.code).toContain('href="/x"');
   });
 });
+
+describe('update: removing an attribute with a trailing comment (#577)', () => {
+  const B = `data-id="a"\n  data-binding="[{label:'T',property:'title'}]"`;
+  const remove = (code: string) => update(code, 'a', 'T', undefined);
+
+  it.each([['// end'], ['/* t */'], ['/* t */ // end']])(
+    'removes the whole line with `%s`',
+    comment => {
+      const code = `<a\n  ${B}\n  title="Hi" ${comment}\n  href="/x"\n>go</a>`;
+
+      expect(remove(code)).toEqual({
+        code: `<a\n  ${B}\n  href="/x"\n>go</a>`,
+        success: true,
+      });
+    },
+  );
+
+  it('removes the comment of the last attribute too', () => {
+    const code = `<a\n  ${B}\n  href="/x"\n  title="Hi" // end\n>go</a>`;
+
+    expect(remove(code).code).toBe(`<a\n  ${B}\n  href="/x"\n>go</a>`);
+  });
+
+  it.each([['// end'], ['/* t */'], ['']])(
+    'keeps every CRLF with `%s`',
+    comment => {
+      const code = `<a\r\n  ${B}\r\n  title="Hi" ${comment}\r\n  href="/x"\r\n>go</a>`;
+
+      expect(remove(code).code).toBe(`<a\r\n  ${B}\r\n  href="/x"\r\n>go</a>`);
+    },
+  );
+
+  it('keeps a comment on the line above', () => {
+    const code = `<a\n  ${B}\n  // note\n  title="Hi"\n  href="/x"\n>go</a>`;
+
+    expect(remove(code).code).toBe(
+      `<a\n  ${B}\n  // note\n  href="/x"\n>go</a>`,
+    );
+  });
+
+  it('leaves the comment when the attribute shares its line', () => {
+    const code = `<a\n  ${B}\n  rel="n" title="Hi" // end\n  href="/x"\n>go</a>`;
+
+    expect(remove(code).code).toBe(
+      `<a\n  ${B}\n  rel="n" // end\n  href="/x"\n>go</a>`,
+    );
+  });
+
+  it('removes an attribute with no comment as before', () => {
+    const code = `<a\n  ${B}\n  title="Hi"\n  href="/x"\n>go</a>`;
+
+    expect(remove(code).code).toBe(`<a\n  ${B}\n  href="/x"\n>go</a>`);
+  });
+});

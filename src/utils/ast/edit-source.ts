@@ -344,15 +344,30 @@ export const editAttribute = (
   ];
 };
 
+// Up to and including the line break: spaces, single-line block comments
+// and one line comment.
+const TRAILING_COMMENTS =
+  /^[ \t]*(?:\/\*[^\r\n]*?\*\/[ \t]*)*(?:\/\/[^\r\n]*)?\r?\n/;
+
 // Removes an attribute and the whitespace before it, leaving no gap. A
 // caller asks for this with `undefined`, since React treats an `undefined`
-// prop like a missing one (#426).
+// prop like a missing one (#426). An attribute alone on its line goes with
+// the comments after it, so they don't end up beside the previous attribute.
 export const removeAttribute = (
   source: string,
   attribute: t.JSXAttribute,
 ): EditResult => {
   if (attribute.start == null || attribute.end == null) {
     return null;
+  }
+
+  const lineStart = source.lastIndexOf('\n', attribute.start - 1) + 1;
+  const rest = TRAILING_COMMENTS.exec(source.slice(attribute.end));
+
+  if (/^[ \t]*$/.test(source.slice(lineStart, attribute.start)) && rest) {
+    return [
+      { start: lineStart, end: attribute.end + rest[0].length, content: '' },
+    ];
   }
 
   let start = attribute.start;
