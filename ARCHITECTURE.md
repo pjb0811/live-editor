@@ -97,7 +97,7 @@ major version.
 ```text
 src/
 ├─ index.tsx            The package entry: `Live` and its static members
-├─ constants/           DATA_ATTR, BINDING_PROP, templates (mostly template strings)
+├─ constants/           DATA_ATTR, BINDING_PROP, DEFAULT_TEMPLATE; palette-sections.ts holds the default palette sections
 ├─ types/               Section, Module
 ├─ components/
 │  ├─ context/          The provider: document, error, UI text

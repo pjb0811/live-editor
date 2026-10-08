@@ -68,7 +68,7 @@ live-editor/
 │  │  │  ├─ validate.ts     # 바인딩 값 검증
 │  │  │  └─ tree.ts         # replaceIds()/fillIds()/clone()
 │  │  └─ tailwind/          # Tailwind 관련 유틸
-│  ├─ constants/index.ts    # 상수, 정규식, 기본 템플릿
+│  ├─ constants/            # index.ts: 상수, 정규식, 기본 템플릿 / palette-sections.ts: 기본 팔레트 섹션 (PALETTE_SECTIONS)
 │  ├─ types/index.ts        # TypeScript 타입 정의
 │  ├─ index.tsx             # 라이브러리 공개 API (Live 및 합성 컴포넌트)
 │  └─ main.tsx              # 로컬 개발 앱 진입점
@@ -104,7 +104,7 @@ live-editor/
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/utils/index.ts`                | `compile()`, `cn()`, `getCachedScriptBlob()`. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                                                        |
 | `src/utils/ast/`                    | 공개: `extract()`, `update()`/`updateAll()`, `validateBindingValue()` 등. 내부 코드는 배럴 대신 모듈 파일에서 import — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
-| `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `PALETTE_SECTIONS`                                                                                                    |
+| `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `PALETTE_SECTIONS`(재수출, 정의는 `palette-sections.ts`)                                                              |
 | `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                                                        |
 | `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                                                  |
 | `src/components/preview/client.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                                                         |
