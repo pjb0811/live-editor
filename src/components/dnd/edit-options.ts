@@ -5,7 +5,7 @@ import { Toast } from '@jbpark/ui-kit';
 import type { BindingOptions } from '~/utils/ast/types';
 import type { UpdateFailure } from '~/utils/ast/update';
 
-import type { FieldProps } from './panel/field';
+import type { FieldProps } from './panel/types';
 
 // An edit the editor didn't apply. `title` and `description` are what the
 // built-in toast shows, so a host can show them its own way.
