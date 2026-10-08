@@ -571,6 +571,33 @@ describe('update', () => {
       expect(result.code).toBe(code.replace('Old Title', 'New Title'));
     });
 
+    // Same-line whitespace is part of the string value, which the panel
+    // trims, so an edit overwrites it. Only whitespace with a line break is
+    // layout (#576).
+    it.each([
+      [' Old ', 'New', 'New'],
+      ['\tOld\t', 'New', 'New'],
+      [' Old', 'New', 'New'],
+      [' Old ', ' New', ' New'],
+      ['\n  Old ', 'New', '\n  New'],
+      ['\n  Old\n', 'New', '\n  New\n'],
+    ])('rewrites %j as the value %j', (children, value, expected) => {
+      const open = `<h1 data-id="a" data-binding="[{label:'T',property:'innerText'}]">`;
+
+      const result = update(`${open}${children}</h1>`, 'a', 'T', value);
+
+      expect(result.success).toBe(true);
+      expect(result.code).toBe(`${open}${expected}</h1>`);
+    });
+
+    it('keeps CRLF layout on both sides byte for byte', () => {
+      const open = `<h1 data-id="a" data-binding="[{label:'T',property:'innerText'}]">`;
+
+      const result = update(`${open}\r\n  Old \r\n</h1>`, 'a', 'T', 'New');
+
+      expect(result.code).toBe(`${open}\r\n  New \r\n</h1>`);
+    });
+
     it('replaces text bounded by HTML entities without cutting into them', () => {
       const code = `<div data-id="a" data-binding="[{label:'T',property:'innerText'}]">&nbsp;Old&nbsp;</div>`;
 
