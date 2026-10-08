@@ -9,7 +9,7 @@ import Frame, { type FrameProps } from '~/components/frame';
 import { cn } from '~/utils/cn';
 
 import { NO_MODULES, NO_PROPS } from './defaults';
-import { type Props } from './preview';
+import type { Props } from './types';
 import { useCompiledModule } from './use-compiled-module';
 import { useDynamicTailwind } from './use-dynamic-tailwind';
 

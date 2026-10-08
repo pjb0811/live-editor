@@ -32,7 +32,8 @@ import type {
   PanelNodeChange,
   PanelNodesChange,
 } from './panel-binding';
-import Field, { type FieldProps } from './panel/field';
+import Field from './panel/field';
+import type { FieldProps } from './panel/types';
 import {
   type DndChildren,
   type DndChildrenOptions,

@@ -318,7 +318,11 @@ Dnd (dnd.tsx)
   `onDragEnd` turns it into `add`, and a canvas drag into `reorder`. `canvas/overlay.tsx` renders the dragged section.
 - **The panel** (`panel/panel.tsx`) groups `bindings` by element and renders a
   `Field` for each. `Field` asks `renderField` first, then falls back to
-  `BuiltinField`, which switches on `getFieldKind`.
+  `BuiltinField`, which switches on `getFieldKind`. The `items` and `children`
+  editors render `Field` again for each nested value, so `field.tsx` and
+  `items.tsx`, and `field.tsx`, `children.tsx` and `node.tsx`, import each
+  other on purpose. These are the only import cycles in `src`; shared types
+  such as `FieldProps` live in `panel/types.ts` to keep it that way.
 
 ## The AST layer
 

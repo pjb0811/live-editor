@@ -237,7 +237,7 @@ Dnd (dnd.tsx)
 - **컴포넌트가 아니라 데이터를 넘깁니다.** 기본 팔레트와 패널도 커스텀 구현과 똑같이 `useDndPalette()`, `useDndPanel()`로 읽습니다. 그래서 공개 API가 기본 구현이 쓰는 것보다 뒤처질 수 없습니다(#237).
 - **영역은 배치만 담당합니다.** `Live.Dnd.Palette`, `Canvas`, `Panel`(`layout.tsx`)은 영역의 내용을 필요한 컨테이너로 감쌀 뿐입니다. 커스텀 레이아웃은 자기 `children`을 넘기고, 드래그 context 안이라면 어디든 배치할 수 있습니다.
 - **드래그 앤 드롭**은 `@dnd-kit`입니다. 팔레트 섹션은 `palette/palette-drag.ts`의 드래그 데이터를 싣고, 모든 곳이 이를 `paletteSectionOf`로 읽습니다. `onDragEnd`가 이를 `add`로, 캔버스 안의 드래그는 `reorder`로 바꿉니다. 끌고 있는 섹션은 `canvas/overlay.tsx`가 그립니다.
-- **패널**(`panel/panel.tsx`)은 `bindings`를 요소별로 묶고 각각 `Field`를 그립니다. `Field`는 먼저 `renderField`에 묻고, 없으면 `getFieldKind`로 분기하는 `BuiltinField`를 씁니다.
+- **패널**(`panel/panel.tsx`)은 `bindings`를 요소별로 묶고 각각 `Field`를 그립니다. `Field`는 먼저 `renderField`에 묻고, 없으면 `getFieldKind`로 분기하는 `BuiltinField`를 씁니다. `items`와 `children` 편집기는 중첩된 값마다 `Field`를 다시 그리므로, `field.tsx`와 `items.tsx`, 그리고 `field.tsx`, `children.tsx`, `node.tsx`는 서로를 일부러 import합니다. `src`의 import 순환은 이것뿐이며, `FieldProps` 같은 공유 타입은 `panel/types.ts`에 두어 순환이 늘지 않게 합니다.
 
 ## AST 계층
 
