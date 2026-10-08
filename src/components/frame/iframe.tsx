@@ -11,6 +11,19 @@ import {
 import { withScriptBlobs } from '~/utils/scripts';
 
 import {
+  hasActiveAnimation,
+  isCssAnimation,
+  isCssTransition,
+  neverFinishes,
+} from './animations';
+import {
+  CONTAINER_STYLE_ID,
+  HIDE_SCROLLBAR_STYLE_ID,
+  SCROLLBAR_OVERRIDE_RULES,
+  ensureContainerStyle,
+  withMeasurementOverrides,
+} from './auto-height';
+import {
   FALLBACK_PROBE_HEIGHT,
   computeProbeHeight,
   isAnimationActive,
@@ -29,10 +42,6 @@ import {
   rewriteInlineViewportUnits,
 } from './viewport-units';
 
-// The style that makes `<html>` a size container, found again by this id.
-// Scoped to `html`, so it only affects how `cq*` units resolve.
-const CONTAINER_STYLE_ID = 'autoheight-container';
-
 export interface Props {
   title?: string;
   /** Forwarded to the iframe's `sandbox` attribute for DOM/CSS isolation only — not a security boundary, since preview code executes in the host window's realm (see `compileModule` in `~/utils`). */
@@ -48,102 +57,6 @@ export interface Props {
 }
 
 const EMPTY_STRING_ARRAY: string[] = [];
-
-// `getAnimations()` mixes CSS animations, CSS transitions and script
-// animations (`element.animate()`). Only the first two fire a bubbling event
-// when they end, so they're told apart. Both constructors are checked first,
-// since jsdom has neither.
-const isCssAnimation = (
-  win: Window & typeof globalThis,
-  animation: Animation,
-): boolean =>
-  typeof win.CSSAnimation === 'function' &&
-  animation instanceof win.CSSAnimation;
-
-const isCssTransition = (
-  win: Window & typeof globalThis,
-  animation: Animation,
-): boolean =>
-  typeof win.CSSTransition === 'function' &&
-  animation instanceof win.CSSTransition;
-
-// Whether the element is animating, which tells a passing `opacity: 0` (the
-// start of a fade-in, so measure it) from a lasting one (a closed overlay, so
-// skip it). Transitions count too: a measurement pass doesn't always freeze
-// them, so a fade-in can read `opacity: 0` with a transition running. Without
-// `getAnimations()` (jsdom, old browsers) this is false, which under-measures
-// a fading-in overlay rather than counting a closed one.
-const hasActiveAnimation = (el: HTMLElement): boolean =>
-  typeof el.getAnimations === 'function' &&
-  el.getAnimations().some(animation => isAnimationActive(animation.playState));
-
-// An animation that repeats forever never resolves `finished`, so it gets no
-// handler. It's always animating, so `hasActiveAnimation` keeps it measured
-// anyway.
-const neverFinishes = (animation: Animation): boolean => {
-  const timing = animation.effect?.getComputedTiming();
-
-  return timing?.iterations === Infinity || timing?.duration === Infinity;
-};
-
-// A style that is off (`media="not all"`) except while a measurement runs.
-// It guards against two things:
-//
-// - Transitions: a transition on what the measurement changes would animate
-//   the new probe height, and the read would catch a value part-way there.
-//   Only on a pass that changes the probe height (`freezeTransitions`).
-// - Scrollbars: a new probe height can show or hide a scrollbar for that
-//   pass, which narrows the content where scrollbars take space (Windows)
-//   and changes the height. Only the scrollbar is hidden; scrolling still
-//   works.
-//
-// One element that is never added or removed, so toggling it doesn't trigger
-// the MutationObserver that watches the content.
-const MEASUREMENT_OVERRIDE_STYLE_ID = 'autoheight-measurement-overrides';
-
-const SCROLLBAR_OVERRIDE_RULES = [
-  'html, body { scrollbar-width: none !important; }',
-  'html::-webkit-scrollbar, body::-webkit-scrollbar { display: none !important; }',
-];
-
-const FREEZE_TRANSITIONS_RULE =
-  '*, *::before, *::after { transition: none !important; }';
-
-// Measures with the overrides above on. `freezeTransitions` is off unless
-// the pass changes the probe height: `transition: none` cancels a running
-// transition rather than pausing it, and the element jumps to its end state
-// for good. A pass that leaves the probe height alone changes nothing, so it
-// leaves the preview's transitions alone.
-const withMeasurementOverrides = (
-  doc: Document,
-  freezeTransitions: boolean,
-  measure: () => void,
-) => {
-  let styleEl = doc.getElementById(
-    MEASUREMENT_OVERRIDE_STYLE_ID,
-  ) as HTMLStyleElement | null;
-
-  if (!styleEl) {
-    styleEl = doc.createElement('style');
-    styleEl.id = MEASUREMENT_OVERRIDE_STYLE_ID;
-    styleEl.media = 'not all';
-    doc.head?.appendChild(styleEl);
-  }
-
-  const text = (
-    freezeTransitions
-      ? [FREEZE_TRANSITIONS_RULE, ...SCROLLBAR_OVERRIDE_RULES]
-      : SCROLLBAR_OVERRIDE_RULES
-  ).join('\n');
-
-  if (styleEl.textContent !== text) {
-    styleEl.textContent = text;
-  }
-
-  styleEl.media = 'all';
-  measure();
-  styleEl.media = 'not all';
-};
 
 const IFrame = ({
   title = 'Live Preview',
@@ -327,8 +240,8 @@ const IFrame = ({
       }
 
       // The main source of `vh` units in a preview: compiled component CSS,
-      // such as Tailwind's `h-screen`. See `ensureContainerStyle` for why they're
-      // converted.
+      // such as Tailwind's `h-screen`. See `ensureContainerStyle` in `auto-height.ts` for
+      // why they're converted.
       const convertedCss = convertViewportUnits(css);
 
       if (styleEl.textContent !== convertedCss) {
@@ -371,38 +284,6 @@ const IFrame = ({
     }
     prevStylesheetCountRef.current = stylesheets.length;
   }, [styles, stylesheets]);
-
-  // Hides the iframe document's scrollbar while `autoHeight` sizes it.
-  // Rounding can leave the document a fraction taller than the iframe, which
-  // would draw a scrollbar in every section. Unlike the measurement override,
-  // this stays on. Scrolling still works if the content ever outgrows it.
-  const HIDE_SCROLLBAR_STYLE_ID = 'autoheight-hide-scrollbar';
-
-  // Makes `<html>` a size container with a fixed height, `probeHeight`, the
-  // scroll container's available height. Viewport units are rewritten to `cq*`
-  // units (`convertViewportUnits`), so they resolve against this height
-  // instead of the iframe's own. Against the iframe's own height, `100vh`
-  // content would grow the iframe, which grows the content again, and never
-  // settle (#132).
-  const ensureContainerStyle = (doc: Document, probeHeight: number) => {
-    let styleEl = doc.getElementById(
-      CONTAINER_STYLE_ID,
-    ) as HTMLStyleElement | null;
-
-    if (!styleEl) {
-      styleEl = doc.createElement('style');
-      styleEl.id = CONTAINER_STYLE_ID;
-      doc.head?.appendChild(styleEl);
-    }
-
-    const text = `html { container-type: size !important; height: ${probeHeight}px !important; }`;
-
-    // Written only when it differs, so a pass with the same probe height
-    // changes nothing in the document (see `freezeTransitions`).
-    if (styleEl.textContent !== text) {
-      styleEl.textContent = text;
-    }
-  };
 
   // Script animations fire no event when they end, so each gets one
   // re-measure when its `finished` promise settles. CSS animations and
@@ -621,10 +502,7 @@ const IFrame = ({
 
     const styleEl = doc.createElement('style');
     styleEl.id = HIDE_SCROLLBAR_STYLE_ID;
-    styleEl.textContent = [
-      'html, body { scrollbar-width: none !important; }',
-      'html::-webkit-scrollbar, body::-webkit-scrollbar { display: none !important; }',
-    ].join('\n');
+    styleEl.textContent = SCROLLBAR_OVERRIDE_RULES.join('\n');
     doc.head.appendChild(styleEl);
   }, [shouldAutoHeight, mountNode]);
 
