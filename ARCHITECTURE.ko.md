@@ -81,7 +81,7 @@
 ```text
 src/
 ├─ index.tsx            패키지 진입점: `Live`와 그 정적 멤버
-├─ constants/           DATA_ATTR, BINDING_PROP, 템플릿 (대부분 템플릿 문자열)
+├─ constants/           DATA_ATTR, BINDING_PROP, DEFAULT_TEMPLATE; palette-sections.ts는 기본 팔레트 섹션
 ├─ types/               Section, Module
 ├─ components/
 │  ├─ context/          provider: 문서, 에러, UI 문구
