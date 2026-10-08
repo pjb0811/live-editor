@@ -86,8 +86,13 @@ export const editInnerText = (
     const raw = source.slice(only.start, only.end);
 
     if (raw.trim() !== '') {
-      const leading = raw.length - raw.trimStart().length;
-      const trailing = raw.length - raw.trimEnd().length;
+      const leadingSpace = raw.slice(0, raw.length - raw.trimStart().length);
+      const trailingSpace = raw.slice(raw.trimEnd().length);
+      // Only whitespace with a line break is layout. JSX keeps same-line
+      // whitespace in the string while the panel value hides it, so the
+      // edit overwrites that.
+      const leading = /[\r\n]/.test(leadingSpace) ? leadingSpace.length : 0;
+      const trailing = /[\r\n]/.test(trailingSpace) ? trailingSpace.length : 0;
 
       return [
         {
