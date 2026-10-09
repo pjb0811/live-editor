@@ -128,6 +128,37 @@ const copySource = (source: string, usedIds: Set<string>): string => {
   return applyEdits(source, edits);
 };
 
+// The edit that adds new children after the existing ones. In a parent
+// written one child per line, each new child goes on its own line under the
+// last one, with the same indentation and line ending, so the list keeps its
+// layout. Anything else, such as a parent on one line or a comment after the
+// last child on its line, puts them right before the closing tag, where
+// nothing around them can move.
+const insertChildren = (
+  source: string,
+  parent: t.JSXElement,
+  last: t.JSXElement | t.JSXFragment | undefined,
+  copies: string[],
+): SourceEdit => {
+  const closing = parent.closingElement!.start!;
+
+  if (last?.start != null && last.end != null) {
+    const lineStart = source.lastIndexOf('\n', last.start - 1) + 1;
+    const indent = source.slice(lineStart, last.start);
+    const after = /^[ \t]*(\r?\n)/.exec(source.slice(last.end, closing));
+
+    if (after && /^[ \t]*$/.test(indent)) {
+      return {
+        start: last.end,
+        end: last.end,
+        content: copies.map(copy => `${after[1]}${indent}${copy}`).join(''),
+      };
+    }
+  }
+
+  return { start: closing, end: closing, content: copies.join('') };
+};
+
 // Coordinates refer to the caller's wrapped source, just like other update
 // editors. Non-element gaps stay at their original positions; moving a JSX
 // child moves its entire subtree but never regenerates intervening content.
@@ -169,12 +200,14 @@ export const editChildrenSource = (
       }));
 
       if (next.length > children.length) {
-        const at = parent.closingElement!.start!;
-        edits.push({
-          start: at,
-          end: at,
-          content: next.slice(children.length).join(''),
-        });
+        edits.push(
+          insertChildren(
+            source,
+            parent,
+            children.at(-1),
+            next.slice(children.length),
+          ),
+        );
       }
 
       return edits;
@@ -328,19 +361,16 @@ export const editChildrenSource = (
           return null;
         }
 
-        const content = [...action.indices]
+        const copies = [...action.indices]
           .sort((a, b) => a - b)
-          .map(index => copySource(raw[index]!, usedIds))
-          .join('');
-        const at = parent.closingElement.start!;
+          .map(index => copySource(raw[index]!, usedIds));
 
-        return [{ start: at, end: at, content }];
+        return [insertChildren(source, parent, children.at(-1), copies)];
       }
       case 'append': {
-        const content = copySource(raw[0] ?? '<div></div>', usedIds);
-        const at = parent.closingElement.start!;
+        const copy = copySource(raw[0] ?? '<div></div>', usedIds);
 
-        return [{ start: at, end: at, content }];
+        return [insertChildren(source, parent, children.at(-1), [copy])];
       }
       default:
         return null;
