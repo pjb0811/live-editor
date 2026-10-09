@@ -1,3 +1,5 @@
+import { parseExpression } from '@babel/parser';
+import * as t from '@babel/types';
 import { describe, expect, it } from 'vitest';
 
 import { PALETTE_SECTIONS } from '~/constants';
@@ -1054,5 +1056,107 @@ describe('update: removing an attribute with a trailing comment (#577)', () => {
     const code = `<a\n  ${B}\n  title="Hi"\n  href="/x"\n>go</a>`;
 
     expect(remove(code).code).toBe(`<a\n  ${B}\n  href="/x"\n>go</a>`);
+  });
+});
+
+// A JSX attribute string has no backslash escapes and `&` starts an entity,
+// so the value is written by those rules, not as a JavaScript string (#592).
+describe('update: string attribute values (#592)', () => {
+  const BINDING = `data-id="a" data-binding="[{label:'T',property:'title'}]"`;
+  const withTitle = `<a ${BINDING} title="Old">go</a>`;
+  const withoutTitle = `<a ${BINDING}>go</a>`;
+
+  // The value JSX reads for `title`, from the parsed result.
+  const readTitle = (code: string): string | undefined => {
+    const element = parseExpression(code, {
+      plugins: ['jsx', 'typescript'],
+    }) as t.JSXElement;
+    const attribute = element.openingElement.attributes.find(
+      (attr): attr is t.JSXAttribute =>
+        t.isJSXAttribute(attr) &&
+        t.isJSXIdentifier(attr.name) &&
+        attr.name.name === 'title',
+    );
+    const value = attribute?.value;
+
+    if (t.isStringLiteral(value)) {
+      return value.value;
+    }
+
+    return t.isJSXExpressionContainer(value) &&
+      t.isStringLiteral(value.expression)
+      ? value.expression.value
+      : undefined;
+  };
+
+  it.each([
+    ['a double quote', 'He said "hi"'],
+    ['both quotes', `it's "quoted"`],
+    ['a backslash', 'back\\slash'],
+    ['a Windows path', 'C:\\dir\\new'],
+    ['a regex', '^\\d+\\.\\d*$'],
+    ['a line break', 'two\nlines'],
+    ['a line break and spaces', 'one\n   two'],
+    ['a tab', 'tab\there'],
+    ['an entity', '&amp;'],
+    ['an encoded tag', '&lt;b&gt;'],
+    ['an entity-like text', 'a &b; c'],
+    ['a numeric entity', '&#123;'],
+    ['an ampersand', 'Tom & Jerry'],
+    ['an apostrophe', "it's"],
+    ['angle brackets and braces', '<b>{x}</b>'],
+    ['an emoji', 'emoji 😀'],
+  ])('reads back %s as typed', (_name, value) => {
+    for (const code of [withTitle, withoutTitle]) {
+      const result = update(code, 'a', 'T', value);
+
+      expect(result.success).toBe(true);
+      expect(readTitle(result.code)).toBe(value);
+    }
+  });
+
+  it('writes a value with a double quote in single quotes', () => {
+    expect(update(withTitle, 'a', 'T', 'He said "hi"').code).toBe(
+      `<a ${BINDING} title='He said "hi"'>go</a>`,
+    );
+  });
+
+  it('escapes the double quotes when the value has both kinds', () => {
+    expect(update(withTitle, 'a', 'T', `it's "x"`).code).toBe(
+      `<a ${BINDING} title="it's &quot;x&quot;">go</a>`,
+    );
+  });
+
+  it('writes a backslash as it is', () => {
+    expect(update(withTitle, 'a', 'T', 'C:\\dir').code).toBe(
+      `<a ${BINDING} title="C:\\dir">go</a>`,
+    );
+  });
+
+  it('keeps a typed entity literal, and leaves a lone ampersand alone', () => {
+    expect(update(withTitle, 'a', 'T', '&amp;').code).toBe(
+      `<a ${BINDING} title="&amp;amp;">go</a>`,
+    );
+    expect(update(withTitle, 'a', 'T', 'Tom & Jerry').code).toBe(
+      `<a ${BINDING} title="Tom & Jerry">go</a>`,
+    );
+  });
+
+  it('writes a line break or tab as an expression, the only exact form', () => {
+    expect(update(withTitle, 'a', 'T', 'two\nlines').code).toBe(
+      `<a ${BINDING} title={"two\\nlines"}>go</a>`,
+    );
+    expect(update(withTitle, 'a', 'T', 'a\tb').code).toBe(
+      `<a ${BINDING} title={"a\\tb"}>go</a>`,
+    );
+  });
+
+  it('writes a plain value exactly as before', () => {
+    expect(update(withTitle, 'a', 'T', 'Hello world').code).toBe(
+      `<a ${BINDING} title="Hello world">go</a>`,
+    );
+    expect(update(withoutTitle, 'a', 'T', 'Hello').code).toBe(
+      `<a ${BINDING} title="Hello">go</a>`,
+    );
   });
 });

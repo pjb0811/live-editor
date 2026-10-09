@@ -245,6 +245,40 @@ const structuralSource = (value: string): t.Expression | null => {
   }
 };
 
+// Whether a string has a control character: a line break, a tab, and so on.
+const hasControlCharacter = (value: string): boolean =>
+  Array.from(value).some(char => char.charCodeAt(0) < 0x20);
+
+// A string as the value of a JSX attribute, which has its own rules: no
+// backslash escapes, and `&` starts an entity. Babel prints a string literal
+// by JavaScript rules (`"a\"b"`, `"C:\\dir"`), which JSX would read as a
+// different value or fail to parse, so the text is written as given
+// (`extra.raw`).
+//
+// - A control character goes in `{"..."}`. A line break in an attribute
+//   string followed by spaces compiles to one space, so only the expression
+//   form keeps it.
+// - Otherwise the quote with fewer escapes: `'` for a value that has `"` and
+//   no `'`, else `"` with `&quot;` for any `"` inside.
+// - `&` becomes `&amp;` when it starts something entity-like, so a typed
+//   `&amp;` stays literal. A lone `&` is written as is.
+const jsxStringValue = (
+  value: string,
+): t.StringLiteral | t.JSXExpressionContainer => {
+  if (hasControlCharacter(value)) {
+    return t.jsxExpressionContainer(t.stringLiteral(value));
+  }
+
+  const quote = value.includes('"') && !value.includes("'") ? "'" : '"';
+  const text = value.replace(/&(?=#?[A-Za-z0-9]+;)/g, '&amp;');
+  const escaped = quote === '"' ? text.replace(/"/g, '&quot;') : text;
+  const literal = t.stringLiteral(value);
+
+  literal.extra = { raw: `${quote}${escaped}${quote}`, rawValue: value };
+
+  return literal;
+};
+
 // Builds the JSX attribute value for a value and its declared `type`
 // (#238). `current` is the value being replaced. Without a declared type,
 // as in most `items` bindings, `current` decides whether the value is
@@ -263,7 +297,7 @@ const buildAttributeValue = (
           parseExpression(value.trim(), { plugins: ['jsx', 'typescript'] }),
         );
       } catch {
-        return t.stringLiteral(value);
+        return jsxStringValue(value);
       }
     }
 
@@ -288,11 +322,11 @@ const buildAttributeValue = (
       }
     }
 
-    return t.stringLiteral(value);
+    return jsxStringValue(value);
   }
 
   const expr = valueToExpression(value);
-  return expr ? t.jsxExpressionContainer(expr) : t.stringLiteral(String(value));
+  return expr ? t.jsxExpressionContainer(expr) : jsxStringValue(String(value));
 };
 
 export const editAttribute = (
