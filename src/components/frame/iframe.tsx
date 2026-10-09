@@ -10,37 +10,22 @@ import {
 
 import { withScriptBlobs } from '~/utils/scripts';
 
-import {
-  hasActiveAnimation,
-  isCssAnimation,
-  isCssTransition,
-  neverFinishes,
-} from './animations';
+import { isCssAnimation, isCssTransition, neverFinishes } from './animations';
 import {
   CONTAINER_STYLE_ID,
   HIDE_SCROLLBAR_STYLE_ID,
   SCROLLBAR_OVERRIDE_RULES,
-  ensureContainerStyle,
-  withMeasurementOverrides,
+  getProbeHeight,
+  measureContentHeight,
 } from './auto-height';
-import {
-  FALLBACK_PROBE_HEIGHT,
-  computeProbeHeight,
-  isAnimationActive,
-  isVisuallyHidden,
-  positionedElementBottom,
-  verticalInsets,
-} from './measure';
+import { isAnimationActive } from './measure';
 import {
   createRootAttributeSync,
   createStyleSyncManager,
   reconcileRootAttributes,
   reconcileStyles,
 } from './style-sync';
-import {
-  convertViewportUnits,
-  rewriteInlineViewportUnits,
-} from './viewport-units';
+import { convertViewportUnits } from './viewport-units';
 
 export interface Props {
   title?: string;
@@ -335,45 +320,13 @@ const IFrame = ({
       return;
     }
 
-    const scrollParent = iframe.closest<HTMLElement>('[data-frame-container]');
+    const probeHeight = getProbeHeight(iframe, win);
 
-    let probeHeight: number;
-
-    if (!scrollParent) {
-      // No scroll container (`Frame` used without `Live.Dnd`): use a fixed
-      // default. See `FALLBACK_PROBE_HEIGHT`.
-      probeHeight = FALLBACK_PROBE_HEIGHT;
-    } else {
-      // From the iframe up to the scroll container: the iframe's and each
-      // wrapper's margin, border and padding take space, and the scroll container
-      // adds only its padding, since `clientHeight` leaves out its border and
-      // margin (#440).
-      const scrollParentStyle = win.getComputedStyle(scrollParent);
-      let wrapperInsets =
-        (parseFloat(scrollParentStyle.paddingTop) || 0) +
-        (parseFloat(scrollParentStyle.paddingBottom) || 0);
-      let node: HTMLElement | null = iframe;
-
-      while (node && node !== scrollParent) {
-        wrapperInsets += verticalInsets(win.getComputedStyle(node));
-        node = node.parentElement;
-      }
-
-      const computed = computeProbeHeight(
-        scrollParent.clientHeight,
-        wrapperInsets,
-      );
-
-      if (computed === null) {
-        // Layout isn't ready yet: skip this pass. The observers call this again
-        // once it settles.
-        return;
-      }
-
-      probeHeight = computed;
+    if (probeHeight === null) {
+      // Layout isn't ready yet: skip this pass. The observers call this again
+      // once it settles.
+      return;
     }
-
-    let contentHeight = 0;
 
     // Only the first pass and a pass that moves the probe height change the
     // container, so only they freeze transitions.
@@ -390,53 +343,13 @@ const IFrame = ({
 
     iframe.style.height = `${probeHeight}px`;
 
-    withMeasurementOverrides(doc, freezeTransitions, () => {
-      ensureContainerStyle(doc, probeHeight);
-
-      // Rewrite viewport units in inline `style` attributes and in-preview
-      // `<style>` tags, which the container style can't reach, so they resolve
-      // against the probe height too. After `ensureContainerStyle` and before the
-      // reads below. It's idempotent, so the observer pass its own rewrites trigger
-      // changes nothing.
-      rewriteInlineViewportUnits(mountNode);
-
-      // No need to fold the iframe to 0px first: `cq*` content is sized against
-      // the fixed probe height, so a direct read is stable (#132).
-      contentHeight = mountNode.scrollHeight;
-
-      // Every descendant, so an overlay nested deep in the tree counts too.
-      const descendants = mountNode.querySelectorAll<HTMLElement>('*');
-
-      descendants.forEach(el => {
-        const style = win.getComputedStyle(el);
-
-        // `visibility: hidden` and `opacity: 0` elements, such as a closed bottom
-        // sheet, still have an `offsetHeight`, so they're skipped here
-        // (`display: none` already reads 0). Animations are checked only for a fully
-        // transparent element, to tell a fade-in apart from a hidden one.
-        const isAnimating = style.opacity === '0' && hasActiveAnimation(el);
-
-        if (isVisuallyHidden(style, isAnimating)) {
-          return;
-        }
-
-        if (
-          (style.position === 'fixed' || style.position === 'absolute') &&
-          el.offsetHeight > 0
-        ) {
-          const rect = el.getBoundingClientRect();
-          const bottom = positionedElementBottom(
-            rect.top,
-            rect.bottom,
-            probeHeight,
-          );
-
-          if (bottom !== null) {
-            contentHeight = Math.max(contentHeight, bottom);
-          }
-        }
-      });
-    });
+    const contentHeight = measureContentHeight(
+      mountNode,
+      doc,
+      win,
+      probeHeight,
+      freezeTransitions,
+    );
 
     iframe.style.height =
       contentHeight > 0 ? `${Math.ceil(contentHeight)}px` : previousHeight;

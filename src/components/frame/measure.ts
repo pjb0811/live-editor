@@ -1,6 +1,6 @@
-// The calculations behind `iframe.tsx`'s `autoHeight`, kept free of the DOM
-// so they can be unit-tested. The DOM reads stay in `iframe.tsx`, which needs
-// a real browser to test.
+// The calculations behind `autoHeight`, kept free of the DOM so they can be
+// unit-tested. The DOM reads stay in `auto-height.ts`, which needs a real
+// browser to test.
 
 // The probe height when there's no `[data-frame-container]` scroll
 // container, as when `Frame` is used without `Live.Dnd`. A common mobile
