@@ -54,6 +54,19 @@ const attributeInsertPoint = (opening: t.JSXOpeningElement): number | null => {
   return last?.end ?? opening.name.end ?? null;
 };
 
+// Escapes a string for JSX text, where `<`, `>`, `{` and `}` are syntax and
+// `&` starts an entity. They are written as entities, which the panel reads
+// back as the typed characters. `&` is escaped only when it starts something
+// entity-like, so a typed `&amp;` stays literal and `Tom & Jerry` is written
+// as is. `&` goes first, so the entities added below aren't escaped again.
+const escapeJsxText = (value: string): string =>
+  value
+    .replace(/&(?=#?[A-Za-z0-9]+;)/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\{/g, '&#123;')
+    .replace(/\}/g, '&#125;');
+
 // Replaces the element's text. With a single text child, only the trimmed
 // text is replaced, so the line breaks and indentation around it stay
 // (#239). Otherwise every text child is removed and `value` is written just
@@ -72,6 +85,7 @@ export const editInnerText = (
     return [];
   }
 
+  const text = escapeJsxText(value);
   const [only] = element.children;
 
   if (
@@ -98,7 +112,7 @@ export const editInnerText = (
         {
           start: only.start + leading,
           end: only.end - trailing,
-          content: value,
+          content: text,
         },
       ];
     }
@@ -112,7 +126,7 @@ export const editInnerText = (
     }
   }
 
-  edits.push({ start: range.end, end: range.end, content: value });
+  edits.push({ start: range.end, end: range.end, content: text });
 
   return edits;
 };

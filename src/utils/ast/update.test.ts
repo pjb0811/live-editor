@@ -1160,3 +1160,94 @@ describe('update: string attribute values (#592)', () => {
     );
   });
 });
+
+// In JSX text `<`, `>`, `{` and `}` are syntax and `&` starts an entity, so
+// an `innerText` value is escaped before it is written (#593).
+describe('update: innerText special characters (#593)', () => {
+  const BINDING = `data-id="a" data-binding="[{label:'T',property:'innerText'}]"`;
+  const single = `<h1 ${BINDING}>Old</h1>`;
+  const mixed = `<h1 ${BINDING}>Old <b>bold</b> text</h1>`;
+
+  // The text JSX reads for the element's own text children, or `null` when
+  // the source doesn't parse or holds an expression.
+  const readText = (code: string): string | null => {
+    try {
+      const element = parseExpression(code, {
+        plugins: ['jsx', 'typescript'],
+      }) as t.JSXElement;
+
+      if (element.children.some(child => t.isJSXExpressionContainer(child))) {
+        return null;
+      }
+
+      return element.children
+        .filter((child): child is t.JSXText => t.isJSXText(child))
+        .map(child => child.value)
+        .join('');
+    } catch {
+      return null;
+    }
+  };
+
+  it.each([
+    ['a less-than sign', 'a < b'],
+    ['a greater-than sign', 'a > b'],
+    ['a closing brace', 'close }'],
+    ['an opening brace', 'open {'],
+    ['an expression', 'use {x}'],
+    ['a tag', '<b>x</b>'],
+    ['an entity', '&amp;'],
+    ['an encoded tag', '&lt;b&gt;'],
+    ['an entity-like text', 'a &b; c'],
+    ['a numeric entity', '&#123;'],
+    ['an ampersand', 'Tom & Jerry'],
+    ['quotes', `it's "quoted"`],
+    ['a backslash', 'C:\\dir'],
+    ['an emoji', 'emoji 😀'],
+  ])('reads back %s as typed', (_name, value) => {
+    for (const code of [single, mixed]) {
+      const result = update(code, 'a', 'T', value);
+
+      expect(result.success).toBe(true);
+      expect(readText(result.code)).toBe(value);
+    }
+  });
+
+  it('is what the panel reads back through extract()', () => {
+    for (const value of ['a < b', 'use {x}', '&amp;', 'Tom & Jerry']) {
+      const result = update(single, 'a', 'T', value);
+
+      expect(extract(result.code)[0]?.textContent).toBe(value);
+    }
+  });
+
+  it('writes the markup characters as entities', () => {
+    expect(update(single, 'a', 'T', 'a < b > c').code).toBe(
+      `<h1 ${BINDING}>a &lt; b &gt; c</h1>`,
+    );
+    expect(update(single, 'a', 'T', 'use {x}').code).toBe(
+      `<h1 ${BINDING}>use &#123;x&#125;</h1>`,
+    );
+  });
+
+  it('keeps a typed entity literal', () => {
+    expect(update(single, 'a', 'T', '&amp;').code).toBe(
+      `<h1 ${BINDING}>&amp;amp;</h1>`,
+    );
+  });
+
+  it('writes text without these characters exactly as before', () => {
+    expect(update(single, 'a', 'T', 'Tom & Jerry').code).toBe(
+      `<h1 ${BINDING}>Tom & Jerry</h1>`,
+    );
+    expect(update(single, 'a', 'T', `it's "x"`).code).toBe(
+      `<h1 ${BINDING}>it's "x"</h1>`,
+    );
+  });
+
+  it('escapes the text of an element that also has child elements', () => {
+    expect(update(mixed, 'a', 'T', 'a < b').code).toBe(
+      `<h1 ${BINDING}><b>bold</b>a &lt; b</h1>`,
+    );
+  });
+});
