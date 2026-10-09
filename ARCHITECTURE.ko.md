@@ -206,7 +206,7 @@ extractSections              → Section[] { id, name, code }
 
 어떤 값은 그 자체로 구조를 가집니다. `items` 값은 배열 리터럴이라 행을 이동·복제·추가·삭제할 수 있고, `children` 값은 요소의 JSX 자식입니다.
 
-- **`useDndItems`**(`components/dnd/panel/use-dnd-items.ts`)는 배열을 파싱하고, 편집을 거쳐도 유지되는 식별자를 각 행에 주고, 각 동작을 배열 소스의 편집으로 바꿉니다(`utils/ast/items.ts`, `array-source.ts`). 새 배열 소스는 바인딩의 `onChange`, 즉 ② 단계로 갑니다.
+- **`useDndItems`**(`components/dnd/panel/use-dnd-items.ts`)는 배열을 파싱하고, 편집을 거쳐도 유지되는 식별자(`item-identity.ts`)를 각 행에 주고, 각 동작을 배열 소스의 편집으로 바꿉니다(`utils/ast/items.ts`, `array-source.ts`). 새 배열 소스는 바인딩의 `onChange`, 즉 ② 단계로 갑니다.
 - **`useDndChildren`**(`components/dnd/panel/use-dnd-children.ts`)는 동작(이동, 복제, 삭제, 추가)과 대상을 기술해서 `children` property의 값으로 ② 단계에 보냅니다. `update()`는 이것을 `editChildrenSource`(`utils/ast/children.ts`)에 넘기고, 이 함수는 현재 소스와 대조한 뒤에 적용합니다.
 - **중첩 바인딩.** 배열 항목 안의 JSX(`{ label: <b data-id="x" ... /> }`)는 최상위 `extract()`에 보이지 않습니다. `extract()`는 속성 값 안으로 들어가지 않기 때문입니다. Items 편집기가 그 JSX를 다시 extract하고, 그 필드를 `data-id`로 `onNodeChange`를 통해 commit합니다(#308).
 

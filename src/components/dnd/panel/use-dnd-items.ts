@@ -41,6 +41,12 @@ import {
   withPanelCommit,
 } from '../panel-binding';
 import {
+  createIdentityState,
+  moveId,
+  reconcileIdentityState,
+  removeIds,
+} from './item-identity';
+import {
   selectionAfter,
   useStructuralSelection,
 } from './use-structural-selection';
@@ -191,13 +197,6 @@ const createPendingCommit = () => {
   };
 };
 
-interface ItemIdentityState {
-  value: string;
-  kind: DndItems['kind'];
-  ids: string[];
-  signatures: string[];
-}
-
 // Pulls the data-bound elements out of one JSX-valued property. A container
 // declaring `children` wins outright: it owns the elements below it, so
 // listing them separately would offer the same edit twice.
@@ -320,72 +319,6 @@ const parseSource = (value: string, bindingOptions?: BindingOptions) => {
   });
 
   return { objectItems, primitiveItems, parseError: false };
-};
-
-const createIdentityState = (
-  value: string,
-  kind: DndItems['kind'],
-  items: Array<RawObjectItem | RawPrimitiveItem>,
-  ids: string[] = items.map(item => item.id),
-): ItemIdentityState => ({
-  value,
-  kind,
-  ids,
-  signatures: items.map(item => item.source),
-});
-
-const reconcileIdentityState = (
-  current: ItemIdentityState | null,
-  value: string,
-  kind: DndItems['kind'],
-  items: Array<RawObjectItem | RawPrimitiveItem>,
-): ItemIdentityState => {
-  if (
-    current &&
-    current.value === value &&
-    current.kind === kind &&
-    current.ids.length === items.length
-  ) {
-    return current;
-  }
-
-  if (!current || current.kind !== kind) {
-    return createIdentityState(value, kind, items);
-  }
-
-  const previousCounts = new Map<string, number>();
-  const nextCounts = new Map<string, number>();
-
-  current.signatures.forEach(signature => {
-    previousCounts.set(signature, (previousCounts.get(signature) ?? 0) + 1);
-  });
-  items.forEach(item => {
-    nextCounts.set(item.source, (nextCounts.get(item.source) ?? 0) + 1);
-  });
-
-  const ids = items.map(item => {
-    const previousIndex = current.signatures.indexOf(item.source);
-
-    return previousIndex >= 0 &&
-      previousCounts.get(item.source) === 1 &&
-      nextCounts.get(item.source) === 1
-      ? current.ids[previousIndex]!
-      : item.id;
-  });
-
-  return createIdentityState(value, kind, items, ids);
-};
-
-const moveId = (ids: string[], from: number, to: number) => {
-  const next = [...ids];
-  const [moved] = next.splice(from, 1);
-  next.splice(to, 0, moved!);
-
-  return next;
-};
-
-const removeIds = (ids: string[], indices: Set<number>) => {
-  return ids.filter((_, index) => !indices.has(index));
 };
 
 // What the built-in Items editor runs on, for a custom panel's own markup.
