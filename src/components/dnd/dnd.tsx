@@ -1,11 +1,4 @@
-import {
-  Children,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { Children, useEffect, useMemo, useState } from 'react';
 
 import {
   DndContext,
@@ -24,16 +17,10 @@ import { useResponsiveSize } from '@jbpark/use-hooks';
 
 import { PALETTE_SECTIONS } from '~/constants';
 import type { Section } from '~/types';
-import { type DocumentProblem } from '~/utils/ast/document';
-import { extract } from '~/utils/ast/extract';
-import { fillIdsFrom } from '~/utils/ast/tree';
-import { type BindingOptions, type DataAttrNode } from '~/utils/ast/types';
-import { updateAll } from '~/utils/ast/update';
-import type { UpdateFailure } from '~/utils/ast/update';
+import { type BindingOptions } from '~/utils/ast/types';
 
 import { cn } from '../../utils/cn';
 import { preloadScripts } from '../../utils/scripts';
-import { type LiveMessages, useLiveMessages } from '../context/messages';
 import { usePreview } from '../context/states';
 import { useStableModules } from '../preview/use-stable-modules';
 import Droppable from './canvas/droppable';
@@ -42,107 +29,18 @@ import Overlay from './canvas/overlay';
 import Renderer from './canvas/renderer';
 import { SectionFallbackContext } from './canvas/section-fallback-context';
 import Sortable from './canvas/sortable';
-import {
-  type DndEditError,
-  DndEditOptionsContext,
-  toastEditError,
-} from './edit-options';
+import { DndEditOptionsContext } from './edit-options';
 import { DndInspectorContext } from './inspector';
 import Layout from './layout';
 import { DndRegionContext } from './layout-context';
 import { paletteSectionOf } from './palette/palette-drag';
-import {
-  type PanelBinding,
-  type PanelNodeChange,
-  resolvePanelBindings,
-  withPanelCommit,
-} from './panel-binding';
+import { useEditErrors } from './state/edit-errors';
 import { useDeleteFlow } from './state/use-delete-flow';
 import { useDndKeyboard } from './state/use-dnd-keyboard';
 import { useInspectorState } from './state/use-inspector-state';
 import { useSectionDocument } from './state/use-section-document';
+import { useSectionEditing } from './state/use-section-editing';
 import type { DndPalette, DndPanel, Props } from './types';
-
-// Turns an `update` failure into the edit error's title and description.
-// The description names the cause, which is usually in the element's
-// `data-binding` rather than in the value just typed (#270).
-const describeUpdateFailure = (
-  failure: UpdateFailure | undefined,
-  label: string,
-  { editErrors: m }: LiveMessages,
-): { title: string; description?: string } => {
-  switch (failure?.reason) {
-    case 'attribute-not-found':
-      return {
-        title: m.updateFailed(label),
-        description: m.attributeNotFound(failure.property),
-      };
-    case 'binding-not-declared':
-      return {
-        title: m.updateFailed(label),
-        description: m.bindingNotDeclared({
-          label,
-          property: failure.property,
-        }),
-      };
-    case 'duplicate-binding':
-      return {
-        title: m.updateFailed(label),
-        description: m.duplicateBinding({
-          count: failure.count,
-          label,
-          property: failure.property,
-        }),
-      };
-    case 'reserved-property':
-      return {
-        title: m.cannotEdit(label),
-        description: m.reservedProperty(failure.property),
-      };
-    case 'required-property':
-      return {
-        title: m.cannotRemove(label),
-        description: m.requiredProperty(failure.property),
-      };
-    case 'no-binding':
-      return { title: m.updateFailed(label), description: m.noBinding };
-    case 'element-not-found':
-      return { title: m.updateFailed(label), description: m.elementNotFound };
-    case 'self-closing':
-      return {
-        title: m.cannotEdit(label),
-        description: m.selfClosing(failure.property),
-      };
-    case 'unsupported-syntax':
-      return {
-        title: m.cannotEdit(label),
-        description: m.unsupportedSyntax(failure.property),
-      };
-    case 'parse-error':
-      return {
-        title: m.updateFailed(label),
-        description:
-          failure.error instanceof Error
-            ? failure.error.message
-            : m.checkConsole,
-      };
-    default:
-      return { title: m.updateFailed(label) };
-  }
-};
-
-// An edit refused because the document doesn't parse (#433).
-const blockedEditError = (
-  error: unknown,
-  { editErrors: m }: LiveMessages,
-): DndEditError => ({
-  type: 'parse',
-  target: 'document',
-  reason: 'parse-error',
-  error,
-  title: m.syntaxError,
-  description: m.syntaxErrorDetail,
-});
 
 const conditionalModifiers: Modifier = args => {
   const { active } = args;
@@ -207,29 +105,8 @@ const Dnd = ({
   // provider's code. An empty string counts as a value, as in `Live.Preview`.
   const value = _value === undefined ? code : _value;
 
-  const messages = useLiveMessages();
-  const reportError = onEditError ?? toastEditError;
-
-  // Read through refs, so the effects below report each failure once, even
-  // when the host passes a new `onEditError` or new messages every render.
-  const reportErrorRef = useRef(reportError);
-  const messagesRef = useRef(messages);
-
-  useEffect(() => {
-    reportErrorRef.current = reportError;
-    messagesRef.current = messages;
-  });
-
-  // Reports an edit refused because the source doesn't parse. A source that
-  // stops parsing isn't reported by itself: that happens on most keystrokes,
-  // and the canvas already says so (#433).
-  const onBlockedEdit = useCallback((problem: DocumentProblem) => {
-    if (problem.reason === 'parse-error') {
-      reportErrorRef.current(
-        blockedEditError(problem.error, messagesRef.current),
-      );
-    }
-  }, []);
+  const { reportError, messages, onBlockedEdit, reportLatest } =
+    useEditErrors(onEditError);
 
   const {
     sections,
@@ -330,141 +207,18 @@ const Dnd = ({
     () => ({ bindings: bindingRegistry, bindingKeys }),
     [bindingRegistry, bindingKeys],
   );
-  // The selected section's elements, parsed again only when its code or id
-  // changes.
-  const selectedCode = selectedSection?.code;
-  const selectedSectionId = selectedSection?.id;
-  const { fields, updatedCode, parseError } = useMemo(() => {
-    if (!selectedCode) {
-      return {
-        fields: [] as DataAttrNode[],
-        updatedCode: '',
-        parseError: null,
-      };
-    }
-
-    try {
-      // The same ids the canvas preview fills this section with, so an
-      // element's `data-id` there matches its fields here (#432).
-      const updated = fillIdsFrom(selectedCode, selectedSectionId ?? '');
-      // Every element, the `<section>` itself included, so a binding on the
-      // section is editable too (#429).
-      const allNodes = extract(updated, bindingOptions);
-
-      return {
-        fields: allNodes,
-        updatedCode: updated !== selectedCode ? updated : selectedCode,
-        parseError: null,
-      };
-    } catch (e) {
-      console.warn('⚠️ Parsing error', e);
-      return {
-        fields: [] as DataAttrNode[],
-        updatedCode: '',
-        parseError: { error: e },
-      };
-    }
-  }, [selectedCode, selectedSectionId, bindingOptions]);
-
-  // Keyed on the missing id alone, so it fires when a document reaches this
-  // state and not again for every edit that leaves it there.
-  useEffect(() => {
-    if (missingContainer !== null) {
-      reportErrorRef.current({
-        type: 'parse',
-        target: 'document',
-        reason: 'container-not-found',
-        containerId: missingContainer,
-        title:
-          messagesRef.current.editErrors.missingContainer(missingContainer),
-        description:
-          messagesRef.current.editErrors.missingContainerDetail(
-            missingContainer,
-          ),
-      });
-    }
-  }, [missingContainer]);
-
-  useEffect(() => {
-    if (parseError) {
-      reportErrorRef.current({
-        type: 'parse',
-        target: 'section',
-        error: parseError.error,
-        title: messagesRef.current.editErrors.sectionParseFailed,
-        description: messagesRef.current.editErrors.checkConsole,
-      });
-    }
-  }, [parseError]);
-
-  // The one commit path for panel edits. A single edit is a batch of one
-  // (#425).
-  const commitChanges = (changes: Parameters<PanelNodeChange>[0][]) => {
-    if (changes.length === 0) {
-      return;
-    }
-
-    // The fields show the last version that parsed while the source doesn't,
-    // and their ids point into that version, not the current source (#433).
-    if (stale && problem?.reason === 'parse-error') {
-      reportError(blockedEditError(problem.error, messages));
-      return;
-    }
-
-    // If an earlier commit in this same tick changed this section, build on
-    // its result: starting from this render's `updatedCode` would undo it
-    // (#450). Otherwise use `updatedCode`, which has the filled ids the
-    // bindings point at.
-    const committed =
-      selectedSection && getCommittedSection(selectedSection.id)?.code;
-    const base =
-      committed && committed !== selectedCode ? committed : updatedCode;
-    const result = updateAll(
-      base,
-      changes.map(({ id, label, property, value: changeValue }) => ({
-        dataId: id,
-        label,
-        property,
-        value: changeValue,
-      })),
-      bindingOptions,
-    );
-
-    if (!result.success) {
-      const { id, label, property } = changes[result.index]!;
-
-      reportError({
-        type: 'update',
-        id,
-        label,
-        property,
-        failure: result.failure,
-        ...describeUpdateFailure(result.failure, label, messages),
-      });
-      return;
-    }
-
-    if (selectedSection) {
-      onChange({ ...selectedSection, code: result.code });
-    }
-  };
-
-  const onFieldChange: PanelNodeChange = change => commitChanges([change]);
-
-  // One entry per bound property, from `fields` alone. Don't add `onChange`
-  // here: a callback must come from the current render, and this memo can
-  // outlive it (#336).
-  const bindingFields = useMemo(
-    () => fields.flatMap(node => resolvePanelBindings(node)?.bindings ?? []),
-    [fields],
-  );
-
-  // Adds each binding's `onChange`, made fresh every render so a commit uses
-  // the current section and code. It's a cheap walk with no parsing.
-  const bindings: PanelBinding[] = withPanelCommit(
-    bindingFields,
-    onFieldChange,
-  );
+  const { bindings, onFieldChange, commitChanges } = useSectionEditing({
+    selectedSection,
+    stale,
+    problem,
+    missingContainer,
+    getCommittedSection,
+    onChange,
+    bindingOptions,
+    reportError,
+    messages,
+    reportLatest,
+  });
 
   useEffect(() => {
     if (frame?.scripts?.length) {
