@@ -233,3 +233,120 @@ describe('legacy children compatibility', () => {
     expect(result.code).toBe(code);
   });
 });
+
+// A parent written one child per line keeps that layout when a child is
+// added: the copy goes on its own line under the last child (#596).
+describe('children placement in a multi-line parent (#596)', () => {
+  const list = (body: string, eol = '\n') =>
+    `<ul ${binding}>${eol}${body}</ul>`;
+  const a = '<li data-id="a">A</li>';
+  const b = '<li data-id="b">B</li>';
+  const c = '<li data-id="c">C</li>';
+  const fresh = (code: string) =>
+    code.replace(/data-id="[\w-]{12}"/g, 'data-id="NEW"');
+  const multi = list(`  ${a}\n  {/* note */}\n  ${b}\n  ${c}\n`);
+
+  it.each(['append', 'duplicate'] as const)(
+    'puts the %s copy on its own line under the last child',
+    type => {
+      const result = edit(
+        multi,
+        type === 'append' ? { type } : { type, indices: [0] },
+      );
+
+      expect(result.success).toBe(true);
+      expect(fresh(result.code)).toBe(
+        list(
+          `  ${a}\n  {/* note */}\n  ${b}\n  ${c}\n  <li data-id="NEW">A</li>\n`,
+        ),
+      );
+    },
+  );
+
+  it('puts several copies on their own lines, in source order', () => {
+    const result = edit(multi, { type: 'duplicate', indices: [2, 0] });
+
+    expect(fresh(result.code)).toBe(
+      list(
+        `  ${a}\n  {/* note */}\n  ${b}\n  ${c}\n  <li data-id="NEW">A</li>\n  <li data-id="NEW">C</li>\n`,
+      ),
+    );
+  });
+
+  it('keeps CRLF line endings', () => {
+    const crlf = multi.replace(/\n/g, '\r\n');
+    const result = edit(crlf, { type: 'duplicate', indices: [0] });
+
+    expect(fresh(result.code)).toBe(
+      list(
+        `  ${a}\r\n  {/* note */}\r\n  ${b}\r\n  ${c}\r\n  <li data-id="NEW">A</li>\r\n`,
+        '\r\n',
+      ),
+    );
+    expect(result.code.replace(/\r\n/g, '')).not.toMatch(/[\r\n]/);
+  });
+
+  it("uses the last child's indentation", () => {
+    const deep = list(`      ${a}\n      ${b}\n    `);
+    const result = edit(deep, { type: 'append' });
+
+    expect(fresh(result.code)).toBe(
+      list(`      ${a}\n      ${b}\n      <li data-id="NEW">A</li>\n    `),
+    );
+  });
+
+  it('keeps the inner indentation of a child that spans several lines', () => {
+    const tall = list(`  <li data-id="a">\n    <b>A</b>\n  </li>\n`);
+    const result = edit(tall, { type: 'duplicate', indices: [0] });
+
+    expect(fresh(result.code)).toBe(
+      list(
+        `  <li data-id="a">\n    <b>A</b>\n  </li>\n  <li data-id="NEW">\n    <b data-id="NEW">A</b>\n  </li>\n`,
+      ),
+    );
+  });
+
+  it('leaves text after the last child where it was', () => {
+    const result = edit(list(`  ${a}\n  trailing text\n`), { type: 'append' });
+
+    expect(fresh(result.code)).toBe(
+      list(`  ${a}\n  <li data-id="NEW">A</li>\n  trailing text\n`),
+    );
+  });
+
+  it('puts a child added through the JSON form on its own line', () => {
+    const code = list(`  ${a}\n  ${b}\n`);
+    const added = JSON.parse(
+      JSON.stringify(nodes(code)[0]).replace('"a"', '"z"'),
+    );
+
+    delete added.source;
+
+    const result = update(
+      code,
+      'parent',
+      'Children',
+      JSON.stringify([...nodes(code), added]),
+      'children',
+    );
+
+    expect(result.code).toBe(
+      list(`  ${a}\n  ${b}\n  <li data-id="z">A</li>\n`),
+    );
+  });
+
+  it.each([
+    [
+      'a parent on one line',
+      `<ul ${binding}>${a}${b}</ul>`,
+      /<\/li><li data-id="NEW">A<\/li><\/ul>$/,
+    ],
+    [
+      'a comment after the last child on its line',
+      list(`  ${a} {/* tail */}\n`),
+      /\{\/\* tail \*\/\}\n<li data-id="NEW">A<\/li><\/ul>$/,
+    ],
+  ])('inserts before the closing tag for %s', (_name, code, pattern) => {
+    expect(fresh(edit(code, { type: 'append' }).code)).toMatch(pattern);
+  });
+});
