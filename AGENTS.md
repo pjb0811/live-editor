@@ -33,7 +33,7 @@ live-editor/
 │  │  │  └─ panel/          # 프로퍼티 편집 패널 (children/field/items/node.tsx)
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
-│  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx, use-auto-height.ts, auto-height.ts, animations.ts, measure.ts, viewport-units.ts)
+│  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx, use-iframe-document.ts, use-host-style-sync.ts, inject-assets.ts, use-auto-height.ts, auto-height.ts, animations.ts, measure.ts, viewport-units.ts)
 │  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, base-modules.ts, use-dynamic-tailwind.ts)
 │  ├─ pages/
 │  │  ├─ index.tsx          # 로컬 개발 앱 셸 (해시로 페이지 전환, 다크 모드 토글)
