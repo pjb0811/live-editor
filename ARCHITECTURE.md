@@ -190,7 +190,7 @@ Two things make this work:
   the same string (so `React.memo` skips it), and an error stays in its slot.
 
 Files: `components/dnd/state/use-section-document.ts` (top half),
-`components/dnd/dnd.tsx` (the `fields` memo), `components/dnd/canvas/renderer.tsx`,
+`components/dnd/state/use-section-editing.ts` (the `fields` memo), `components/dnd/canvas/renderer.tsx`,
 `components/dnd/panel-binding.ts`, `utils/ast/document.ts`,
 `utils/ast/extract.ts`.
 
@@ -206,7 +206,7 @@ levels. Each level turns its edit into the level above's input.
         │  binding.onChange(new value)
         ▼
 ② section level      a field, or onNodeChange / onNodesChange
-   Dnd.commitChanges   updateAll(section code, changes)
+   commitChanges       updateAll(section code, changes)
                          update() finds the element by data-id,
                          matches the binding, and returns source spans;
                          applyEdits writes only those spans
@@ -237,9 +237,9 @@ is a different list passed to the same `commit`.
 - **Ids are written only on commit.** Opening a document never rewrites the
   author's code; filled ids land in the source with the first real edit.
 
-### ② Section level — `Dnd.commitChanges`
+### ② Section level — `commitChanges`
 
-In `components/dnd/dnd.tsx`. One panel edit, or several as one commit
+In `components/dnd/state/use-section-editing.ts`. One panel edit, or several as one commit
 (`onNodesChange`), becomes a call to `updateAll` on the selected section's
 code. `update()` (`utils/ast/update.ts`):
 
@@ -289,8 +289,8 @@ Dnd (dnd.tsx)
 ├─ useDeleteFlow        asks onBeforeDelete, then removes
 ├─ useDndKeyboard       sensors, keyboard navigation, screen-reader announcements
 ├─ useInspectorState    the element picker: hover highlight, pick → select + onNodePick
-├─ fields memo          extract() of the selected section                         (read path)
-├─ commitChanges        section-level commits                                     (② above)
+├─ useEditErrors        where an edit error goes, and the messages it is written in
+├─ useSectionEditing    fields memo (read path) and commitChanges (② above)
 │
 ├─ palette = { items, onAdd }                     ┐
 ├─ panel   = { item, bindings, onNodeChange, ... }├─ DndRegionContext → useDndPalette / useDndPanel / useDndLayout
@@ -408,7 +408,7 @@ provider to unmount clears them (`utils/editor-caches.ts`).
 | Support a new authored syntax in a field                  | `utils/ast/edit-source.ts` and `update.ts` (write) and `extract.ts` / `value.ts` (read); then the Editable Syntax page |
 | Add a binding `type` or change which control a field gets | `BINDING_TYPES` in `utils/ast/types.ts`, `panel/field-kind.ts`, `panel/field.tsx`                                      |
 | Change what a section operation does                      | `dnd/state/use-section-document.ts`                                                                                    |
-| Change how panel edits commit                             | `commitChanges` in `dnd/dnd.tsx`                                                                                       |
+| Change how panel edits commit                             | `commitChanges` in `dnd/state/use-section-editing.ts`                                                                  |
 | Change array or children editing                          | `panel/use-dnd-items.ts` / `use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`                                 |
 | Expose something to custom panels                         | `DndPanel` in `dnd/types.ts`, then `dnd/index.ts` and the public API snapshot                                          |
 | Change preview isolation or sizing                        | `components/frame/`                                                                                                    |

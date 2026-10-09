@@ -155,7 +155,7 @@ extractSections              → Section[] { id, name, code }
 - **양쪽이 id를 같은 방식으로 채웁니다.** 캔버스 미리보기와 패널은 비어 있는 `data-id=""`를 섹션 id와 요소 위치로 똑같이 채웁니다. 그래서 미리보기에서 요소를 클릭하면(요소 picker), 편집으로 id가 소스에 쓰이기 전에도 그 요소의 필드를 찾을 수 있습니다.
 - **섹션 미리보기는 각각 별도의 문서입니다.** 각 칸은 컨테이너에 자기 섹션만 넣은 문서 전체를 컴파일합니다. 그래서 컨테이너 밖의 import와 헬퍼 컴포넌트가 그대로 동작하고, 바뀌지 않은 섹션은 같은 문자열이 나와 `React.memo`가 건너뛰며, 에러는 그 칸 안에 머뭅니다.
 
-파일: `components/dnd/state/use-section-document.ts`(앞부분), `components/dnd/dnd.tsx`(`fields` memo), `components/dnd/canvas/renderer.tsx`, `components/dnd/panel-binding.ts`, `utils/ast/document.ts`, `utils/ast/extract.ts`.
+파일: `components/dnd/state/use-section-document.ts`(앞부분), `components/dnd/state/use-section-editing.ts`(`fields` memo), `components/dnd/canvas/renderer.tsx`, `components/dnd/panel-binding.ts`, `utils/ast/document.ts`, `utils/ast/extract.ts`.
 
 ## 쓰기 경로: 세 단계의 commit
 
@@ -168,7 +168,7 @@ extractSections              → Section[] { id, name, code }
         │  binding.onChange(새 값)
         ▼
 ② 섹션 단계          필드, 또는 onNodeChange / onNodesChange
-   Dnd.commitChanges   updateAll(섹션 코드, 변경들)
+   commitChanges       updateAll(섹션 코드, 변경들)
                          update()가 data-id로 요소를 찾고,
                          바인딩을 맞춘 뒤 소스 구간을 돌려줌;
                          applyEdits가 그 구간만 씀
@@ -190,9 +190,9 @@ extractSections              → Section[] { id, name, code }
 - **같은 tick의 commit.** 한 이벤트 안의 두 commit은 같은 렌더의 문서에서 시작합니다. `pendingRef`가 마지막 commit의 결과를 기억해서, 두 번째가 첫 번째를 덮어쓰지 않고 그 위에 쌓습니다(#450). `getCommittedSection`이 이것을 ② 단계에 알려 줍니다.
 - **id는 commit할 때만 씁니다.** 문서를 열기만 해서는 작성자의 코드가 바뀌지 않습니다. 채운 id는 첫 실제 편집과 함께 소스에 들어갑니다.
 
-### ② 섹션 단계 — `Dnd.commitChanges`
+### ② 섹션 단계 — `commitChanges`
 
-`components/dnd/dnd.tsx`에 있습니다. 패널 편집 하나, 또는 하나의 commit으로 묶인 여러 편집(`onNodesChange`)이 선택된 섹션 코드에 대한 `updateAll` 호출이 됩니다. `update()`(`utils/ast/update.ts`)는 다음 순서로 동작합니다.
+`components/dnd/state/use-section-editing.ts`에 있습니다. 패널 편집 하나, 또는 하나의 commit으로 묶인 여러 편집(`onNodesChange`)이 선택된 섹션 코드에 대한 `updateAll` 호출이 됩니다. `update()`(`utils/ast/update.ts`)는 다음 순서로 동작합니다.
 
 1. 섹션을 파싱하고 `data-id`가 맞는 요소를 찾습니다.
 2. `findBinding`: 그 요소의 바인딩을 `extract`와 같은 세 출처에서 해석하고, `property`(없으면 `label`)가 맞는 것을 찾습니다.
@@ -220,8 +220,8 @@ Dnd (dnd.tsx)
 ├─ useDeleteFlow        onBeforeDelete에 물어본 뒤 삭제
 ├─ useDndKeyboard       센서, 키보드 이동, 스크린 리더 안내
 ├─ useInspectorState    요소 picker: hover 강조, 선택 → 섹션 선택 + onNodePick
-├─ fields memo          선택된 섹션의 extract()                          (읽기 경로)
-├─ commitChanges        섹션 단계 commit                                 (위의 ②)
+├─ useEditErrors        편집 에러를 어디로 보낼지와 그 문구
+├─ useSectionEditing    fields memo(읽기 경로)와 commitChanges(위의 ②)
 │
 ├─ palette = { items, onAdd }                     ┐
 ├─ panel   = { item, bindings, onNodeChange, ... }├─ DndRegionContext → useDndPalette / useDndPanel / useDndLayout
@@ -302,7 +302,7 @@ code ─► compile(code, modules)          utils/compile.ts
 | 필드에서 새 작성 문법 지원            | `utils/ast/edit-source.ts`와 `update.ts`(쓰기), `extract.ts` / `value.ts`(읽기), 그다음 Editable Syntax 페이지 |
 | 바인딩 `type` 추가나 필드 컨트롤 변경 | `utils/ast/types.ts`의 `BINDING_TYPES`, `panel/field-kind.ts`, `panel/field.tsx`                               |
 | 섹션 작업의 동작 변경                 | `dnd/state/use-section-document.ts`                                                                            |
-| 패널 편집의 commit 방식 변경          | `dnd/dnd.tsx`의 `commitChanges`                                                                                |
+| 패널 편집의 commit 방식 변경          | `dnd/state/use-section-editing.ts`의 `commitChanges`                                                           |
 | 배열이나 children 편집 변경           | `panel/use-dnd-items.ts` / `use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`                         |
 | 커스텀 패널에 무언가 공개             | `dnd/types.ts`의 `DndPanel`, 그다음 `dnd/index.ts`와 공개 API 스냅샷                                           |
 | 미리보기 격리나 크기 조절 변경        | `components/frame/`                                                                                            |

@@ -29,7 +29,7 @@ live-editor/
 │  │  │  ├─ edit-options.ts, panel-binding.ts, inspector.ts # 편집 에러·패널 바인딩·요소 picker (여러 영역 공용)
 │  │  │  ├─ canvas/         # 캔버스: droppable, sortable, overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight
 │  │  │  ├─ palette/        # 팔레트: draggable, palette-drag(드래그 데이터)
-│  │  │  ├─ state/          # 상태 훅: use-section-document(섹션 문서), use-dnd-keyboard, use-inspector-state, use-delete-flow
+│  │  │  ├─ state/          # 상태 훅: use-section-document(섹션 문서), use-dnd-keyboard, use-inspector-state, use-delete-flow, use-section-editing(패널 편집 commit), edit-errors(편집 에러 보고)
 │  │  │  └─ panel/          # 프로퍼티 편집 패널 (children/field/items/node.tsx)
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
