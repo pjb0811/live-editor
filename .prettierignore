@@ -1,0 +1,6 @@
+# Vercel agent skills vendored unmodified from vercel-labs/agent-skills (see AGENTS.md)
+.claude/skills/react-best-practices/
+.claude/skills/composition-patterns/
+.claude/skills/web-design-guidelines/
+.claude/skills/writing-guidelines/
+.claude/skills/deploy-to-vercel/

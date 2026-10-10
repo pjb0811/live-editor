@@ -53,7 +53,7 @@
 
 ## Checklist
 
-- [ ] Commit messages follow conventional-commit style (no gitmoji)
+- [ ] Commit messages follow the commit rules in AGENTS.md
 - [ ] Updated docs when behavior/API changed
 - [ ] Added or updated tests when needed
 - [ ] No unrelated changes included

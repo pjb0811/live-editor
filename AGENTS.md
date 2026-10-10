@@ -16,8 +16,7 @@ live-editor/
 │  ├─ scripts/              # changeset/릴리즈 노트 자동화 스크립트 (*.mjs)
 │  └─ workflows/            # CI, changeset-draft, version, publish, release
 ├─ .claude/
-│  ├─ skills/               # 코딩 컨벤션/설계 스킬 (아래 "관련 스킬 파일" 참고)
-│  └─ commands/             # publish-check.md
+│  └─ skills/               # 이 저장소 전용 스킬과 vendored Vercel 스킬 (아래 "공유 스킬" 참고)
 ├─ src/
 │  ├─ components/
 │  │  ├─ context/           # 전역 상태 (PreviewContext, ErrorContext, MessagesContext — UI 문구 `messages`)
@@ -120,10 +119,16 @@ live-editor/
 - "그룹화된" 컴포넌트(하위 컴포넌트를 가진 부모, 예: `error/`, `editor/`, `frame/`, `dnd/panel/`)는 각 하위 컴포넌트를 서브 디렉토리가 아니라 **같은 폴더 내 named file**로 둔다 (예: `error/boundary.tsx`, `editor/core.tsx`) — `ui-kit`의 `input/` 컴포넌트와 동일한 패턴
 - `index.ts`는 그 파일들을 import해서 조합/재수출만 하는 얇은 **barrel**. 정적 프로퍼티로 합성되는 경우(`Editor.Core`, `Error.Boundary` 등)는 barrel에서 조합하고, 구현 파일(`error.tsx` 등)은 원래 export 식별자명을 그대로 유지 — barrel에서만 `import ErrorImpl from './error'`처럼 import 시점에 별칭을 준다
 - 정적으로 합성되지 않고 내부적으로만 쓰이거나 직접 subpath import되는 하위 파일(예: `editor/core.tsx`, `context/states.ts`)은 barrel을 거치지 않고 그대로 둔다
+- 일반 규칙과 기존 중첩 구조를 옮기는 절차는 공유 `coding-style` 스킬의 "F. 서브컴포넌트가 있는 컴포넌트의 파일 구조"를 따른다
+- `src`, `demos`, `website/src` 아래에 대문자로 시작하는 파일·디렉토리는 없다. 확인 명령(출력이 비어야 정상):
+
+  ```bash
+  git ls-files src demos website/src | tr '/' '\n' | grep -E '^[A-Z]' | sort -u
+  ```
 
 ### 재사용 가능한 UI/훅은 공유 라이브러리에 먼저
 
-새 컴포넌트/기능을 만들 때 그 안의 UI 요소나 훅이 이 저장소를 넘어 재사용될 만하면(예: 범용 UI 프리미티브, 특정 도메인에 안 묶인 상태/이벤트 훅), 여기에 바로 구현하지 말고 **`ui-kit`(UI 컴포넌트) / `use-hooks`(React 훅)에 먼저 구현 → 머지/배포 → 여기서는 그 패키지를 의존성으로 가져다 쓰기**. 이 저장소의 AST 변환 로직처럼 이 앱 도메인 자체에 강하게 결합된 것만 로컬 구현이 맞다. 판단 기준/절차는 `.claude/skills/coding-style/SKILL.md`의 "D. 재사용 가능한 UI/훅은 공유 라이브러리에 먼저 구현" 참고 — `useHistoryState`/`useDebounce`/`useLocalStorage`(`@jbpark/use-hooks`)가 이 패턴으로 처리된 실제 사례.
+새 컴포넌트/기능을 만들 때 그 안의 UI 요소나 훅이 이 저장소를 넘어 재사용될 만하면(예: 범용 UI 프리미티브, 특정 도메인에 안 묶인 상태/이벤트 훅), 여기에 바로 구현하지 말고 **`ui-kit`(UI 컴포넌트) / `use-hooks`(React 훅)에 먼저 구현 → 머지/배포 → 여기서는 그 패키지를 의존성으로 가져다 쓰기**. 이 저장소의 AST 변환 로직처럼 이 앱 도메인 자체에 강하게 결합된 것만 로컬 구현이 맞다. 판단 기준/절차는 공유 `shared-library-first` 스킬 참고 — `useHistoryState`/`useDebounce`/`useLocalStorage`(`@jbpark/use-hooks`)가 이 패턴으로 처리된 실제 사례.
 
 ### 경로 alias
 
@@ -135,11 +140,11 @@ TypeScript와 Vite/Vitest 설정에 같은 별칭을 사용합니다.
 
 ### 주석
 
-- 주석은 지금 코드를 처음 읽는 사람을 위해 씁니다. 무엇을 하는지 먼저 쓰고, 이유는 지켜야 할 제약일 때만 현재형으로 쓰며, 과거 이야기는 이슈 번호(`(#450)`)로 대신합니다. 자세한 규칙과 예시는 `.claude/skills/coding-style/SKILL.md`의 "E. 주석 작성"을 따릅니다.
+- 주석은 지금 코드를 처음 읽는 사람을 위해 씁니다. 무엇을 하는지 먼저 쓰고, 이유는 지켜야 할 제약일 때만 현재형으로 쓰며, 과거 이야기는 이슈 번호(`(#450)`)로 대신합니다. 자세한 규칙과 예시는 공유 `coding-style` 스킬의 "C. 주석 작성"을 따릅니다.
 
 ### boolean 이름
 
-- 값과 상태는 `isOpen`, `hasError`처럼 `is`/`has`/`can`을 붙이고, prop은 `open`, `disabled`처럼 접두사 없이 짓습니다. 판별 함수는 `isX(value)`입니다. 자세한 기준은 `.claude/skills/coding-style/SKILL.md`의 "F. boolean 이름 짓기"를 따릅니다.
+- 값과 상태는 `isOpen`, `hasError`처럼 `is`/`has`/`can`을 붙이고, prop은 `open`, `disabled`처럼 접두사 없이 짓습니다. 판별 함수는 `isX(value)`입니다. 자세한 기준은 공유 `coding-style` 스킬의 "D. boolean 이름 짓기"를 따릅니다.
 
 ### CSS
 
@@ -218,16 +223,36 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 
 라이브러리는 tsdown으로 ESM과 타입 선언을 빌드합니다. `package.json`의 `/provider`, `/editor`, `/dnd`, `/preview`, `/error`, `/utils` 및 AST/Tailwind 하위 진입점으로 기능별 import를 제공합니다. `Live.Dnd`는 `Palette`, `Canvas`, `Panel`, `Layout`과 커스텀 패널용 훅을 공개합니다.
 
-## 🔗 관련 스킬 파일
+## 🔗 공유 스킬
 
-| 스킬                  | 경로                                            | 설명                        |
-| --------------------- | ----------------------------------------------- | --------------------------- |
-| ast                   | `.github/skills/ast/SKILL.md`                   | Babel AST 변환 코드 작성    |
-| coding-style          | `.claude/skills/coding-style/SKILL.md`          | 코딩 스타일/컨벤션          |
-| component-naming      | `.claude/skills/component-naming/SKILL.md`      | 컴포넌트/파일 네이밍        |
-| composition-patterns  | `.claude/skills/composition-patterns/SKILL.md`  | 컴포넌트 합성 패턴          |
-| react-best-practices  | `.claude/skills/react-best-practices/SKILL.md`  | React 베스트 프랙티스       |
-| version-management    | `.claude/skills/version-management/SKILL.md`    | 버전/changeset 관리         |
-| web-design-guidelines | `.claude/skills/web-design-guidelines/SKILL.md` | 웹 디자인 가이드라인        |
-| writing-guidelines    | `.claude/skills/writing-guidelines/SKILL.md`    | 문서/텍스트 작성 가이드라인 |
-| publish-check         | `.claude/commands/publish-check.md`             | 배포 전 점검 커맨드         |
+모든 pjb0811 저장소가 함께 쓰는 절차는 비공개 저장소 `pjb0811/skills`의 전역 Claude Code 스킬입니다. 그 스킬을 읽을 수 없는 에이전트는 이 파일의 요약을 따릅니다.
+
+| 스킬                                  | 용도                                                                           |
+| ------------------------------------- | ------------------------------------------------------------------------------ |
+| `commit`, `pr`, `issue`               | 커밋 메시지, PR·이슈 본문                                                      |
+| `coding-style`                        | 컨벤션, 일괄 리네임, 주석(C), boolean 이름(D), 중괄호(E), 서브컴포넌트 구조(F) |
+| `changesets-release`, `publish-check` | 릴리스 흐름과 배포 전 점검                                                     |
+| `shared-library-first`                | 재사용 UI는 ui-kit, 훅은 use-hooks에 먼저 구현                                 |
+| `ref-verification`                    | 저장소 상태를 작업 트리가 아니라 git ref 기준으로 확인                         |
+
+### 커밋 메시지
+
+- `type(scope): summary`: 영어 명령문, 소문자로 시작, 마침표 없음, gitmoji 없음.
+- 스코프는 변경이 한 영역에 한정될 때만 붙입니다. 브랜치 이름은 쓰지 않습니다.
+- 호환성을 깨는 변경은 타입이나 스코프 뒤에 `!`를 붙입니다(`refactor(api)!: …`).
+- 본문은 무엇을 바꿨는지 구체적으로 쓴 `-` 불릿입니다. 호환성을 깨는 변경이면 무엇이 깨지고 무엇으로 대체하는지 씁니다.
+- `Co-Authored-By` 같은 트레일러는 붙이지 않습니다.
+
+### 저장소 스킬
+
+| 스킬                    | 경로                                    | 설명                              |
+| ----------------------- | --------------------------------------- | --------------------------------- |
+| `ast`                   | `.github/skills/ast/`                   | Babel AST 변환 코드 작성          |
+| `version-management`    | `.claude/skills/version-management/`    | 이 저장소의 패키지·배포 세부 사항 |
+| `react-best-practices`  | `.claude/skills/react-best-practices/`  | Vercel, React 성능 규칙           |
+| `composition-patterns`  | `.claude/skills/composition-patterns/`  | Vercel, 컴포넌트 합성 패턴        |
+| `web-design-guidelines` | `.claude/skills/web-design-guidelines/` | Vercel, UI·접근성 리뷰            |
+| `writing-guidelines`    | `.claude/skills/writing-guidelines/`    | Vercel, 문서 문체 리뷰            |
+| `deploy-to-vercel`      | `.claude/skills/deploy-to-vercel/`      | Vercel, 문서 사이트 배포          |
+
+Vercel 스킬은 [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) `063bee9`에서 수정 없이 가져왔습니다(패키징 파일 `Archive.zip` 제외). `.prettierignore`에 있어 포매터가 바꾸지 않습니다. 갱신할 때는 새 커밋에서 디렉터리를 다시 복사하고 이 커밋을 바꿉니다.
