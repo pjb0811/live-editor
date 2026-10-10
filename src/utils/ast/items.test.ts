@@ -7,7 +7,6 @@ import {
   duplicateArrayItems,
   moveArrayItem,
   moveArrayItems,
-  parseItems,
   removeArrayItems,
   updateArrayItemProperty,
   updateArrayItemValue,
@@ -26,20 +25,36 @@ const ids = () => {
   return () => `ID${count++}`;
 };
 
-describe('parseItems', () => {
-  it('classifies each element and indexes by element position', () => {
-    expect(
-      parseItems(`[1, { a: 2 }, 'x']`)?.map(item => [item.index, item.kind]),
-    ).toEqual([
-      [0, 'primitive'],
-      [1, 'object'],
-      [2, 'primitive'],
-    ]);
+describe('source that is not an array', () => {
+  it.each(['not an array', '{ a: 1 }'])(
+    'is refused by every edit: %s',
+    code => {
+      expect(updateArrayItemProperty(code, 0, 'a', 1)).toBeNull();
+      expect(updateArrayItemValue(code, 0, 1)).toBeNull();
+      expect(appendArrayItem(code, 'object')).toBeNull();
+      expect(removeArrayItems(code, new Set([0]))).toBeNull();
+    },
+  );
+});
+
+describe('item kinds in a mixed array', () => {
+  const mixed = `[1, { a: 2 }, 'x']`;
+
+  it('copies the first item of the requested kind', () => {
+    expect(appendArrayItem(mixed, 'object', ids())).toBe(
+      `[1, { a: 2 }, 'x', { a: 2 }]`,
+    );
+    expect(appendArrayItem(mixed, 'primitive', ids())).toBe(
+      `[1, { a: 2 }, 'x', 1]`,
+    );
   });
 
-  it('returns null when the value is not an array expression', () => {
-    expect(parseItems('not an array')).toBeNull();
-    expect(parseItems('{ a: 1 }')).toBeNull();
+  it('addresses items by their position among all elements', () => {
+    expect(updateArrayItemProperty(mixed, 1, 'a', 9)).toBe(
+      `[1, { a: 9 }, 'x']`,
+    );
+    expect(updateArrayItemProperty(mixed, 0, 'a', 9)).toBeNull();
+    expect(updateArrayItemValue(mixed, 2, 'y')).toBe(`[1, { a: 2 }, "y"]`);
   });
 });
 

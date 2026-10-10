@@ -7,9 +7,10 @@ import { PALETTE_SECTIONS } from '~/constants';
 import { getCurrentValue } from './binding';
 import { setEditableValue } from './editable-value';
 import { extract } from './extract';
-import { appendArrayItem, parseItems } from './items';
+import { appendArrayItem } from './items';
 import type { DataAttrNode } from './types';
 import { update, updateAll } from './update';
+import { parseValue } from './value';
 
 const CODE = `
 <div data-id="a" data-binding="[{label:'Text',property:'innerText'}]">old text</div>
@@ -813,7 +814,7 @@ describe('adding an item to a shipped section', () => {
     const dataId =
       node.dataAttributes.find(attr => attr.name === 'data-id')?.value ?? '';
 
-    const before = parseItems(getCurrentValue(node, 'items'))!;
+    const before = parseValue(getCurrentValue(node, 'items')) as unknown[];
     let nextId = 0;
     const appended = appendArrayItem(
       getCurrentValue(node, 'items'),
@@ -833,7 +834,7 @@ describe('adding an item to a shipped section', () => {
       candidate.bindings?.some(binding => binding.property === 'items'),
     )!;
 
-    expect(parseItems(getCurrentValue(reparsed, 'items'))).toHaveLength(
+    expect(parseValue(getCurrentValue(reparsed, 'items'))).toHaveLength(
       before.length + 1,
     );
   });

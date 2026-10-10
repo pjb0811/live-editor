@@ -8,7 +8,6 @@ import {
   duplicateArrayItems,
   moveArrayItem,
   moveArrayItems,
-  parseItems,
   removeArrayItems,
   updateArrayItemProperty,
   updateArrayItemValue,
@@ -19,8 +18,11 @@ import { parseArrayExpression } from './value';
 const sparse = `[, /* keep */ {label:'A'}, { label : 'B' },]`;
 
 describe('array source fidelity', () => {
-  it('retains original element positions when reading sparse arrays', () => {
-    expect(parseItems(sparse)?.map(item => item.index)).toEqual([1, 2]);
+  it('retains original element positions in sparse arrays', () => {
+    expect(updateArrayItemProperty(sparse, 0, 'label', 'x')).toBeNull();
+    expect(updateArrayItemProperty(sparse, 2, 'label', 'Changed')).toBe(
+      sparse.replace("'B'", '"Changed"'),
+    );
   });
 
   it('changes only the selected property while preserving holes and siblings', () => {
@@ -44,7 +46,10 @@ it('preserves raw array source through extract, item edit and JSX write-back', (
 it('edits a static item after a spread without changing spread or source positions', () => {
   const code = `[...rows, , {label:'A'}, /* unchanged */ {label:'B'},]`;
 
-  expect(parseItems(code)?.map(item => item.index)).toEqual([2, 3]);
+  expect(updateArrayItemProperty(code, 1, 'label', 'x')).toBeNull();
+  expect(updateArrayItemProperty(code, 3, 'label', 'Changed')).toBe(
+    code.replace("'B'", '"Changed"'),
+  );
   expect(updateArrayItemProperty(code, 2, 'label', 'Changed')).toBe(
     code.replace("'A'", '"Changed"'),
   );

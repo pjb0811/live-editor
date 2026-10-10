@@ -34,32 +34,11 @@ import { createNodeFromValue, valueToExpression } from './value-expression';
 
 type ItemKind = 'object' | 'primitive';
 
-interface ArrayItem {
-  // Position in the array's elements, which is what every function here
-  // indexes by. Items of one kind are not renumbered, so a mixed array
-  // stays addressable.
-  index: number;
-  kind: ItemKind;
-  node: t.Expression;
-}
-
 const elementsOf = (code: string) =>
   parseArrayExpression(code)?.elements ?? null;
 
 const kindOf = (element: t.Expression): ItemKind =>
   t.isObjectExpression(element) ? 'object' : 'primitive';
-
-// Omit holes and spreads from the visible list without renumbering source
-// positions. A spread is not one runtime value that the panel can edit.
-export const parseItems = (code: string): ArrayItem[] | null => {
-  const elements = elementsOf(code);
-
-  return (
-    elements?.flatMap((node, index) =>
-      t.isExpression(node) ? [{ index, kind: kindOf(node), node }] : [],
-    ) ?? null
-  );
-};
 
 const resolveRenderLeaf = (
   render: BindingRenderMap | undefined,
