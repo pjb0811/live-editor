@@ -17,7 +17,7 @@ import {
 
 import { usePreview } from '../../context/states';
 
-export interface SectionDocument {
+interface SectionDocument {
   sections: Section[];
   previews: string[];
   selectedId: string | null;
@@ -47,7 +47,7 @@ export interface SectionDocument {
   stale: boolean;
 }
 
-export interface SectionDocumentOptions extends SectionOptions {
+interface SectionDocumentOptions extends SectionOptions {
   // Called instead of committing when a mutation is refused because the
   // document doesn't parse. Pass a stable function.
   onBlockedEdit?: (problem: DocumentProblem) => void;

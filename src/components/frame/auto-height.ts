@@ -40,7 +40,7 @@ const FREEZE_TRANSITIONS_RULE =
 // transition rather than pausing it, and the element jumps to its end state
 // for good. A pass that leaves the probe height alone changes nothing, so it
 // leaves the preview's transitions alone.
-export const withMeasurementOverrides = (
+const withMeasurementOverrides = (
   doc: Document,
   freezeTransitions: boolean,
   measure: () => void,
@@ -83,7 +83,7 @@ export const HIDE_SCROLLBAR_STYLE_ID = 'autoheight-hide-scrollbar';
 // instead of the iframe's own. Against the iframe's own height, `100vh`
 // content would grow the iframe, which grows the content again, and never
 // settle (#132).
-export const ensureContainerStyle = (doc: Document, probeHeight: number) => {
+const ensureContainerStyle = (doc: Document, probeHeight: number) => {
   let styleEl = doc.getElementById(
     CONTAINER_STYLE_ID,
   ) as HTMLStyleElement | null;

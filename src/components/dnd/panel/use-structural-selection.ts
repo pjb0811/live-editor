@@ -7,7 +7,7 @@ import { moveSelectedIndices } from '~/utils/selection';
 
 // The structural commands both list editors issue (#342). Children sends them
 // to the AST layer as-is; Items translates them to array element positions.
-export type StructuralCommand = ChildrenAction;
+type StructuralCommand = ChildrenAction;
 
 // Where the selection stands after a command succeeds. Commands that leave
 // every existing position in place keep it; a bulk move carries the block to
@@ -41,7 +41,7 @@ interface Pending {
   selection: Set<number>;
 }
 
-export interface RecordOptions {
+interface RecordOptions {
   // Apply the selection now as well, for a caller that already knows the
   // command succeeded. Otherwise it applies when the source arrives.
   now?: boolean;

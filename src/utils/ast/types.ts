@@ -142,8 +142,6 @@ export interface BindingOptions {
 export type NodeValueType =
   'boolean' | 'number' | 'string' | 'null' | 'array' | 'object' | 'unknown';
 
-export type EditableNodeValueType = 'boolean' | 'number' | 'string' | 'null';
-
 export interface ExtractedNodeValue {
   type: NodeValueType;
   value: string | number | boolean | null;

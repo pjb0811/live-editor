@@ -6,6 +6,9 @@ import { useLiveMessages } from '~/components/context/messages';
 
 import ErrorComponent from './error';
 
+// Exported although no file imports it: the declaration of `App` in
+// `src/index.tsx` names it, and TypeScript can't name a type from another
+// module unless it is exported (TS4023).
 export interface Props {
   children: React.ReactNode;
   onError?: (error: Error) => void;
