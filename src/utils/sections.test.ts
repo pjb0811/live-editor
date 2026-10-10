@@ -5,7 +5,7 @@ import {
   checkDocument,
   createDocument,
   extractSections,
-  generateSections,
+  generateSection,
   replaceSections,
 } from './sections';
 
@@ -31,7 +31,7 @@ describe('createDocument', () => {
       extractSections(withSection, { containerId: 'root' }).map(s => s.id),
     ).toEqual(['a']);
     expect(
-      generateSections([SECTION], withSection, { containerId: 'root' })[0],
+      generateSection(SECTION, withSection, { containerId: 'root' }),
     ).toContain(SECTION);
   });
 

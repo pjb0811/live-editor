@@ -92,7 +92,7 @@
     "check-api-surface": "node .github/scripts/check-api-surface.mjs",
     "check-package-types": "pnpm build && node .github/scripts/check-package-types.mjs",
     "lint": "eslint .",
-    "depcheck": "depcheck --ignores=\"~,@changesets/cli,@jbpark/live-editor,@trivago/prettier-plugin-sort-imports,prettier-plugin-classnames,prettier-plugin-merge,prettier-plugin-tailwindcss,baseline-browser-mapping,vite-plugin-dts,depcheck\" --ignore-dirs=\"dist,dist-demo,website,.history\"",
+    "depcheck": "depcheck --ignores=\"~,@changesets/cli,@jbpark/live-editor,@trivago/prettier-plugin-sort-imports,prettier-plugin-classnames,prettier-plugin-merge,prettier-plugin-tailwindcss,baseline-browser-mapping,depcheck\" --ignore-dirs=\"dist,dist-demo,website,.history\"",
     "test": "vitest run",
     "test:browser": "playwright test",
     "test:watch": "vitest",
@@ -167,7 +167,6 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.67.0",
     "vite": "^8.2.1",
-    "vite-plugin-dts": "^5.0.3",
     "vitest": "^5.0.0"
   },
   "lint-staged": {

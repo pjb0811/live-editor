@@ -7,7 +7,6 @@ import {
   type SectionOptions,
   createSectionPreviewCache,
   generateSectionPreview,
-  generateSectionPreviews,
   getSections,
   inspectDocument,
   parseDocument,
@@ -37,17 +36,6 @@ export const generateSection = (
   options?: DocumentOptions,
 ) => {
   return generateSectionPreview(fullCode, code, options);
-};
-
-// `generateSection()` for every section, from one parse of `fullCode`. An
-// unchanged section gets the same string as before, so `React.memo` can skip
-// it.
-export const generateSections = (
-  codes: string[],
-  fullCode: string,
-  options?: DocumentOptions,
-): string[] => {
-  return generateSectionPreviews(fullCode, codes, options);
 };
 
 // A new, empty document `Live.Dnd` can add sections to: an `App` component
@@ -88,8 +76,9 @@ export const checkDocument = (
   return { ...inspection };
 };
 
-// `generateSections()` that reuses unchanged previews between calls (#131).
-// Keep one instance per editor, as `Live.Dnd` does.
+// Generates every section's preview from one parse and reuses an unchanged
+// preview between calls (#131). Keep one instance per editor, as `Live.Dnd`
+// does.
 export { createSectionPreviewCache };
 export type {
   DocumentOptions,

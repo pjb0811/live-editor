@@ -119,11 +119,11 @@ for (const sectionCount of SECTION_COUNTS) {
     // compile cache) to 4 (see CONFIG.DOCUMENT_CACHE_LIMIT), since it holds
     // full Babel Files rather than compiled Modules/strings. This simulates
     // the actual access pattern a real edit produces — dnd.tsx's
-    // extractSections() and generateSections() both call parseDocument() on
+    // extractSections() and generateSectionPreviews() both call parseDocument() on
     // the *same* current value within one render, so only the
     // most-recently-edited version ever needs to be resident, not a long
     // tail of every version edited so far.
-    test('simulated edit: extractSections()+generateSections() lookup pattern', async ({
+    test('simulated edit: extractSections()+generateSectionPreviews() lookup pattern', async ({
       bench,
     }) => {
       let editCounter = 0;
