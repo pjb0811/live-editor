@@ -27,7 +27,7 @@ const DEFAULT_PRETTIER_OPTIONS: Record<string, unknown> = {
   printWidth: 60,
 };
 
-export interface UseFormatCodeOptions {
+interface UseFormatCodeOptions {
   fragment?: boolean;
   prettierOptions?: Record<string, unknown>;
 }

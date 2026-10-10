@@ -7,7 +7,7 @@ import {
 } from '../panel-binding';
 import Field from './field';
 
-export interface FieldEditorProps {
+interface FieldEditorProps {
   data: DataAttrNode;
   onChange?: PanelNodeChange;
 }

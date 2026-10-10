@@ -3,7 +3,7 @@ const SYNCED_STYLE_ATTR = 'data-live-editor-synced-style';
 type SourceStyle = HTMLLinkElement | HTMLStyleElement;
 type SyncedStyle = HTMLLinkElement | HTMLStyleElement;
 
-export interface StyleSyncManager {
+interface StyleSyncManager {
   clones: Map<SourceStyle, SyncedStyle>;
 }
 
@@ -138,7 +138,7 @@ export const reconcileStyles = (
 
 // What a root-attribute sync has written onto the target, so a later pass
 // removes exactly that and never what the target set for itself.
-export interface RootAttributeSync {
+interface RootAttributeSync {
   attributes: Set<string>;
   classes: Set<string>;
 }

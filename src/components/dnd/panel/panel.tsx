@@ -15,7 +15,7 @@ import FieldGroup from './field-group';
 // `useDndPanel()`. They match that hook's fields, so the built-in panel and
 // a custom one use the same data (#237). Without `onNodeChange`, edits
 // inside `items` and `children` values aren't saved (#308).
-export interface PanelProps {
+interface PanelProps {
   item?: Section;
   onDelete?: (id: string) => void;
   // Move the section. On mobile the panel covers the canvas, so these

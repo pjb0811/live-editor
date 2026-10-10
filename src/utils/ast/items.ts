@@ -32,9 +32,9 @@ import { createNodeFromValue, valueToExpression } from './value-expression';
 // again. Structural edits require dense arrays; value edits preserve holes
 // and spreads at their existing source positions. `null` means refusal.
 
-export type ItemKind = 'object' | 'primitive';
+type ItemKind = 'object' | 'primitive';
 
-export interface ArrayItem {
+interface ArrayItem {
   // Position in the array's elements, which is what every function here
   // indexes by. Items of one kind are not renumbered, so a mixed array
   // stays addressable.

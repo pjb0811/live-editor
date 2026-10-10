@@ -10,7 +10,7 @@ interface IdentifiedItem {
 // The ids that follow each item through edits, so a row keeps its identity
 // (and its expanded state) after a move or delete. `signatures` is the source
 // of each item when the ids were last assigned.
-export interface ItemIdentityState {
+interface ItemIdentityState {
   value: string;
   kind: ItemKind;
   ids: string[];

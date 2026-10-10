@@ -78,7 +78,7 @@ const REACT_PRESET: [string, object] = ['react', { runtime: 'classic' }];
 // the `typescript` package (#192). Babel works per file without types, so a
 // `const enum` becomes a real enum and legacy decorators aren't supported.
 // On an error, the input comes back unchanged.
-export const transformCode = (code: string, isTypeScript = false): string => {
+const transformCode = (code: string, isTypeScript = false): string => {
   try {
     const result = Babel.transform(code, {
       filename: isTypeScript ? 'preview.tsx' : 'preview.jsx',

@@ -34,7 +34,7 @@ const DraggableItem = ({ item, children }: DraggableItemProps) => {
 };
 
 // The built-in palette card, used by the palette and the drag overlay.
-export interface DefaultDraggableItemProps {
+interface DefaultDraggableItemProps {
   item: Section;
   onAdd?: (item: Section) => void;
   // Add on a single tap instead of a double-click. On desktop a click could

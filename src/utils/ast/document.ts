@@ -41,12 +41,12 @@ export type DocumentProblem =
   | { reason: 'parse-error'; error: unknown }
   | { reason: 'container-not-found'; containerId: string };
 
-export type DocumentInspection =
+type DocumentInspection =
   { ok: true; doc: DocumentTree } | ({ ok: false } & DocumentProblem);
 
-export const defaultSectionName = (index: number) => `Section ${index + 1}`;
+const defaultSectionName = (index: number) => `Section ${index + 1}`;
 
-export interface DocumentTree {
+interface DocumentTree {
   code: string;
   ast: t.File;
   container: t.JSXElement;
@@ -513,7 +513,7 @@ export const generateSectionPreviews = (
   );
 };
 
-export interface SectionPreviewCache {
+interface SectionPreviewCache {
   // Previews for `sections`, reusing the last call's preview of any section
   // whose code didn't change. Call it once per render with every section.
   // Sections are matched by `id`, which must be stable.

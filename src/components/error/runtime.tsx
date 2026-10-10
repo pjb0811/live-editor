@@ -7,6 +7,9 @@ import { useError } from '~/components/context/states';
 
 import Error from './error';
 
+// Exported although no file imports it: the declaration of `App` in
+// `src/index.tsx` names it, and TypeScript can't name a type from another
+// module unless it is exported (TS4023).
 export interface Props extends React.ComponentPropsWithRef<'div'> {
   open?: boolean;
   reset?: () => void;

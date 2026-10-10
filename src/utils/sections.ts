@@ -95,5 +95,4 @@ export type {
   DocumentOptions,
   DocumentProblem,
   SectionOptions,
-  SectionPreviewCache,
 } from './ast/document';
