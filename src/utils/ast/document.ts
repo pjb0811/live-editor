@@ -9,6 +9,7 @@ import type { Section } from '../../types';
 import { createBoundedCache } from '../cache';
 import { registerEditorCache } from '../editor-caches';
 import { getJSXTagName } from './jsx-name';
+import { type SourceEdit, applyEdits } from './patch';
 import { fillIdsFrom } from './tree';
 
 // `traverse` with the one call shape the AST layer uses. Import it from here,
@@ -320,11 +321,12 @@ const commonSuffixLength = (
 };
 
 // Replaces the container's sections with `sectionCodes`. The old and new
-// lists are compared by their common prefix and suffix, and only the source
-// between them is replaced, so unchanged sections and the markup around
-// them (such as wrapper elements) stay as they are (#102). Calls that make
-// one change at a time, as `Live.Dnd` does, are exact. Swapping two sections
-// replaces everything between them, markup included.
+// lists are compared by their common prefix and suffix, and only the sections
+// between them change, so unchanged sections and the markup around them (such
+// as wrapper elements) stay as they are (#102). Within that window each old
+// section is replaced in place by the new code at the same position, so a
+// reorder trades the sections' texts and leaves everything between them: the
+// comments, the other elements and the wrappers.
 //
 // `sectionCodes` are inserted as text without checks: an invalid section
 // shows up as a compile error instead of disappearing (#96).
@@ -385,10 +387,38 @@ export const replaceDocumentSections = (
     return spliceCode(fullCode, at, at, `\n${newChanged.join('\n')}`);
   }
 
-  const start = sections[oldChangedStart]!.start!;
-  const end = sections[oldChangedEndExclusive - 1]!.end!;
+  // Each old section in the window takes the new code at its position. A
+  // longer new list adds the rest after the last of them, and a shorter one
+  // removes the old sections left over, each by its own span.
+  const window = sections.slice(oldChangedStart, oldChangedEndExclusive);
+  const paired = Math.min(window.length, newChanged.length);
+  const edits: SourceEdit[] = [];
 
-  return spliceCode(fullCode, start, end, newChanged.join('\n'));
+  window.forEach((node, index) => {
+    if (index < paired) {
+      if (oldCodes[oldChangedStart + index] !== newChanged[index]) {
+        edits.push({
+          start: node.start!,
+          end: node.end!,
+          content: newChanged[index]!,
+        });
+      }
+    } else {
+      edits.push({ start: node.start!, end: node.end!, content: '' });
+    }
+  });
+
+  if (newChanged.length > paired) {
+    const at = window[paired - 1]!.end!;
+
+    edits.push({
+      start: at,
+      end: at,
+      content: `\n${newChanged.slice(paired).join('\n')}`,
+    });
+  }
+
+  return applyEdits(fullCode, edits);
 };
 
 // The document with only `sectionCode` in the container, for compiling one

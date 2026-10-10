@@ -443,6 +443,88 @@ describe('replaceDocumentSections diffing (#102)', () => {
   });
 });
 
+// A reorder trades the sections' texts and leaves everything between them:
+// comments, other elements and wrappers (#598).
+describe('replaceDocumentSections reorder (#598)', () => {
+  const sec = (id: string) =>
+    `<section data-id="${id}" data-name="${id}">${id}</section>`;
+  const page = (inner: string) =>
+    `const App = () => (\n  <main id="app-container">\n${inner}\n  </main>\n);`;
+  const codesOf = (code: string) =>
+    getSections(parseDocument(code)!).map(s => s.code);
+
+  it.each([
+    ['a comment', '{/* keep me */}'],
+    ['an element', '<hr className="divider" />'],
+    ['a conditional expression', '{showBanner && <Banner />}'],
+    ['text', 'Some intro text'],
+  ])('keeps %s between two swapped sections', (_name, between) => {
+    const code = page(`    ${sec('a')}\n    ${between}\n    ${sec('b')}`);
+    const [a, b] = codesOf(code);
+
+    expect(replaceDocumentSections(code, [b!, a!])).toBe(
+      page(`    ${sec('b')}\n    ${between}\n    ${sec('a')}`),
+    );
+  });
+
+  it('keeps the wrappers of sections in different wrappers', () => {
+    const wrapped = (first: string, second: string) =>
+      page(
+        `    <div className="left">\n      ${sec(first)}\n    </div>\n    <div className="right">\n      ${sec(second)}\n    </div>`,
+      );
+    const code = wrapped('a', 'b');
+    const [a, b] = codesOf(code);
+
+    expect(replaceDocumentSections(code, [b!, a!])).toBe(wrapped('b', 'a'));
+  });
+
+  it('keeps every gap when a section moves several positions', () => {
+    const code = page(
+      `    ${sec('a')}\n    {/* one */}\n    ${sec('b')}\n    {/* two */}\n    ${sec('c')}`,
+    );
+    const [a, b, c] = codesOf(code);
+
+    expect(replaceDocumentSections(code, [b!, c!, a!])).toBe(
+      page(
+        `    ${sec('b')}\n    {/* one */}\n    ${sec('c')}\n    {/* two */}\n    ${sec('a')}`,
+      ),
+    );
+    expect(replaceDocumentSections(code, [c!, b!, a!])).toBe(
+      page(
+        `    ${sec('c')}\n    {/* one */}\n    ${sec('b')}\n    {/* two */}\n    ${sec('a')}`,
+      ),
+    );
+  });
+
+  it('adds the extra sections after the last one when a reorder also adds', () => {
+    const code = page(`    ${sec('a')}\n    {/* gap */}\n    ${sec('b')}`);
+    const [a, b] = codesOf(code);
+
+    expect(replaceDocumentSections(code, [b!, a!, sec('n')])).toBe(
+      page(`    ${sec('b')}\n    {/* gap */}\n    ${sec('a')}\n${sec('n')}`),
+    );
+  });
+
+  it('removes the sections left over when a reorder also removes', () => {
+    const code = page(
+      `    ${sec('a')}\n    {/* one */}\n    ${sec('b')}\n    {/* two */}\n    ${sec('c')}`,
+    );
+    const [a, , c] = codesOf(code);
+
+    expect(replaceDocumentSections(code, [c!, a!])).toBe(
+      page(
+        `    ${sec('c')}\n    {/* one */}\n    ${sec('a')}\n    {/* two */}\n    `,
+      ),
+    );
+  });
+
+  it('keeps a document byte-for-byte when the order is unchanged', () => {
+    const code = page(`    ${sec('a')}\n    {/* gap */}\n    ${sec('b')}`);
+
+    expect(replaceDocumentSections(code, codesOf(code))).toBe(code);
+  });
+});
+
 describe('generateSectionPreview', () => {
   it('produces a document whose container holds only the given section', () => {
     const preview = generateSectionPreview(
