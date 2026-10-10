@@ -31,7 +31,7 @@ description: "live-editor specifics for releases: `@jbpark/live-editor` is publi
 
 ## 필수 상태 체크
 
-브랜치 룰셋은 `lint-and-build (Node v24.x)`와 `draft`를 요구한다(`gh api repos/pjb0811/live-editor/rulesets`로 확인).
+브랜치 룰셋은 `lint-and-build`와 `draft`를 요구한다(`gh api repos/pjb0811/live-editor/rulesets`로 확인).
 
 ## 워크플로
 
