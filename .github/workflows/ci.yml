@@ -32,6 +32,9 @@ jobs:
       - name: Dependency check
         run: pnpm run depcheck
 
+      - name: Unused code check
+        run: pnpm run knip
+
       - name: Type check
         run: tsc -b
 

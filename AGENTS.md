@@ -180,6 +180,7 @@ pnpm build:demos   # 문서용 iframe 데모 빌드
 pnpm check-types   # tsc -b 타입 체크만
 pnpm check-api-surface # 빌드된 dist의 export 목록을 스냅샷과 비교 (pnpm build 후, 의도한 변경은 --update)
 pnpm lint          # ESLint
+pnpm knip          # 안 쓰는 export·파일 검사 (CI에서 실행, 설정은 knip.jsonc)
 pnpm test          # Vitest 1회 실행
 pnpm test:watch    # Vitest watch 모드
 pnpm bench         # Vitest 벤치마크
