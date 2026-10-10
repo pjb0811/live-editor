@@ -501,7 +501,9 @@ describe('replaceDocumentSections reorder (#598)', () => {
     const [a, b] = codesOf(code);
 
     expect(replaceDocumentSections(code, [b!, a!, sec('n')])).toBe(
-      page(`    ${sec('b')}\n    {/* gap */}\n    ${sec('a')}\n${sec('n')}`),
+      page(
+        `    ${sec('b')}\n    {/* gap */}\n    ${sec('a')}\n    ${sec('n')}`,
+      ),
     );
   });
 
@@ -522,6 +524,105 @@ describe('replaceDocumentSections reorder (#598)', () => {
     const code = page(`    ${sec('a')}\n    {/* gap */}\n    ${sec('b')}`);
 
     expect(replaceDocumentSections(code, codesOf(code))).toBe(code);
+  });
+});
+
+// New sections are written on their own lines with the indentation of the
+// sections around them, and with the document's line ending (#599).
+describe('replaceDocumentSections layout of new sections (#599)', () => {
+  const sec = (id: string, eol = '\n') =>
+    `<section data-id="${id}" data-name="${id}">${eol}  <h1>${id}</h1>${eol}</section>`;
+  // A section as it appears in a document indented by 4 spaces, below the
+  // first line: its inner lines carry the document's own indentation.
+  const inDoc = (id: string, eol = '\n') =>
+    `    <section data-id="${id}" data-name="${id}">${eol}      <h1>${id}</h1>${eol}    </section>`;
+  const page = (inner: string, eol = '\n') =>
+    [
+      'const App = () => (',
+      '  <main id="app-container">',
+      inner,
+      '  </main>',
+      ');',
+    ].join(eol);
+  const codesOf = (code: string) =>
+    getSections(parseDocument(code)!).map(s => s.code);
+
+  it.each([
+    ['\n', 'LF'],
+    ['\r\n', 'CRLF'],
+  ])('inserts between two sections at their indentation (%j %s)', eol => {
+    const code = page(`${inDoc('a', eol)}${eol}${inDoc('b', eol)}`, eol);
+    const [a, b] = codesOf(code);
+    const added = sec('n', eol);
+
+    expect(replaceDocumentSections(code, [a!, added, b!])).toBe(
+      page(`${inDoc('a', eol)}${eol}    ${added}${eol}${inDoc('b', eol)}`, eol),
+    );
+  });
+
+  it.each([
+    ['\n', 'LF'],
+    ['\r\n', 'CRLF'],
+  ])(
+    "appends on its own line at the last section's indentation (%j %s)",
+    eol => {
+      const code = page(`${inDoc('a', eol)}${eol}${inDoc('b', eol)}`, eol);
+      const [a, b] = codesOf(code);
+      const added = sec('n', eol);
+
+      expect(replaceDocumentSections(code, [a!, b!, added])).toBe(
+        page(
+          `${inDoc('a', eol)}${eol}${inDoc('b', eol)}${eol}    ${added}`,
+          eol,
+        ),
+      );
+    },
+  );
+
+  it('inserts before the first section and keeps its indentation', () => {
+    const code = page(inDoc('a'));
+    const [a] = codesOf(code);
+
+    expect(replaceDocumentSections(code, [sec('n'), a!])).toBe(
+      page(`    ${sec('n')}\n${inDoc('a')}`),
+    );
+  });
+
+  it('writes several new sections, each on its own line', () => {
+    const code = page(inDoc('a'));
+    const [a] = codesOf(code);
+
+    expect(replaceDocumentSections(code, [a!, sec('x'), sec('y')])).toBe(
+      page(`${inDoc('a')}\n    ${sec('x')}\n    ${sec('y')}`),
+    );
+  });
+
+  it('drops the whitespace a template literal puts around a palette section', () => {
+    const code = page(inDoc('a'));
+    const [a] = codesOf(code);
+    const padded = `\n      ${sec('n')}\n    `;
+
+    expect(replaceDocumentSections(code, [a!, padded])).toBe(
+      page(`${inDoc('a')}\n    ${sec('n')}`),
+    );
+  });
+
+  it('adds no bare LF to a CRLF document, even for a section written with LF', () => {
+    const eol = '\r\n';
+    const code = page(inDoc('a', eol), eol);
+    const [a] = codesOf(code);
+    const result = replaceDocumentSections(code, [a!, sec('n', '\n')]);
+
+    expect(result.replace(/\r\n/g, '')).not.toMatch(/\n/);
+  });
+
+  it("keeps today's layout when the neighbor shares its line with other code", () => {
+    const code = `const App = () => (\n  <main id="app-container"><section data-id="a" data-name="a">a</section></main>\n);`;
+    const [a] = codesOf(code);
+
+    expect(replaceDocumentSections(code, [a!, sec('n')])).toBe(
+      `const App = () => (\n  <main id="app-container"><section data-id="a" data-name="a">a</section>\n${sec('n')}</main>\n);`,
+    );
   });
 });
 

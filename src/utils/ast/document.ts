@@ -320,6 +320,54 @@ const commonSuffixLength = (
   return i;
 };
 
+// How new sections are laid out next to `neighbor`: its indentation and the
+// document's line ending. `null` when the neighbor shares its line with other
+// code, where a line break would move that code, so the caller keeps its
+// default.
+const layoutNextTo = (
+  code: string,
+  neighbor: t.JSXElement,
+): { eol: string; indent: string } | null => {
+  const lineStart = code.lastIndexOf('\n', neighbor.start! - 1) + 1;
+  const indent = code.slice(lineStart, neighbor.start!);
+
+  if (!/^[ \t]*$/.test(indent)) {
+    return null;
+  }
+
+  return { eol: code.includes('\r\n') ? '\r\n' : '\n', indent };
+};
+
+// New sections written on their own lines in the layout of `neighbor`.
+// `before` puts them ahead of it, so it keeps the indentation already in
+// front of it. The sections lose their leading and trailing whitespace, and
+// in a CRLF document their own line breaks use CRLF too.
+const sectionsNextTo = (
+  code: string,
+  neighbor: t.JSXElement,
+  newCodes: string[],
+  position: 'before' | 'after',
+): string => {
+  const layout = layoutNextTo(code, neighbor);
+
+  if (!layout) {
+    return position === 'before'
+      ? `${newCodes.join('\n')}\n`
+      : `\n${newCodes.join('\n')}`;
+  }
+
+  const { eol, indent } = layout;
+  // The surrounding whitespace of a template literal, such as a palette
+  // section, goes: the section starts right after the indentation.
+  const lines = newCodes.map(newCode =>
+    eol === '\r\n' ? newCode.trim().replace(/\r?\n/g, eol) : newCode.trim(),
+  );
+
+  return position === 'before'
+    ? lines.map(line => `${line}${eol}${indent}`).join('')
+    : lines.map(line => `${eol}${indent}${line}`).join('');
+};
+
 // Replaces the container's sections with `sectionCodes`. The old and new
 // lists are compared by their common prefix and suffix, and only the sections
 // between them change, so unchanged sections and the markup around them (such
@@ -377,14 +425,24 @@ export const replaceDocumentSections = (
     }
 
     if (oldChangedStart < sections.length) {
-      const at = sections[oldChangedStart]!.start!;
+      const next = sections[oldChangedStart]!;
 
-      return spliceCode(fullCode, at, at, `${newChanged.join('\n')}\n`);
+      return spliceCode(
+        fullCode,
+        next.start!,
+        next.start!,
+        sectionsNextTo(fullCode, next, newChanged, 'before'),
+      );
     }
 
-    const at = sections[sections.length - 1]!.end!;
+    const last = sections[sections.length - 1]!;
 
-    return spliceCode(fullCode, at, at, `\n${newChanged.join('\n')}`);
+    return spliceCode(
+      fullCode,
+      last.end!,
+      last.end!,
+      sectionsNextTo(fullCode, last, newChanged, 'after'),
+    );
   }
 
   // Each old section in the window takes the new code at its position. A
@@ -409,12 +467,17 @@ export const replaceDocumentSections = (
   });
 
   if (newChanged.length > paired) {
-    const at = window[paired - 1]!.end!;
+    const anchor = window[paired - 1]!;
 
     edits.push({
-      start: at,
-      end: at,
-      content: `\n${newChanged.slice(paired).join('\n')}`,
+      start: anchor.end!,
+      end: anchor.end!,
+      content: sectionsNextTo(
+        fullCode,
+        anchor,
+        newChanged.slice(paired),
+        'after',
+      ),
     });
   }
 
