@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema-jsonc.json",
+  // `knip` finds the package entries from `package.json` and the dev app from
+  // `index.html`. Exports from the package entries are the public API and are
+  // not reported; `check-api-surface` already pins them. These are the rest of
+  // what the repository runs.
+  "entry": [
+    "src/**/*.bench.ts",
+    "demos/**/*.{ts,tsx}",
+    "e2e/**/*.{ts,tsx}",
+    ".github/scripts/*.mjs"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "demos/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}"],
+  "ignore": ["src/**/*.d.ts"],
+
+  // A data package that browserslist-based tooling reads; nothing imports it.
+  "ignoreDependencies": ["baseline-browser-mapping"],
+
+  "ignoreIssues": {
+    // The declaration of `App` in `src/index.tsx` names `Props`, and
+    // TypeScript can't name a type from another module unless it is
+    // exported (TS4023). Removing the `export` fails `pnpm build`.
+    "src/components/error/guard.tsx": ["types"],
+    "src/components/error/runtime.tsx": ["types"],
+    // Exported by name for the public `Dnd.Layout` (`dnd/index.ts`) and as the
+    // default for `dnd.tsx` and the tests; both forms are imported.
+    "src/components/dnd/layout.tsx": ["duplicates"]
+  }
+}
