@@ -1,29 +1,14 @@
-import {
-  type ComponentProps,
-  type FocusEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ComponentProps, useState } from 'react';
 
 import {
   Checkbox,
-  ColorPicker,
   DatePicker,
   Input,
   RichTextEditor,
   Select,
 } from '@jbpark/ui-kit';
-import { useDebounce } from '@jbpark/use-hooks';
-import type {
-  EditorSelection,
-  EditorView,
-  ViewUpdate,
-} from '@uiw/react-codemirror';
 
 import { useLiveMessages } from '~/components/context/messages';
-import CoreEditor from '~/components/editor/core';
 import { type DataAttrNode } from '~/utils/ast/types';
 import { validateBindingValue } from '~/utils/ast/validate';
 import { parseValue } from '~/utils/ast/value';
@@ -31,18 +16,11 @@ import { parseValue } from '~/utils/ast/value';
 import { useDndEditOptions } from '../edit-options';
 import { resolveRenderEntry, toBindingFields } from '../panel-binding';
 import Children from './children';
+import ColorPickerField from './color-picker-field';
 import { getFieldKind } from './field-kind';
 import Items from './items';
+import JSXEditorField from './jsx-editor-field';
 import type { FieldProps } from './types';
-
-const normalizeToHex = (value: string): string => {
-  const trimmed = value.trim();
-
-  if (/^#([0-9A-Fa-f]{3}){1,2}$/.test(trimmed)) {
-    return trimmed;
-  }
-  return '#000000';
-};
 
 const parseDateValue = (value: string): Date | undefined => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
@@ -65,11 +43,6 @@ const formatDateValue = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-// The color picker reports every drag frame, and each commit re-parses and
-// recompiles (#130). So the commit waits this long after the last change,
-// while `liveValue` updates the swatch every frame.
-const COLOR_COMMIT_DELAY = 75;
-
 // The formatting controls for a small sidebar field, not every preset.
 const RICHTEXT_TOOLBAR: ComponentProps<typeof RichTextEditor>['toolbar'] = [
   'bold',
@@ -79,117 +52,6 @@ const RICHTEXT_TOOLBAR: ComponentProps<typeof RichTextEditor>['toolbar'] = [
   'orderedList',
   'link',
 ];
-
-interface ColorPickerFieldProps {
-  value: string;
-  onChange: (value: string) => void;
-}
-
-interface JSXEditorFieldProps {
-  value: string;
-  isHTML: boolean;
-  onSave: (value: string) => void;
-}
-
-// Keeps focus and selection when CodeMirror recreates its view, which
-// `@uiw/react-codemirror` does when a moved item's effects reconnect under
-// Strict Effects (#359).
-const JSXEditorField = ({ value, isHTML, onSave }: JSXEditorFieldProps) => {
-  const selectionRef = useRef<EditorSelection | null>(null);
-  const focusedRef = useRef(false);
-
-  const handleUpdate = useCallback((update: ViewUpdate) => {
-    selectionRef.current = update.state.selection;
-  }, []);
-
-  const handleCreateEditor = useCallback((view: EditorView) => {
-    if (selectionRef.current) {
-      view.dispatch({ selection: selectionRef.current });
-    }
-
-    if (focusedRef.current) {
-      view.focus();
-    }
-  }, []);
-
-  const handleFocus = useCallback(() => {
-    focusedRef.current = true;
-  }, []);
-
-  const handleBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
-    if (
-      event.relatedTarget &&
-      !event.currentTarget.contains(event.relatedTarget as Node)
-    ) {
-      focusedRef.current = false;
-    }
-  }, []);
-
-  return (
-    <div onFocusCapture={handleFocus} onBlurCapture={handleBlur}>
-      <CoreEditor
-        value={value}
-        height="150px"
-        fragment={!isHTML}
-        raw={isHTML}
-        onSave={onSave}
-        onUpdate={handleUpdate}
-        onCreateEditor={handleCreateEditor}
-      />
-    </div>
-  );
-};
-
-const ColorPickerField = ({ value, onChange }: ColorPickerFieldProps) => {
-  const [liveValue, setLiveValue] = useState(value);
-  // The last `value` seen, to notice a change from outside during render.
-  const [prevValue, setPrevValue] = useState(value);
-  const lastCommittedRef = useRef(value);
-
-  // Follow a change from outside, such as undo or another field. Done
-  // during render, so the old color never paints.
-  if (value !== prevValue) {
-    setPrevValue(value);
-    setLiveValue(value);
-  }
-
-  // `commit` reads this from handlers and timers only, so an effect is
-  // enough.
-  useEffect(() => {
-    lastCommittedRef.current = value;
-  }, [value]);
-
-  const commit = (next: string) => {
-    if (next === lastCommittedRef.current) {
-      return;
-    }
-    lastCommittedRef.current = next;
-    onChange(next);
-  };
-
-  const debouncedCommit = useDebounce(() => commit(liveValue), {
-    delay: COLOR_COMMIT_DELAY,
-    autoInvoke: false,
-  });
-
-  return (
-    <ColorPicker
-      showText
-      value={liveValue}
-      onChange={next => {
-        setLiveValue(next);
-        debouncedCommit();
-      }}
-      onOpenChange={open => {
-        // Commit at once when the picker closes, so an unmount can't drop
-        // the last color.
-        if (!open) {
-          commit(liveValue);
-        }
-      }}
-    />
-  );
-};
 
 // `mb-0` matters: `dist/style.css` has no CSS reset, so without it a `<p>`
 // keeps the browser's bottom margin and the fields below jump when the
@@ -240,6 +102,21 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     if (next !== current) {
       onChange(next);
     }
+  };
+
+  // Commits `next` if it passes the binding's validation, else shows why
+  // not.
+  const validateAndCommit = (next: unknown) => {
+    const result = validateBindingValue(binding, next, validationOptions);
+
+    if (!result.valid) {
+      setValidationError(result.message ?? messages.panel.invalidValue);
+
+      return;
+    }
+
+    setValidationError(null);
+    commitIfChanged(next);
   };
 
   if (kind === 'items') {
@@ -342,12 +219,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   }
 
   if (kind === 'color') {
-    return (
-      <ColorPickerField
-        value={normalizeToHex(stringValue)}
-        onChange={commitIfChanged}
-      />
-    );
+    return <ColorPickerField value={stringValue} onChange={commitIfChanged} />;
   }
 
   if (kind === 'date') {
@@ -355,23 +227,9 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
       <div>
         <DatePicker
           value={parseDateValue(stringValue)}
-          onChange={date => {
-            const next = date ? formatDateValue(date) : '';
-            const result = validateBindingValue(
-              binding,
-              next,
-              validationOptions,
-            );
-
-            if (!result.valid) {
-              setValidationError(result.message ?? messages.panel.invalidValue);
-              return;
-            }
-
-            setValidationError(null);
-
-            commitIfChanged(next);
-          }}
+          onChange={date =>
+            validateAndCommit(date ? formatDateValue(date) : '')
+          }
         />
         <FieldError message={validationError} />
       </div>
@@ -386,23 +244,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           value={text}
           onChange={e => setText(e.target.value)}
           placeholder={messages.panel.urlPlaceholder}
-          onBlur={e => {
-            const next = e.target.value.trim();
-            const result = validateBindingValue(
-              binding,
-              next,
-              validationOptions,
-            );
-
-            if (!result.valid) {
-              setValidationError(result.message ?? messages.panel.invalidValue);
-              return;
-            }
-
-            setValidationError(null);
-
-            commitIfChanged(next);
-          }}
+          onBlur={e => validateAndCommit(e.target.value.trim())}
         />
         <FieldError message={validationError} />
       </div>
@@ -424,20 +266,8 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
             // committed as is rather than as `NaN`.
             const next: unknown =
               raw !== '' && !Number.isNaN(Number(raw)) ? Number(raw) : raw;
-            const result = validateBindingValue(
-              binding,
-              next,
-              validationOptions,
-            );
 
-            if (!result.valid) {
-              setValidationError(result.message ?? messages.panel.invalidValue);
-              return;
-            }
-
-            setValidationError(null);
-
-            commitIfChanged(next);
+            validateAndCommit(next);
           }}
         />
         <FieldError message={validationError} />
@@ -456,16 +286,8 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           // An untyped field reads the text as a value, so `42` commits as a
           // number. A declared type keeps the text as typed.
           const next: unknown = binding.type ? raw : parseValue(raw);
-          const result = validateBindingValue(binding, next, validationOptions);
 
-          if (!result.valid) {
-            setValidationError(result.message ?? messages.panel.invalidValue);
-            return;
-          }
-
-          setValidationError(null);
-
-          commitIfChanged(next);
+          validateAndCommit(next);
         }}
       />
       <FieldError message={validationError} />
