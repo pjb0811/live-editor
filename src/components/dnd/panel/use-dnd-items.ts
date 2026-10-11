@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import * as t from '@babel/types';
-import type { useMultiSelect } from '@jbpark/use-hooks';
+import { useLatest, type useMultiSelect } from '@jbpark/use-hooks';
 import { nanoid } from 'nanoid';
 
 import { useLiveMessages } from '~/components/context/messages';
@@ -343,13 +343,8 @@ export const useDndItems = (
 
   // Read through refs, so the effect below reports each parse failure once,
   // even when the host passes a new `onEditError` or new messages.
-  const reportErrorRef = useRef(reportError);
-  const messagesRef = useRef(messages);
-
-  useEffect(() => {
-    reportErrorRef.current = reportError;
-    messagesRef.current = messages;
-  });
+  const reportErrorRef = useLatest(reportError);
+  const messagesRef = useLatest(messages);
 
   useEffect(() => {
     if (parseError) {
@@ -360,7 +355,7 @@ export const useDndItems = (
         description: messagesRef.current.editErrors.checkConsole,
       });
     }
-  }, [parseError]);
+  }, [parseError, reportErrorRef, messagesRef]);
 
   const kind =
     primitiveItems.length > 0 && objectItems.length === 0

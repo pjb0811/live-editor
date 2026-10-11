@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { useEventListener } from '@jbpark/use-hooks';
+import { useEventListener, useLatest } from '@jbpark/use-hooks';
 
 import { useLiveMessages } from '~/components/context/messages';
 
@@ -21,11 +21,7 @@ const Guard = ({ children, onError }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const errorHandled = useRef(false);
   // Read by the listeners, so new messages don't subscribe them again.
-  const messagesRef = useRef(messages);
-
-  useEffect(() => {
-    messagesRef.current = messages;
-  });
+  const messagesRef = useLatest(messages);
 
   useEventListener(
     'error',
@@ -94,7 +90,7 @@ const Guard = ({ children, onError }: Props) => {
         true,
       );
     };
-  }, [onError]);
+  }, [onError, messagesRef]);
 
   if (error) {
     return (

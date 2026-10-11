@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLatest } from '@jbpark/use-hooks';
 
 import type { Section } from '~/types';
 
@@ -20,11 +20,7 @@ export const useDeleteFlow = ({
   // Read through a ref after an async `onBeforeDelete`: the document can
   // change while a confirmation is open, and an old `remove` would commit
   // against the old one.
-  const removeRef = useRef(remove);
-
-  useEffect(() => {
-    removeRef.current = remove;
-  });
+  const removeRef = useLatest(remove);
 
   return (id: string, onDeleted?: () => void) => {
     const section = sections.find(candidate => candidate.id === id);
