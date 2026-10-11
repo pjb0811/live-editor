@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
-import { Button, Checkbox } from '@jbpark/ui-kit';
-import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
+import { Button } from '@jbpark/ui-kit';
+import { Plus } from 'lucide-react';
 
 import { useLiveMessages } from '~/components/context/messages';
 import { findEditableChildren } from '~/utils/ast/binding';
@@ -10,6 +10,8 @@ import { type DataAttrNode } from '~/utils/ast/types';
 import type { PanelNodeChange } from '../panel-binding';
 import BulkActionsBar from './bulk-actions-bar';
 import Node from './node';
+import RowControls from './row-controls';
+import SelectionCheckbox from './selection-checkbox';
 import { useDndChildren } from './use-dnd-children';
 
 interface Props {
@@ -67,15 +69,10 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div
-                onClick={e => selection.toggle(itemIndex, e.shiftKey)}
-                className="inline-flex"
-              >
-                <Checkbox
-                  checked={selection.isSelected(itemIndex)}
-                  onChange={() => {}}
-                />
-              </div>
+              <SelectionCheckbox
+                checked={selection.isSelected(itemIndex)}
+                onToggle={shiftKey => selection.toggle(itemIndex, shiftKey)}
+              />
               <div className="text-xs font-medium text-green-800">
                 {messages.children.child(
                   itemIndex + 1,
@@ -84,30 +81,13 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
               </div>
             </div>
 
-            <div className="flex space-x-1">
-              <Button
-                size="small"
-                icon={<ArrowUp />}
-                aria-label={messages.children.moveUp}
-                disabled={itemIndex === 0}
-                onClick={() => actions.move(itemIndex, itemIndex - 1)}
-              />
-              <Button
-                size="small"
-                icon={<ArrowDown />}
-                aria-label={messages.children.moveDown}
-                disabled={itemIndex === items.length - 1}
-                onClick={() => actions.move(itemIndex, itemIndex + 1)}
-              />
-              <Button
-                aria-label={messages.children.delete}
-                title={messages.children.delete}
-                danger
-                size="small"
-                icon={<X />}
-                onClick={() => actions.remove(itemIndex)}
-              />
-            </div>
+            <RowControls
+              index={itemIndex}
+              count={items.length}
+              labels={messages.children}
+              onMove={toIndex => actions.move(itemIndex, toIndex)}
+              onDelete={() => actions.remove(itemIndex)}
+            />
           </div>
 
           {editableChildrenMap.has(itemIndex) && (
