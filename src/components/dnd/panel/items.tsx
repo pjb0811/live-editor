@@ -1,5 +1,5 @@
-import { Button, Checkbox } from '@jbpark/ui-kit';
-import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
+import { Button } from '@jbpark/ui-kit';
+import { Plus } from 'lucide-react';
 
 import { useLiveMessages } from '~/components/context/messages';
 import type { BindingRenderMap } from '~/utils/ast/types';
@@ -7,6 +7,8 @@ import type { BindingRenderMap } from '~/utils/ast/types';
 import type { PanelNodeChange } from '../panel-binding';
 import BulkActionsBar from './bulk-actions-bar';
 import Field from './field';
+import RowControls from './row-controls';
+import SelectionCheckbox from './selection-checkbox';
 import { ItemCard, SortableItems } from './sortable-items';
 import {
   type DndItemsItem,
@@ -161,48 +163,6 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     />
   );
 
-  const itemControls = (item: DndItemsItem) => (
-    <div className="flex space-x-1">
-      <Button
-        size="small"
-        icon={<ArrowUp />}
-        aria-label={messages.items.moveUp}
-        disabled={!canEditStructure || item.index === 0}
-        onClick={() => actions.move(item.elementIndex, item.index - 1)}
-      />
-      <Button
-        size="small"
-        icon={<ArrowDown />}
-        aria-label={messages.items.moveDown}
-        disabled={!canEditStructure || item.index === items.length - 1}
-        onClick={() => actions.move(item.elementIndex, item.index + 1)}
-      />
-      <Button
-        danger
-        size="small"
-        icon={<X />}
-        aria-label={messages.items.delete}
-        disabled={!canEditStructure || items.length <= 1}
-        onClick={() => actions.remove(item.elementIndex)}
-      />
-    </div>
-  );
-
-  const itemCheckbox = (item: DndItemsItem) => (
-    <div
-      onClick={e =>
-        canEditStructure && selection.toggle(item.index, e.shiftKey)
-      }
-      className="inline-flex"
-    >
-      <Checkbox
-        checked={selection.isSelected(item.index)}
-        disabled={!canEditStructure}
-        onChange={() => {}}
-      />
-    </div>
-  );
-
   const objectBody = (item: DndItemsItem) => (
     <>
       <div className="space-y-2">
@@ -286,8 +246,24 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
             disabled={!canEditStructure}
             expanded={expansion.isExpanded(item.id)}
             onToggle={() => expansion.toggle(item.id)}
-            checkbox={itemCheckbox(item)}
-            controls={itemControls(item)}
+            checkbox={
+              <SelectionCheckbox
+                checked={selection.isSelected(item.index)}
+                disabled={!canEditStructure}
+                onToggle={shiftKey => selection.toggle(item.index, shiftKey)}
+              />
+            }
+            controls={
+              <RowControls
+                index={item.index}
+                count={items.length}
+                labels={messages.items}
+                disabled={!canEditStructure}
+                deleteDisabled={items.length <= 1}
+                onMove={toIndex => actions.move(item.elementIndex, toIndex)}
+                onDelete={() => actions.remove(item.elementIndex)}
+              />
+            }
             className={
               kind === 'primitive'
                 ? 'space-y-2 rounded border border-gray-100 bg-gray-50 p-2'
