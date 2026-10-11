@@ -7,6 +7,7 @@ import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
 import { paletteSectionOf } from '../palette/palette-drag';
+import { type SectionNavigation, useSectionHandlers } from './section-handlers';
 
 interface Props {
   id: string;
@@ -22,31 +23,7 @@ interface Props {
   onMoveDown?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
-  // Registers the focusable wrapper, so the canvas can move focus to it.
-  nodeRef?: (node: HTMLElement | null) => void;
-  // Arrow keys and Home/End on a focused section, outside a drag (#435).
-  onNavigate?: (to: SectionNavigation) => void;
-  // Delete or Backspace on a focused section (#435).
-  onDeleteKey?: () => void;
-  // The element picker is on (#432): the section can't be dragged, and the
-  // pointer over it reports positions instead of selecting it.
-  inspecting?: boolean;
-  onInspectMove?: (
-    section: HTMLElement,
-    overlay: Element,
-    x: number,
-    y: number,
-  ) => void;
-  onInspectPick?: (
-    section: HTMLElement,
-    overlay: Element,
-    x: number,
-    y: number,
-  ) => void;
-  onInspectLeave?: () => void;
 }
-
-export type SectionNavigation = 'previous' | 'next' | 'first' | 'last';
 
 const NAVIGATION_KEYS: Record<string, SectionNavigation> = {
   ArrowUp: 'previous',
@@ -60,20 +37,17 @@ const Sortable = ({
   children,
   selected,
   onClick,
-  onDelete: _onDelete,
-  onCopy: _onCopy,
+  onDelete,
+  onCopy,
   onMoveUp,
   onMoveDown,
   canMoveUp = false,
   canMoveDown = false,
-  nodeRef,
-  onNavigate,
-  onDeleteKey,
-  inspecting = false,
-  onInspectMove,
-  onInspectPick,
-  onInspectLeave,
 }: Props) => {
+  // The picker and keyboard handlers, or `null` in the drag overlay.
+  const handlers = useSectionHandlers();
+  const inspecting = handlers?.inspecting ?? false;
+
   const {
     attributes,
     listeners,
@@ -119,17 +93,17 @@ const Sortable = ({
 
     const to = NAVIGATION_KEYS[e.key];
 
-    if (to && onNavigate) {
+    if (to && handlers) {
       // Otherwise the arrow keys also scroll the canvas.
       e.preventDefault();
-      onNavigate(to);
+      handlers.onNavigate(id, to);
 
       return;
     }
 
-    if ((e.key === 'Delete' || e.key === 'Backspace') && onDeleteKey) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && handlers) {
       e.preventDefault();
-      onDeleteKey();
+      handlers.onDeleteKey(id);
     }
   };
 
@@ -138,17 +112,7 @@ const Sortable = ({
   const setRefs = (node: HTMLDivElement | null) => {
     setNodeRef(node);
     setActivatorNodeRef(node);
-    nodeRef?.(node);
-  };
-
-  const onDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    _onDelete?.(id);
-  };
-
-  const onCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    _onCopy?.(id);
+    handlers?.nodeRef(id)(node);
   };
 
   // Stops the click from reaching the wrapper, which would select it again.
@@ -180,7 +144,7 @@ const Sortable = ({
         onPointerMove={
           inspecting
             ? e =>
-                onInspectMove?.(
+                handlers?.onInspectMove(
                   e.currentTarget.parentElement!,
                   e.currentTarget,
                   e.clientX,
@@ -188,13 +152,14 @@ const Sortable = ({
                 )
             : undefined
         }
-        onPointerLeave={inspecting ? onInspectLeave : undefined}
+        onPointerLeave={inspecting ? handlers?.onInspectLeave : undefined}
         onClick={
           inspecting
             ? e => {
                 // The pick selects the section itself.
                 e.stopPropagation();
-                onInspectPick?.(
+                handlers?.onInspectPick(
+                  id,
                   e.currentTarget.parentElement!,
                   e.currentTarget,
                   e.clientX,
@@ -230,13 +195,13 @@ const Sortable = ({
           )}
           <Button
             icon={<Copy />}
-            onClick={onCopy}
+            onClick={press(() => onCopy?.(id))}
             aria-label={messages.section.duplicate}
           />
           <Button
             danger
             icon={<Trash />}
-            onClick={onDelete}
+            onClick={press(() => onDelete?.(id))}
             aria-label={messages.section.delete}
           />
         </Space>

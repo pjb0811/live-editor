@@ -12,22 +12,28 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Space, Typography } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 
 import { PALETTE_SECTIONS } from '~/constants';
 import type { Section } from '~/types';
+import type { DocumentProblem } from '~/utils/ast/document';
 import { type BindingOptions } from '~/utils/ast/types';
 
 import { cn } from '../../utils/cn';
 import { preloadScripts } from '../../utils/scripts';
+import type { LiveMessages } from '../context/messages';
 import { usePreview } from '../context/states';
 import { useStableModules } from '../preview/use-stable-modules';
+import CanvasNotice from './canvas/canvas-notice';
 import Droppable from './canvas/droppable';
 import InspectorHighlight from './canvas/inspector-highlight';
 import Overlay from './canvas/overlay';
 import Renderer from './canvas/renderer';
 import { SectionFallbackContext } from './canvas/section-fallback-context';
+import {
+  type SectionHandlers,
+  SectionHandlersContext,
+} from './canvas/section-handlers';
 import Sortable from './canvas/sortable';
 import { DndEditOptionsContext } from './edit-options';
 import { DndInspectorContext } from './inspector';
@@ -56,6 +62,35 @@ const conditionalModifiers: Modifier = args => {
 // `modules` prop for every section, which breaks `Renderer`'s memo and
 // recompiles every section on every edit (#97, #348).
 const NO_MODULES: Record<string, unknown> = {};
+
+// The title and detail an empty canvas shows: the document doesn't parse,
+// its container is missing, or it has no sections yet.
+const emptyCanvasNotice = (
+  messages: LiveMessages,
+  problem: DocumentProblem | null,
+  isMobile: boolean,
+) => {
+  if (problem?.reason === 'parse-error') {
+    return {
+      title: messages.canvas.syntaxError,
+      detail: messages.canvas.syntaxErrorDetail,
+    };
+  }
+
+  if (problem?.reason === 'container-not-found') {
+    return {
+      title: messages.canvas.missingContainer(problem.containerId),
+      detail: messages.canvas.missingContainerDetail(problem.containerId),
+    };
+  }
+
+  return {
+    title: messages.canvas.empty,
+    detail: isMobile
+      ? messages.canvas.emptyHintTouch
+      : messages.canvas.emptyHintDrag,
+  };
+};
 
 const Dnd = ({
   value: _value,
@@ -252,10 +287,20 @@ const Dnd = ({
     bindingOptions,
   };
 
+  const sectionHandlers: SectionHandlers = {
+    inspecting,
+    onInspectMove,
+    onInspectPick,
+    onInspectLeave,
+    nodeRef: sectionNodes.register,
+    onNavigate,
+    onDeleteKey,
+  };
+
   // The canvas content. Its frame container belongs to `Live.Dnd.Canvas`, so
   // a custom layout can't leave it out.
   const canvas = (
-    <>
+    <SectionHandlersContext.Provider value={sectionHandlers}>
       {stale && (
         <div
           role="status"
@@ -282,36 +327,7 @@ const Dnd = ({
               'text-gray-500',
             )}
           >
-            {problem?.reason === 'parse-error' ? (
-              <Space orientation="vertical" align="center">
-                <Typography.Paragraph>
-                  {messages.canvas.syntaxError}
-                </Typography.Paragraph>
-                <Typography.Text>
-                  {messages.canvas.syntaxErrorDetail}
-                </Typography.Text>
-              </Space>
-            ) : missingContainer !== null ? (
-              <Space orientation="vertical" align="center">
-                <Typography.Paragraph>
-                  {messages.canvas.missingContainer(missingContainer)}
-                </Typography.Paragraph>
-                <Typography.Text>
-                  {messages.canvas.missingContainerDetail(missingContainer)}
-                </Typography.Text>
-              </Space>
-            ) : (
-              <Space orientation="vertical" align="center">
-                <Typography.Paragraph>
-                  {messages.canvas.empty}
-                </Typography.Paragraph>
-                <Typography.Text>
-                  {isMobile
-                    ? messages.canvas.emptyHintTouch
-                    : messages.canvas.emptyHintDrag}
-                </Typography.Text>
-              </Space>
-            )}
+            <CanvasNotice {...emptyCanvasNotice(messages, problem, isMobile)} />
           </div>
         ) : (
           <SortableContext
@@ -331,13 +347,6 @@ const Dnd = ({
                 onMoveDown={() => onMoveButton(section.id, 'down')}
                 canMoveUp={index > 0}
                 canMoveDown={index < sections.length - 1}
-                nodeRef={sectionNodes.register(section.id)}
-                onNavigate={to => onNavigate(section.id, to)}
-                onDeleteKey={() => onDeleteKey(section.id)}
-                inspecting={inspecting}
-                onInspectMove={onInspectMove}
-                onInspectPick={(...args) => onInspectPick(section.id, ...args)}
-                onInspectLeave={onInspectLeave}
               >
                 <Renderer
                   preview={previews[index]!}
@@ -357,7 +366,7 @@ const Dnd = ({
         )}
       </Droppable>
       <InspectorHighlight rect={highlightRect} />
-    </>
+    </SectionHandlersContext.Provider>
   );
 
   return (

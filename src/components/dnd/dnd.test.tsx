@@ -1638,6 +1638,29 @@ describe('section toolbar', () => {
 
     expect(document.activeElement).toBe(sortables()[1]);
   });
+
+  it('duplicates the section from its button', () => {
+    const { onChange, select, button } = renderToolbar();
+
+    select(1);
+    act(() => button(1, 'Duplicate section').click());
+
+    const copied = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(copied.match(/<section /g)).toHaveLength(4);
+  });
+
+  it('deletes the section from its button', () => {
+    const { onChange, select, button } = renderToolbar();
+
+    select(1);
+    act(() => button(1, 'Delete section').click());
+
+    const removed = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(removed).not.toContain('data-id="s2"');
+    expect(removed.match(/<section /g)).toHaveLength(2);
+  });
 });
 
 describe('onBeforeDelete', () => {
