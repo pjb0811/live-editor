@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
+
+import { useLatest } from '@jbpark/use-hooks';
 
 import type { DocumentProblem } from '~/utils/ast/document';
 import type { UpdateFailure } from '~/utils/ast/update';
@@ -102,17 +104,12 @@ export const useEditErrors = (onEditError?: (error: DndEditError) => void) => {
   const messages = useLiveMessages();
   const reportError = onEditError ?? toastEditError;
 
-  const reportErrorRef = useRef(reportError);
-  const messagesRef = useRef(messages);
-
-  useEffect(() => {
-    reportErrorRef.current = reportError;
-    messagesRef.current = messages;
-  });
+  const reportErrorRef = useLatest(reportError);
+  const messagesRef = useLatest(messages);
 
   const reportLatest = useCallback<ReportLatest>(
     build => reportErrorRef.current(build(messagesRef.current)),
-    [],
+    [reportErrorRef, messagesRef],
   );
 
   // Reports an edit refused because the source doesn't parse. A source that
