@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { type FieldKindBinding, getFieldKind, isStructuralFieldKind } from '.';
+import {
+  type FieldKindBinding,
+  getFieldKind,
+  isStructuralFieldKind,
+} from './field-kind';
 
 const kindOf = (override: Partial<FieldKindBinding>) =>
   getFieldKind({ property: 'value', value: 'text', ...override });
