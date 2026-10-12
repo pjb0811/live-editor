@@ -10,8 +10,6 @@ import { nanoid } from 'nanoid';
 
 import { useLiveMessages } from '~/components/context/messages';
 import { canStructurallyEditArray } from '~/utils/ast/array-source';
-import { findEditableChildren } from '~/utils/ast/binding';
-import { extract } from '~/utils/ast/extract';
 import {
   appendArrayItem,
   duplicateArrayItems,
@@ -21,35 +19,25 @@ import {
   updateArrayItemProperty,
   updateArrayItemValue,
 } from '~/utils/ast/items';
-import {
-  type BindingOptions,
-  type BindingRenderMap,
-  type DataAttrNode,
-} from '~/utils/ast/types';
-import { parseValue } from '~/utils/ast/value';
-import {
-  canLosslesslyEvaluateSource,
-  extractNodeValue,
-  extractObjectProperties,
-  parseArrayExpression,
-} from '~/utils/ast/value';
+import { type BindingRenderMap } from '~/utils/ast/types';
+import { parseArrayExpression } from '~/utils/ast/value';
 import { moveSelectedIndices } from '~/utils/selection';
 
 import { useDndEditOptions } from '../edit-options';
-import {
-  type PanelBinding,
-  type PanelNodeChange,
-  resolvePanelBindings,
-  resolveRenderEntry,
-  toBindingFields,
-  withPanelCommit,
-} from '../panel-binding';
+import { type PanelBinding, type PanelNodeChange } from '../panel-binding';
+import { toItemBindings } from './item-bindings';
 import {
   createIdentityState,
   moveId,
   reconcileIdentityState,
   removeIds,
 } from './item-identity';
+import {
+  type RawObjectItem,
+  type RawPrimitiveItem,
+  parseSource,
+} from './items-source';
+import { useItemExpansion } from './use-item-expansion';
 import {
   selectionAfter,
   useStructuralSelection,
@@ -151,25 +139,6 @@ export interface DndItemsOptions {
   onNodeChange?: PanelNodeChange;
 }
 
-interface RawObjectItem {
-  id: string;
-  index: number;
-  elementIndex: number;
-  source: string;
-  editableProperties: ReturnType<typeof extractObjectProperties>;
-  jsxBindings: Record<string, DataAttrNode[]>;
-  jsxFallbacks: Record<string, string>;
-}
-
-interface RawPrimitiveItem {
-  id: string;
-  index: number;
-  elementIndex: number;
-  source: string;
-  value: string | number | boolean | null;
-  type: ReturnType<typeof extractNodeValue>['type'];
-}
-
 // What an edit reads: this render's array, or the one a same-tick commit
 // left behind (#451), with the item identity and selection that go with it.
 interface Snapshot {
@@ -185,130 +154,6 @@ interface PendingCommit {
   ids: string[];
   selected: Set<number>;
 }
-
-// Pulls the data-bound elements out of one JSX-valued property. A container
-// declaring `children` wins outright: it owns the elements below it, so
-// listing them separately would offer the same edit twice.
-const bindingsInJSX = (
-  source: string,
-  bindingOptions: BindingOptions | undefined,
-): DataAttrNode[] => {
-  const nodes = extract(source, bindingOptions);
-  const container = nodes.find(n =>
-    n.bindings?.some(b => b.property === 'children'),
-  );
-
-  if (container) {
-    return [container];
-  }
-
-  const bindings: DataAttrNode[] = [];
-
-  nodes.forEach(n => {
-    if (
-      n.bindings &&
-      n.bindings.length > 0 &&
-      n.dataAttributes.some(a => a.name === 'data-id')
-    ) {
-      bindings.push(n);
-    }
-
-    bindings.push(...findEditableChildren(n));
-  });
-
-  return bindings;
-};
-
-// Parses the array. Kept apart from building the bindings, so the parse is
-// memoized on the source while the callbacks stay current every render.
-const parseSource = (value: string, bindingOptions?: BindingOptions) => {
-  const ast = parseArrayExpression(value);
-
-  if (!ast) {
-    return { objectItems: [], primitiveItems: [], parseError: true };
-  }
-
-  const objectItems: RawObjectItem[] = [];
-  const primitiveItems: RawPrimitiveItem[] = [];
-  ast.elements.forEach((element, elementIndex) => {
-    if (!t.isExpression(element)) {
-      return;
-    }
-
-    if (!t.isObjectExpression(element)) {
-      const extracted = extractNodeValue(element);
-
-      primitiveItems.push({
-        id: nanoid(6),
-        index: primitiveItems.length,
-        elementIndex,
-        source: value.slice(element.start!, element.end!),
-        value: extracted.value,
-        type: extracted.type,
-      });
-      return;
-    }
-
-    const jsxBindings: Record<string, DataAttrNode[]> = {};
-    const jsxFallbacks: Record<string, string> = {};
-
-    element.properties.forEach(prop => {
-      if (
-        !t.isObjectProperty(prop) ||
-        !t.isIdentifier(prop.key) ||
-        !(t.isJSXElement(prop.value) || t.isJSXFragment(prop.value))
-      ) {
-        return;
-      }
-
-      const propertyName = prop.key.name;
-
-      try {
-        const found = bindingsInJSX(
-          value.slice(prop.value.start!, prop.value.end!),
-          bindingOptions,
-        );
-
-        if (found.length > 0) {
-          jsxBindings[propertyName] = found;
-        } else {
-          jsxFallbacks[propertyName] = value.slice(
-            prop.value.start!,
-            prop.value.end!,
-          );
-        }
-      } catch (error) {
-        console.error(
-          `Failed to parse JSX in property '${propertyName}':`,
-          error,
-        );
-      }
-    });
-
-    const editableProperties = extractObjectProperties(element);
-
-    for (const property of Object.values(editableProperties)) {
-      if (property.type === 'array' || property.type === 'object') {
-        property.value = value.slice(
-          property.astNode.start!,
-          property.astNode.end!,
-        );
-      }
-    }
-
-    objectItems.push({
-      id: nanoid(6),
-      index: objectItems.length,
-      elementIndex,
-      source: value.slice(element.start!, element.end!),
-      editableProperties,
-      jsxBindings,
-      jsxFallbacks,
-    });
-  });
-
-  return { objectItems, primitiveItems, parseError: false };
-};
 
 // What the built-in Items editor runs on, for a custom panel's own markup.
 // It finds the nested data-bound elements in each item, applies the
@@ -358,13 +203,6 @@ export const useDndItems = (
   const identity = useMemo(
     () => reconcileIdentityState(identityState, value, kind, rawItems),
     [identityState, kind, rawItems, value],
-  );
-
-  // Collapsed rather than expanded ids, so an item this hook hasn't seen
-  // yet, such as one just added, starts expanded. Ids are never reused, so
-  // one left behind by a removed item can't collapse another.
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
-    () => new Set(),
   );
 
   const { selection, record } = useStructuralSelection(
@@ -646,120 +484,20 @@ export const useDndItems = (
   };
 
   // Built every render, outside the memo, because they close over
-  // `onChange` and `onNodeChange`. A cheap walk with no parsing.
-  const items: DndItemsItem[] = isPrimitive
-    ? primitiveItems.map(item => ({
-        id: identity.ids[item.index] ?? item.id,
-        index: item.index,
-        elementIndex: item.elementIndex,
-        properties: [],
-        nested: [],
-        value: {
-          id: `primitive-${item.id}`,
-          label: `item-${item.index}`,
-          property: item.type,
-          value: item.value ?? '',
-          rawValue:
-            item.type === 'unknown' ? item.source : String(item.value ?? ''),
-          canEditValue: canLosslesslyEvaluateSource(item.source),
-          onChange: next => updateValue(item.elementIndex, next),
-        },
-      }))
-    : objectItems.map(item => {
-        const id = identity.ids[item.index] ?? item.id;
-        const properties: PanelBinding[] = Object.entries(
-          item.editableProperties,
-        ).map(([key, prop]) => {
-          const binding = resolveRenderEntry(render, key);
-          const propertySource = value.slice(
-            prop.astNode.start!,
-            prop.astNode.end!,
-          );
+  // `onChange` and `onNodeChange` (#336). A cheap walk with no parsing.
+  const items: DndItemsItem[] = rawItems.map(item =>
+    toItemBindings(item, {
+      id: identity.ids[item.index] ?? item.id,
+      value,
+      render,
+      onNodeChange,
+      onValueChange: next => updateValue(item.elementIndex, next),
+      onPropertyChange: (key, next) =>
+        updateProperty(item.elementIndex, key, next),
+    }),
+  );
 
-          return {
-            ...toBindingFields(binding),
-            id: `item-${id}-${key}`,
-            // Over the leaf's own `meta`, so the property's real type wins
-            // over an authored `valueType`.
-            meta: { ...binding.meta, valueType: prop.type },
-            value: parseValue(String(prop.value)),
-            rawValue:
-              prop.type === 'unknown' ? propertySource : String(prop.value),
-            canEditValue: canLosslesslyEvaluateSource(propertySource),
-            onChange: next => updateProperty(item.elementIndex, key, next),
-          };
-        });
-
-        const nested: DndItemsNestedGroup[] = [
-          ...Object.entries(item.jsxBindings).map(([property, nodes]) => ({
-            property,
-            elements: nodes.flatMap(node => {
-              const source = resolvePanelBindings(node);
-
-              if (!source) {
-                return [];
-              }
-
-              return [
-                {
-                  id: source.id,
-                  tagName: source.tagName,
-                  bindings: withPanelCommit(source.bindings, onNodeChange),
-                },
-              ];
-            }),
-          })),
-          ...Object.entries(item.jsxFallbacks).map(([property, code]) => ({
-            property,
-            elements: [],
-            fallback: {
-              id: `item-${id}-${property}-jsx`,
-              label: property,
-              property,
-              type: 'jsx' as const,
-              value: code,
-              rawValue: code,
-              canEditValue: true,
-              onChange: (next: unknown) =>
-                updateProperty(item.elementIndex, property, next),
-            },
-          })),
-        ];
-
-        return {
-          id,
-          index: item.index,
-          elementIndex: item.elementIndex,
-          properties,
-          nested,
-        };
-      });
-
-  const expansion: DndItemsExpansion = {
-    expandedIds: items.flatMap(item =>
-      collapsed.has(item.id) ? [] : [item.id],
-    ),
-    isExpanded: id => !collapsed.has(id),
-    toggle: id =>
-      setCollapsed(previous => {
-        const next = new Set(previous);
-
-        if (!next.delete(id)) {
-          next.add(id);
-        }
-
-        return next;
-      }),
-    setExpanded: ids => {
-      const expanded = new Set(ids);
-
-      setCollapsed(
-        new Set(
-          items.flatMap(item => (expanded.has(item.id) ? [] : [item.id])),
-        ),
-      );
-    },
-  };
+  const expansion = useItemExpansion(items.map(item => item.id));
 
   return {
     kind,

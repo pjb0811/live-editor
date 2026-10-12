@@ -263,8 +263,9 @@ Some values have structure of their own. An `items` value is an array literal,
 and its rows can be moved, copied, added and removed. A `children` value is
 the element's JSX children.
 
-- **`useDndItems`** (`components/dnd/panel/use-dnd-items.ts`) parses the array,
-  gives each row a stable identity across edits (`item-identity.ts`), and turns
+- **`useDndItems`** (`components/dnd/panel/use-dnd-items.ts`) parses the array
+  (`items-source.ts`), gives each row a stable identity across edits
+  (`item-identity.ts`) and its panel bindings (`item-bindings.ts`), and turns
   each action into an edit of the array's source (`utils/ast/items.ts`, `array-source.ts`). The new
   array source goes to the binding's `onChange`, which is level ②.
 - **`useDndChildren`** (`components/dnd/panel/use-dnd-children.ts`) describes
