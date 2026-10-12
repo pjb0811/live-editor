@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { arrayMove } from '@dnd-kit/sortable';
+import { usePendingCommit } from '@jbpark/use-hooks';
 
 import type { Section } from '~/types';
 import {
@@ -141,24 +142,18 @@ export const useSectionDocument = (
   const selectedSection =
     selectedIndex >= 0 ? sections[selectedIndex] : undefined;
 
-  // The document the last commit produced, and the render document it was
-  // built on. Mutations read through `latestDocument()`, so a second commit
-  // in the same tick builds on the first instead of undoing it (#450).
-  //
-  // Cleared after each render, when the new `value` takes over, including
-  // when the host didn't accept the commit. The `from` check covers the time
-  // between that render and this effect.
-  const pendingRef = useRef<{ from: string; code: string } | null>(null);
+  // The document the last commit produced, read only while `document` is
+  // still the one it was built on. Mutations read through
+  // `latestDocument()`, so a second commit in the same tick builds on the
+  // first instead of undoing it (#450). The hook drops it after each render,
+  // when the new `value` takes over, including when the host didn't accept
+  // the commit.
+  const pending = usePendingCommit<string, string>(document);
 
-  useEffect(() => {
-    pendingRef.current = null;
-  });
-
-  const latestDocument = useCallback(() => {
-    const pending = pendingRef.current;
-
-    return pending?.from === document ? pending.code : document;
-  }, [document]);
+  const latestDocument = useCallback(
+    () => pending.read() ?? document,
+    [document, pending],
+  );
 
   // Re-reading an unchanged document is a parse-cache hit, not a new parse.
   const latestSections = useCallback(
@@ -183,30 +178,28 @@ export const useSectionDocument = (
         { containerId },
       );
 
-      pendingRef.current = { from: document, code: nextCode };
+      pending.write(nextCode);
       onChange?.(nextCode);
       setCode(nextCode);
 
       return readSections(nextCode);
     },
-    [containerId, document, latestDocument, onChange, readSections, setCode],
+    [containerId, latestDocument, onChange, pending, readSections, setCode],
   );
 
   const getCommittedSection = useCallback(
     (id: string) => {
-      const pending = pendingRef.current;
+      const code = pending.read();
 
-      if (pending?.from !== document) {
-        return undefined;
-      }
-
-      return readSections(pending.code).find(s => s.id === id);
+      return code === undefined
+        ? undefined
+        : readSections(code).find(s => s.id === id);
     },
-    [document, readSections],
+    [pending, readSections],
   );
 
-  // Every mutation starts here. It refuses, and reports through
-  // `onBlockedEdit`, while the document is stale.
+  // True, after reporting through `onBlockedEdit`, while the document is
+  // stale.
   const { problem, stale } = view;
   const refuse = useCallback(() => {
     if (!stale || !problem) {
@@ -218,6 +211,19 @@ export const useSectionDocument = (
     return true;
   }, [onBlockedEdit, problem, stale]);
 
+  // Every mutation starts here. It runs on the latest sections, or not at
+  // all while the document is stale.
+  const mutate = useCallback(
+    (fn: (current: Section[]) => void) => {
+      if (refuse()) {
+        return;
+      }
+
+      fn(latestSections());
+    },
+    [latestSections, refuse],
+  );
+
   const select = useCallback((id: string) => {
     setSelectedId(prev => (prev === id ? null : id));
   }, []);
@@ -227,131 +233,102 @@ export const useSectionDocument = (
   const clearSelection = useCallback(() => setSelectedId(null), []);
 
   const add = useCallback(
-    (section: Pick<Section, 'name' | 'code'>, atIndex?: number) => {
-      if (refuse()) {
-        return;
-      }
+    (section: Pick<Section, 'name' | 'code'>, atIndex?: number) =>
+      mutate(current => {
+        const next = { code: section.code };
 
-      const current = latestSections();
-      const next = { code: section.code };
-
-      commit(
-        atIndex === undefined || atIndex < 0
-          ? [...current, next]
-          : [...current.slice(0, atIndex), next, ...current.slice(atIndex)],
-      );
-    },
-    [commit, refuse, latestSections],
+        commit(
+          atIndex === undefined || atIndex < 0
+            ? [...current, next]
+            : [...current.slice(0, atIndex), next, ...current.slice(atIndex)],
+        );
+      }),
+    [commit, mutate],
   );
 
   const remove = useCallback(
-    (id: string) => {
-      if (refuse()) {
-        return;
-      }
+    (id: string) =>
+      mutate(current => {
+        // Removes by position, so a duplicated id could never delete two
+        // sections.
+        const index = current.findIndex(s => s.id === id);
 
-      const current = latestSections();
+        if (index < 0) {
+          return;
+        }
 
-      // Removes by position, so a duplicated id could never delete two
-      // sections.
-      const index = current.findIndex(s => s.id === id);
+        // Clear the selection only when the selected section is the one
+        // deleted.
+        if (id === selectedId) {
+          setSelectedId(null);
+        }
 
-      if (index < 0) {
-        return;
-      }
-
-      // Clear the selection only when the selected section is the one
-      // deleted.
-      if (id === selectedId) {
-        setSelectedId(null);
-      }
-
-      commit(current.filter((_, i) => i !== index));
-    },
-    [commit, refuse, latestSections, selectedId],
+        commit(current.filter((_, i) => i !== index));
+      }),
+    [commit, mutate, selectedId],
   );
 
   const copy = useCallback(
-    (id: string) => {
-      if (refuse()) {
-        return;
-      }
+    (id: string) =>
+      mutate(current => {
+        const index = current.findIndex(s => s.id === id);
+        const source = current[index];
 
-      const current = latestSections();
+        if (!source) {
+          return;
+        }
 
-      const index = current.findIndex(s => s.id === id);
-      const source = current[index];
+        // New `data-id`s for the copy, its own included, so it's a distinct
+        // section.
+        const committed = commit([
+          ...current.slice(0, index + 1),
+          { code: replaceIds(source.code) },
+          ...current.slice(index + 1),
+        ]);
 
-      if (!source) {
-        return;
-      }
-
-      // New `data-id`s for the copy, its own included, so it's a distinct
-      // section.
-      const committed = commit([
-        ...current.slice(0, index + 1),
-        { code: replaceIds(source.code) },
-        ...current.slice(index + 1),
-      ]);
-
-      // Select the copy by the id the committed document gave it (#245).
-      setSelectedId(committed[index + 1]?.id ?? null);
-    },
-    [commit, refuse, latestSections],
+        // Select the copy by the id the committed document gave it (#245).
+        setSelectedId(committed[index + 1]?.id ?? null);
+      }),
+    [commit, mutate],
   );
 
   const move = useCallback(
-    (id: string | null, direction: 'up' | 'down') => {
-      if (refuse()) {
-        return;
-      }
+    (id: string | null, direction: 'up' | 'down') =>
+      mutate(current => {
+        const index = current.findIndex(s => s.id === id);
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
 
-      const current = latestSections();
+        if (index < 0 || targetIndex < 0 || targetIndex >= current.length) {
+          return;
+        }
 
-      const index = current.findIndex(s => s.id === id);
-      const targetIndex = direction === 'up' ? index - 1 : index + 1;
-
-      if (index < 0 || targetIndex < 0 || targetIndex >= current.length) {
-        return;
-      }
-
-      // The selection follows the section, since its id moves with it.
-      commit(arrayMove(current, index, targetIndex));
-    },
-    [commit, refuse, latestSections],
+        // The selection follows the section, since its id moves with it.
+        commit(arrayMove(current, index, targetIndex));
+      }),
+    [commit, mutate],
   );
 
   const reorder = useCallback(
-    (activeId: string, overId: string) => {
-      if (refuse()) {
-        return;
-      }
+    (activeId: string, overId: string) =>
+      mutate(current => {
+        const prevIndex = current.findIndex(s => s.id === activeId);
+        const nextIndex = current.findIndex(s => s.id === overId);
 
-      const current = latestSections();
+        if (prevIndex < 0 || nextIndex < 0 || prevIndex === nextIndex) {
+          return;
+        }
 
-      const prevIndex = current.findIndex(s => s.id === activeId);
-      const nextIndex = current.findIndex(s => s.id === overId);
-
-      if (prevIndex < 0 || nextIndex < 0 || prevIndex === nextIndex) {
-        return;
-      }
-
-      commit(arrayMove(current, prevIndex, nextIndex));
-    },
-    [commit, refuse, latestSections],
+        commit(arrayMove(current, prevIndex, nextIndex));
+      }),
+    [commit, mutate],
   );
 
   const patch = useCallback(
-    (next: Partial<Section> & { id: string }) => {
-      if (refuse()) {
-        return;
-      }
-
-      const current = latestSections();
-
-      commit(current.map(s => (s.id === next.id ? { ...s, ...next } : s)));
-    },
-    [commit, refuse, latestSections],
+    (next: Partial<Section> & { id: string }) =>
+      mutate(current => {
+        commit(current.map(s => (s.id === next.id ? { ...s, ...next } : s)));
+      }),
+    [commit, mutate],
   );
 
   return {
