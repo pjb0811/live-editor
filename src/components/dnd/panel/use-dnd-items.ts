@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import * as t from '@babel/types';
-import { useLatest, type useMultiSelect } from '@jbpark/use-hooks';
+import {
+  useLatest,
+  type useMultiSelect,
+  usePendingCommit,
+} from '@jbpark/use-hooks';
 import { nanoid } from 'nanoid';
 
 import { useLiveMessages } from '~/components/context/messages';
@@ -175,27 +179,12 @@ interface Snapshot {
   selected: Set<number>;
 }
 
+// What a commit leaves for the next edit in the same tick.
 interface PendingCommit {
-  // The render `value` the commit was built on.
-  from: string;
   value: string;
   ids: string[];
   selected: Set<number>;
 }
-
-const createPendingCommit = () => {
-  let current: PendingCommit | null = null;
-
-  return {
-    read: () => current,
-    write: (next: PendingCommit) => {
-      current = next;
-    },
-    clear: () => {
-      current = null;
-    },
-  };
-};
 
 // Pulls the data-bound elements out of one JSX-valued property. A container
 // declaring `children` wins outright: it owns the elements below it, so
@@ -384,24 +373,16 @@ export const useDndItems = (
   );
 
   // The array the last commit produced, with its item ids and selection,
-  // and the render `value` it was built on. Edits read `latest()`, so a
-  // second edit in the same tick builds on the first instead of undoing it
-  // (#451). Cleared after each render, when the new `value` takes over, as
-  // in `useSectionDocument` (#450).
-  //
-  // Held in `useState`, not a ref: the bindings built during render close
-  // over `latest()`, and the React compiler treats that as reading a ref in
-  // render.
-  const [pending] = useState(createPendingCommit);
-
-  useEffect(() => {
-    pending.clear();
-  });
+  // read only while `value` is still the render value it was built on. Edits
+  // read `latest()`, so a second edit in the same tick builds on the first
+  // instead of undoing it (#451). Dropped after each render, when the new
+  // `value` takes over, as in `useSectionDocument` (#450).
+  const pending = usePendingCommit<string, PendingCommit>(value);
 
   const latest = (): Snapshot => {
     const last = pending.read();
 
-    if (last?.from !== value) {
+    if (!last) {
       return {
         value,
         items: rawItems,
@@ -462,7 +443,6 @@ export const useDndItems = (
     const ids = nextIds ?? snapshot.ids;
 
     pending.write({
-      from: value,
       value: next,
       ids,
       selected: nextSelection,
