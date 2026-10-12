@@ -1,14 +1,8 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useMutationObserver } from '@jbpark/use-hooks';
+import { useDebouncedCallback, useMutationObserver } from '@jbpark/use-hooks';
 
 import { createStyleSyncManager, reconcileStyles } from './style-sync';
 
@@ -94,18 +88,12 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
     reconcileStyles(document, shadowRoot, styleManagerRef.current, syncStyle);
   }, [syncStyle]);
 
-  const applyStyleTimeoutRef = useRef<number>(undefined);
-
   // Debounced, since a stylesheet swap fires several head mutations in a
   // row, as in `iframe.tsx`.
-  const debouncedApplyStyle = useCallback(() => {
-    clearTimeout(applyStyleTimeoutRef.current);
-    applyStyleTimeoutRef.current = window.setTimeout(applyStyle, 50);
-  }, [applyStyle]);
-
-  useEffect(() => {
-    return () => clearTimeout(applyStyleTimeoutRef.current);
-  }, []);
+  const debouncedApplyStyle = useDebouncedCallback(applyStyle, {
+    delay: 50,
+    autoInvoke: false,
+  });
 
   useMutationObserver(document.head, debouncedApplyStyle, {
     enabled: syncStyle,

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import type { RefObject } from 'react';
 
-import { useMutationObserver } from '@jbpark/use-hooks';
+import { useDebouncedCallback, useMutationObserver } from '@jbpark/use-hooks';
 
 import { CONTAINER_STYLE_ID } from './auto-height';
 import {
@@ -51,18 +51,12 @@ export const useHostStyleSync = (
     );
   }, [iframeRef, syncStyle]);
 
-  const applyStyleTimeoutRef = useRef<number>(undefined);
-
   // Debounced, since a stylesheet swap fires several head mutations in a
   // row.
-  const debouncedApplyStyle = useCallback(() => {
-    clearTimeout(applyStyleTimeoutRef.current);
-    applyStyleTimeoutRef.current = window.setTimeout(applyStyle, 50);
-  }, [applyStyle]);
-
-  useEffect(() => {
-    return () => clearTimeout(applyStyleTimeoutRef.current);
-  }, []);
+  const debouncedApplyStyle = useDebouncedCallback(applyStyle, {
+    delay: 50,
+    autoInvoke: false,
+  });
 
   useMutationObserver(document.head, debouncedApplyStyle, {
     enabled: syncStyle,
