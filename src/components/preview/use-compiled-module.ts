@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 
+import { useStableValue } from '@jbpark/use-hooks';
+
 import { useLiveMessages } from '~/components/context/messages';
 import type { Module } from '~/types';
 import { compile } from '~/utils/compile';
 
 import { baseModules } from './base-modules';
-import { useStableModules } from './use-stable-modules';
 
 // Compiles code into a component, for `Live.Preview` and each canvas
 // section, so both handle errors the same way (#246). `null` for empty code,
@@ -17,7 +18,7 @@ export const useCompiledModule = (
 ): Module | null => {
   // An inline `modules` object from `Live.Preview`'s host is new each
   // render; only a changed entry should recompile (#397).
-  const modules = useStableModules(_modules);
+  const modules = useStableValue(_modules);
   const { unknown } = useLiveMessages().errors;
 
   const mergedModules = useMemo(

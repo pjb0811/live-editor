@@ -12,7 +12,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { useResponsiveSize } from '@jbpark/use-hooks';
+import { useResponsiveSize, useStableValue } from '@jbpark/use-hooks';
 
 import { PALETTE_SECTIONS } from '~/constants';
 import type { Section } from '~/types';
@@ -23,7 +23,6 @@ import { cn } from '../../utils/cn';
 import { preloadScripts } from '../../utils/scripts';
 import type { LiveMessages } from '../context/messages';
 import { usePreview } from '../context/states';
-import { useStableModules } from '../preview/use-stable-modules';
 import CanvasNotice from './canvas/canvas-notice';
 import Droppable from './canvas/droppable';
 import InspectorHighlight from './canvas/inspector-highlight';
@@ -115,7 +114,7 @@ const Dnd = ({
   children,
   ...restProps
 }: Props) => {
-  const modules = useStableModules(_modules);
+  const modules = useStableValue(_modules);
   const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false);
 
   const { breakpoint } = useResponsiveSize();

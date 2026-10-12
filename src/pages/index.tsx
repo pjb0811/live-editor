@@ -1,7 +1,7 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect } from 'react';
 
 import { Button, Layout, Radio } from '@jbpark/ui-kit';
-import { useLocalStorage } from '@jbpark/use-hooks';
+import { useHash, useLocalStorage } from '@jbpark/use-hooks';
 import { Moon, Sun } from 'lucide-react';
 
 import { MessagesContext, mergeMessages } from '~/components/context/messages';
@@ -43,21 +43,13 @@ type Language = 'en' | 'ko';
 const MESSAGES = { en: mergeMessages(), ko: KO_MESSAGES };
 
 // The page lives in the URL hash, so a reload or a shared link opens the same
-// page without a router.
-const subscribe = (onChange: () => void) => {
-  window.addEventListener('hashchange', onChange);
-
-  return () => window.removeEventListener('hashchange', onChange);
-};
-
-const readPage = (): PageKey => {
-  const key = window.location.hash.slice(1);
-
-  return PAGES.some(page => page.key === key) ? (key as PageKey) : PAGES[0].key;
-};
+// page without a router. An unknown hash opens the first page.
+const toPage = (hash: string): PageKey =>
+  PAGES.some(page => page.key === hash) ? (hash as PageKey) : PAGES[0].key;
 
 const App = () => {
-  const current = useSyncExternalStore(subscribe, readPage);
+  const [hash, setHash] = useHash();
+  const current = toPage(hash);
   const { Page } = PAGES.find(page => page.key === current)!;
   const [theme, setTheme] = useLocalStorage<Theme>(THEME_KEY, 'light');
   const [language, setLanguage] = useLocalStorage<Language>(LANGUAGE_KEY, 'en');
@@ -87,7 +79,7 @@ const App = () => {
             optionType="button"
             buttonStyle="solid"
             onChange={value => {
-              window.location.hash = String(value);
+              setHash(String(value));
             }}
           />
         </div>
