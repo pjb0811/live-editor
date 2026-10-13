@@ -12,11 +12,10 @@ Canvas의 DnD 편집 결과를 Babel AST 변환으로 소스 코드에 역으로
 ```text
 live-editor/
 ├─ .github/
-│  ├─ skills/ast/           # Babel AST 변환 스킬 (SKILL.md)
 │  ├─ scripts/              # changeset/릴리즈 노트 자동화 스크립트 (*.mjs)
 │  └─ workflows/            # CI, changeset-draft, version, publish, release
 ├─ .claude/
-│  └─ skills/               # 이 저장소 전용 스킬과 vendored Vercel 스킬 (아래 "공유 스킬" 참고)
+│  └─ skills/               # 이 저장소 전용 스킬(ast, binding-field, ui-messages, verify, version-management)과 vendored Vercel 스킬 (아래 "공유 스킬" 참고)
 ├─ src/
 │  ├─ components/
 │  │  ├─ context/           # 전역 상태 (PreviewContext, ErrorContext, MessagesContext — UI 문구 `messages`)
@@ -108,7 +107,7 @@ live-editor/
 | 파일                                | 역할                                                                                                                                                                            |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/utils/index.ts`                | 공개 `./utils` 배럴: `compile()`, `cn()`, `preloadScripts()`, 섹션 헬퍼 등을 재수출. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                 |
-| `src/utils/ast/`                    | 공개: `extract()`, `update()`/`updateAll()`, `validateBindingValue()` 등. 내부 코드는 배럴 대신 모듈 파일에서 import — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
+| `src/utils/ast/`                    | 공개: `extract()`, `update()`/`updateAll()`, `validateBindingValue()` 등. 내부 코드는 배럴 대신 모듈 파일에서 import — 모듈 구조는 [ast 스킬](.claude/skills/ast/SKILL.md) 참고 |
 | `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `PALETTE_SECTIONS`(재수출, 정의는 `palette-sections.ts`)                                                              |
 | `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                                                        |
 | `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                                                  |
@@ -265,14 +264,17 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 
 ### 저장소 스킬
 
-| 스킬                    | 경로                                    | 설명                              |
-| ----------------------- | --------------------------------------- | --------------------------------- |
-| `ast`                   | `.github/skills/ast/`                   | Babel AST 변환 코드 작성          |
-| `version-management`    | `.claude/skills/version-management/`    | 이 저장소의 패키지·배포 세부 사항 |
-| `react-best-practices`  | `.claude/skills/react-best-practices/`  | Vercel, React 성능 규칙           |
-| `composition-patterns`  | `.claude/skills/composition-patterns/`  | Vercel, 컴포넌트 합성 패턴        |
-| `web-design-guidelines` | `.claude/skills/web-design-guidelines/` | Vercel, UI·접근성 리뷰            |
-| `writing-guidelines`    | `.claude/skills/writing-guidelines/`    | Vercel, 문서 문체 리뷰            |
-| `deploy-to-vercel`      | `.claude/skills/deploy-to-vercel/`      | Vercel, 문서 사이트 배포          |
+| 스킬                    | 경로                                    | 설명                                                     |
+| ----------------------- | --------------------------------------- | -------------------------------------------------------- |
+| `ast`                   | `.claude/skills/ast/`                   | `src/utils/ast/` 모듈 맵, 의존 방향, 소스 보존 편집 규칙 |
+| `binding-field`         | `.claude/skills/binding-field/`         | 바인딩 타입·제약 추가 시 고칠 곳과 호환성 함정           |
+| `ui-messages`           | `.claude/skills/ui-messages/`           | UI 문구 키 추가, 한국어 세트 두 곳 동기화                |
+| `verify`                | `.claude/skills/verify/`                | 변경 종류별로 돌릴 검사                                  |
+| `version-management`    | `.claude/skills/version-management/`    | 이 저장소의 패키지·배포 세부 사항                        |
+| `react-best-practices`  | `.claude/skills/react-best-practices/`  | Vercel, React 성능 규칙                                  |
+| `composition-patterns`  | `.claude/skills/composition-patterns/`  | Vercel, 컴포넌트 합성 패턴                               |
+| `web-design-guidelines` | `.claude/skills/web-design-guidelines/` | Vercel, UI·접근성 리뷰                                   |
+| `writing-guidelines`    | `.claude/skills/writing-guidelines/`    | Vercel, 문서 문체 리뷰                                   |
+| `deploy-to-vercel`      | `.claude/skills/deploy-to-vercel/`      | Vercel, 문서 사이트 배포                                 |
 
-Vercel 스킬은 [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) `063bee9`에서 수정 없이 가져왔습니다(패키징 파일 `Archive.zip` 제외). `.prettierignore`에 있어 포매터가 바꾸지 않습니다. 갱신할 때는 새 커밋에서 디렉터리를 다시 복사하고 이 커밋을 바꿉니다.
+Vercel 스킬은 [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) `063bee9`에서 수정 없이 가져왔습니다(패키징 파일 `Archive.zip` 제외). 2026-10 확인 시점에 upstream 최신 커밋과 같습니다(`gh api repos/vercel-labs/agent-skills/compare/063bee9...main -q .ahead_by`로 다시 확인). `.prettierignore`에 있어 포매터가 바꾸지 않습니다. 갱신할 때는 새 커밋에서 디렉터리를 다시 복사하고 이 커밋을 바꿉니다.
