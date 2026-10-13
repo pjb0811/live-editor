@@ -41,6 +41,8 @@ export const BINDING_TYPES = [
   'richtext',
   'date',
   'url',
+  'email',
+  'tel',
 ] as const;
 
 export type BindingType = (typeof BINDING_TYPES)[number];

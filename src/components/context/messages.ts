@@ -43,6 +43,8 @@ export interface LiveMessages {
     useCodeEditor: string;
     invalidValue: string;
     urlPlaceholder: string;
+    emailPlaceholder: string;
+    telPlaceholder: string;
     numberPlaceholder: string;
     textPlaceholder: string;
   };
@@ -188,6 +190,8 @@ export const defaultMessages: LiveMessages = {
     useCodeEditor: 'Use the code editor to change it.',
     invalidValue: 'Invalid value.',
     urlPlaceholder: 'https://example.com',
+    emailPlaceholder: 'name@example.com',
+    telPlaceholder: '+1 555 0100',
     numberPlaceholder: 'Enter a numeric value',
     textPlaceholder: 'Enter a value',
   },

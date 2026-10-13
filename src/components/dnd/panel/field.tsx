@@ -238,14 +238,20 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  if (kind === 'url') {
+  if (kind === 'url' || kind === 'email' || kind === 'tel') {
     return (
       <div>
         <Input
-          type="url"
+          type={kind}
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder={messages.panel.urlPlaceholder}
+          placeholder={
+            kind === 'url'
+              ? messages.panel.urlPlaceholder
+              : kind === 'email'
+                ? messages.panel.emailPlaceholder
+                : messages.panel.telPlaceholder
+          }
           onBlur={e => validateAndCommit(e.target.value.trim())}
         />
         <FieldError message={validationError} />

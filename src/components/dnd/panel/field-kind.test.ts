@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  type FieldKindBinding,
-  getFieldKind,
-  isStructuralFieldKind,
-} from './field-kind';
+// The dnd entry, not `./field-kind`: these tests check what a custom panel
+// imports.
+import { type FieldKindBinding, getFieldKind, isStructuralFieldKind } from '..';
 
 const kindOf = (override: Partial<FieldKindBinding>) =>
   getFieldKind({ property: 'value', value: 'text', ...override });
@@ -35,6 +33,8 @@ describe('getFieldKind from the dnd entry', () => {
     ['color', { property: 'backgroundColor' }],
     ['date', { type: 'date' as const }],
     ['url', { type: 'url' as const }],
+    ['email', { type: 'email' as const }],
+    ['tel', { type: 'tel' as const }],
     ['number', { type: 'number' as const, value: 1 }],
     ['number', { value: 1 }],
     ['text', {}],

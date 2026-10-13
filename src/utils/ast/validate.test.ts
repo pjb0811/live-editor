@@ -146,6 +146,50 @@ describe('validateBindingValue', () => {
       validateBindingValue(makeBinding({ type: 'date' }), '2026-01-01'),
     ).toEqual({ valid: true });
   });
+
+  // Strict `YYYY-MM-DD`, the format the date picker writes (#629).
+  it.each(['1', '2026/10/13', '2026-02-30', '2026-13-01', '2026-10-13T10:00'])(
+    'fails the date %s',
+    value => {
+      expect(
+        validateBindingValue(makeBinding({ type: 'date' }), value),
+      ).toEqual({ valid: false, message: 'Must be a valid date.' });
+    },
+  );
+
+  it('passes a leap day only in a leap year', () => {
+    const binding = makeBinding({ type: 'date' });
+
+    expect(validateBindingValue(binding, '2028-02-29').valid).toBe(true);
+    expect(validateBindingValue(binding, '2026-02-29').valid).toBe(false);
+  });
+
+  it.each(['a@b.co', 'first.last+tag@sub.example.com'])(
+    'passes the email %s',
+    value => {
+      expect(
+        validateBindingValue(makeBinding({ type: 'email' }), value).valid,
+      ).toBe(true);
+    },
+  );
+
+  it.each(['a', 'a@b', 'a b@c.d', 'a@@b.c'])('fails the email %s', value => {
+    expect(validateBindingValue(makeBinding({ type: 'email' }), value)).toEqual(
+      { valid: false, message: 'Must be a valid email address.' },
+    );
+  });
+
+  it('checks no format for tel, only pattern', () => {
+    expect(
+      validateBindingValue(makeBinding({ type: 'tel' }), 'call me').valid,
+    ).toBe(true);
+    expect(
+      validateBindingValue(
+        makeBinding({ type: 'tel', pattern: '^[0-9-]+$' }),
+        'call me',
+      ).valid,
+    ).toBe(false);
+  });
 });
 
 describe('validateBindingValue constraints (#629)', () => {

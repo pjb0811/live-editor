@@ -24,6 +24,8 @@ export type FieldKind =
   | 'color'
   | 'date'
   | 'url'
+  | 'email'
+  | 'tel'
   | 'number'
   | 'text';
 
@@ -86,6 +88,14 @@ export const getFieldKind = (binding: FieldKindBinding): FieldKind => {
 
   if (type === 'url') {
     return 'url';
+  }
+
+  if (type === 'email') {
+    return 'email';
+  }
+
+  if (type === 'tel') {
+    return 'tel';
   }
 
   if (type === 'number' || typeof value === 'number') {

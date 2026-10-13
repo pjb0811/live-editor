@@ -461,6 +461,8 @@ on it can't drift from the built-in panel:
 | `'color'`    | Color picker                                           | `type` is `color`, or `property` contains `color`         |
 | `'date'`     | Date picker                                            | `type` is `date`                                          |
 | `'url'`      | URL input                                              | `type` is `url`                                           |
+| `'email'`    | Email input                                            | `type` is `email`                                         |
+| `'tel'`      | Phone input                                            | `type` is `tel`                                           |
 | `'number'`   | Number input                                           | `type` is `number`, or `value` is a number                |
 | `'text'`     | Text area                                              | anything else                                             |
 
@@ -898,8 +900,9 @@ it immediately, because its own array edit has already succeeded by then.
 | `present`                 | `boolean?`                           | `false` when the binding names an attribute the element doesn't carry. `onChange(undefined)` removes an attribute and `onChange(value)` adds it back, so this is what an on/off control reads. `undefined` means the attribute is there, or the binding is content (`innerText`, `innerHTML`, `children`). See [Optional attributes](./data-binding.mdx#optional-attributes).                           |
 | `onChange`                | `(value: unknown) => void`           | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). Pass the value as its real type — it's serialized once, at the AST boundary, where the declared `type` is known, so no string quoting on your side.                                                                                                                                                      |
 
-`BindingType` is a closed union of 10 data kinds: `array`, `object`,
-`string`, `number`, `boolean`, `color`, `jsx`, `richtext`, `date`, `url`.
+`BindingType` is a closed union of 12 data kinds: `array`, `object`,
+`string`, `number`, `boolean`, `color`, `jsx`, `richtext`, `date`, `url`,
+`email`, `tel`.
 Switching on it alone is enough for the scalar types; for `object`/`array`
 values, see `flattenEditableValue` below rather than treating them as plain
 text. [Data Binding](./data-binding.mdx) describes how each field is

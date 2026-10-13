@@ -433,6 +433,8 @@ export const getCurrentValue = (
 export const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
   'string',
   'url',
+  'email',
+  'tel',
   'date',
   'color',
   'jsx',
