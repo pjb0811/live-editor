@@ -9,9 +9,10 @@ description: "live-editor specifics for releases: `@jbpark/live-editor` is publi
 
 ## 패키지와 배포 상태
 
-- 배포 대상은 저장소 루트의 `@jbpark/live-editor` 하나다. `private: false`, `publishConfig.access: "public"`이고 2026-07-27(`930f080`)부터 npm에 공개 배포된다.
+- 배포 대상은 저장소 루트의 `@jbpark/live-editor` 하나다. `private: false`, `publishConfig.access: "public"`이고 2026-07-27(`930f080`)부터 npm에 공개 배포된다(환경 의존, 2026-10 확인).
 - **Version Packages PR 머지 = npm 공개 배포**다. 머지 전에 매번 사용자 확인을 받는다.
-- 상태는 문서가 아니라 직접 확인한다. 결과가 이 문서와 다르면 문서를 고친다.
+- `publish-check`에 넘길 값: 패키지 디렉터리는 저장소 루트, npm 이름은 `package.json`의 `name`과 같고, 배포되는 `exports`도 루트 `package.json`에 있다. 따로 정할 값은 없다.
+- 상태는 문서가 아니라 직접 확인한다. 결과가 이 문서와 다르면 실제 상태를 따르고, 문서가 낡았다는 사실을 근거(확인한 ref, 명령 출력)와 함께 사용자에게 보고한다. 문서는 사용자가 요청할 때만 고친다.
 
   ```bash
   git show origin/main:package.json | node -p "const p=JSON.parse(require('fs').readFileSync(0));({private:p.private,version:p.version,publishConfig:p.publishConfig})"
@@ -19,6 +20,8 @@ description: "live-editor specifics for releases: `@jbpark/live-editor` is publi
   ```
 
 ## 이 저장소의 `publish.yml`
+
+> 아래 순서는 환경 사실이다(환경 의존, 2026-10 확인: `origin/main`). 다시 확인할 때는 `git show origin/main:.github/workflows/publish.yml`을 읽는다.
 
 `already_tagged`(현재 버전의 `vX.Y.Z` 태그가 이미 있으면 아무것도 하지 않음)를 통과하면 다음 순서로 돈다.
 
@@ -31,9 +34,17 @@ description: "live-editor specifics for releases: `@jbpark/live-editor` is publi
 
 ## 필수 상태 체크
 
-브랜치 룰셋은 `lint-and-build`와 `draft`를 요구한다(`gh api repos/pjb0811/live-editor/rulesets`로 확인).
+브랜치 룰셋은 `lint-and-build`와 `draft`를 요구한다(환경 의존, 2026-10 확인). 지금 값은 이렇게 확인한다.
+
+```bash
+gh api repos/pjb0811/live-editor/rulesets -q '.[].id' | while read id; do gh api repos/pjb0811/live-editor/rulesets/$id -q '.rules[]|select(.type=="required_status_checks")|.parameters.required_status_checks[].context'; done
+```
+
+`draft`(`changeset-draft.yml`)는 `opened`와 `synchronize`에만 돈다. base가 바뀌거나 PR을 다시 열어도 돌지 않으므로, 다른 PR 위에 쌓은 PR은 base가 `main`으로 바뀐 뒤 새 커밋을 push해야 머지할 수 있다.
 
 ## 워크플로
+
+환경 의존, 2026-10 확인. 다시 확인할 때는 `git ls-tree --name-only origin/main .github/workflows/`.
 
 - `.github/workflows/changeset-draft.yml`, `version.yml`, `publish.yml`, `release.yml`, `ci.yml`
 - 문서 사이트는 GitHub Actions가 아니라 Vercel이 배포한다(`vercel.json`: `pnpm --dir website build` → `website/build`). 버전 릴리스와 무관하다.
