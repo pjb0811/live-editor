@@ -248,6 +248,7 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 - 호환성을 깨는 변경은 타입이나 스코프 뒤에 `!`를 붙입니다(`refactor(api)!: …`).
 - 본문은 무엇을 바꿨는지 구체적으로 쓴 `-` 불릿입니다. 호환성을 깨는 변경이면 무엇이 깨지고 무엇으로 대체하는지 씁니다.
 - `Co-Authored-By` 같은 트레일러는 붙이지 않습니다.
+- 작성자는 `pjb0811 <pjb0811@gmail.com>`입니다. 커밋 전에 이 저장소에서 `git config user.name`과 `git config user.email`이 그 값인지 확인합니다(저장소 설정이 전역 설정보다 우선합니다). 이미 push한 커밋은 고치지 않습니다. GitHub에서 squash merge한 커밋은 GitHub 계정 설정을 따르므로 확인 대상이 아닙니다.
 
 ### 이슈·PR
 
