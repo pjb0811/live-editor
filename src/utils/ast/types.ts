@@ -49,8 +49,9 @@ export type BindingType = (typeof BINDING_TYPES)[number];
 // Written as a control name (`widget: 'slider'`) or as this object; parsing
 // turns the string into `{ type }`, so consumers see one shape.
 //
-// Constraints (`min`, `max`, `pattern`, `required`) stay on the binding, not
-// here, so `validateBindingValue` checks them with or without a widget.
+// Constraints (`min`, `max`, `pattern`, `required` and the rest listed on
+// `BindingFieldSpec`) stay on the binding, not here, so
+// `validateBindingValue` checks them with or without a widget.
 export interface BindingWidget {
   // The control name, any string (such as `'slider'`). A custom panel
   // switches on it; the built-in panel ignores it.
@@ -76,7 +77,27 @@ export interface BindingFieldSpec {
   min?: number;
   max?: number;
   pattern?: string;
+  // Shown instead of the provider's `pattern` message when `pattern` fails,
+  // to say what the format is.
+  patternMessage?: string;
   required?: boolean;
+  // Length limits for a string value, in characters (an emoji counts once).
+  minLength?: number;
+  maxLength?: number;
+  // A number value must be `min` (or 0) plus a whole number of steps, so
+  // `step: 1` allows integers only.
+  step?: number;
+  // Item count limits for an array value. The built-in editor never removes
+  // the last item (#316), so a `minItems` below 1 acts as 1 there.
+  minItems?: number;
+  maxItems?: number;
+  // The earliest and latest `date` value, as `YYYY-MM-DD`. Separate from
+  // `min` and `max`, which are numbers.
+  minDate?: string;
+  maxDate?: string;
+  // The schemes a `url` value may use, such as `['https:', 'mailto:']`. The
+  // trailing colon is optional. Unset allows any scheme.
+  protocols?: string[];
   // The app's own keys, anything not listed above, such as `group` or `tab`.
   // Kept apart so they can't collide with a field added later. Config for
   // the control goes in `widget` instead. `undefined` when there are none

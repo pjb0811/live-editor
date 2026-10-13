@@ -51,18 +51,24 @@ to replace individual controls while keeping the built-in panel, or in a
 
 ## Fields
 
-| Field           | Type                                        | Meaning                                                                                                                                                                          |
-| --------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `label`         | `string`                                    | **Required.** The field's heading in the panel. Must be unique within one element.                                                                                               |
-| `property`      | `string`                                    | The prop to edit. See [Properties](#properties). Can be omitted only for `type: 'richtext'`, which then edits `innerHTML`.                                                       |
-| `type`          | `BindingType`                               | The data kind. Picks the default control and how the value is validated and written back. See [Types](#types).                                                                   |
-| `options`       | `{ label: string; value: string }[]`        | A fixed set of values. The built-in panel shows a select.                                                                                                                        |
-| `min` / `max`   | `number`                                    | Range for a number value.                                                                                                                                                        |
-| `pattern`       | `string`                                    | A regular expression (as a string) a text value must match.                                                                                                                      |
-| `required`      | `boolean`                                   | An empty value is rejected.                                                                                                                                                      |
-| `render`        | `BindingRenderMap`                          | Types the keys inside an `object` or `array` value. See [Nested fields](#nested-fields).                                                                                         |
-| `widget`        | `string` or `{ type: string; ...settings }` | A control name **you** define, plus any settings your control needs. Not a built-in option; ignored by the built-in panel. See [`widget`](#widget-a-hint-for-your-own-controls). |
-| _any other key_ | `unknown`                                   | Kept as-is under `binding.meta` for your own panel (a group name, a hint, ...).                                                                                                  |
+| Field                     | Type                                        | Meaning                                                                                                                                                                          |
+| ------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `label`                   | `string`                                    | **Required.** The field's heading in the panel. Must be unique within one element.                                                                                               |
+| `property`                | `string`                                    | The prop to edit. See [Properties](#properties). Can be omitted only for `type: 'richtext'`, which then edits `innerHTML`.                                                       |
+| `type`                    | `BindingType`                               | The data kind. Picks the default control and how the value is validated and written back. See [Types](#types).                                                                   |
+| `options`                 | `{ label: string; value: string }[]`        | A fixed set of values. The built-in panel shows a select.                                                                                                                        |
+| `min` / `max`             | `number`                                    | Range for a number value.                                                                                                                                                        |
+| `pattern`                 | `string`                                    | A regular expression (as a string) a text value must contain a match for. It isn't anchored: write `^…$` to match the whole value.                                               |
+| `patternMessage`          | `string`                                    | The message for a failed `pattern`, instead of the generic one.                                                                                                                  |
+| `required`                | `boolean`                                   | An empty value is rejected.                                                                                                                                                      |
+| `minLength` / `maxLength` | `number`                                    | Length limits for a text value, in characters.                                                                                                                                   |
+| `step`                    | `number`                                    | A number value must be `min` (or 0) plus a whole number of steps. `step: 1` allows integers only.                                                                                |
+| `minItems` / `maxItems`   | `number`                                    | Item count limits for an `array` value. The built-in editor disables add, duplicate and delete at the limits, and never removes the last item.                                   |
+| `minDate` / `maxDate`     | `string`                                    | The earliest and latest `date` value, as `YYYY-MM-DD`.                                                                                                                           |
+| `protocols`               | `string[]`                                  | The schemes a `url` value may use, such as `['https:', 'mailto:']`. Unset allows any.                                                                                            |
+| `render`                  | `BindingRenderMap`                          | Types the keys inside an `object` or `array` value. See [Nested fields](#nested-fields).                                                                                         |
+| `widget`                  | `string` or `{ type: string; ...settings }` | A control name **you** define, plus any settings your control needs. Not a built-in option; ignored by the built-in panel. See [`widget`](#widget-a-hint-for-your-own-controls). |
+| _any other key_           | `unknown`                                   | Kept as-is under `binding.meta` for your own panel (a group name, a hint, ...).                                                                                                  |
 
 A malformed value never removes the field. An unknown `type`, a `min` that is
 not a number, or an invalid `widget` is dropped on its own, and the rest of the
@@ -295,18 +301,18 @@ that use them, and keep a key's name once documents refer to it.
 
 ## Types
 
-| `type`     | Built-in control                           | Validation                       |
-| ---------- | ------------------------------------------ | -------------------------------- |
-| `string`   | Text area                                  | `required`, `pattern`            |
-| `number`   | Number input                               | `required`, `min`, `max`         |
-| `boolean`  | Checkbox                                   | —                                |
-| `color`    | Color picker                               | —                                |
-| `date`     | Date picker (value stored as `YYYY-MM-DD`) | `required`, valid date           |
-| `url`      | URL input                                  | `required`, `pattern`, valid URL |
-| `richtext` | Rich text editor                           | —                                |
-| `jsx`      | Code editor                                | —                                |
-| `object`   | One nested field per key                   | per nested field                 |
-| `array`    | Item list                                  | per nested field                 |
+| `type`     | Built-in control                           | Validation                                      |
+| ---------- | ------------------------------------------ | ----------------------------------------------- |
+| `string`   | Text area                                  | `required`, `pattern`, `minLength`, `maxLength` |
+| `number`   | Number input                               | `required`, `min`, `max`, `step`                |
+| `boolean`  | Checkbox                                   | —                                               |
+| `color`    | Color picker                               | —                                               |
+| `date`     | Date picker (value stored as `YYYY-MM-DD`) | `required`, valid date, `minDate`, `maxDate`    |
+| `url`      | URL input                                  | `required`, `pattern`, valid URL, `protocols`   |
+| `richtext` | Rich text editor                           | —                                               |
+| `jsx`      | Code editor                                | —                                               |
+| `object`   | One nested field per key                   | per nested field                                |
+| `array`    | Item list                                  | `minItems`, `maxItems`, and per nested field    |
 
 Without a `type`, the built-in panel picks a control from the current value (a
 checkbox for `true`, a number input for `42`, and so on). A property whose name
@@ -315,7 +321,7 @@ color, date and URL controls with a select.
 
 ## Constraints
 
-`min`, `max`, `pattern` and `required` are checked before an edit is committed.
+The constraints in the table above are checked before an edit is committed.
 A rejected edit shows its message under the field and leaves the source
 unchanged:
 
@@ -329,7 +335,19 @@ unchanged:
 }
 ```
 
-Typing `99` shows _Must be at most 40._ Custom panels can run the same check
+Typing `99` shows _Must be at most 40._ A `pattern` can say what it expects:
+
+```tsx
+{
+  label: 'Link URL',
+  property: 'href',
+  type: 'url',
+  pattern: '^https://',
+  patternMessage: 'Use an https:// link.',
+}
+```
+
+Custom panels can run the same check
 with `validateBindingValue(binding, value)`. To show these messages in
 another language, see [Localization](./localization.mdx#validation).
 
@@ -498,9 +516,14 @@ them. They're common enough that your code gets them as `number` and
 type (`step: '4'`) drops the whole `widget`, so your code sees
 no widget on that field and draws its default control.
 
-Keep value rules out of `widget`. `min`, `max`, `pattern` and `required`
-belong on the binding itself, where the library enforces them whatever
+Keep value rules out of `widget`. `min`, `max`, `step`, `pattern`,
+`required` and the other [constraints](#constraints) belong on the binding
+itself, where the library enforces them whatever
 control draws the field.
+
+The two `step`s differ. `widget.step` is how far your control moves per tick,
+and the library ignores it. The binding's own `step` is a rule: a value off the
+step is rejected, whatever control produced it.
 
 ### Common `meta` keys
 

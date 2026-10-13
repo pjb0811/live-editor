@@ -126,6 +126,11 @@ export interface DndItems {
   // without losing syntax. Value/property edits can remain available when
   // this is false. Every action revalidates the source before committing.
   canEditStructure: boolean;
+  // Whether `count` more items (default 1) stay within `maxItems`, and
+  // whether removing `count` leaves at least `minItems` (at least 1). The
+  // actions refuse an edit past either limit.
+  canAddItems: (count?: number) => boolean;
+  canRemoveItems: (count?: number) => boolean;
   // The source didn't parse as an array expression. `items` is empty; the
   // built-in panel also raises a toast.
   parseError: boolean;
@@ -137,6 +142,10 @@ export interface DndItemsOptions {
   onChange?: (value: string) => void;
   // Commits an edit to a nested element by its own `data-id` (#308).
   onNodeChange?: PanelNodeChange;
+  // The binding's item count limits (`BindingFieldSpec.minItems` and
+  // `maxItems`).
+  minItems?: number;
+  maxItems?: number;
 }
 
 // What an edit reads: this render's array, or the one a same-tick commit
@@ -162,7 +171,7 @@ interface PendingCommit {
 // back as `PanelBinding`s, so `Live.Dnd.Field` can render them.
 export const useDndItems = (
   value: string,
-  { render, onChange, onNodeChange }: DndItemsOptions = {},
+  { render, onChange, onNodeChange, minItems, maxItems }: DndItemsOptions = {},
 ): DndItems => {
   const { reportError, bindingOptions } = useDndEditOptions();
   const messages = useLiveMessages();
@@ -292,6 +301,33 @@ export const useDndItems = (
     return true;
   };
 
+  // The editor never removes the last item (#316), whatever `minItems` says.
+  const fewestItems = Math.max(minItems ?? 1, 1);
+
+  // Reports and returns `true` when an edit would leave `length` items,
+  // outside the binding's limits. Below 1 without a `minItems` is left to
+  // the AST functions, which refuse it with the usual error.
+  const refuseCount = (length: number) => {
+    const description =
+      maxItems !== undefined && length > maxItems
+        ? messages.validation.maxItems(maxItems)
+        : minItems !== undefined && length < fewestItems
+          ? messages.validation.minItems(fewestItems)
+          : null;
+
+    if (description === null) {
+      return false;
+    }
+
+    reportError({
+      type: 'items',
+      title: messages.editErrors.itemUpdateFailed,
+      description,
+    });
+
+    return true;
+  };
+
   // Selection indices count visible items; the AST functions take array
   // positions. Converting keeps hidden items from being lost.
   const elementIndicesOf = (snapshot: Snapshot, indices: Set<number>) =>
@@ -351,6 +387,11 @@ export const useDndItems = (
   const actions: DndItemsActions = {
     add: () => {
       const snapshot = latest();
+
+      if (refuseCount(snapshot.items.length + 1)) {
+        return;
+      }
+
       const next = appendArrayItem(snapshot.value, kind);
 
       commit(
@@ -388,7 +429,7 @@ export const useDndItems = (
       const snapshot = latest();
       const removed = locate(snapshot, elementIndex);
 
-      if (removed === null) {
+      if (removed === null || refuseCount(snapshot.items.length - 1)) {
         return;
       }
 
@@ -408,6 +449,10 @@ export const useDndItems = (
     duplicateSelected: () => {
       const snapshot = latest();
       const selected = elementIndicesOf(snapshot, snapshot.selected);
+
+      if (refuseCount(snapshot.items.length + selected.size)) {
+        return;
+      }
       const next = duplicateArrayItems(snapshot.value, selected);
       const copied = snapshot.items
         .filter(item => selected.has(item.elementIndex))
@@ -469,14 +514,15 @@ export const useDndItems = (
 
     removeSelected: () => {
       const snapshot = latest();
+      const selected = elementIndicesOf(snapshot, snapshot.selected);
+
+      if (refuseCount(snapshot.items.length - selected.size)) {
+        return;
+      }
 
       commit(
         snapshot,
-        removeArrayItems(
-          snapshot.value,
-          elementIndicesOf(snapshot, snapshot.selected),
-          kind,
-        ),
+        removeArrayItems(snapshot.value, selected, kind),
         removeIds(snapshot.ids, snapshot.selected),
         new Set(),
       );
@@ -506,6 +552,9 @@ export const useDndItems = (
     expansion,
     actions,
     canEditStructure,
+    canAddItems: (count = 1) =>
+      maxItems === undefined || items.length + count <= maxItems,
+    canRemoveItems: (count = 1) => items.length - count >= fewestItems,
     parseError,
   };
 };

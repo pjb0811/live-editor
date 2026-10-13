@@ -245,6 +245,14 @@ export const koMessages: LiveMessages = {
     pattern: '형식이 맞지 않습니다.',
     url: '올바른 URL이 아닙니다.',
     date: '올바른 날짜가 아닙니다.',
+    minLength: minLength => `${minLength}자 이상이어야 합니다.`,
+    maxLength: maxLength => `${maxLength}자 이하여야 합니다.`,
+    step: step => `${step} 단위로 입력해야 합니다.`,
+    minItems: minItems => `항목이 ${minItems}개 이상이어야 합니다.`,
+    maxItems: maxItems => `항목이 ${maxItems}개 이하여야 합니다.`,
+    minDate: minDate => `${minDate} 이후 날짜여야 합니다.`,
+    maxDate: maxDate => `${maxDate} 이전 날짜여야 합니다.`,
+    protocol: protocols => `${protocols.join(', ')} 주소만 사용할 수 있습니다.`,
   },
 };
 ```

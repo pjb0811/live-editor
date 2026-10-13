@@ -163,6 +163,15 @@ describe('parseBinding', () => {
     ['max', 'max: null'],
     ['pattern', 'pattern: 42'],
     ['required', "required: 'yes'"],
+    ['patternMessage', 'patternMessage: 1'],
+    ['minLength', 'minLength: -1'],
+    ['maxLength', 'maxLength: 2.5'],
+    ['step', 'step: 0'],
+    ['minItems', "minItems: '2'"],
+    ['maxItems', 'maxItems: -3'],
+    ['minDate', "minDate: '2026/01/01'"],
+    ['maxDate', 'maxDate: 20261231'],
+    ['protocols', "protocols: 'https:'"],
   ])(
     'degrades a malformed %s to absent rather than dropping the item',
     (key, source) => {
@@ -276,21 +285,54 @@ describe('parseBinding', () => {
 
   it('carries unrecognized keys under a namespaced meta object instead of dropping them', () => {
     const result = parseBinding(
-      `[{ label: 'Size', property: 'size', type: 'number', step: 5, unit: 'px', group: 'layout' }]`,
+      `[{ label: 'Size', property: 'size', type: 'number', precision: 2, unit: 'px', group: 'layout' }]`,
     );
 
     expect(result).toHaveLength(1);
     expect(result[0]).toHaveProperty('meta', {
-      step: 5,
+      precision: 2,
       unit: 'px',
       group: 'layout',
     });
+  });
+
+  // `step` became a constraint (#629), so it is no longer carried in `meta`.
+  it('reads a top-level step as the constraint, not meta', () => {
+    const result = parseBinding(
+      `[{ label: 'Size', property: 'size', type: 'number', step: 5, group: 'layout' }]`,
+    );
+
+    expect(result[0]).toHaveProperty('step', 5);
+    expect(result[0]).toHaveProperty('meta', { group: 'layout' });
   });
 
   it('does not add a meta field when no extra keys are authored', () => {
     const result = parseBinding("[{label: 'Title', property: 'innerText'}]");
 
     expect(result).toHaveLength(1);
+    expect(result[0]).not.toHaveProperty('meta');
+  });
+
+  it('keeps the length, step, item, date and protocol constraints (#629)', () => {
+    const result = parseBinding(
+      "[{label: 'X', property: 'y', patternMessage: 'Use lowercase', minLength: 2, maxLength: 80, step: 0.5, minItems: 1, maxItems: 6, minDate: '2026-01-01', maxDate: '2026-12-31', protocols: ['https:', 'mailto']}]",
+    );
+
+    expect(result).toEqual([
+      {
+        label: 'X',
+        property: 'y',
+        patternMessage: 'Use lowercase',
+        minLength: 2,
+        maxLength: 80,
+        step: 0.5,
+        minItems: 1,
+        maxItems: 6,
+        minDate: '2026-01-01',
+        maxDate: '2026-12-31',
+        protocols: ['https:', 'mailto'],
+      },
+    ]);
     expect(result[0]).not.toHaveProperty('meta');
   });
 
