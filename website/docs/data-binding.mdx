@@ -301,23 +301,25 @@ that use them, and keep a key's name once documents refer to it.
 
 ## Types
 
-| `type`     | Built-in control                           | Validation                                      |
-| ---------- | ------------------------------------------ | ----------------------------------------------- |
-| `string`   | Text area                                  | `required`, `pattern`, `minLength`, `maxLength` |
-| `number`   | Number input                               | `required`, `min`, `max`, `step`                |
-| `boolean`  | Checkbox                                   | —                                               |
-| `color`    | Color picker                               | —                                               |
-| `date`     | Date picker (value stored as `YYYY-MM-DD`) | `required`, valid date, `minDate`, `maxDate`    |
-| `url`      | URL input                                  | `required`, `pattern`, valid URL, `protocols`   |
-| `richtext` | Rich text editor                           | —                                               |
-| `jsx`      | Code editor                                | —                                               |
-| `object`   | One nested field per key                   | per nested field                                |
-| `array`    | Item list                                  | `minItems`, `maxItems`, and per nested field    |
+| `type`     | Built-in control                           | Validation                                                                                                  |
+| ---------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `string`   | Text area                                  | `required`, `pattern`, `minLength`, `maxLength`                                                             |
+| `number`   | Number input                               | `required`, `min`, `max`, `step`                                                                            |
+| `boolean`  | Checkbox                                   | —                                                                                                           |
+| `color`    | Color picker                               | —                                                                                                           |
+| `date`     | Date picker (value stored as `YYYY-MM-DD`) | `required`, a real `YYYY-MM-DD` day, `minDate`, `maxDate`                                                   |
+| `url`      | URL input                                  | `required`, `pattern`, valid URL, `protocols`                                                               |
+| `email`    | Email input                                | `required`, `pattern`, a `name@domain.tld` shape, `minLength`, `maxLength`                                  |
+| `tel`      | Phone input                                | `required`, `pattern`, `minLength`, `maxLength` (no built-in format, since phone formats differ by country) |
+| `richtext` | Rich text editor                           | —                                                                                                           |
+| `jsx`      | Code editor                                | —                                                                                                           |
+| `object`   | One nested field per key                   | per nested field                                                                                            |
+| `array`    | Item list                                  | `minItems`, `maxItems`, and per nested field                                                                |
 
 Without a `type`, the built-in panel picks a control from the current value (a
 checkbox for `true`, a number input for `42`, and so on). A property whose name
 contains `color` also gets a color picker. `options` replaces the text, number,
-color, date and URL controls with a select.
+color, date, URL, email and phone controls with a select.
 
 ## Constraints
 

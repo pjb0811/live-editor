@@ -278,3 +278,43 @@ describe('Field number step', () => {
     expect(onChange).toHaveBeenCalledWith(1.5);
   });
 });
+
+// `email` and `tel` (#629) use the browser's own input types.
+describe('Field email and tel', () => {
+  it.each([
+    ['email', 'name@example.com'],
+    ['tel', '+1 555 0100'],
+  ] as const)('renders a %s input', (type, placeholder) => {
+    const { container } = render(
+      <Field binding={binding({ type, value: '', rawValue: '' })} />,
+    );
+    const input = container.querySelector<HTMLInputElement>(
+      `input[type="${type}"]`,
+    )!;
+
+    expect(input.placeholder).toBe(placeholder);
+  });
+
+  it('rejects an invalid email before it commits', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <Field
+        binding={binding({ type: 'email', value: '', rawValue: '', onChange })}
+      />,
+    );
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="email"]',
+    )!;
+
+    fireEvent.change(input, { target: { value: 'nope' } });
+    fireEvent.blur(input);
+
+    expect(screen.getByText('Must be a valid email address.')).not.toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: 'a@b.co' } });
+    fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledWith('a@b.co');
+  });
+});

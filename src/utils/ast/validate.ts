@@ -15,6 +15,7 @@ export interface ValidationMessages {
   pattern: string;
   url: string;
   date: string;
+  email: string;
   minLength: (minLength: number) => string;
   maxLength: (maxLength: number) => string;
   step: (step: number) => string;
@@ -33,6 +34,7 @@ export const defaultValidationMessages: ValidationMessages = {
   pattern: 'Value does not match the required format.',
   url: 'Must be a valid URL.',
   date: 'Must be a valid date.',
+  email: 'Must be a valid email address.',
   minLength: minLength =>
     `Must be at least ${minLength} character${minLength === 1 ? '' : 's'}.`,
   maxLength: maxLength =>
@@ -57,7 +59,34 @@ const VALID: ValidationResult = { valid: true };
 // `step: 0.1` despite floating-point error.
 const STEP_TOLERANCE = 1e-9;
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+// A basic `local@domain.tld` check: no spaces, one `@`, a dot in the domain.
+// Anything stricter rejects real addresses.
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// `YYYY-MM-DD` naming a day that exists, so `2026-02-30` fails. This is the
+// format the built-in date picker writes.
+const isCalendarDate = (value: string) => {
+  const match = ISO_DATE.exec(value);
+
+  if (!match) {
+    return false;
+  }
+
+  const [year, month, day] = match.slice(1).map(Number) as [
+    number,
+    number,
+    number,
+  ];
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+};
 
 // `'https'` and `'https:'` both name the scheme `URL.protocol` reports as
 // `'https:'`.
@@ -160,21 +189,26 @@ export const validateBindingValue = (
   }
 
   if (typeof value === 'string' && binding.type === 'date') {
-    if (Number.isNaN(Date.parse(value))) {
+    if (!isCalendarDate(value)) {
       return { valid: false, message: messages.date };
     }
 
-    // `YYYY-MM-DD` strings sort by date, so they compare as text. A value in
-    // another format isn't range-checked.
-    if (ISO_DATE.test(value)) {
-      if (binding.minDate !== undefined && value < binding.minDate) {
-        return invalid(messages.minDate(binding.minDate));
-      }
-
-      if (binding.maxDate !== undefined && value > binding.maxDate) {
-        return invalid(messages.maxDate(binding.maxDate));
-      }
+    // `YYYY-MM-DD` strings sort by date, so they compare as text.
+    if (binding.minDate !== undefined && value < binding.minDate) {
+      return invalid(messages.minDate(binding.minDate));
     }
+
+    if (binding.maxDate !== undefined && value > binding.maxDate) {
+      return invalid(messages.maxDate(binding.maxDate));
+    }
+  }
+
+  if (
+    typeof value === 'string' &&
+    binding.type === 'email' &&
+    !EMAIL.test(value)
+  ) {
+    return invalid(messages.email);
   }
 
   return VALID;
