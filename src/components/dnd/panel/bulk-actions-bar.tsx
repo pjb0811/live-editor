@@ -6,6 +6,9 @@ import { useLiveMessages } from '~/components/context/messages';
 interface BulkActionsBarProps {
   count: number;
   disabled?: boolean;
+  // Each on top of `disabled`, for a limit on the item count.
+  duplicateDisabled?: boolean;
+  deleteDisabled?: boolean;
   onDuplicate: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -16,6 +19,8 @@ interface BulkActionsBarProps {
 const BulkActionsBar = ({
   count,
   disabled = false,
+  duplicateDisabled = false,
+  deleteDisabled = false,
   onDuplicate,
   onMoveUp,
   onMoveDown,
@@ -41,7 +46,7 @@ const BulkActionsBar = ({
           size="small"
           icon={<Copy />}
           title={messages.selection.duplicate}
-          disabled={disabled}
+          disabled={disabled || duplicateDisabled}
           onClick={onDuplicate}
         />
         <Button
@@ -63,7 +68,7 @@ const BulkActionsBar = ({
           size="small"
           icon={<X />}
           title={messages.selection.delete}
-          disabled={disabled}
+          disabled={disabled || deleteDisabled}
           onClick={onDelete}
         />
         <Button size="small" onClick={onClear}>

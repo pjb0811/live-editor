@@ -531,3 +531,88 @@ describe('useDndItems expansion', () => {
     expect(result.current.expansion.expandedIds).toEqual(ids);
   });
 });
+
+// A binding's `minItems` and `maxItems` (#629).
+describe('useDndItems item limits', () => {
+  const setup = (options: { minItems?: number; maxItems?: number }) => {
+    const onChange = vi.fn();
+    const reportError = vi.fn();
+    const hook = renderHook(
+      () => useDndItems(objects, { onChange, ...options }),
+      {
+        wrapper: ({ children }) => (
+          <DndEditOptionsContext.Provider value={{ reportError }}>
+            {children}
+          </DndEditOptionsContext.Provider>
+        ),
+      },
+    );
+
+    return { ...hook, onChange, reportError };
+  };
+
+  it('refuses add and duplicate past maxItems and says why', () => {
+    const { result, onChange, reportError } = setup({ maxItems: 3 });
+
+    expect(result.current.canAddItems()).toBe(false);
+
+    act(() => result.current.actions.add());
+    act(() => result.current.selection.toggle(0, false));
+    act(() => result.current.actions.duplicateSelected());
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(reportError).toHaveBeenCalledTimes(2);
+    expect(reportError).toHaveBeenLastCalledWith({
+      type: 'items',
+      title: 'Failed to update this item',
+      description: 'Must have at most 3 items.',
+    });
+  });
+
+  it('refuses remove and removeSelected below minItems', () => {
+    const { result, onChange, reportError } = setup({ minItems: 3 });
+
+    expect(result.current.canRemoveItems()).toBe(false);
+
+    act(() => result.current.actions.remove(0));
+    act(() => result.current.selection.toggle(0, false));
+    act(() => result.current.actions.removeSelected());
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(reportError).toHaveBeenLastCalledWith({
+      type: 'items',
+      title: 'Failed to update this item',
+      description: 'Must have at least 3 items.',
+    });
+  });
+
+  it('allows edits that stay within the limits', () => {
+    const { result, onChange, reportError } = setup({
+      minItems: 2,
+      maxItems: 4,
+    });
+
+    expect(result.current.canAddItems()).toBe(true);
+    expect(result.current.canAddItems(2)).toBe(false);
+    expect(result.current.canRemoveItems()).toBe(true);
+    expect(result.current.canRemoveItems(2)).toBe(false);
+
+    act(() => result.current.actions.add());
+    act(() => result.current.actions.remove(0));
+
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(reportError).not.toHaveBeenCalled();
+  });
+
+  it('counts a same-tick add toward maxItems', () => {
+    const { result, onChange, reportError } = setup({ maxItems: 4 });
+
+    act(() => {
+      result.current.actions.add();
+      result.current.actions.add();
+    });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(reportError).toHaveBeenCalledTimes(1);
+  });
+});

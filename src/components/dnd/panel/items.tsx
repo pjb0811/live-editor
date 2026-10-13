@@ -19,6 +19,8 @@ import {
 interface Props {
   value: string;
   render?: BindingRenderMap;
+  minItems?: number;
+  maxItems?: number;
   onChange?: (value: string) => void;
   onChildChange?: PanelNodeChange;
 }
@@ -84,7 +86,14 @@ const NestedGroup = ({
 
 // The built-in Items editor: markup over `useDndItems`, which does all the
 // reading and writing.
-const Items = ({ value, render, onChange, onChildChange }: Props) => {
+const Items = ({
+  value,
+  render,
+  minItems,
+  maxItems,
+  onChange,
+  onChildChange,
+}: Props) => {
   const messages = useLiveMessages();
   const {
     kind,
@@ -93,11 +102,15 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     expansion,
     actions,
     canEditStructure,
+    canAddItems,
+    canRemoveItems,
     parseError,
   } = useDndItems(value, {
     render,
     onChange,
     onNodeChange: onChildChange,
+    minItems,
+    maxItems,
   });
 
   const header = (
@@ -113,6 +126,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
           icon={<Plus />}
           variant="solid"
           color="green"
+          disabled={!canAddItems()}
           onClick={actions.add}
         >
           {messages.items.add}
@@ -155,6 +169,8 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
     <BulkActionsBar
       count={selection.selected.size}
       disabled={!canEditStructure}
+      duplicateDisabled={!canAddItems(selection.selected.size)}
+      deleteDisabled={!canRemoveItems(selection.selected.size)}
       onDuplicate={actions.duplicateSelected}
       onMoveUp={() => actions.moveSelected('up')}
       onMoveDown={() => actions.moveSelected('down')}
@@ -259,7 +275,7 @@ const Items = ({ value, render, onChange, onChildChange }: Props) => {
                 count={items.length}
                 labels={messages.items}
                 disabled={!canEditStructure}
-                deleteDisabled={items.length <= 1}
+                deleteDisabled={!canRemoveItems()}
                 onMove={toIndex => actions.move(item.elementIndex, toIndex)}
                 onDelete={() => actions.remove(item.elementIndex)}
               />

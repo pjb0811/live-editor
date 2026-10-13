@@ -58,11 +58,21 @@ export interface PanelBinding {
   // items, which the built-in panel uses for their fields.
   render?: BindingRenderMap;
   // Constraints, as `validateBindingValue` checks them. `min` and `max`
-  // apply to the number a `type: 'number'` binding's `value` holds.
+  // apply to the number a `type: 'number'` binding's `value` holds. See
+  // `BindingFieldSpec` for each.
   min?: number;
   max?: number;
   pattern?: string;
+  patternMessage?: string;
   required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  step?: number;
+  minItems?: number;
+  maxItems?: number;
+  minDate?: string;
+  maxDate?: string;
+  protocols?: string[];
   // The binding's own keys, such as `group` or `tab`, kept apart so they
   // can't collide with a field added later. Absent when there are none
   // (#234).
@@ -166,7 +176,16 @@ export const toBindingFields = (
   min: binding.min,
   max: binding.max,
   pattern: binding.pattern,
+  patternMessage: binding.patternMessage,
   required: binding.required,
+  minLength: binding.minLength,
+  maxLength: binding.maxLength,
+  step: binding.step,
+  minItems: binding.minItems,
+  maxItems: binding.maxItems,
+  minDate: binding.minDate,
+  maxDate: binding.maxDate,
+  protocols: binding.protocols,
   meta: binding.meta,
 });
 

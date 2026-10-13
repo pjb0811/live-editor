@@ -148,6 +148,137 @@ describe('validateBindingValue', () => {
   });
 });
 
+describe('validateBindingValue constraints (#629)', () => {
+  it('checks minLength and maxLength in characters', () => {
+    const binding = makeBinding({ minLength: 2, maxLength: 3 });
+
+    expect(validateBindingValue(binding, 'a')).toEqual({
+      valid: false,
+      message: 'Must be at least 2 characters.',
+    });
+    expect(validateBindingValue(binding, 'abcd')).toEqual({
+      valid: false,
+      message: 'Must be at most 3 characters.',
+    });
+    expect(validateBindingValue(binding, 'abc').valid).toBe(true);
+    // One emoji, two UTF-16 code units.
+    expect(
+      validateBindingValue(makeBinding({ maxLength: 1 }), '😀').valid,
+    ).toBe(true);
+  });
+
+  it('does not check the length of an empty value unless required', () => {
+    expect(validateBindingValue(makeBinding({ minLength: 2 }), '').valid).toBe(
+      true,
+    );
+  });
+
+  it('shows patternMessage instead of the pattern message', () => {
+    expect(
+      validateBindingValue(
+        makeBinding({ pattern: '^https://', patternMessage: 'Use https://' }),
+        'http://a.b',
+      ),
+    ).toEqual({ valid: false, message: 'Use https://' });
+  });
+
+  it('checks step from min, or from 0 without one', () => {
+    expect(validateBindingValue(makeBinding({ step: 1 }), 2.5)).toEqual({
+      valid: false,
+      message: 'Must be in steps of 1.',
+    });
+    expect(validateBindingValue(makeBinding({ step: 1 }), 3).valid).toBe(true);
+    expect(
+      validateBindingValue(makeBinding({ step: 2, min: 1 }), 5).valid,
+    ).toBe(true);
+    expect(
+      validateBindingValue(makeBinding({ step: 2, min: 1 }), 4).valid,
+    ).toBe(false);
+  });
+
+  it('accepts decimal steps despite floating-point error', () => {
+    expect(validateBindingValue(makeBinding({ step: 0.1 }), 0.3).valid).toBe(
+      true,
+    );
+    expect(validateBindingValue(makeBinding({ step: 0.1 }), 0.35).valid).toBe(
+      false,
+    );
+  });
+
+  it('checks minItems and maxItems on an array value', () => {
+    const binding = makeBinding({ minItems: 2, maxItems: 3 });
+
+    expect(validateBindingValue(binding, [1])).toEqual({
+      valid: false,
+      message: 'Must have at least 2 items.',
+    });
+    expect(validateBindingValue(binding, [1, 2, 3, 4])).toEqual({
+      valid: false,
+      message: 'Must have at most 3 items.',
+    });
+    expect(validateBindingValue(binding, [1, 2]).valid).toBe(true);
+  });
+
+  it('checks a date against minDate and maxDate', () => {
+    const binding = makeBinding({
+      type: 'date',
+      minDate: '2026-01-01',
+      maxDate: '2026-12-31',
+    });
+
+    expect(validateBindingValue(binding, '2025-12-31')).toEqual({
+      valid: false,
+      message: 'Must be on or after 2026-01-01.',
+    });
+    expect(validateBindingValue(binding, '2027-01-01')).toEqual({
+      valid: false,
+      message: 'Must be on or before 2026-12-31.',
+    });
+    expect(validateBindingValue(binding, '2026-01-01').valid).toBe(true);
+    expect(validateBindingValue(binding, '2026-12-31').valid).toBe(true);
+  });
+
+  it('ignores a number min on a date, and minDate on a number', () => {
+    expect(
+      validateBindingValue(makeBinding({ type: 'date', min: 5 }), '2026-01-01')
+        .valid,
+    ).toBe(true);
+    expect(
+      validateBindingValue(
+        makeBinding({ type: 'number', minDate: '2026-01-01' }),
+        1,
+      ).valid,
+    ).toBe(true);
+  });
+
+  it('allows only the listed protocols, with or without the colon', () => {
+    const binding = makeBinding({
+      type: 'url',
+      protocols: ['https:', 'MAILTO'],
+    });
+
+    expect(validateBindingValue(binding, 'javascript:alert(1)')).toEqual({
+      valid: false,
+      message: 'Must use https:, mailto:.',
+    });
+    expect(validateBindingValue(binding, 'https://a.b').valid).toBe(true);
+    expect(validateBindingValue(binding, 'mailto:a@b.c').valid).toBe(true);
+  });
+
+  it('allows any protocol when protocols is unset or empty', () => {
+    expect(
+      validateBindingValue(makeBinding({ type: 'url' }), 'javascript:void(0)')
+        .valid,
+    ).toBe(true);
+    expect(
+      validateBindingValue(
+        makeBinding({ type: 'url', protocols: [] }),
+        'ftp://a.b',
+      ).valid,
+    ).toBe(true);
+  });
+});
+
 // Translated messages for a host's own language (#524).
 describe('validateBindingValue messages', () => {
   const binding = makeBinding({ required: true, max: 40 });

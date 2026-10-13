@@ -124,6 +124,8 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
       <Items
         value={rawValue}
         render={binding.render}
+        minItems={binding.minItems}
+        maxItems={binding.maxItems}
         onChange={onChange}
         onChildChange={onNodeChange}
       />
@@ -256,6 +258,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
       <div>
         <Input
           type="number"
+          step={binding.step}
           value={text}
           onChange={e => setText(e.target.value)}
           placeholder={messages.panel.numberPlaceholder}

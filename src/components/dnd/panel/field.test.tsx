@@ -243,3 +243,38 @@ describe('Field object values', () => {
     expect(screen.queryByText('size')).toBeNull();
   });
 });
+
+// `step` (#629): the number input gets the same step, and a value off the
+// step is rejected before it commits.
+describe('Field number step', () => {
+  it('passes step to the input and rejects a value off the step', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <Field
+        binding={binding({
+          type: 'number',
+          step: 0.5,
+          value: 1,
+          rawValue: '1',
+          onChange,
+        })}
+      />,
+    );
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="number"]',
+    )!;
+
+    expect(input.step).toBe('0.5');
+
+    fireEvent.change(input, { target: { value: '1.2' } });
+    fireEvent.blur(input);
+
+    expect(screen.getByText('Must be in steps of 0.5.')).not.toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: '1.5' } });
+    fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledWith(1.5);
+  });
+});

@@ -403,3 +403,34 @@ describe('Items collapse and sorting', () => {
     ).toBe(true);
   });
 });
+
+// A binding's `minItems` and `maxItems` (#629).
+describe('Items panel item limits', () => {
+  const three = `[{ label: 'A' }, { label: 'B' }, { label: 'C' }]`;
+  const deleteButtons = () =>
+    screen.getAllByRole<HTMLButtonElement>('button', { name: 'Delete item' });
+
+  it('disables Add at maxItems', () => {
+    render(<Items value={three} maxItems={3} />);
+
+    expect(addButton()?.disabled).toBe(true);
+  });
+
+  it('keeps Add enabled below maxItems', () => {
+    render(<Items value={three} maxItems={4} />);
+
+    expect(addButton()?.disabled).toBe(false);
+  });
+
+  it('disables each Delete at minItems', () => {
+    render(<Items value={three} minItems={3} />);
+
+    expect(deleteButtons().every(button => button.disabled)).toBe(true);
+  });
+
+  it('keeps the last item undeletable without minItems', () => {
+    render(<Items value={`[{ label: 'A' }]`} />);
+
+    expect(deleteButtons()[0]!.disabled).toBe(true);
+  });
+});

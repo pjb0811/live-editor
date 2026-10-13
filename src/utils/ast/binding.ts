@@ -19,6 +19,9 @@ import {
 import { evaluateLiteral, parseArrayExpression, parseValue } from './value';
 
 const bindingTypeSchema = z.enum(BINDING_TYPES);
+// A length or an item count.
+const countSchema = z.number().int().nonnegative();
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 const bindingOptionSchema = z.object({
   label: z.string(),
@@ -81,7 +84,16 @@ const KNOWN_BINDING_KEYS = new Set([
   'min',
   'max',
   'pattern',
+  'patternMessage',
   'required',
+  'minLength',
+  'maxLength',
+  'step',
+  'minItems',
+  'maxItems',
+  'minDate',
+  'maxDate',
+  'protocols',
 ]);
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
@@ -105,7 +117,16 @@ const sanitizeField = (raw: Record<string, unknown>): BindingRenderLeaf => {
     min: pick(z.number(), raw.min),
     max: pick(z.number(), raw.max),
     pattern: pick(z.string(), raw.pattern),
+    patternMessage: pick(z.string(), raw.patternMessage),
     required: pick(z.boolean(), raw.required),
+    minLength: pick(countSchema, raw.minLength),
+    maxLength: pick(countSchema, raw.maxLength),
+    step: pick(z.number().positive(), raw.step),
+    minItems: pick(countSchema, raw.minItems),
+    maxItems: pick(countSchema, raw.maxItems),
+    minDate: pick(dateSchema, raw.minDate),
+    maxDate: pick(dateSchema, raw.maxDate),
+    protocols: pick(z.array(z.string().min(1)), raw.protocols),
     meta: metaEntries.length > 0 ? Object.fromEntries(metaEntries) : undefined,
   };
 
