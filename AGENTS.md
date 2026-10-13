@@ -26,10 +26,10 @@ live-editor/
 │  │  │  ├─ layout.tsx      # Palette/Canvas/Panel/Layout 합성 컴포넌트
 │  │  │  ├─ layout-context.ts # 커스텀 레이아웃·팔레트·패널 훅
 │  │  │  ├─ edit-options.ts, panel-binding.ts, inspector.ts # 편집 에러·패널 바인딩·요소 picker (여러 영역 공용)
-│  │  │  ├─ canvas/         # 캔버스: droppable, sortable, overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight
+│  │  │  ├─ canvas/         # 캔버스: droppable, sortable(+section-handlers 컨텍스트), overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight, canvas-notice(빈 캔버스 안내)
 │  │  │  ├─ palette/        # 팔레트: draggable, palette-drag(드래그 데이터)
 │  │  │  ├─ state/          # 상태 훅: use-section-document(섹션 문서), use-dnd-keyboard, use-inspector-state, use-delete-flow, use-section-editing(패널 편집 commit), edit-errors(편집 에러 보고)
-│  │  │  └─ panel/          # 프로퍼티 편집 패널 (children/field/items/node.tsx)
+│  │  │  └─ panel/          # 프로퍼티 편집 패널: panel·node·field(+field-kind, field-group, color-picker-field, jsx-editor-field), Items/Children 편집기(items, children, sortable-items, row-controls, selection-checkbox, bulk-actions-bar), 훅(use-dnd-items + items-source·item-bindings·item-identity·use-item-expansion, use-dnd-children, use-structural-selection)
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx, use-iframe-document.ts, use-host-style-sync.ts, inject-assets.ts, use-auto-height.ts, auto-height.ts, animations.ts, measure.ts, viewport-units.ts)
@@ -45,7 +45,13 @@ live-editor/
 │  │  ├─ overlays/          # 섹션의 ui-kit Modal·Drawer를 container로 미리보기 안에 띄우기 (iframe/shadow)
 │  │  └─ shared/            # 페이지 공용 예제 섹션, 프레임 설정
 │  ├─ utils/
-│  │  ├─ index.ts           # compile(), cn() 등 핵심 유틸 (UI kit을 import하지 않음 — Node에서 로드 가능해야 함)
+│  │  ├─ index.ts           # 공개 `./utils` 배럴 (재수출만, 라이브러리 내부는 아래 모듈에서 import)
+│  │  ├─ compile.ts         # compile(), clearCompilationCache() — Babel 트랜스파일 + 모듈 실행 + LRU 캐시
+│  │  ├─ cn.ts              # cn() (clsx + tailwind-merge)
+│  │  ├─ scripts.ts         # 외부 스크립트 blob 캐시와 preloadScripts()
+│  │  ├─ sections.ts        # 섹션 문서 헬퍼 (extractSections, replaceSections, createDocument, checkDocument)
+│  │  ├─ editor-caches.ts   # 페이지 전역 캐시 등록과 clearEditorCaches()
+│  │  ├─ detect-typescript.ts # 코드가 TypeScript인지 판별
 │  │  ├─ cache.ts           # 바운디드 LRU 캐시
 │  │  ├─ selection.ts       # 다중 선택 헬퍼
 │  │  ├─ ast/               # Babel AST 조작 유틸 (파이프라인 단계별 분리, index.ts는 재수출 배럴)
@@ -101,7 +107,7 @@ live-editor/
 
 | 파일                                | 역할                                                                                                                                                                            |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/utils/index.ts`                | `compile()`, `cn()`, `getCachedScriptBlob()`. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                                                        |
+| `src/utils/index.ts`                | 공개 `./utils` 배럴: `compile()`, `cn()`, `preloadScripts()`, 섹션 헬퍼 등을 재수출. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                 |
 | `src/utils/ast/`                    | 공개: `extract()`, `update()`/`updateAll()`, `validateBindingValue()` 등. 내부 코드는 배럴 대신 모듈 파일에서 import — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
 | `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `PALETTE_SECTIONS`(재수출, 정의는 `palette-sections.ts`)                                                              |
 | `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                                                        |
