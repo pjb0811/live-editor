@@ -34,6 +34,25 @@ vi.mock('@jbpark/ui-kit', async importOriginal => {
 
   return {
     ...actual,
+    // Reports what it was given and picks 2026-10-13 14:30 on click, so the
+    // tests read the field's own parsing and formatting, not the calendar.
+    DatePicker: ({
+      value,
+      showTime,
+      onChange,
+    }: {
+      value?: Date;
+      showTime?: boolean;
+      onChange?: (date: Date | undefined) => void;
+    }) => (
+      <button
+        type="button"
+        data-testid="date-picker"
+        data-value={value ? value.toString() : ''}
+        data-show-time={String(Boolean(showTime))}
+        onClick={() => onChange?.(new Date(2026, 9, 13, 14, 30))}
+      />
+    ),
     Select: ({
       options,
       onChange,
@@ -316,5 +335,63 @@ describe('Field email and tel', () => {
     fireEvent.blur(input);
 
     expect(onChange).toHaveBeenCalledWith('a@b.co');
+  });
+});
+
+// `time` and `datetime` (#629) use ui-kit's TimePicker and DatePicker's
+// `showTime`.
+describe('Field time and datetime', () => {
+  it('commits an HH:mm time from the time picker', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <Field
+        binding={binding({
+          type: 'time',
+          label: 'Opens at',
+          value: '09:00',
+          rawValue: '09:00',
+          onChange,
+        })}
+      />,
+    );
+    const input =
+      container.querySelector<HTMLInputElement>('input[type="time"]')!;
+
+    expect(input.value).toBe('09:00');
+    expect(input.getAttribute('aria-label')).toBe('Opens at');
+
+    fireEvent.change(input, { target: { value: '14:30' } });
+
+    expect(onChange).toHaveBeenCalledWith('14:30');
+  });
+
+  it.each([
+    ['date', '2026-10-13'],
+    ['datetime', '2026-10-13T14:30'],
+  ] as const)('reads and writes a %s value', (type, written) => {
+    const onChange = vi.fn();
+
+    render(
+      <Field
+        binding={binding({
+          type,
+          value: '2026-01-02T03:04',
+          rawValue: type === 'date' ? '2026-01-02' : '2026-01-02T03:04',
+          onChange,
+        })}
+      />,
+    );
+    const picker = screen.getByTestId('date-picker');
+
+    expect(picker.dataset.showTime).toBe(String(type === 'datetime'));
+    expect(new Date(picker.dataset.value!).getTime()).toBe(
+      type === 'date'
+        ? new Date(2026, 0, 2).getTime()
+        : new Date(2026, 0, 2, 3, 4).getTime(),
+    );
+
+    fireEvent.click(picker);
+
+    expect(onChange).toHaveBeenCalledWith(written);
   });
 });

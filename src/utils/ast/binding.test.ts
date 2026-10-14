@@ -170,6 +170,7 @@ describe('parseBinding', () => {
     ['minItems', "minItems: '2'"],
     ['maxItems', 'maxItems: -3'],
     ['minDate', "minDate: '2026/01/01'"],
+    ['minDate', "minDate: '2026-01-01 10:00'"],
     ['maxDate', 'maxDate: 20261231'],
     ['protocols', "protocols: 'https:'"],
   ])(
@@ -293,6 +294,18 @@ describe('parseBinding', () => {
       precision: 2,
       unit: 'px',
       group: 'layout',
+    });
+  });
+
+  it('keeps a date-time minDate and maxDate', () => {
+    const result = parseBinding(
+      "[{label: 'X', property: 'y', type: 'datetime', minDate: '2026-01-01T09:00', maxDate: '2026-12-31'}]",
+    );
+
+    expect(result[0]).toMatchObject({
+      type: 'datetime',
+      minDate: '2026-01-01T09:00',
+      maxDate: '2026-12-31',
     });
   });
 

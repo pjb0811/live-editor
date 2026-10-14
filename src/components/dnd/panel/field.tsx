@@ -6,6 +6,7 @@ import {
   Input,
   RichTextEditor,
   Select,
+  TimePicker,
 } from '@jbpark/ui-kit';
 
 import { useLiveMessages } from '~/components/context/messages';
@@ -22,25 +23,38 @@ import Items from './items';
 import JSXEditorField from './jsx-editor-field';
 import type { FieldProps } from './types';
 
+// A `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` value as a local `Date`, or
+// `undefined` for anything else.
 const parseDateValue = (value: string): Date | undefined => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(
+    value.trim(),
+  );
 
   if (!match) {
     return undefined;
   }
 
-  const [, year, month, day] = match;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  const [, year, month, day, hours = '0', minutes = '0'] = match;
+  const date = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hours),
+    Number(minutes),
+  );
 
   return Number.isNaN(date.getTime()) ? undefined : date;
 };
 
-const formatDateValue = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+const pad = (value: number) => String(value).padStart(2, '0');
 
-  return `${year}-${month}-${day}`;
+// `YYYY-MM-DD`, or `YYYY-MM-DDTHH:mm` with `withTime`, in local time.
+const formatDateValue = (date: Date, withTime = false): string => {
+  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+  return withTime
+    ? `${day}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+    : day;
 };
 
 // The formatting controls for a small sidebar field, not every preset.
@@ -224,14 +238,30 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     return <ColorPickerField value={stringValue} onChange={commitIfChanged} />;
   }
 
-  if (kind === 'date') {
+  if (kind === 'date' || kind === 'datetime') {
+    const withTime = kind === 'datetime';
+
     return (
       <div>
         <DatePicker
           value={parseDateValue(stringValue)}
+          showTime={withTime}
           onChange={date =>
-            validateAndCommit(date ? formatDateValue(date) : '')
+            validateAndCommit(date ? formatDateValue(date, withTime) : '')
           }
+        />
+        <FieldError message={validationError} />
+      </div>
+    );
+  }
+
+  if (kind === 'time') {
+    return (
+      <div>
+        <TimePicker
+          value={stringValue || null}
+          aria-label={binding.label}
+          onChange={time => validateAndCommit(time ?? '')}
         />
         <FieldError message={validationError} />
       </div>

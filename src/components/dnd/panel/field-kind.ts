@@ -23,6 +23,8 @@ export type FieldKind =
   | 'select'
   | 'color'
   | 'date'
+  | 'time'
+  | 'datetime'
   | 'url'
   | 'email'
   | 'tel'
@@ -84,6 +86,14 @@ export const getFieldKind = (binding: FieldKindBinding): FieldKind => {
 
   if (type === 'date') {
     return 'date';
+  }
+
+  if (type === 'time') {
+    return 'time';
+  }
+
+  if (type === 'datetime') {
+    return 'datetime';
   }
 
   if (type === 'url') {
