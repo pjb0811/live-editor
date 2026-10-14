@@ -12,11 +12,10 @@ Canvas의 DnD 편집 결과를 Babel AST 변환으로 소스 코드에 역으로
 ```text
 live-editor/
 ├─ .github/
-│  ├─ skills/ast/           # Babel AST 변환 스킬 (SKILL.md)
 │  ├─ scripts/              # changeset/릴리즈 노트 자동화 스크립트 (*.mjs)
 │  └─ workflows/            # CI, changeset-draft, version, publish, release
 ├─ .claude/
-│  └─ skills/               # 이 저장소 전용 스킬과 vendored Vercel 스킬 (아래 "공유 스킬" 참고)
+│  └─ skills/               # 이 저장소 전용 스킬(ast, binding-field, ui-messages, verify, version-management)과 vendored Vercel 스킬 (아래 "공유 스킬" 참고)
 ├─ src/
 │  ├─ components/
 │  │  ├─ context/           # 전역 상태 (PreviewContext, ErrorContext, MessagesContext — UI 문구 `messages`)
@@ -108,7 +107,7 @@ live-editor/
 | 파일                                | 역할                                                                                                                                                                            |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/utils/index.ts`                | 공개 `./utils` 배럴: `compile()`, `cn()`, `preloadScripts()`, 섹션 헬퍼 등을 재수출. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                 |
-| `src/utils/ast/`                    | 공개: `extract()`, `update()`/`updateAll()`, `validateBindingValue()` 등. 내부 코드는 배럴 대신 모듈 파일에서 import — 모듈 구조는 [ast 스킬](.github/skills/ast/SKILL.md) 참고 |
+| `src/utils/ast/`                    | 공개: `extract()`, `update()`/`updateAll()`, `validateBindingValue()` 등. 내부 코드는 배럴 대신 모듈 파일에서 import — 모듈 구조는 [ast 스킬](.claude/skills/ast/SKILL.md) 참고 |
 | `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `PALETTE_SECTIONS`(재수출, 정의는 `palette-sections.ts`)                                                              |
 | `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                                                        |
 | `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                                                  |
@@ -231,15 +230,15 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 
 ## 🔗 공유 스킬
 
-모든 pjb0811 저장소가 함께 쓰는 절차는 비공개 저장소 `pjb0811/skills`의 전역 Claude Code 스킬입니다. 그 스킬을 읽을 수 없는 에이전트는 이 파일의 요약을 따릅니다.
+모든 pjb0811 저장소가 함께 쓰는 **결정**(언어, 트레일러, 코드 스타일 기본값 등)은 비공개 저장소 `pjb0811/skills`의 `global/CLAUDE.md`에, **절차**는 같은 저장소의 전역 Claude Code 스킬에 있습니다. 둘을 읽을 수 없는 에이전트는 이 파일의 요약을 따릅니다.
 
-| 스킬                                  | 용도                                                                           |
-| ------------------------------------- | ------------------------------------------------------------------------------ |
-| `commit`, `pr`, `issue`               | 커밋 메시지, PR·이슈 본문                                                      |
-| `coding-style`                        | 컨벤션, 일괄 리네임, 주석(C), boolean 이름(D), 중괄호(E), 서브컴포넌트 구조(F) |
-| `changesets-release`, `publish-check` | 릴리스 흐름과 배포 전 점검                                                     |
-| `shared-library-first`                | 재사용 UI는 ui-kit, 훅은 use-hooks에 먼저 구현                                 |
-| `ref-verification`                    | 저장소 상태를 작업 트리가 아니라 git ref 기준으로 확인                         |
+| 스킬                                  | 용도                                                                                     |
+| ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `commit`, `pr`, `issue`               | 커밋 메시지, PR·이슈 본문                                                                |
+| `coding-style`                        | 컨벤션, 일괄 리네임, 주석(C), boolean 이름(D), 중괄호(E), 서브컴포넌트 구조(F), 빈 줄(G) |
+| `changesets-release`, `publish-check` | 릴리스 흐름과 배포 전 점검                                                               |
+| `shared-library-first`                | 재사용 UI는 ui-kit, 훅은 use-hooks에 먼저 구현                                           |
+| `ref-verification`                    | 저장소 상태를 작업 트리가 아니라 git ref 기준으로 확인                                   |
 
 ### 커밋 메시지
 
@@ -248,17 +247,34 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 - 호환성을 깨는 변경은 타입이나 스코프 뒤에 `!`를 붙입니다(`refactor(api)!: …`).
 - 본문은 무엇을 바꿨는지 구체적으로 쓴 `-` 불릿입니다. 호환성을 깨는 변경이면 무엇이 깨지고 무엇으로 대체하는지 씁니다.
 - `Co-Authored-By` 같은 트레일러는 붙이지 않습니다.
+- 작성자는 `pjb0811 <pjb0811@gmail.com>`입니다. 커밋 전에 이 저장소에서 `git config user.name`과 `git config user.email`이 그 값인지 확인합니다(저장소 설정이 전역 설정보다 우선합니다). 이미 push한 커밋은 고치지 않습니다. GitHub에서 squash merge한 커밋은 GitHub 계정 설정을 따르므로 확인 대상이 아닙니다.
+
+### 이슈·PR
+
+- 제목과 본문, changeset 요약은 영어로 씁니다. 사용자와의 대화는 사용자의 언어로 합니다.
+- 본문만 읽고 재현·검증할 수 있게 씁니다. 실행한 검사와 결과를 적고, 하지 않은 검사는 하지 않았다고 씁니다.
+- `Generated with …` 같은 AI 도구 문구나 서명은 넣지 않습니다.
+
+### 중괄호와 빈 줄
+
+이 저장소의 ESLint 설정(`eslint.config.js`)은 `curly`와 `padding-line-between-statements`를 정하지 않으므로(2026-10 확인), 새로 쓰거나 고친 코드에는 아래 기본값을 적용합니다. 손대지 않은 코드는 이 이유만으로 고치지 않습니다.
+
+- `if`/`else`/`for`/`while` 본문은 한 줄이라도 중괄호로 감쌉니다.
+- 선언 뒤, 연속된 가드절 사이, `return` 앞(블록의 첫 문장이 아닐 때)에 빈 줄을 한 줄 넣습니다. 한 덩어리로 읽히는 문장은 붙여 둡니다.
 
 ### 저장소 스킬
 
-| 스킬                    | 경로                                    | 설명                              |
-| ----------------------- | --------------------------------------- | --------------------------------- |
-| `ast`                   | `.github/skills/ast/`                   | Babel AST 변환 코드 작성          |
-| `version-management`    | `.claude/skills/version-management/`    | 이 저장소의 패키지·배포 세부 사항 |
-| `react-best-practices`  | `.claude/skills/react-best-practices/`  | Vercel, React 성능 규칙           |
-| `composition-patterns`  | `.claude/skills/composition-patterns/`  | Vercel, 컴포넌트 합성 패턴        |
-| `web-design-guidelines` | `.claude/skills/web-design-guidelines/` | Vercel, UI·접근성 리뷰            |
-| `writing-guidelines`    | `.claude/skills/writing-guidelines/`    | Vercel, 문서 문체 리뷰            |
-| `deploy-to-vercel`      | `.claude/skills/deploy-to-vercel/`      | Vercel, 문서 사이트 배포          |
+| 스킬                    | 경로                                    | 설명                                                     |
+| ----------------------- | --------------------------------------- | -------------------------------------------------------- |
+| `ast`                   | `.claude/skills/ast/`                   | `src/utils/ast/` 모듈 맵, 의존 방향, 소스 보존 편집 규칙 |
+| `binding-field`         | `.claude/skills/binding-field/`         | 바인딩 타입·제약 추가 시 고칠 곳과 호환성 함정           |
+| `ui-messages`           | `.claude/skills/ui-messages/`           | UI 문구 키 추가, 한국어 세트 두 곳 동기화                |
+| `verify`                | `.claude/skills/verify/`                | 변경 종류별로 돌릴 검사                                  |
+| `version-management`    | `.claude/skills/version-management/`    | 이 저장소의 패키지·배포 세부 사항                        |
+| `react-best-practices`  | `.claude/skills/react-best-practices/`  | Vercel, React 성능 규칙                                  |
+| `composition-patterns`  | `.claude/skills/composition-patterns/`  | Vercel, 컴포넌트 합성 패턴                               |
+| `web-design-guidelines` | `.claude/skills/web-design-guidelines/` | Vercel, UI·접근성 리뷰                                   |
+| `writing-guidelines`    | `.claude/skills/writing-guidelines/`    | Vercel, 문서 문체 리뷰                                   |
+| `deploy-to-vercel`      | `.claude/skills/deploy-to-vercel/`      | Vercel, 문서 사이트 배포                                 |
 
-Vercel 스킬은 [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) `063bee9`에서 수정 없이 가져왔습니다(패키징 파일 `Archive.zip` 제외). `.prettierignore`에 있어 포매터가 바꾸지 않습니다. 갱신할 때는 새 커밋에서 디렉터리를 다시 복사하고 이 커밋을 바꿉니다.
+Vercel 스킬은 [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) `063bee9`에서 수정 없이 가져왔습니다(패키징 파일 `Archive.zip` 제외). 2026-10 확인 시점에 upstream 최신 커밋과 같습니다(`gh api repos/vercel-labs/agent-skills/compare/063bee9...main -q .ahead_by`로 다시 확인). `.prettierignore`에 있어 포매터가 바꾸지 않습니다. 갱신할 때는 새 커밋에서 디렉터리를 다시 복사하고 이 커밋을 바꿉니다.

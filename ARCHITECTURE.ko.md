@@ -252,7 +252,7 @@ Dnd (dnd.tsx)
 | 구조 | `items.ts`, `array-source.ts`, `children.ts`                     | 나머지를 바이트 단위로 그대로 두고 배열 리터럴과 JSX 자식 편집                                                               |
 | 검사 | `validate.ts`                                                    | `validateBindingValue`: required, min/max, pattern, url, date                                                                |
 
-이 계층의 모든 변경이 따르는 규칙입니다([AST 스킬](./.github/skills/ast/SKILL.md)에도 있습니다).
+이 계층의 모든 변경이 따르는 규칙입니다([AST 스킬](./.claude/skills/ast/SKILL.md)에도 있습니다).
 
 - **공유되거나 캐시된 AST를 직접 바꾸지 않습니다.** 파싱 결과는 캐시되므로, 구간을 기록하고 텍스트를 고칩니다.
 - **다시 생성하지 말고 구간을 편집합니다.** 바뀌는 바이트만 새로 씁니다. 요소나 섹션 전체를 다시 생성하면 포맷이 바뀌고 주석이 사라집니다.

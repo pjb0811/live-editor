@@ -339,7 +339,7 @@ follow the pipeline:
 | Structure | `items.ts`, `array-source.ts`, `children.ts`                     | Edit array literals and JSX children while keeping everything else byte-identical                                                                               |
 | Check     | `validate.ts`                                                    | `validateBindingValue`: required, min/max, pattern, url, date                                                                                                   |
 
-Rules every change here follows (also in [the AST skill](./.github/skills/ast/SKILL.md)):
+Rules every change here follows (also in [the AST skill](./.claude/skills/ast/SKILL.md)):
 
 - **Never mutate a shared or cached AST.** Parse results are cached; record
   spans and patch text instead.
