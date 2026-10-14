@@ -18,9 +18,11 @@ import { useDndEditOptions } from '../edit-options';
 import { resolveRenderEntry, toBindingFields } from '../panel-binding';
 import Children from './children';
 import ColorPickerField from './color-picker-field';
+import { useFieldIds } from './field-ids';
 import { getFieldKind } from './field-kind';
 import Items from './items';
 import JSXEditorField from './jsx-editor-field';
+import LabeledField from './labeled-field';
 import type { FieldProps } from './types';
 
 // A `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` value as a local `Date`, or
@@ -70,8 +72,14 @@ const RICHTEXT_TOOLBAR: ComponentProps<typeof RichTextEditor>['toolbar'] = [
 // `mb-0` matters: `dist/style.css` has no CSS reset, so without it a `<p>`
 // keeps the browser's bottom margin and the fields below jump when the
 // error appears (#409).
-const FieldError = ({ message }: { message: string | null }) =>
-  message ? <p className="mt-1 mb-0 text-xs text-red-500">{message}</p> : null;
+// `role="alert"` announces the message when it appears; the control points
+// at it with `aria-describedby` so it's read again on focus (#637).
+const FieldError = ({ id, message }: { id: string; message: string | null }) =>
+  message ? (
+    <p id={id} role="alert" className="mt-1 mb-0 text-xs text-red-500">
+      {message}
+    </p>
+  ) : null;
 
 const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   const messages = useLiveMessages();
@@ -81,6 +89,15 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   const { id, value, rawValue, onChange } = binding;
 
   const [validationError, setValidationError] = useState<string | null>(null);
+  const { controlId, errorId, isLabelled } = useFieldIds();
+  // For the controls that take them: the id the label points at, a name of
+  // their own outside a `LabeledField`, and the error once there is one.
+  const controlProps = {
+    id: controlId,
+    'aria-label': isLabelled ? undefined : binding.label,
+    'aria-invalid': validationError ? true : undefined,
+    'aria-describedby': validationError ? errorId : undefined,
+  };
 
   // What the user is typing, for the inputs that commit on blur (url,
   // number, text area). Reset during render when `rawValue` changes from outside,
@@ -186,24 +203,27 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
 
           return (
             <div key={key} className="space-y-1">
-              <label className="block text-xs font-medium text-gray-600">
-                {nested.label}
-              </label>
-              <Field
-                binding={{
-                  ...toBindingFields(nested),
-                  id,
-                  value: val,
-                  rawValue:
-                    typeof val === 'object' && val !== null
-                      ? JSON.stringify(val)
-                      : String(val),
-                  onChange: next => {
-                    onChange({ ...objectValue, [key]: next });
-                  },
-                }}
-                onNodeChange={onNodeChange}
-              />
+              <LabeledField
+                binding={{ ...nested, value: val }}
+                labelClassName="block text-xs font-medium text-gray-600"
+                label={nested.label}
+              >
+                <Field
+                  binding={{
+                    ...toBindingFields(nested),
+                    id,
+                    value: val,
+                    rawValue:
+                      typeof val === 'object' && val !== null
+                        ? JSON.stringify(val)
+                        : String(val),
+                    onChange: next => {
+                      onChange({ ...objectValue, [key]: next });
+                    },
+                  }}
+                  onNodeChange={onNodeChange}
+                />
+              </LabeledField>
             </div>
           );
         })}
@@ -226,7 +246,9 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
 
   if (kind === 'select') {
     return (
+      // Takes no `id`, so the label can't point at it; it names itself.
       <Select
+        aria-label={binding.label}
         value={stringValue}
         options={binding.options ?? []}
         onChange={commitIfChanged}
@@ -235,7 +257,13 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   }
 
   if (kind === 'color') {
-    return <ColorPickerField value={stringValue} onChange={commitIfChanged} />;
+    return (
+      <ColorPickerField
+        value={stringValue}
+        label={binding.label}
+        onChange={commitIfChanged}
+      />
+    );
   }
 
   if (kind === 'date' || kind === 'datetime') {
@@ -250,7 +278,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
             validateAndCommit(date ? formatDateValue(date, withTime) : '')
           }
         />
-        <FieldError message={validationError} />
+        <FieldError id={errorId} message={validationError} />
       </div>
     );
   }
@@ -259,11 +287,11 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     return (
       <div>
         <TimePicker
+          {...controlProps}
           value={stringValue || null}
-          aria-label={binding.label}
           onChange={time => validateAndCommit(time ?? '')}
         />
-        <FieldError message={validationError} />
+        <FieldError id={errorId} message={validationError} />
       </div>
     );
   }
@@ -272,6 +300,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     return (
       <div>
         <Input
+          {...controlProps}
           type={kind}
           value={text}
           onChange={e => setText(e.target.value)}
@@ -284,7 +313,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           }
           onBlur={e => validateAndCommit(e.target.value.trim())}
         />
-        <FieldError message={validationError} />
+        <FieldError id={errorId} message={validationError} />
       </div>
     );
   }
@@ -293,6 +322,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     return (
       <div>
         <Input
+          {...controlProps}
           type="number"
           step={binding.step}
           value={text}
@@ -309,7 +339,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
             validateAndCommit(next);
           }}
         />
-        <FieldError message={validationError} />
+        <FieldError id={errorId} message={validationError} />
       </div>
     );
   }
@@ -317,6 +347,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   return (
     <div>
       <Input.TextArea
+        {...controlProps}
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder={messages.panel.textPlaceholder}
@@ -329,7 +360,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           validateAndCommit(next);
         }}
       />
-      <FieldError message={validationError} />
+      <FieldError id={errorId} message={validationError} />
     </div>
   );
 };

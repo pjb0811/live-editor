@@ -7,6 +7,7 @@ import type { BindingRenderMap } from '~/utils/ast/types';
 import type { PanelNodeChange } from '../panel-binding';
 import BulkActionsBar from './bulk-actions-bar';
 import Field from './field';
+import LabeledField from './labeled-field';
 import RowControls from './row-controls';
 import SelectionCheckbox from './selection-checkbox';
 import { ItemCard, SortableItems } from './sortable-items';
@@ -67,13 +68,20 @@ const NestedGroup = ({
                   key={`${binding.property}-${binding.label}`}
                   className="space-y-1"
                 >
-                  <label className="block text-xs font-semibold text-gray-700">
-                    {binding.label}
-                    <span className="ml-1 text-gray-400">
-                      ({binding.property})
-                    </span>
-                  </label>
-                  <Field binding={binding} onNodeChange={onNodeChange} />
+                  <LabeledField
+                    binding={binding}
+                    labelClassName="block text-xs font-semibold text-gray-700"
+                    label={
+                      <>
+                        {binding.label}
+                        <span className="ml-1 text-gray-400">
+                          ({binding.property})
+                        </span>
+                      </>
+                    }
+                  >
+                    <Field binding={binding} onNodeChange={onNodeChange} />
+                  </LabeledField>
                 </div>
               ))}
             </div>
@@ -185,10 +193,13 @@ const Items = ({
         {item.properties.map(binding => (
           <div key={`${item.id}-${binding.property}-${binding.label}`}>
             <div className="flex flex-col space-y-2">
-              <label className="w-20 shrink-0 text-xs font-medium">
-                {binding.label}
-              </label>
-              <Field binding={binding} onNodeChange={onChildChange} />
+              <LabeledField
+                binding={binding}
+                labelClassName="w-20 shrink-0 text-xs font-medium"
+                label={binding.label}
+              >
+                <Field binding={binding} onNodeChange={onChildChange} />
+              </LabeledField>
             </div>
             <span className="text-right text-xs text-gray-500">
               ({String(binding.meta?.valueType)})

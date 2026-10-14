@@ -6,6 +6,7 @@ import {
   withPanelCommit,
 } from '../panel-binding';
 import Field from './field';
+import LabeledField from './labeled-field';
 
 interface FieldEditorProps {
   data: DataAttrNode;
@@ -25,11 +26,20 @@ const Node = ({ data, onChange }: FieldEditorProps) => {
       <div className="space-y-1">
         {withPanelCommit(source.bindings, onChange).map(binding => (
           <div key={`${binding.id}-${binding.property}`} className="space-y-1">
-            <label className="block text-xs font-semibold text-gray-700">
-              {binding.label}
-              <span className="ml-1 text-gray-400">({binding.property})</span>
-            </label>
-            <Field binding={binding} onNodeChange={onChange} />
+            <LabeledField
+              binding={binding}
+              labelClassName="block text-xs font-semibold text-gray-700"
+              label={
+                <>
+                  {binding.label}
+                  <span className="ml-1 text-gray-400">
+                    ({binding.property})
+                  </span>
+                </>
+              }
+            >
+              <Field binding={binding} onNodeChange={onChange} />
+            </LabeledField>
           </div>
         ))}
       </div>
