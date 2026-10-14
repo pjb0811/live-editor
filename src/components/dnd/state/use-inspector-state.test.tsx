@@ -104,3 +104,117 @@ describe('useInspectorState', () => {
     expect(result.current.inspector.picked).toBeNull();
   });
 });
+
+// The outline a panel field draws on its element (#514), measured through
+// `useElementPosition` (#635).
+describe('useInspectorState field outline', () => {
+  // `DOMRect` keeps its fields on the prototype, so `toEqual` would call any
+  // two rects equal. Compare the numbers.
+  const boxOf = (rect: DOMRect | null) =>
+    rect && { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+
+  const nextFrame = () =>
+    act(() => new Promise(resolve => requestAnimationFrame(() => resolve(0))));
+
+  const setupOutline = () => {
+    const section = document.createElement('section');
+    const element = document.createElement('p');
+
+    element.setAttribute('data-id', 'title');
+    section.append(element);
+    document.body.append(section);
+
+    let box = new DOMRect(10, 20, 100, 30);
+    element.getBoundingClientRect = () => box;
+
+    // One registry for every render, as `useDndKeyboard` keeps it.
+    const sectionNodes = {
+      get: (id: string) => (id === 's1' ? section : undefined),
+      register: () => () => {},
+    };
+    const selectOnly = vi.fn();
+    const hook = renderHook(() =>
+      useInspectorState({ selectedId: 's1', selectOnly, sectionNodes }),
+    );
+
+    return {
+      ...hook,
+      moveTo: (next: DOMRect) => {
+        box = next;
+      },
+    };
+  };
+
+  it('outlines the element a field points at', async () => {
+    const { result } = setupOutline();
+
+    act(() => result.current.inspector.highlight('title'));
+    await nextFrame();
+
+    expect(boxOf(result.current.highlightRect)).toEqual({
+      x: 10,
+      y: 20,
+      width: 100,
+      height: 30,
+    });
+  });
+
+  it('follows the element when the canvas scrolls', async () => {
+    const { result, moveTo } = setupOutline();
+
+    act(() => result.current.inspector.highlight('title'));
+    await nextFrame();
+
+    moveTo(new DOMRect(10, 5, 100, 30));
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+    await nextFrame();
+
+    expect(boxOf(result.current.highlightRect)).toEqual({
+      x: 10,
+      y: 5,
+      width: 100,
+      height: 30,
+    });
+  });
+
+  // An edit moves the element without a scroll or resize; the frame after
+  // the re-render measures it again.
+  it('follows the element after a re-render', async () => {
+    const { result, rerender, moveTo } = setupOutline();
+
+    act(() => result.current.inspector.highlight('title'));
+    await nextFrame();
+
+    moveTo(new DOMRect(10, 20, 100, 60));
+    rerender();
+    await nextFrame();
+
+    expect(boxOf(result.current.highlightRect)).toEqual({
+      x: 10,
+      y: 20,
+      width: 100,
+      height: 60,
+    });
+  });
+
+  it('clears the outline at once when the field stops pointing', async () => {
+    const { result } = setupOutline();
+
+    act(() => result.current.inspector.highlight('title'));
+    await nextFrame();
+    act(() => result.current.inspector.highlight(null));
+
+    expect(result.current.highlightRect).toBeNull();
+  });
+
+  it('draws nothing for an id the section does not render', async () => {
+    const { result } = setupOutline();
+
+    act(() => result.current.inspector.highlight('missing'));
+    await nextFrame();
+
+    expect(result.current.highlightRect).toBeNull();
+  });
+});

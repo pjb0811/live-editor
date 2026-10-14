@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+
+import { useElementPosition, useKeyPress } from '@jbpark/use-hooks';
 
 import { DATA_ATTR } from '~/constants';
 
@@ -32,10 +34,8 @@ export const useInspectorState = ({
   const [inspecting, setInspecting] = useState(false);
   const [picked, setPicked] = useState<DndNodePick | null>(null);
   const [hoverRect, setHoverRect] = useState<DOMRect | null>(null);
-  // The element a panel field points at (`inspector.highlight`), and its box
-  // in the viewport while it's on screen.
+  // The element a panel field points at (`inspector.highlight`).
   const [fieldTarget, setFieldTarget] = useState<string | null>(null);
-  const [fieldRect, setFieldRect] = useState<DOMRect | null>(null);
 
   if (picked && picked.sectionId !== selectedId) {
     setPicked(null);
@@ -46,52 +46,23 @@ export const useInspectorState = ({
     setHoverRect(null);
   }, []);
 
-  useEffect(() => {
-    if (!inspecting) {
-      return;
-    }
+  useKeyPress('esc', stopInspecting, { enabled: inspecting });
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        stopInspecting();
-      }
-    };
+  // Follows the element a panel field points at, through canvas scrolls,
+  // resizes and re-renders, measuring its box in viewport coordinates. The
+  // section is looked up when measuring, since `sectionNodes` is filled by
+  // ref callbacks after render.
+  const fieldRect = useElementPosition(
+    () => {
+      const section =
+        selectedId === null ? undefined : sectionNodes.get(selectedId);
 
-    window.addEventListener('keydown', onKeyDown);
-
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [inspecting, stopInspecting]);
-
-  // Follows the element a panel field points at, through canvas scrolls and
-  // resizes, measuring its box again in viewport coordinates.
-  useEffect(() => {
-    const section = selectedId === null ? null : sectionNodes.get(selectedId);
-
-    if (!fieldTarget || !section) {
-      return;
-    }
-
-    let frame = 0;
-
-    const measure = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const element = findElementById(section, fieldTarget);
-
-        setFieldRect(element ? viewportRect(element) : null);
-      });
-    };
-
-    measure();
-    window.addEventListener('scroll', measure, true);
-    window.addEventListener('resize', measure);
-
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', measure, true);
-      window.removeEventListener('resize', measure);
-    };
-  }, [fieldTarget, selectedId, sectionNodes]);
+      return fieldTarget && section
+        ? findElementById(section, fieldTarget)
+        : null;
+    },
+    { measure: viewportRect },
+  );
 
   const inspector: DndInspector = {
     active: inspecting,

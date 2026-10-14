@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { useEventListener, useLatest } from '@jbpark/use-hooks';
 
@@ -18,7 +18,6 @@ const Guard = ({ children, onError }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const messages = useLiveMessages();
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const errorHandled = useRef(false);
   // Read by the listeners, so new messages don't subscribe them again.
   const messagesRef = useLatest(messages);
@@ -51,14 +50,9 @@ const Guard = ({ children, onError }: Props) => {
     { capture: true },
   );
 
-  useEffect(() => {
-    const container = containerRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+  useEventListener(
+    'unhandledrejection',
+    event => {
       if (errorHandled.current) {
         return;
       }
@@ -75,22 +69,9 @@ const Guard = ({ children, onError }: Props) => {
       setTimeout(() => {
         errorHandled.current = false;
       }, 100);
-    };
-
-    window.addEventListener(
-      'unhandledrejection',
-      handleUnhandledRejection,
-      true,
-    );
-
-    return () => {
-      window.removeEventListener(
-        'unhandledrejection',
-        handleUnhandledRejection,
-        true,
-      );
-    };
-  }, [onError, messagesRef]);
+    },
+    { capture: true },
+  );
 
   if (error) {
     return (
@@ -106,7 +87,7 @@ const Guard = ({ children, onError }: Props) => {
     );
   }
 
-  return <div ref={containerRef}>{children}</div>;
+  return <div>{children}</div>;
 };
 
 export default Guard;
