@@ -64,7 +64,7 @@ to replace individual controls while keeping the built-in panel, or in a
 | `minLength` / `maxLength` | `number`                                    | Length limits for a text value, in characters.                                                                                                                                   |
 | `step`                    | `number`                                    | A number value must be `min` (or 0) plus a whole number of steps. `step: 1` allows integers only.                                                                                |
 | `minItems` / `maxItems`   | `number`                                    | Item count limits for an `array` value. The built-in editor disables add, duplicate and delete at the limits, and never removes the last item.                                   |
-| `minDate` / `maxDate`     | `string`                                    | The earliest and latest `date` value, as `YYYY-MM-DD`.                                                                                                                           |
+| `minDate` / `maxDate`     | `string`                                    | The earliest and latest `date` or `datetime` value, as `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`. A date-only bound includes the whole day.                                             |
 | `protocols`               | `string[]`                                  | The schemes a `url` value may use, such as `['https:', 'mailto:']`. Unset allows any.                                                                                            |
 | `render`                  | `BindingRenderMap`                          | Types the keys inside an `object` or `array` value. See [Nested fields](#nested-fields).                                                                                         |
 | `widget`                  | `string` or `{ type: string; ...settings }` | A control name **you** define, plus any settings your control needs. Not a built-in option; ignored by the built-in panel. See [`widget`](#widget-a-hint-for-your-own-controls). |
@@ -301,25 +301,27 @@ that use them, and keep a key's name once documents refer to it.
 
 ## Types
 
-| `type`     | Built-in control                           | Validation                                                                                                  |
-| ---------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `string`   | Text area                                  | `required`, `pattern`, `minLength`, `maxLength`                                                             |
-| `number`   | Number input                               | `required`, `min`, `max`, `step`                                                                            |
-| `boolean`  | Checkbox                                   | —                                                                                                           |
-| `color`    | Color picker                               | —                                                                                                           |
-| `date`     | Date picker (value stored as `YYYY-MM-DD`) | `required`, a real `YYYY-MM-DD` day, `minDate`, `maxDate`                                                   |
-| `url`      | URL input                                  | `required`, `pattern`, valid URL, `protocols`                                                               |
-| `email`    | Email input                                | `required`, `pattern`, a `name@domain.tld` shape, `minLength`, `maxLength`                                  |
-| `tel`      | Phone input                                | `required`, `pattern`, `minLength`, `maxLength` (no built-in format, since phone formats differ by country) |
-| `richtext` | Rich text editor                           | —                                                                                                           |
-| `jsx`      | Code editor                                | —                                                                                                           |
-| `object`   | One nested field per key                   | per nested field                                                                                            |
-| `array`    | Item list                                  | `minItems`, `maxItems`, and per nested field                                                                |
+| `type`     | Built-in control                                                           | Validation                                                                                                  |
+| ---------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `string`   | Text area                                                                  | `required`, `pattern`, `minLength`, `maxLength`                                                             |
+| `number`   | Number input                                                               | `required`, `min`, `max`, `step`                                                                            |
+| `boolean`  | Checkbox                                                                   | —                                                                                                           |
+| `color`    | Color picker                                                               | —                                                                                                           |
+| `date`     | Date picker (value stored as `YYYY-MM-DD`)                                 | `required`, a real `YYYY-MM-DD` day, `minDate`, `maxDate`                                                   |
+| `time`     | Time picker (value stored as `HH:mm`, 24-hour)                             | `required`, a valid `HH:mm`                                                                                 |
+| `datetime` | Date picker with time (value stored as `YYYY-MM-DDTHH:mm`, local, no zone) | `required`, a real day and time, `minDate`, `maxDate`                                                       |
+| `url`      | URL input                                                                  | `required`, `pattern`, valid URL, `protocols`                                                               |
+| `email`    | Email input                                                                | `required`, `pattern`, a `name@domain.tld` shape, `minLength`, `maxLength`                                  |
+| `tel`      | Phone input                                                                | `required`, `pattern`, `minLength`, `maxLength` (no built-in format, since phone formats differ by country) |
+| `richtext` | Rich text editor                                                           | —                                                                                                           |
+| `jsx`      | Code editor                                                                | —                                                                                                           |
+| `object`   | One nested field per key                                                   | per nested field                                                                                            |
+| `array`    | Item list                                                                  | `minItems`, `maxItems`, and per nested field                                                                |
 
 Without a `type`, the built-in panel picks a control from the current value (a
 checkbox for `true`, a number input for `42`, and so on). A property whose name
 contains `color` also gets a color picker. `options` replaces the text, number,
-color, date, URL, email and phone controls with a select.
+color, date, time, URL, email and phone controls with a select.
 
 ## Constraints
 

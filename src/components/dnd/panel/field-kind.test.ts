@@ -32,6 +32,8 @@ describe('getFieldKind from the dnd entry', () => {
     ['color', { type: 'color' as const }],
     ['color', { property: 'backgroundColor' }],
     ['date', { type: 'date' as const }],
+    ['time', { type: 'time' as const }],
+    ['datetime', { type: 'datetime' as const }],
     ['url', { type: 'url' as const }],
     ['email', { type: 'email' as const }],
     ['tel', { type: 'tel' as const }],

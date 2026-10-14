@@ -43,6 +43,8 @@ export const BINDING_TYPES = [
   'url',
   'email',
   'tel',
+  'time',
+  'datetime',
 ] as const;
 
 export type BindingType = (typeof BINDING_TYPES)[number];
@@ -93,8 +95,9 @@ export interface BindingFieldSpec {
   // the last item (#316), so a `minItems` below 1 acts as 1 there.
   minItems?: number;
   maxItems?: number;
-  // The earliest and latest `date` value, as `YYYY-MM-DD`. Separate from
-  // `min` and `max`, which are numbers.
+  // The earliest and latest `date` or `datetime` value, as `YYYY-MM-DD` or
+  // `YYYY-MM-DDTHH:mm`. A date-only bound includes that whole day. Separate
+  // from `min` and `max`, which are numbers.
   minDate?: string;
   maxDate?: string;
   // The schemes a `url` value may use, such as `['https:', 'mailto:']`. The

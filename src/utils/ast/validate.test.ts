@@ -179,6 +179,71 @@ describe('validateBindingValue', () => {
     );
   });
 
+  it.each(['00:00', '09:05', '23:59'])('passes the time %s', value => {
+    expect(
+      validateBindingValue(makeBinding({ type: 'time' }), value).valid,
+    ).toBe(true);
+  });
+
+  it.each(['24:00', '2:30', '2:30pm', '12:60', '12:00:00'])(
+    'fails the time %s',
+    value => {
+      expect(
+        validateBindingValue(makeBinding({ type: 'time' }), value),
+      ).toEqual({ valid: false, message: 'Must be a valid time.' });
+    },
+  );
+
+  it('passes a datetime naming a real day and time', () => {
+    expect(
+      validateBindingValue(
+        makeBinding({ type: 'datetime' }),
+        '2026-10-13T14:30',
+      ).valid,
+    ).toBe(true);
+  });
+
+  it.each([
+    '2026-10-13',
+    '2026-02-30T10:00',
+    '2026-10-13T24:00',
+    '2026-10-13 14:30',
+    '2026-10-13T14:30Z',
+  ])('fails the datetime %s', value => {
+    expect(
+      validateBindingValue(makeBinding({ type: 'datetime' }), value),
+    ).toEqual({ valid: false, message: 'Must be a valid date and time.' });
+  });
+
+  it('treats a date-only bound on a datetime as the whole day', () => {
+    const binding = makeBinding({
+      type: 'datetime',
+      minDate: '2026-10-13',
+      maxDate: '2026-10-13',
+    });
+
+    expect(validateBindingValue(binding, '2026-10-13T00:00').valid).toBe(true);
+    expect(validateBindingValue(binding, '2026-10-13T23:59').valid).toBe(true);
+    expect(validateBindingValue(binding, '2026-10-12T23:59')).toEqual({
+      valid: false,
+      message: 'Must be on or after 2026-10-13.',
+    });
+    expect(validateBindingValue(binding, '2026-10-14T00:00')).toEqual({
+      valid: false,
+      message: 'Must be on or before 2026-10-13.',
+    });
+  });
+
+  it('compares a datetime with a datetime bound to the minute', () => {
+    const binding = makeBinding({
+      type: 'datetime',
+      minDate: '2026-10-13T09:00',
+    });
+
+    expect(validateBindingValue(binding, '2026-10-13T08:59').valid).toBe(false);
+    expect(validateBindingValue(binding, '2026-10-13T09:00').valid).toBe(true);
+  });
+
   it('checks no format for tel, only pattern', () => {
     expect(
       validateBindingValue(makeBinding({ type: 'tel' }), 'call me').valid,

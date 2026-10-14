@@ -15,6 +15,8 @@ export interface ValidationMessages {
   pattern: string;
   url: string;
   date: string;
+  time: string;
+  datetime: string;
   email: string;
   minLength: (minLength: number) => string;
   maxLength: (maxLength: number) => string;
@@ -34,6 +36,8 @@ export const defaultValidationMessages: ValidationMessages = {
   pattern: 'Value does not match the required format.',
   url: 'Must be a valid URL.',
   date: 'Must be a valid date.',
+  time: 'Must be a valid time.',
+  datetime: 'Must be a valid date and time.',
   email: 'Must be a valid email address.',
   minLength: minLength =>
     `Must be at least ${minLength} character${minLength === 1 ? '' : 's'}.`,
@@ -60,6 +64,34 @@ const VALID: ValidationResult = { valid: true };
 const STEP_TOLERANCE = 1e-9;
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+// A 24-hour `HH:mm`, the format the built-in time picker writes.
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// `YYYY-MM-DDTHH:mm` in local time with no zone, as `datetime-local` writes
+// it, naming a day that exists.
+const isDateTime = (value: string) => {
+  const [date, time, ...rest] = value.split('T');
+
+  return (
+    rest.length === 0 &&
+    date !== undefined &&
+    time !== undefined &&
+    isCalendarDate(date) &&
+    TIME.test(time)
+  );
+};
+
+// Compares a date or date-time with a `minDate`/`maxDate` bound at the
+// coarser of the two, so a date-only bound covers that whole day. The
+// formats sort by time, so they compare as text.
+const compareToBound = (value: string, bound: string) => {
+  const length = Math.min(value.length, bound.length);
+  const a = value.slice(0, length);
+  const b = bound.slice(0, length);
+
+  return a < b ? -1 : a > b ? 1 : 0;
+};
 
 // A basic `local@domain.tld` check: no spaces, one `@`, a dot in the domain.
 // Anything stricter rejects real addresses.
@@ -188,17 +220,35 @@ export const validateBindingValue = (
     }
   }
 
-  if (typeof value === 'string' && binding.type === 'date') {
-    if (!isCalendarDate(value)) {
-      return { valid: false, message: messages.date };
+  if (typeof value === 'string' && binding.type === 'time') {
+    if (!TIME.test(value)) {
+      return invalid(messages.time);
+    }
+  }
+
+  if (
+    typeof value === 'string' &&
+    (binding.type === 'date' || binding.type === 'datetime')
+  ) {
+    if (binding.type === 'date' && !isCalendarDate(value)) {
+      return invalid(messages.date);
     }
 
-    // `YYYY-MM-DD` strings sort by date, so they compare as text.
-    if (binding.minDate !== undefined && value < binding.minDate) {
+    if (binding.type === 'datetime' && !isDateTime(value)) {
+      return invalid(messages.datetime);
+    }
+
+    if (
+      binding.minDate !== undefined &&
+      compareToBound(value, binding.minDate) < 0
+    ) {
       return invalid(messages.minDate(binding.minDate));
     }
 
-    if (binding.maxDate !== undefined && value > binding.maxDate) {
+    if (
+      binding.maxDate !== undefined &&
+      compareToBound(value, binding.maxDate) > 0
+    ) {
       return invalid(messages.maxDate(binding.maxDate));
     }
   }

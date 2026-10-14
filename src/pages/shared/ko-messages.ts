@@ -148,6 +148,8 @@ export const KO_MESSAGES: LiveMessages = {
     pattern: '형식이 맞지 않습니다.',
     url: '올바른 URL이 아닙니다.',
     date: '올바른 날짜가 아닙니다.',
+    time: '올바른 시간이 아닙니다.',
+    datetime: '올바른 날짜와 시간이 아닙니다.',
     email: '올바른 이메일 주소가 아닙니다.',
     minLength: minLength => `${minLength}자 이상이어야 합니다.`,
     maxLength: maxLength => `${maxLength}자 이하여야 합니다.`,

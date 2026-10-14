@@ -21,7 +21,7 @@ import { evaluateLiteral, parseArrayExpression, parseValue } from './value';
 const bindingTypeSchema = z.enum(BINDING_TYPES);
 // A length or an item count.
 const countSchema = z.number().int().nonnegative();
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/);
 
 const bindingOptionSchema = z.object({
   label: z.string(),
@@ -436,6 +436,8 @@ export const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
   'email',
   'tel',
   'date',
+  'time',
+  'datetime',
   'color',
   'jsx',
   'richtext',
