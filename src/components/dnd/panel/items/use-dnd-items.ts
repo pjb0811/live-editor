@@ -23,8 +23,12 @@ import { type BindingRenderMap } from '~/utils/ast/types';
 import { parseArrayExpression } from '~/utils/ast/value';
 import { moveSelectedIndices } from '~/utils/selection';
 
-import { useDndEditOptions } from '../edit-options';
-import { type PanelBinding, type PanelNodeChange } from '../panel-binding';
+import { useDndEditOptions } from '../../edit-options';
+import { type PanelBinding, type PanelNodeChange } from '../../panel-binding';
+import {
+  selectionAfter,
+  useStructuralSelection,
+} from '../selection/use-structural-selection';
 import { toItemBindings } from './item-bindings';
 import {
   createIdentityState,
@@ -38,10 +42,6 @@ import {
   parseSource,
 } from './items-source';
 import { useItemExpansion } from './use-item-expansion';
-import {
-  selectionAfter,
-  useStructuralSelection,
-} from './use-structural-selection';
 
 // A data-bound element inside a JSX-valued item property. `bindings`
 // doesn't list these, because `extract()` doesn't read into attribute

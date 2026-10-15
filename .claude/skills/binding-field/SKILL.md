@@ -25,7 +25,7 @@ description: "Adding a binding type (BINDING_TYPES) or a binding field/constrain
 2. 값이 문자열이면 `src/utils/ast/binding.ts`의 `STRING_VALUED_TYPES`. 빠뜨리면 숫자처럼 보이는 문자열이 숫자로 읽히고 써집니다.
 3. 읽기·쓰기에 특수 처리가 필요하면 `binding.ts`의 `getCurrentValue`/`getStructuredValue`, `edit-source.ts`와 `update.ts`의 `editProperty`(`ast` 스킬).
 4. 검증이 있으면 `src/utils/ast/validate.ts`. 메시지는 `ui-messages` 스킬.
-5. 내장 컨트롤: `src/components/dnd/panel/field-kind.ts`의 `FieldKind`와 `getFieldKind`(순서가 곧 우선순위), `field.tsx`의 분기. placeholder가 필요하면 `messages.panel`.
+5. 내장 컨트롤: `src/components/dnd/panel/fields/field-kind.ts`의 `FieldKind`와 `getFieldKind`(순서가 곧 우선순위), `field.tsx`의 분기. placeholder가 필요하면 `messages.panel`.
 
 ### 필드(제약)를 추가할 때
 
@@ -33,7 +33,7 @@ description: "Adding a binding type (BINDING_TYPES) or a binding field/constrain
 2. `binding.ts`의 `KNOWN_BINDING_KEYS`와 `sanitizeField`. `pick(schema, raw.x)`로 읽어서, 값이 잘못되면 그 필드만 빠지게 합니다.
 3. `src/components/dnd/panel-binding.ts`의 `PanelBinding` 필드와 `toBindingFields`. `toBindingFields`의 반환 타입 때문에 빠뜨리면 타입 에러가 납니다.
 4. `validate.ts`의 검사와 `ValidationMessages` 키.
-5. 내장 패널이 써야 하면 `field.tsx`(입력 속성), 배열이면 `items.tsx`와 `useDndItems`.
+5. 내장 패널이 써야 하면 `field.tsx`(입력 속성), 배열이면 `items/items.tsx`와 `useDndItems`.
 
 ### 둘 다
 

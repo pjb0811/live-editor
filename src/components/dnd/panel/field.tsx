@@ -16,13 +16,13 @@ import { parseValue } from '~/utils/ast/value';
 
 import { useDndEditOptions } from '../edit-options';
 import { resolveRenderEntry, toBindingFields } from '../panel-binding';
-import Children from './children';
-import ColorPickerField from './color-picker-field';
-import { useFieldIds } from './field-ids';
-import { getFieldKind } from './field-kind';
-import Items from './items';
-import JSXEditorField from './jsx-editor-field';
-import LabeledField from './labeled-field';
+import Children from './children/children';
+import ColorPickerField from './fields/color-picker-field';
+import { useFieldIds } from './fields/field-ids';
+import { getFieldKind } from './fields/field-kind';
+import JSXEditorField from './fields/jsx-editor-field';
+import LabeledField from './fields/labeled-field';
+import Items from './items/items';
 import type { FieldProps } from './types';
 
 // A `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` value as a local `Date`, or

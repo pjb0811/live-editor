@@ -8,7 +8,7 @@ import {
   resolveRenderEntry,
   toBindingFields,
   withPanelCommit,
-} from '../panel-binding';
+} from '../../panel-binding';
 import type { RawObjectItem, RawPrimitiveItem } from './items-source';
 import type { DndItemsItem, DndItemsNestedGroup } from './use-dnd-items';
 

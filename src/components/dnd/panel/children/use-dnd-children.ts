@@ -11,7 +11,7 @@ import { moveSelectedIndices } from '~/utils/selection';
 import {
   selectionAfter,
   useStructuralSelection,
-} from './use-structural-selection';
+} from '../selection/use-structural-selection';
 
 export interface DndChildrenOptions {
   onChange?: (value: string) => void;

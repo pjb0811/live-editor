@@ -10,7 +10,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import Dnd from '~/components/dnd';
 import { useDndPanel } from '~/components/dnd/layout-context';
-import Children from '~/components/dnd/panel/children';
+import Children from '~/components/dnd/panel/children/children';
 import LiveError from '~/components/error';
 import Guard from '~/components/error/guard';
 import { extract } from '~/utils/ast/extract';

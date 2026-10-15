@@ -32,13 +32,12 @@ import type {
   PanelNodeChange,
   PanelNodesChange,
 } from './panel-binding';
-import Field from './panel/field';
-import type { FieldProps } from './panel/types';
 import {
   type DndChildren,
   type DndChildrenOptions,
   useDndChildren,
-} from './panel/use-dnd-children';
+} from './panel/children/use-dnd-children';
+import Field from './panel/field';
 import {
   type DndItems,
   type DndItemsActions,
@@ -48,7 +47,8 @@ import {
   type DndItemsNestedGroup,
   type DndItemsOptions,
   useDndItems,
-} from './panel/use-dnd-items';
+} from './panel/items/use-dnd-items';
+import type { FieldProps } from './panel/types';
 import type { DndPalette, DndPanel, Props } from './types';
 
 type DndComponent = typeof DndImpl & {
@@ -114,8 +114,8 @@ export type {
 } from './panel-binding';
 // How `Field` picks its built-in control, for a custom panel that sends
 // some bindings (often `items` and `children`) to `Field` or a hook.
-export { getFieldKind, isStructuralFieldKind } from './panel/field-kind';
-export type { FieldKind, FieldKindBinding } from './panel/field-kind';
+export { getFieldKind, isStructuralFieldKind } from './panel/fields/field-kind';
+export type { FieldKind, FieldKindBinding } from './panel/fields/field-kind';
 
 export type {
   Props,

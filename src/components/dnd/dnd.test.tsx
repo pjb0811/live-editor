@@ -12,7 +12,7 @@ import { Canvas, Palette, Panel } from './layout';
 import type { DndLayout } from './layout-context';
 import { useDndLayout, useDndPalette, useDndPanel } from './layout-context';
 import Field from './panel/field';
-import { type DndItems, useDndItems } from './panel/use-dnd-items';
+import { type DndItems, useDndItems } from './panel/items/use-dnd-items';
 import type { DndPalette, DndPanel } from './types';
 
 // The canvas isn't what's under test here, and each section renders a

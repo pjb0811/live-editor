@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { BindingRegistry, DataAttrNode } from '~/utils/ast';
 
-import { DndEditOptionsContext } from '../edit-options';
+import { DndEditOptionsContext } from '../../edit-options';
 import { type DndItemsItem, useDndItems } from './use-dnd-items';
 
 const objects = `[

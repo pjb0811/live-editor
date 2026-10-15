@@ -1,6 +1,6 @@
 import { BINDING_PROP } from '~/constants';
 
-import type { PanelBinding } from '../panel-binding';
+import type { PanelBinding } from '../../panel-binding';
 
 // Which built-in control `Field` renders for a binding. Exported so a
 // custom panel can ask the same question, most often whether a binding

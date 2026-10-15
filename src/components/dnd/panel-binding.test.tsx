@@ -13,7 +13,7 @@ import {
   withPanelCommit,
 } from './panel-binding';
 import ElementFields from './panel/element-fields';
-import { useDndItems } from './panel/use-dnd-items';
+import { useDndItems } from './panel/items/use-dnd-items';
 
 // Captures what `ElementFields` hands to the built-in control, which is the only way
 // to read the custom-panel path's binding without asserting on rendered
