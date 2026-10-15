@@ -10,6 +10,7 @@ import ElementFields from './element-fields';
 import Field from './field';
 import LabeledField from './labeled-field';
 import RowControls from './row-controls';
+import SelectAllCheckbox from './select-all-checkbox';
 import SelectionCheckbox from './selection-checkbox';
 import { ItemCard, SortableItems } from './sortable-items';
 import {
@@ -210,8 +211,17 @@ const Items = ({
     <div className="space-y-4">
       {header}
 
-      {items.length > 1 && (
-        <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <SelectAllCheckbox
+          total={items.length}
+          selected={selection.selected.size}
+          disabled={!canEditStructure}
+          onSelectAll={() =>
+            selection.replace(new Set(items.map(item => item.index)))
+          }
+          onClear={selection.clear}
+        />
+        {items.length > 1 && (
           <Button
             size="small"
             variant="text"
@@ -225,8 +235,8 @@ const Items = ({
               ? messages.items.collapseAll
               : messages.items.expandAll}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {bulkBar}
 

@@ -5,7 +5,9 @@ test('keyboard Space and Shift+Space select an item range', async ({
 }) => {
   await page.goto('/e2e/fixture.html?scenario=selection');
 
-  const checkboxes = page.getByRole('checkbox');
+  // The rows only: "Select all" (#638) is the one checkbox with a name.
+  const selectAll = page.getByRole('checkbox', { name: 'Select all' });
+  const checkboxes = page.getByRole('checkbox', { name: /^$/ });
 
   await expect(checkboxes).toHaveCount(3);
   await checkboxes.nth(0).focus();
@@ -22,6 +24,8 @@ test('keyboard Space and Shift+Space select an item range', async ({
   for (const checkbox of await checkboxes.all()) {
     await expect(checkbox).toBeChecked();
   }
+
+  await expect(selectAll).toBeChecked();
 });
 
 test('a moved nested JSX editor keeps focus and selection', async ({

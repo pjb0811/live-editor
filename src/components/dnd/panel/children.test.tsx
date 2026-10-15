@@ -48,12 +48,15 @@ const Harness = () => {
   );
 };
 
+// The row checkboxes, without the editor's "Select all" (#638).
+const rowCheckboxes = () => screen.getAllByRole('checkbox', { name: '' });
+
 afterEach(cleanup);
 
 describe('Children panel integration', () => {
   it('moves, copies, deletes, then edits a nested binding using the copied identity', async () => {
     render(<Harness />);
-    fireEvent.click(screen.getAllByRole('checkbox')[1]!);
+    fireEvent.click(rowCheckboxes()[1]!);
     fireEvent.click(screen.getByTitle('Move selected up'));
     await waitFor(() =>
       expect(screen.getByTestId('source').textContent).toContain(
@@ -63,9 +66,7 @@ describe('Children panel integration', () => {
     // The moved child stays selected at its new position (#342), so the
     // bulk actions stay available for it.
     expect(
-      screen
-        .getAllByRole('checkbox')
-        .map(box => box.getAttribute('aria-checked')),
+      rowCheckboxes().map(box => box.getAttribute('aria-checked')),
     ).toEqual(['true', 'false']);
 
     fireEvent.click(screen.getByTitle('Duplicate selected'));
