@@ -125,6 +125,7 @@ live-editor/
 - `index.ts`는 그 파일들을 import해서 조합/재수출만 하는 얇은 **barrel**. 정적 프로퍼티로 합성되는 경우(`Editor.Core`, `Error.Boundary` 등)는 barrel에서 조합하고, 구현 파일(`error.tsx` 등)은 원래 export 식별자명을 그대로 유지 — barrel에서만 `import ErrorImpl from './error'`처럼 import 시점에 별칭을 준다
 - 정적으로 합성되지 않고 내부적으로만 쓰이거나 직접 subpath import되는 하위 파일(예: `editor/core.tsx`, `context/states.ts`)은 barrel을 거치지 않고 그대로 둔다
 - 일반 규칙과 기존 중첩 구조를 옮기는 절차는 공유 `coding-style` 스킬의 "F. 서브컴포넌트가 있는 컴포넌트의 파일 구조"를 따른다
+- 한 폴더에 서로 다른 화면 영역·기능의 파일이 평평하게 쌓이면 기능 단위 하위 폴더(`items/`, `fields/`)로 나눈다. `hooks/`·`utils/` 같은 기술 유형 폴더는 만들지 않고, 파일 하나만 감싸는 폴더도 만들지 않는다. `dnd/` 아래 기능 하위 폴더(`canvas/`, `state/`, `palette/`)는 배럴 없이 파일을 직접 import 하므로(2026-10 확인) 새 기능 폴더도 그렇게 둔다. 기존 폴더를 옮길 때는 import 관계로 나눈 안을 먼저 정하고, 배치만 바꾸는 커밋으로 낸다(공유 `coding-style` 스킬 I절)
 - `src`, `demos`, `website/src` 아래에 대문자로 시작하는 파일·디렉토리는 없다. 확인 명령(출력이 비어야 정상):
 
   ```bash
@@ -232,13 +233,13 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 
 모든 pjb0811 저장소가 함께 쓰는 **결정**(언어, 트레일러, 코드 스타일 기본값 등)은 비공개 저장소 `pjb0811/skills`의 `global/CLAUDE.md`에, **절차**는 같은 저장소의 전역 Claude Code 스킬에 있습니다. 둘을 읽을 수 없는 에이전트는 이 파일의 요약을 따릅니다.
 
-| 스킬                                  | 용도                                                                                                            |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `commit`, `pr`, `issue`               | 커밋 메시지, PR·이슈 본문                                                                                       |
-| `coding-style`                        | 컨벤션, 일괄 리네임, 주석(C), boolean 이름(D), 중괄호(E), 서브컴포넌트 구조(F), 빈 줄(G), 컴포넌트 내부 순서(H) |
-| `changesets-release`, `publish-check` | 릴리스 흐름과 배포 전 점검                                                                                      |
-| `shared-library-first`                | 재사용 UI는 ui-kit, 훅은 use-hooks에 먼저 구현                                                                  |
-| `ref-verification`                    | 저장소 상태를 작업 트리가 아니라 git ref 기준으로 확인                                                          |
+| 스킬                                  | 용도                                                                                                                                    |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `commit`, `pr`, `issue`               | 커밋 메시지, PR·이슈 본문                                                                                                               |
+| `coding-style`                        | 컨벤션, 일괄 리네임, 주석(C), boolean 이름(D), 중괄호(E), 서브컴포넌트 구조(F), 빈 줄(G), 컴포넌트 내부 순서(H), 기능 단위 하위 폴더(I) |
+| `changesets-release`, `publish-check` | 릴리스 흐름과 배포 전 점검                                                                                                              |
+| `shared-library-first`                | 재사용 UI는 ui-kit, 훅은 use-hooks에 먼저 구현                                                                                          |
+| `ref-verification`                    | 저장소 상태를 작업 트리가 아니라 git ref 기준으로 확인                                                                                  |
 
 ### 커밋 메시지
 
