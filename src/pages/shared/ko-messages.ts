@@ -72,6 +72,7 @@ export const KO_MESSAGES: LiveMessages = {
   },
   selection: {
     count: count => `${count}개 선택됨`,
+    selectAll: '전체 선택',
     duplicate: '선택 항목 복제',
     moveUp: '선택 항목 위로 이동',
     moveDown: '선택 항목 아래로 이동',

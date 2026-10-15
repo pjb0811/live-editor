@@ -78,6 +78,7 @@ export interface LiveMessages {
   // The bar shown while items or children are selected.
   selection: {
     count: (count: number) => string;
+    selectAll: string;
     duplicate: string;
     moveUp: string;
     moveDown: string;
@@ -225,6 +226,7 @@ export const defaultMessages: LiveMessages = {
   },
   selection: {
     count: count => `${count} selected`,
+    selectAll: 'Select all',
     duplicate: 'Duplicate selected',
     moveUp: 'Move selected up',
     moveDown: 'Move selected down',

@@ -123,8 +123,9 @@ describe('Items', () => {
     // Read the accessible state rather than a native `disabled` property:
     // ui-kit's checkbox is not necessarily a native control (it is a Base UI
     // `span` since ui-kit 10), but it always exposes `aria-disabled`.
+    // Both rows and "Select all" (#638).
     const checkboxes = [...container.querySelectorAll('[role="checkbox"]')];
-    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes).toHaveLength(3);
     expect(
       checkboxes.every(
         checkbox => checkbox.getAttribute('aria-disabled') === 'true',

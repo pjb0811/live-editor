@@ -15,6 +15,7 @@ import {
 import BulkActionsBar from './bulk-actions-bar';
 import ElementFields from './element-fields';
 import RowControls from './row-controls';
+import SelectAllCheckbox from './select-all-checkbox';
 import SelectionCheckbox from './selection-checkbox';
 import { useDndChildren } from './use-dnd-children';
 
@@ -64,6 +65,17 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
           {messages.children.add}
         </Button>
       </div>
+
+      {items.length > 0 && (
+        <SelectAllCheckbox
+          total={items.length}
+          selected={selection.selected.size}
+          onSelectAll={() =>
+            selection.replace(new Set(items.map((_, index) => index)))
+          }
+          onClear={selection.clear}
+        />
+      )}
 
       <BulkActionsBar
         count={selection.selected.size}
