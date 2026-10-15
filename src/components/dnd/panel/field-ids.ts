@@ -11,8 +11,10 @@ export const FieldIdsContext = createContext<string | null>(null);
 // outside a `LabeledField`, such as in a custom panel's own markup, where
 // the control names itself with `aria-label` instead.
 export const useFieldIds = () => {
-  const fallbackId = useId();
   const labelledId = useContext(FieldIdsContext);
+
+  const fallbackId = useId();
+
   const controlId = labelledId ?? fallbackId;
 
   return {
