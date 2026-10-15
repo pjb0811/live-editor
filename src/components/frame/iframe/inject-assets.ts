@@ -1,4 +1,4 @@
-import { convertViewportUnits } from './viewport-units';
+import { convertViewportUnits } from '../viewport-units';
 
 // How many `<style>` and `<link>` elements the last sync left in the
 // document, so a shorter list can remove the extras.

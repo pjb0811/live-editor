@@ -1,3 +1,4 @@
+import { rewriteInlineViewportUnits } from '../viewport-units';
 import { hasActiveAnimation } from './animations';
 import {
   FALLBACK_PROBE_HEIGHT,
@@ -6,7 +7,6 @@ import {
   positionedElementBottom,
   verticalInsets,
 } from './measure';
-import { rewriteInlineViewportUnits } from './viewport-units';
 
 // The style that makes `<html>` a size container, found again by this id.
 // Scoped to `html`, so it only affects how `cq*` units resolve.
