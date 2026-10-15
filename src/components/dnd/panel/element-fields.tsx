@@ -32,8 +32,10 @@ const ElementFields = ({
   children,
   ...props
 }: Props) => {
-  const ref = useRef<HTMLDivElement>(null);
   const { ids, scrollRootRef } = useContext(ElementSelectionContext);
+
+  const ref = useRef<HTMLDivElement>(null);
+
   const isPicked = id !== undefined && ids.has(id);
 
   useEffect(() => {
