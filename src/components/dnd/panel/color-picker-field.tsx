@@ -23,9 +23,12 @@ interface Props {
   // Any source text; anything but a hex color shows as black.
   value: string;
   onChange: (value: string) => void;
+  // The picker's trigger is a `role="button"` element, which a `<label>`
+  // can't point at, so it carries the field's name itself (#637).
+  label: string;
 }
 
-const ColorPickerField = ({ value: source, onChange }: Props) => {
+const ColorPickerField = ({ value: source, onChange, label }: Props) => {
   const value = normalizeToHex(source);
   const [liveValue, setLiveValue] = useState(value);
   // The last `value` seen, to notice a change from outside during render.
@@ -61,6 +64,7 @@ const ColorPickerField = ({ value: source, onChange }: Props) => {
 
   return (
     <ColorPicker
+      aria-label={label}
       showText
       value={liveValue}
       onChange={next => {

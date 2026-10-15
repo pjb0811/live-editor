@@ -1,5 +1,6 @@
 import type { PanelBinding, PanelNodeChange } from '../panel-binding';
 import Field from './field';
+import LabeledField from './labeled-field';
 
 interface Props {
   bindings: PanelBinding[];
@@ -13,11 +14,18 @@ const FieldGroup = ({ bindings, onNodeChange }: Props) => (
     <div className="space-y-1">
       {bindings.map(binding => (
         <div key={`${binding.property}-${binding.label}`} className="space-y-1">
-          <label className="block text-xs font-semibold text-gray-700">
-            {binding.label}
-            <span className="ml-1 text-gray-400">({binding.property})</span>
-          </label>
-          <Field binding={binding} onNodeChange={onNodeChange} />
+          <LabeledField
+            binding={binding}
+            labelClassName="block text-xs font-semibold text-gray-700"
+            label={
+              <>
+                {binding.label}
+                <span className="ml-1 text-gray-400">({binding.property})</span>
+              </>
+            }
+          >
+            <Field binding={binding} onNodeChange={onNodeChange} />
+          </LabeledField>
         </div>
       ))}
     </div>
