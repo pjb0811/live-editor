@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { DEFAULT_TEMPLATE } from '~/constants';
 import Live from '~/index';
 
-import CustomPalettePanelDemo from '../../../demos/custom-palette-panel/custom-palette-panel-demo';
-import { EditorView, ModeSwitch, type ViewMode } from '../shared/editor-view';
+import CustomPalettePanelDemo from '../../demos/custom-palette-panel/custom-palette-panel-demo';
+import { EditorView, ModeSwitch, type ViewMode } from './shared/editor-view';
 
 // The docs demo for custom regions, mounted as is: a custom palette built on
 // `DraggableItem`, panels built on `useDndPanel()`, `Field`, `useDndItems()`

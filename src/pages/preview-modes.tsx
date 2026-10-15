@@ -5,8 +5,8 @@ import { Splitter, Switch } from '@jbpark/ui-kit';
 import type { FrameProps } from '~/components/frame';
 import Live from '~/index';
 
-import { IFRAME_FRAME, SHADOW_FRAME } from '../shared/frames';
-import { useEditorTheme } from '../shared/theme';
+import { IFRAME_FRAME, SHADOW_FRAME } from './shared/frames';
+import { useEditorTheme } from './shared/theme';
 
 // ui-kit components take their colors from the theme tokens, so they show
 // whether a preview follows the host's light or dark theme. The Tailwind box

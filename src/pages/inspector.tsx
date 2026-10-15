@@ -15,16 +15,16 @@ import { DEFAULT_CONTAINER_ID, PALETTE_SECTIONS } from '~/constants';
 import Live from '~/index';
 import type { Section } from '~/types';
 
-import { documentWith } from '../shared/documents';
-import { EditorView, ModeSwitch, type ViewMode } from '../shared/editor-view';
-import { IFRAME_FRAME } from '../shared/frames';
+import { documentWith } from './shared/documents';
+import { EditorView, ModeSwitch, type ViewMode } from './shared/editor-view';
+import { IFRAME_FRAME } from './shared/frames';
 import {
   BINDING_KEYS,
   KEYED_EXAMPLE,
   REGISTRY,
   REGISTRY_EXAMPLE,
-} from '../shared/registry-example';
-import { SECTION_ROOT_EXAMPLE } from '../shared/section-root-example';
+} from './shared/registry-example';
+import { SECTION_ROOT_EXAMPLE } from './shared/section-root-example';
 
 const PALETTE = [
   ...PALETTE_SECTIONS,

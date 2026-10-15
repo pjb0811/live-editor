@@ -35,13 +35,13 @@ live-editor/
 │  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, base-modules.ts, use-dynamic-tailwind.ts)
 │  ├─ pages/
 │  │  ├─ index.tsx          # 로컬 개발 앱 셸 (해시로 페이지 전환, 다크 모드 토글)
-│  │  ├─ playground/        # 코드 에디터·DnD 토글, undo/redo, 저장
-│  │  ├─ custom-panel/      # 커스텀 Palette/Panel/Layout (docs 데모 재사용)
-│  │  ├─ panel-meta/        # meta 키(tab/group/description/hint/visible)를 읽는 패널 (docs 데모 재사용)
-│  │  ├─ inspector/         # 요소 선택, renderField, onEditError, onBeforeDelete
-│  │  ├─ fallback/          # renderSectionFallback, shouldForceSectionFallback
-│  │  ├─ preview-modes/     # iframe/shadow/in place 비교, syncStyle·테마 동기화
-│  │  ├─ overlays/          # 섹션의 ui-kit Modal·Drawer를 container로 미리보기 안에 띄우기 (iframe/shadow)
+│  │  ├─ playground/        # playground.tsx(+diff-modal): 코드 에디터·DnD 토글, undo/redo, 저장
+│  │  ├─ custom-panel.tsx   # 커스텀 Palette/Panel/Layout (docs 데모 재사용)
+│  │  ├─ panel-meta.tsx     # meta 키(tab/group/description/hint/visible)를 읽는 패널 (docs 데모 재사용)
+│  │  ├─ inspector.tsx      # 요소 선택, renderField, onEditError, onBeforeDelete
+│  │  ├─ fallback.tsx       # renderSectionFallback, shouldForceSectionFallback
+│  │  ├─ preview-modes.tsx  # iframe/shadow/in place 비교, syncStyle·테마 동기화
+│  │  ├─ overlays/          # overlays.tsx(+document): 섹션의 ui-kit Modal·Drawer를 container로 미리보기 안에 띄우기 (iframe/shadow)
 │  │  └─ shared/            # 페이지 공용 예제 섹션, 프레임 설정
 │  ├─ utils/
 │  │  ├─ index.ts           # 공개 `./utils` 배럴 (재수출만, 라이브러리 내부는 아래 모듈에서 import)
