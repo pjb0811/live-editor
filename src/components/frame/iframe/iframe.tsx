@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+import { useAutoHeight } from '../auto-height/use-auto-height';
 import { type InjectedCounts, syncInjectedAssets } from './inject-assets';
-import { useAutoHeight } from './use-auto-height';
 import { useHostStyleSync } from './use-host-style-sync';
 import { useIframeDocument } from './use-iframe-document';
 

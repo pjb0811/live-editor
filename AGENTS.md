@@ -31,7 +31,7 @@ live-editor/
 │  │  │  └─ panel/          # 프로퍼티 편집 패널: panel·element-fields(요소 카드, element-selection)·labeled-field·field(+field-kind, field-ids, color-picker-field, jsx-editor-field), Items/Children 편집기(items, children, sortable-items, row-controls, selection-checkbox, bulk-actions-bar), 훅(use-dnd-items + items-source·item-bindings·item-identity·use-item-expansion, use-dnd-children, use-structural-selection)
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
-│  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx, use-iframe-document.ts, use-host-style-sync.ts, inject-assets.ts, use-auto-height.ts, auto-height.ts, animations.ts, measure.ts, viewport-units.ts)
+│  │  ├─ frame/            # 미리보기 컨테이너: 루트에 frame.tsx, shadow.tsx, style-sync.ts(shadow와 iframe 공용), viewport-units.ts(iframe과 자동 높이 공용), 기능 하위 폴더 iframe/(iframe.tsx, use-iframe-document, inject-assets, use-host-style-sync), auto-height/(auto-height, use-auto-height, measure, animations)
 │  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, base-modules.ts, use-dynamic-tailwind.ts)
 │  ├─ pages/
 │  │  ├─ index.tsx          # 로컬 개발 앱 셸 (해시로 페이지 전환, 다크 모드 토글)
@@ -104,15 +104,15 @@ live-editor/
 
 ## 🏗️ 주요 파일 요약
 
-| 파일                                | 역할                                                                                                                                                                            |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/utils/index.ts`                | 공개 `./utils` 배럴: `compile()`, `cn()`, `preloadScripts()`, 섹션 헬퍼 등을 재수출. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                 |
-| `src/utils/ast/`                    | 공개: `extract()`, `update()`/`updateAll()`, `validateBindingValue()` 등. 내부 코드는 배럴 대신 모듈 파일에서 import — 모듈 구조는 [ast 스킬](.claude/skills/ast/SKILL.md) 참고 |
-| `src/constants/index.ts`            | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `PALETTE_SECTIONS`(재수출, 정의는 `palette-sections.ts`)                                                              |
-| `src/types/index.ts`                | `Module`, `Section` 타입                                                                                                                                                        |
-| `src/components/context/states.ts`  | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                                                  |
-| `src/components/preview/client.tsx` | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                                                         |
-| `src/components/frame/iframe.tsx`   | iframe DOM/CSS 격리 + 스타일 동기화 + 자동 높이                                                                                                                                 |
+| 파일                                     | 역할                                                                                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/utils/index.ts`                     | 공개 `./utils` 배럴: `compile()`, `cn()`, `preloadScripts()`, 섹션 헬퍼 등을 재수출. UI kit을 import하지 않음 (`check-node-entries.mjs`로 검사)                                 |
+| `src/utils/ast/`                         | 공개: `extract()`, `update()`/`updateAll()`, `validateBindingValue()` 등. 내부 코드는 배럴 대신 모듈 파일에서 import — 모듈 구조는 [ast 스킬](.claude/skills/ast/SKILL.md) 참고 |
+| `src/constants/index.ts`                 | `DATA_ATTR`, `REGEX`, `BINDING_PROP`, `DEFAULT_TEMPLATE`, `PALETTE_SECTIONS`(재수출, 정의는 `palette-sections.ts`)                                                              |
+| `src/types/index.ts`                     | `Module`, `Section` 타입                                                                                                                                                        |
+| `src/components/context/states.ts`       | `PreviewContext`, `ErrorContext`, `usePreview()`, `useError()`                                                                                                                  |
+| `src/components/preview/client.tsx`      | 코드 컴파일 → 프레임 내 컴포넌트 렌더링                                                                                                                                         |
+| `src/components/frame/iframe/iframe.tsx` | iframe DOM/CSS 격리 + 스타일 동기화 + 자동 높이                                                                                                                                 |
 
 ---
 

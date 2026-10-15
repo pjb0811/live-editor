@@ -3,14 +3,14 @@ import type { RefObject } from 'react';
 
 import { useDebouncedCallback, useMutationObserver } from '@jbpark/use-hooks';
 
-import { CONTAINER_STYLE_ID } from './auto-height';
+import { CONTAINER_STYLE_ID } from '../auto-height/auto-height';
 import {
   createRootAttributeSync,
   createStyleSyncManager,
   reconcileRootAttributes,
   reconcileStyles,
-} from './style-sync';
-import { convertViewportUnits } from './viewport-units';
+} from '../style-sync';
+import { convertViewportUnits } from '../viewport-units';
 
 // Copies the host page's styles and root attributes into the iframe while
 // `syncStyle` is on, and again whenever the host changes them. Returns

@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 
-import IFrame, { type Props as IframeProps } from './iframe';
+import IFrame, { type Props as IframeProps } from './iframe/iframe';
 import Shadow from './shadow';
 
 export interface FrameProps extends Omit<IframeProps, 'children'> {
