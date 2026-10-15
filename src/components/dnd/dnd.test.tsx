@@ -1802,7 +1802,7 @@ describe('Field, exported for per-binding reuse', () => {
 
     const { container } = render(<Field binding={data.bindings[0]!} />);
 
-    // `FieldGroup` draws "Stats Items (items)" in the built-in panel; a
+    // `ElementFields` draws "Stats Items (items)" in the built-in panel; a
     // consumer supplying their own heading must not get a second one.
     expect(container.textContent).not.toContain('Stats Items');
   });

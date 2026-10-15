@@ -28,7 +28,7 @@ live-editor/
 │  │  │  ├─ canvas/         # 캔버스: droppable, sortable(+section-handlers 컨텍스트), overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight, canvas-notice(빈 캔버스 안내)
 │  │  │  ├─ palette/        # 팔레트: draggable, palette-drag(드래그 데이터)
 │  │  │  ├─ state/          # 상태 훅: use-section-document(섹션 문서), use-dnd-keyboard, use-inspector-state, use-delete-flow, use-section-editing(패널 편집 commit), edit-errors(편집 에러 보고)
-│  │  │  └─ panel/          # 프로퍼티 편집 패널: panel·node·field(+field-kind, field-group, color-picker-field, jsx-editor-field), Items/Children 편집기(items, children, sortable-items, row-controls, selection-checkbox, bulk-actions-bar), 훅(use-dnd-items + items-source·item-bindings·item-identity·use-item-expansion, use-dnd-children, use-structural-selection)
+│  │  │  └─ panel/          # 프로퍼티 편집 패널: panel·element-fields(요소 카드, element-selection)·labeled-field·field(+field-kind, field-ids, color-picker-field, jsx-editor-field), Items/Children 편집기(items, children, sortable-items, row-controls, selection-checkbox, bulk-actions-bar), 훅(use-dnd-items + items-source·item-bindings·item-identity·use-item-expansion, use-dnd-children, use-structural-selection)
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/             # 미리보기 컨테이너 (iframe.tsx, shadow.tsx, use-iframe-document.ts, use-host-style-sync.ts, inject-assets.ts, use-auto-height.ts, auto-height.ts, animations.ts, measure.ts, viewport-units.ts)

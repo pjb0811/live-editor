@@ -12,10 +12,10 @@ import {
   resolvePanelBindings,
   withPanelCommit,
 } from './panel-binding';
-import Node from './panel/node';
+import ElementFields from './panel/element-fields';
 import { useDndItems } from './panel/use-dnd-items';
 
-// Captures what `Node` hands to the built-in control, which is the only way
+// Captures what `ElementFields` hands to the built-in control, which is the only way
 // to read the custom-panel path's binding without asserting on rendered
 // markup that belongs to `Field`'s own tests.
 const captured = vi.hoisted(() => [] as PanelBinding[]);
@@ -235,10 +235,18 @@ describe('panel paths agree on the same element', () => {
   it('resolves identically for the direct, custom-panel and nested paths', () => {
     const direct = resolvePanelBindings(nodeOf(element, 't1'))!.bindings[0]!;
 
-    // The custom-panel path: `Node` resolves the binding and hands it to
-    // `Field`, which the mock above captures verbatim.
+    // The Children editor's path: the node's bindings, resolved and handed
+    // through `ElementFields` to `Field`, which the mock above captures
+    // verbatim.
     captured.length = 0;
-    render(<Node data={nodeOf(element, 't1')} />);
+    render(
+      <ElementFields
+        bindings={withPanelCommit(
+          resolvePanelBindings(nodeOf(element, 't1'))!.bindings,
+          undefined,
+        )}
+      />,
+    );
     const fromNode = captured[0]!;
 
     // The nested path: the same element inside an item's JSX-valued
@@ -320,7 +328,16 @@ describe('panel paths agree on the same element', () => {
     const commit = vi.fn();
 
     captured.length = 0;
-    render(<Node data={nodeOf(element, 't1')} onChange={commit} />);
+    // The Children editor's path: a node's bindings, committed by its id.
+    render(
+      <ElementFields
+        bindings={withPanelCommit(
+          resolvePanelBindings(nodeOf(element, 't1'))!.bindings,
+          commit,
+        )}
+        onNodeChange={commit}
+      />,
+    );
     captured[0]!.onChange('From node');
 
     expect(commit).toHaveBeenCalledWith({
