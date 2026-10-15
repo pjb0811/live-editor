@@ -2,9 +2,9 @@ import { useState } from 'react';
 
 import Live from '~/index';
 
-import { META_DOCUMENT } from '../../../demos/panel-meta/meta-example';
-import PanelMetaDemo from '../../../demos/panel-meta/panel-meta-demo';
-import { EditorView, ModeSwitch, type ViewMode } from '../shared/editor-view';
+import { META_DOCUMENT } from '../../demos/panel-meta/meta-example';
+import PanelMetaDemo from '../../demos/panel-meta/panel-meta-demo';
+import { EditorView, ModeSwitch, type ViewMode } from './shared/editor-view';
 
 // The docs demo for the common `meta` keys, mounted as is: a panel that
 // reads `tab`, `group`, `description`, `hint` and `visible` from
