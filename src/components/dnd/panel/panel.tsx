@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button, Typography } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
@@ -9,7 +9,11 @@ import { cn } from '~/utils/cn';
 
 import { DndInspectorContext } from '../inspector';
 import type { PanelBinding, PanelNodeChange } from '../panel-binding';
-import FieldGroup from './field-group';
+import ElementFields from './element-fields';
+import {
+  type ElementSelection,
+  ElementSelectionContext,
+} from './element-selection';
 
 // Props of the built-in property panel, which `Live.Dnd.Panel` renders from
 // `useDndPanel()`. They match that hook's fields, so the built-in panel and
@@ -105,53 +109,17 @@ const Panel = ({
     return () => highlight(null);
   }, [highlight, targetId]);
 
-  // Brings the fields of an element picked in the preview into view and
-  // marks them, whether they're a top-level group or nested in an Items or
+  // Marks the fields of an element picked in the preview and keeps them in
+  // view, whether they're a top-level group or nested in an Items or
   // Children editor (#432). A collapsed array item hides its nested fields,
-  // so there's nothing to scroll to then.
-  useEffect(() => {
-    const root = rootRef.current;
-
-    if (!root || !pickedId) {
-      return;
-    }
-
-    const target = root.querySelector(
-      `[data-node-id="${CSS.escape(pickedId)}"]`,
-    );
-
-    if (!target) {
-      return;
-    }
-
-    target.setAttribute('data-picked', '');
-
-    // Fields above the target can still grow for a moment after it renders
-    // (a rich-text editor mounting, for one), pushing it back out of view.
-    // So keep it in view for the first few hundred milliseconds.
-    const until = performance.now() + 600;
-    let frame = 0;
-
-    const keepInView = () => {
-      const box = target.getBoundingClientRect();
-      const view = root.getBoundingClientRect();
-
-      if (box.top < view.top || box.bottom > view.bottom) {
-        target.scrollIntoView?.({ block: 'nearest' });
-      }
-
-      if (performance.now() < until) {
-        frame = requestAnimationFrame(keepInView);
-      }
-    };
-
-    keepInView();
-
-    return () => {
-      cancelAnimationFrame(frame);
-      target.removeAttribute('data-picked');
-    };
-  }, [pickedId, groups.length]);
+  // so nothing is marked then.
+  const selection = useMemo<ElementSelection>(
+    () => ({
+      ids: new Set(pickedId ? [pickedId] : []),
+      scrollRootRef: rootRef,
+    }),
+    [pickedId],
+  );
 
   if (!item) {
     return (
@@ -224,37 +192,43 @@ const Panel = ({
           {messages.panel.noEditableElements}
         </Typography.Text>
       )}
-      {groups.map(group => {
-        const element = describeElement(group[0]!);
+      <ElementSelectionContext.Provider value={selection}>
+        {groups.map(group => {
+          const element = describeElement(group[0]!);
 
-        return (
-          <div
-            key={group[0]!.id}
-            data-node-id={group[0]!.id}
-            role="group"
-            aria-label={element.label}
-            className="rounded data-[picked]:ring-2 data-[picked]:ring-blue-400
-              data-[picked]:ring-offset-2"
-          >
-            {/* Only needed once fields of more than one element share the
-                panel; a single element reads the same as before (#514). */}
-            {groups.length > 1 && (
-              <div
-                className="mb-2 flex min-w-0 items-baseline gap-1.5 border-b
-                  border-gray-100 pb-1 text-xs"
-              >
-                <code className="shrink-0 text-gray-500">
-                  {element.tagName}
-                </code>
-                {element.text && (
-                  <span className="truncate text-gray-400">{element.text}</span>
-                )}
-              </div>
-            )}
-            <FieldGroup bindings={group} onNodeChange={onNodeChange} />
-          </div>
-        );
-      })}
+          return (
+            <ElementFields
+              key={group[0]!.id}
+              id={group[0]!.id}
+              role="group"
+              aria-label={element.label}
+              className="rounded data-[picked]:ring-2
+                data-[picked]:ring-blue-400 data-[picked]:ring-offset-2"
+              header={
+                // Only needed once fields of more than one element share the
+                // panel; a single element reads the same as before (#514).
+                groups.length > 1 && (
+                  <div
+                    className="mb-2 flex min-w-0 items-baseline gap-1.5 border-b
+                      border-gray-100 pb-1 text-xs"
+                  >
+                    <code className="shrink-0 text-gray-500">
+                      {element.tagName}
+                    </code>
+                    {element.text && (
+                      <span className="truncate text-gray-400">
+                        {element.text}
+                      </span>
+                    )}
+                  </div>
+                )
+              }
+              bindings={group}
+              onNodeChange={onNodeChange}
+            />
+          );
+        })}
+      </ElementSelectionContext.Provider>
     </div>
   );
 };

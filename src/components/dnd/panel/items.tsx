@@ -6,6 +6,7 @@ import type { BindingRenderMap } from '~/utils/ast/types';
 
 import type { PanelNodeChange } from '../panel-binding';
 import BulkActionsBar from './bulk-actions-bar';
+import ElementFields from './element-fields';
 import Field from './field';
 import LabeledField from './labeled-field';
 import RowControls from './row-controls';
@@ -52,41 +53,19 @@ const NestedGroup = ({
         {group.property} Bindings ({group.elements.length}):
       </div>
       {group.elements.map(element => (
-        <div
+        <ElementFields
           key={`${group.property}-${element.id}`}
-          data-node-id={element.id}
+          id={element.id}
           className="rounded border border-blue-100 bg-blue-50 p-2
             data-[picked]:ring-2 data-[picked]:ring-blue-400"
-        >
-          <div className="mb-1 text-xs text-blue-600">
-            &lt;{element.tagName}&gt;
-          </div>
-          <div className="space-y-2 rounded">
-            <div className="space-y-1">
-              {element.bindings.map(binding => (
-                <div
-                  key={`${binding.property}-${binding.label}`}
-                  className="space-y-1"
-                >
-                  <LabeledField
-                    binding={binding}
-                    labelClassName="block text-xs font-semibold text-gray-700"
-                    label={
-                      <>
-                        {binding.label}
-                        <span className="ml-1 text-gray-400">
-                          ({binding.property})
-                        </span>
-                      </>
-                    }
-                  >
-                    <Field binding={binding} onNodeChange={onNodeChange} />
-                  </LabeledField>
-                </div>
-              ))}
+          header={
+            <div className="mb-1 text-xs text-blue-600">
+              &lt;{element.tagName}&gt;
             </div>
-          </div>
-        </div>
+          }
+          bindings={element.bindings}
+          onNodeChange={onNodeChange}
+        />
       ))}
     </div>
   );

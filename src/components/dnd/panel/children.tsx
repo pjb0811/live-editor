@@ -7,12 +7,24 @@ import { useLiveMessages } from '~/components/context/messages';
 import { findEditableChildren } from '~/utils/ast/binding';
 import { type DataAttrNode } from '~/utils/ast/types';
 
-import type { PanelNodeChange } from '../panel-binding';
+import {
+  type PanelNodeChange,
+  resolvePanelBindings,
+  withPanelCommit,
+} from '../panel-binding';
 import BulkActionsBar from './bulk-actions-bar';
-import Node from './node';
+import ElementFields from './element-fields';
 import RowControls from './row-controls';
 import SelectionCheckbox from './selection-checkbox';
 import { useDndChildren } from './use-dnd-children';
+
+// A child node's bindings, committing through `onChange` by its own
+// `data-id`. Empty for a node with nothing bound.
+const bindingsOf = (node: DataAttrNode, onChange?: PanelNodeChange) => {
+  const source = resolvePanelBindings(node);
+
+  return source ? withPanelCommit(source.bindings, onChange) : [];
+};
 
 interface Props {
   value: DataAttrNode[];
@@ -101,17 +113,19 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
                 )?.value;
 
                 return (
-                  <div
+                  <ElementFields
                     key={`editable-${nodeId || idx}`}
-                    data-node-id={nodeId}
+                    id={nodeId ?? undefined}
                     className="rounded border border-green-100 bg-white p-2
                       data-[picked]:ring-2 data-[picked]:ring-blue-400"
-                  >
-                    <div className="mb-1 text-xs text-green-600">
-                      {editableNode.tagName}
-                    </div>
-                    <Node data={editableNode} onChange={onNodeChange} />
-                  </div>
+                    header={
+                      <div className="mb-1 text-xs text-green-600">
+                        {editableNode.tagName}
+                      </div>
+                    }
+                    bindings={bindingsOf(editableNode, onNodeChange)}
+                    onNodeChange={onNodeChange}
+                  />
                 );
               })}
             </div>
@@ -123,12 +137,12 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
                 {messages.children.childNodes}
               </div>
               {item.children.map((node, nodeIndex) => (
-                <div
+                <ElementFields
                   key={`node-${itemIndex}-${nodeIndex}`}
                   className="ml-2 rounded border border-green-100 bg-white p-2"
-                >
-                  <Node data={node} onChange={onNodeChange} />
-                </div>
+                  bindings={bindingsOf(node, onNodeChange)}
+                  onNodeChange={onNodeChange}
+                />
               ))}
             </div>
           )}

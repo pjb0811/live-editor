@@ -5,7 +5,7 @@ import { EditorView } from '@uiw/react-codemirror';
 
 import Live from '../src';
 import { useDndPanel } from '../src/components/dnd';
-import FieldGroup from '../src/components/dnd/panel/field-group';
+import ElementFields from '../src/components/dnd/panel/element-fields';
 import Items from '../src/components/dnd/panel/items';
 
 const selectionItems = `[{ label: 'A' }, { label: 'B' }, { label: 'C' }]`;
@@ -495,7 +495,7 @@ export const HistoryFixture = () => {
 // #409: the built-in panel's validation error, rendered with only the
 // library's own stylesheet — no preflight, as in a consumer that doesn't run
 // Tailwind's base layer. The field below it shows whether the error's margin
-// leaks past `FieldGroup`'s `space-y-1`.
+// leaks past `ElementFields`' `space-y-1`.
 const fieldErrorBindings = [
   {
     id: 'link',
@@ -517,7 +517,7 @@ const fieldErrorBindings = [
 ];
 
 export const FieldErrorFixture = () => (
-  <FieldGroup bindings={fieldErrorBindings} />
+  <ElementFields bindings={fieldErrorBindings} />
 );
 
 const scenario = new URLSearchParams(window.location.search).get('scenario');

@@ -3,8 +3,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { PanelBinding } from '../panel-binding';
+import ElementFields from './element-fields';
 import Field from './field';
-import FieldGroup from './field-group';
 
 const binding = (override: Partial<PanelBinding> = {}): PanelBinding => ({
   id: 'el',
@@ -24,7 +24,7 @@ afterEach(cleanup);
 describe('panel field labels', () => {
   it('names each control by its label, which points at it', () => {
     render(
-      <FieldGroup
+      <ElementFields
         bindings={[
           binding(),
           binding({
@@ -53,7 +53,7 @@ describe('panel field labels', () => {
 
   it('ties a validation error to the control and clears it once valid', () => {
     render(
-      <FieldGroup
+      <ElementFields
         bindings={[
           binding({ pattern: '^[a-z]+$', patternMessage: 'a-z only' }),
         ]}
@@ -80,7 +80,7 @@ describe('panel field labels', () => {
 
   it('labels each key of an object value', () => {
     render(
-      <FieldGroup
+      <ElementFields
         bindings={[
           binding({
             label: 'Style',
@@ -99,7 +99,7 @@ describe('panel field labels', () => {
 
   it('gives each field its own ids when labels repeat', () => {
     render(
-      <FieldGroup
+      <ElementFields
         bindings={[
           binding({ property: 'title' }),
           binding({ property: 'subtitle' }),
@@ -115,7 +115,7 @@ describe('panel field labels', () => {
   // select names itself instead of leaving a dangling `for`.
   it('names a select itself and leaves its label without a for', () => {
     render(
-      <FieldGroup
+      <ElementFields
         bindings={[
           binding({
             label: 'Size',
@@ -141,7 +141,7 @@ describe('panel field labels', () => {
 
   it('names the color picker by the field label', () => {
     render(
-      <FieldGroup
+      <ElementFields
         bindings={[
           binding({
             label: 'Accent',
@@ -168,7 +168,7 @@ describe('panel field labels', () => {
   });
 
   it('does not repeat the name inside a labelled field', () => {
-    render(<FieldGroup bindings={[binding()]} />);
+    render(<ElementFields bindings={[binding()]} />);
 
     expect(screen.getByRole('textbox').hasAttribute('aria-label')).toBe(false);
   });
