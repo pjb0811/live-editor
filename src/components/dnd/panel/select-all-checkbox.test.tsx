@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { extract } from '~/utils/ast';
 
-import Children from './children';
-import Items from './items';
+import Children from './children/children';
+import Items from './items/items';
 
 const three = `[{ label: 'A' }, { label: 'B' }, { label: 'C' }]`;
 

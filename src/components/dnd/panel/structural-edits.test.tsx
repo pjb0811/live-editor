@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { extract, update } from '~/utils/ast';
 
 import { DndEditOptionsContext } from '../edit-options';
-import { useDndChildren } from './use-dnd-children';
-import { useDndItems } from './use-dnd-items';
+import { useDndChildren } from './children/use-dnd-children';
+import { useDndItems } from './items/use-dnd-items';
 
 // One contract for both structural editors (#342): after a command succeeds,
 // the selection is whatever that command's rule says; after anything else

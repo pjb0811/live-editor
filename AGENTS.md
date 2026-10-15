@@ -28,7 +28,7 @@ live-editor/
 │  │  │  ├─ canvas/         # 캔버스: droppable, sortable(+section-handlers 컨텍스트), overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight, canvas-notice(빈 캔버스 안내)
 │  │  │  ├─ palette/        # 팔레트: draggable, palette-drag(드래그 데이터)
 │  │  │  ├─ state/          # 상태 훅: use-section-document(섹션 문서), use-dnd-keyboard, use-inspector-state, use-delete-flow, use-section-editing(패널 편집 commit), edit-errors(편집 에러 보고)
-│  │  │  └─ panel/          # 프로퍼티 편집 패널: panel·element-fields(요소 카드, element-selection)·labeled-field·field(+field-kind, field-ids, color-picker-field, jsx-editor-field), Items/Children 편집기(items, children, sortable-items, row-controls, selection-checkbox, bulk-actions-bar), 훅(use-dnd-items + items-source·item-bindings·item-identity·use-item-expansion, use-dnd-children, use-structural-selection)
+│  │  │  └─ panel/          # 프로퍼티 편집 패널: 루트에 panel·field(값 종류별 분기)·element-fields(요소 카드, element-selection)·row-controls, 기능 하위 폴더 items/(Items 편집기와 use-dnd-items 등), children/(Children 편집기, use-dnd-children), fields/(labeled-field, field-kind, field-ids, color-picker-field, jsx-editor-field), selection/(행 선택 체크박스·전체 선택·bulk bar, use-structural-selection)
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/            # 미리보기 컨테이너: 루트에 frame.tsx, shadow.tsx, style-sync.ts(shadow와 iframe 공용), viewport-units.ts(iframe과 자동 높이 공용), 기능 하위 폴더 iframe/(iframe.tsx, use-iframe-document, inject-assets, use-host-style-sync), auto-height/(auto-height, use-auto-height, measure, animations)
@@ -121,7 +121,7 @@ live-editor/
 ### 디렉토리 패턴
 
 - 디렉토리명은 kebab-case (`error/`, `dnd/panel/` 등)
-- "그룹화된" 컴포넌트(하위 컴포넌트를 가진 부모, 예: `error/`, `editor/`, `frame/`, `dnd/panel/`)는 각 하위 컴포넌트를 서브 디렉토리가 아니라 **같은 폴더 내 named file**로 둔다 (예: `error/boundary.tsx`, `editor/core.tsx`) — `ui-kit`의 `input/` 컴포넌트와 동일한 패턴
+- "그룹화된" 컴포넌트(하위 컴포넌트를 가진 부모, 예: `error/`, `editor/`, `frame/`)는 하위 컴포넌트마다 파일 하나만 감싼 서브 디렉토리를 만들지 않고 **같은 폴더 내 named file**로 둔다 (예: `error/boundary.tsx`, `editor/core.tsx`) — `ui-kit`의 `input/` 컴포넌트와 동일한 패턴. 폴더에 서로 다른 영역이 섞이면 기능 하위 폴더로 나눈다(예: `dnd/panel/`의 `items/`, `children/`, `fields/`, `selection/`)
 - `index.ts`는 그 파일들을 import해서 조합/재수출만 하는 얇은 **barrel**. 정적 프로퍼티로 합성되는 경우(`Editor.Core`, `Error.Boundary` 등)는 barrel에서 조합하고, 구현 파일(`error.tsx` 등)은 원래 export 식별자명을 그대로 유지 — barrel에서만 `import ErrorImpl from './error'`처럼 import 시점에 별칭을 준다
 - 정적으로 합성되지 않고 내부적으로만 쓰이거나 직접 subpath import되는 하위 파일(예: `editor/core.tsx`, `context/states.ts`)은 barrel을 거치지 않고 그대로 둔다
 - 일반 규칙과 기존 중첩 구조를 옮기는 절차는 공유 `coding-style` 스킬의 "F. 서브컴포넌트가 있는 컴포넌트의 파일 구조"를 따른다

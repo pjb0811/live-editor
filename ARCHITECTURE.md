@@ -59,14 +59,14 @@ the meanings the code uses.
 
 ### Elements and bindings
 
-| Term              | Meaning                                                                                                                                                                                                                                                                                                                                                                                           | Where                                             |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| **`data-id`**     | An element's identity. It links a DOM element in the preview to its JSX in the source, and is the address every edit uses. Every section gets a unique one (`fillSectionIds`). Inside a section, an empty `data-id=""` is filled deterministically from the section's id (`fillIdsFrom`), so the canvas and the panel agree on it; an element with no `data-id` attribute at all can't be edited. | `utils/ast/tree.ts`                               |
-| **Node**          | `DataAttrNode`: one JSX element as `extract()` reads it — tag name, attributes, text, children, and its resolved bindings. Not a DOM node.                                                                                                                                                                                                                                                        | `utils/ast/types.ts`                              |
-| **Binding**       | `BindingItem`: a declaration that one _property_ of an element is editable, with a `label`, a `type` and constraints. Comes from the element's `data-binding`, or `data-binding-key` → `bindingKeys`, or the component's entry in `bindings`, in that order.                                                                                                                                      | `resolveBindings` in `utils/ast/binding.ts`       |
-| **Property**      | What a binding edits. Either an attribute name (`src`, `title`, `data-size`) or one of four special names: `innerText`, `innerHTML`, `children`, `items`.                                                                                                                                                                                                                                         | `BINDING_PROP` in `constants/index.ts`            |
-| **Panel binding** | `PanelBinding`: one binding flattened for the panel, with its current `value`, its source text `rawValue`, and an `onChange` that commits. What `useDndPanel().bindings` returns.                                                                                                                                                                                                                 | `components/dnd/panel-binding.ts`                 |
-| **Field**         | The control the panel draws for one panel binding. `getFieldKind` picks which one (text, number, color, Items editor, ...); `renderField` can replace it.                                                                                                                                                                                                                                         | `components/dnd/panel/field.tsx`, `field-kind.ts` |
+| Term              | Meaning                                                                                                                                                                                                                                                                                                                                                                                           | Where                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **`data-id`**     | An element's identity. It links a DOM element in the preview to its JSX in the source, and is the address every edit uses. Every section gets a unique one (`fillSectionIds`). Inside a section, an empty `data-id=""` is filled deterministically from the section's id (`fillIdsFrom`), so the canvas and the panel agree on it; an element with no `data-id` attribute at all can't be edited. | `utils/ast/tree.ts`                                      |
+| **Node**          | `DataAttrNode`: one JSX element as `extract()` reads it — tag name, attributes, text, children, and its resolved bindings. Not a DOM node.                                                                                                                                                                                                                                                        | `utils/ast/types.ts`                                     |
+| **Binding**       | `BindingItem`: a declaration that one _property_ of an element is editable, with a `label`, a `type` and constraints. Comes from the element's `data-binding`, or `data-binding-key` → `bindingKeys`, or the component's entry in `bindings`, in that order.                                                                                                                                      | `resolveBindings` in `utils/ast/binding.ts`              |
+| **Property**      | What a binding edits. Either an attribute name (`src`, `title`, `data-size`) or one of four special names: `innerText`, `innerHTML`, `children`, `items`.                                                                                                                                                                                                                                         | `BINDING_PROP` in `constants/index.ts`                   |
+| **Panel binding** | `PanelBinding`: one binding flattened for the panel, with its current `value`, its source text `rawValue`, and an `onChange` that commits. What `useDndPanel().bindings` returns.                                                                                                                                                                                                                 | `components/dnd/panel-binding.ts`                        |
+| **Field**         | The control the panel draws for one panel binding. `getFieldKind` picks which one (text, number, color, Items editor, ...); `renderField` can replace it.                                                                                                                                                                                                                                         | `components/dnd/panel/field.tsx`, `fields/field-kind.ts` |
 
 ### "Item" means four things
 
@@ -263,12 +263,12 @@ Some values have structure of their own. An `items` value is an array literal,
 and its rows can be moved, copied, added and removed. A `children` value is
 the element's JSX children.
 
-- **`useDndItems`** (`components/dnd/panel/use-dnd-items.ts`) parses the array
+- **`useDndItems`** (`components/dnd/panel/items/use-dnd-items.ts`) parses the array
   (`items-source.ts`), gives each row a stable identity across edits
   (`item-identity.ts`) and its panel bindings (`item-bindings.ts`), and turns
   each action into an edit of the array's source (`utils/ast/items.ts`, `array-source.ts`). The new
   array source goes to the binding's `onChange`, which is level ②.
-- **`useDndChildren`** (`components/dnd/panel/use-dnd-children.ts`) describes
+- **`useDndChildren`** (`components/dnd/panel/children/use-dnd-children.ts`) describes
   the action (move, duplicate, delete, add) and its targets, and sends that to
   level ② as the `children` property's value. `update()` hands it to
   `editChildrenSource` (`utils/ast/children.ts`), which checks it against the
@@ -321,9 +321,12 @@ Dnd (dnd.tsx)
   `Field` for each. `Field` asks `renderField` first, then falls back to
   `BuiltinField`, which switches on `getFieldKind`. The `items` and `children`
   editors render `Field` again for each nested value, so `field.tsx` and
-  `items.tsx`, and `field.tsx`, `children.tsx` and `node.tsx`, import each
-  other on purpose. These are the only import cycles in `src`; shared types
-  such as `FieldProps` live in `panel/types.ts` to keep it that way.
+  `items/items.tsx`, and `field.tsx`, `children/children.tsx` and
+  `element-fields.tsx`, import each other on purpose. These are the only import
+  cycles in `src`; shared types such as `FieldProps` live in `panel/types.ts`
+  to keep it that way. `field.tsx` and `element-fields.tsx` stay at the root of
+  `panel/` for this reason, so the feature subfolders (`items/`, `children/`,
+  `fields/`, `selection/`) only ever import in one direction.
 
 ## The AST layer
 
@@ -407,10 +410,10 @@ provider to unmount clears them (`utils/editor-caches.ts`).
 | You want to...                                            | Start in                                                                                                               |
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Support a new authored syntax in a field                  | `utils/ast/edit-source.ts` and `update.ts` (write) and `extract.ts` / `value.ts` (read); then the Editable Syntax page |
-| Add a binding `type` or change which control a field gets | `BINDING_TYPES` in `utils/ast/types.ts`, `panel/field-kind.ts`, `panel/field.tsx`                                      |
+| Add a binding `type` or change which control a field gets | `BINDING_TYPES` in `utils/ast/types.ts`, `panel/fields/field-kind.ts`, `panel/field.tsx`                               |
 | Change what a section operation does                      | `dnd/state/use-section-document.ts`                                                                                    |
 | Change how panel edits commit                             | `commitChanges` in `dnd/state/use-section-editing.ts`                                                                  |
-| Change array or children editing                          | `panel/use-dnd-items.ts` / `use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`                                 |
+| Change array or children editing                          | `panel/items/use-dnd-items.ts` / `children/use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`                  |
 | Expose something to custom panels                         | `DndPanel` in `dnd/types.ts`, then `dnd/index.ts` and the public API snapshot                                          |
 | Change preview isolation or sizing                        | `components/frame/`                                                                                                    |
 | Add UI text                                               | `components/context/messages.ts` and the Korean set                                                                    |

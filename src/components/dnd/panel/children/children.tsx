@@ -11,12 +11,12 @@ import {
   type PanelNodeChange,
   resolvePanelBindings,
   withPanelCommit,
-} from '../panel-binding';
-import BulkActionsBar from './bulk-actions-bar';
-import ElementFields from './element-fields';
-import RowControls from './row-controls';
-import SelectAllCheckbox from './select-all-checkbox';
-import SelectionCheckbox from './selection-checkbox';
+} from '../../panel-binding';
+import ElementFields from '../element-fields';
+import RowControls from '../row-controls';
+import BulkActionsBar from '../selection/bulk-actions-bar';
+import SelectAllCheckbox from '../selection/select-all-checkbox';
+import SelectionCheckbox from '../selection/selection-checkbox';
 import { useDndChildren } from './use-dnd-children';
 
 // A child node's bindings, committing through `onChange` by its own

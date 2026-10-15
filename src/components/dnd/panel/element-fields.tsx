@@ -3,7 +3,7 @@ import { useContext, useEffect, useRef } from 'react';
 import type { PanelBinding, PanelNodeChange } from '../panel-binding';
 import { ElementSelectionContext } from './element-selection';
 import Field from './field';
-import LabeledField from './labeled-field';
+import LabeledField from './fields/labeled-field';
 
 interface Props extends Omit<React.ComponentPropsWithoutRef<'div'>, 'id'> {
   // The element's `data-id`. Absent for an element the editor can't

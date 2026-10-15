@@ -45,14 +45,14 @@
 
 ### 요소와 바인딩
 
-| 용어                 | 뜻                                                                                                                                                                                                                                                                                                                                          | 위치                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| **`data-id`**        | 요소의 식별자. 미리보기의 DOM 요소와 소스의 JSX를 연결하며, 모든 편집이 이 주소로 대상을 찾습니다. 섹션은 모두 고유한 id를 받습니다(`fillSectionIds`). 섹션 안에서는 비어 있는 `data-id=""`를 섹션 id를 바탕으로 결정적으로 채우므로(`fillIdsFrom`) 캔버스와 패널이 같은 id를 봅니다. `data-id` 속성이 아예 없는 요소는 편집할 수 없습니다. | `utils/ast/tree.ts`                               |
-| **Node** (노드)      | `DataAttrNode`. `extract()`가 읽은 JSX 요소 하나로, 태그 이름·속성·텍스트·자식·해석된 바인딩을 담습니다. DOM 노드가 아닙니다.                                                                                                                                                                                                               | `utils/ast/types.ts`                              |
-| **Binding** (바인딩) | `BindingItem`. 요소의 _property_ 하나를 편집할 수 있다는 선언으로, `label`, `type`, 제약 조건을 가집니다. 요소의 `data-binding` → `data-binding-key`가 가리키는 `bindingKeys` 항목 → 컴포넌트의 `bindings` 항목 순으로 찾습니다.                                                                                                            | `utils/ast/binding.ts`의 `resolveBindings`        |
-| **Property**         | 바인딩이 편집하는 대상. 속성 이름(`src`, `title`, `data-size`)이거나 네 가지 특별한 이름 `innerText`, `innerHTML`, `children`, `items` 중 하나입니다.                                                                                                                                                                                       | `constants/index.ts`의 `BINDING_PROP`             |
-| **Panel binding**    | `PanelBinding`. 패널용으로 펼친 바인딩 하나로, 현재 `value`, 소스 텍스트 `rawValue`, 그리고 commit하는 `onChange`를 가집니다. `useDndPanel().bindings`가 돌려주는 것이 이것입니다.                                                                                                                                                          | `components/dnd/panel-binding.ts`                 |
-| **Field** (필드)     | 패널이 panel binding 하나에 그리는 컨트롤. `getFieldKind`가 종류(텍스트, 숫자, 색상, Items 편집기 등)를 고르고, `renderField`로 바꿀 수 있습니다.                                                                                                                                                                                           | `components/dnd/panel/field.tsx`, `field-kind.ts` |
+| 용어                 | 뜻                                                                                                                                                                                                                                                                                                                                          | 위치                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **`data-id`**        | 요소의 식별자. 미리보기의 DOM 요소와 소스의 JSX를 연결하며, 모든 편집이 이 주소로 대상을 찾습니다. 섹션은 모두 고유한 id를 받습니다(`fillSectionIds`). 섹션 안에서는 비어 있는 `data-id=""`를 섹션 id를 바탕으로 결정적으로 채우므로(`fillIdsFrom`) 캔버스와 패널이 같은 id를 봅니다. `data-id` 속성이 아예 없는 요소는 편집할 수 없습니다. | `utils/ast/tree.ts`                                      |
+| **Node** (노드)      | `DataAttrNode`. `extract()`가 읽은 JSX 요소 하나로, 태그 이름·속성·텍스트·자식·해석된 바인딩을 담습니다. DOM 노드가 아닙니다.                                                                                                                                                                                                               | `utils/ast/types.ts`                                     |
+| **Binding** (바인딩) | `BindingItem`. 요소의 _property_ 하나를 편집할 수 있다는 선언으로, `label`, `type`, 제약 조건을 가집니다. 요소의 `data-binding` → `data-binding-key`가 가리키는 `bindingKeys` 항목 → 컴포넌트의 `bindings` 항목 순으로 찾습니다.                                                                                                            | `utils/ast/binding.ts`의 `resolveBindings`               |
+| **Property**         | 바인딩이 편집하는 대상. 속성 이름(`src`, `title`, `data-size`)이거나 네 가지 특별한 이름 `innerText`, `innerHTML`, `children`, `items` 중 하나입니다.                                                                                                                                                                                       | `constants/index.ts`의 `BINDING_PROP`                    |
+| **Panel binding**    | `PanelBinding`. 패널용으로 펼친 바인딩 하나로, 현재 `value`, 소스 텍스트 `rawValue`, 그리고 commit하는 `onChange`를 가집니다. `useDndPanel().bindings`가 돌려주는 것이 이것입니다.                                                                                                                                                          | `components/dnd/panel-binding.ts`                        |
+| **Field** (필드)     | 패널이 panel binding 하나에 그리는 컨트롤. `getFieldKind`가 종류(텍스트, 숫자, 색상, Items 편집기 등)를 고르고, `renderField`로 바꿀 수 있습니다.                                                                                                                                                                                           | `components/dnd/panel/field.tsx`, `fields/field-kind.ts` |
 
 ### "item"은 네 가지 뜻입니다
 
@@ -206,8 +206,8 @@ extractSections              → Section[] { id, name, code }
 
 어떤 값은 그 자체로 구조를 가집니다. `items` 값은 배열 리터럴이라 행을 이동·복제·추가·삭제할 수 있고, `children` 값은 요소의 JSX 자식입니다.
 
-- **`useDndItems`**(`components/dnd/panel/use-dnd-items.ts`)는 배열을 파싱하고(`items-source.ts`), 편집을 거쳐도 유지되는 식별자(`item-identity.ts`)와 패널 바인딩(`item-bindings.ts`)을 각 행에 주고, 각 동작을 배열 소스의 편집으로 바꿉니다(`utils/ast/items.ts`, `array-source.ts`). 새 배열 소스는 바인딩의 `onChange`, 즉 ② 단계로 갑니다.
-- **`useDndChildren`**(`components/dnd/panel/use-dnd-children.ts`)는 동작(이동, 복제, 삭제, 추가)과 대상을 기술해서 `children` property의 값으로 ② 단계에 보냅니다. `update()`는 이것을 `editChildrenSource`(`utils/ast/children.ts`)에 넘기고, 이 함수는 현재 소스와 대조한 뒤에 적용합니다.
+- **`useDndItems`**(`components/dnd/panel/items/use-dnd-items.ts`)는 배열을 파싱하고(`items-source.ts`), 편집을 거쳐도 유지되는 식별자(`item-identity.ts`)와 패널 바인딩(`item-bindings.ts`)을 각 행에 주고, 각 동작을 배열 소스의 편집으로 바꿉니다(`utils/ast/items.ts`, `array-source.ts`). 새 배열 소스는 바인딩의 `onChange`, 즉 ② 단계로 갑니다.
+- **`useDndChildren`**(`components/dnd/panel/children/use-dnd-children.ts`)는 동작(이동, 복제, 삭제, 추가)과 대상을 기술해서 `children` property의 값으로 ② 단계에 보냅니다. `update()`는 이것을 `editChildrenSource`(`utils/ast/children.ts`)에 넘기고, 이 함수는 현재 소스와 대조한 뒤에 적용합니다.
 - **중첩 바인딩.** 배열 항목 안의 JSX(`{ label: <b data-id="x" ... /> }`)는 최상위 `extract()`에 보이지 않습니다. `extract()`는 속성 값 안으로 들어가지 않기 때문입니다. Items 편집기가 그 JSX를 다시 extract하고, 그 필드를 `data-id`로 `onNodeChange`를 통해 commit합니다(#308).
 
 ## `Live.Dnd` 내부
@@ -237,7 +237,7 @@ Dnd (dnd.tsx)
 - **컴포넌트가 아니라 데이터를 넘깁니다.** 기본 팔레트와 패널도 커스텀 구현과 똑같이 `useDndPalette()`, `useDndPanel()`로 읽습니다. 그래서 공개 API가 기본 구현이 쓰는 것보다 뒤처질 수 없습니다(#237).
 - **영역은 배치만 담당합니다.** `Live.Dnd.Palette`, `Canvas`, `Panel`(`layout.tsx`)은 영역의 내용을 필요한 컨테이너로 감쌀 뿐입니다. 커스텀 레이아웃은 자기 `children`을 넘기고, 드래그 context 안이라면 어디든 배치할 수 있습니다.
 - **드래그 앤 드롭**은 `@dnd-kit`입니다. 팔레트 섹션은 `palette/palette-drag.ts`의 드래그 데이터를 싣고, 모든 곳이 이를 `paletteSectionOf`로 읽습니다. `onDragEnd`가 이를 `add`로, 캔버스 안의 드래그는 `reorder`로 바꿉니다. 끌고 있는 섹션은 `canvas/overlay.tsx`가 그립니다.
-- **패널**(`panel/panel.tsx`)은 `bindings`를 요소별로 묶고 각각 `Field`를 그립니다. `Field`는 먼저 `renderField`에 묻고, 없으면 `getFieldKind`로 분기하는 `BuiltinField`를 씁니다. `items`와 `children` 편집기는 중첩된 값마다 `Field`를 다시 그리므로, `field.tsx`와 `items.tsx`, 그리고 `field.tsx`, `children.tsx`, `node.tsx`는 서로를 일부러 import합니다. `src`의 import 순환은 이것뿐이며, `FieldProps` 같은 공유 타입은 `panel/types.ts`에 두어 순환이 늘지 않게 합니다.
+- **패널**(`panel/panel.tsx`)은 `bindings`를 요소별로 묶고 각각 `Field`를 그립니다. `Field`는 먼저 `renderField`에 묻고, 없으면 `getFieldKind`로 분기하는 `BuiltinField`를 씁니다. `items`와 `children` 편집기는 중첩된 값마다 `Field`를 다시 그리므로, `field.tsx`와 `items/items.tsx`, 그리고 `field.tsx`, `children/children.tsx`, `element-fields.tsx`는 서로를 일부러 import합니다. `src`의 import 순환은 이것뿐이며, `FieldProps` 같은 공유 타입은 `panel/types.ts`에 두어 순환이 늘지 않게 합니다. 같은 이유로 `field.tsx`와 `element-fields.tsx`는 `panel/` 루트에 두어, 기능 하위 폴더(`items/`, `children/`, `fields/`, `selection/`)는 한 방향으로만 import합니다.
 
 ## AST 계층
 
@@ -300,10 +300,10 @@ code ─► compile(code, modules)          utils/compile.ts
 | 하고 싶은 것                          | 시작할 곳                                                                                                      |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | 필드에서 새 작성 문법 지원            | `utils/ast/edit-source.ts`와 `update.ts`(쓰기), `extract.ts` / `value.ts`(읽기), 그다음 Editable Syntax 페이지 |
-| 바인딩 `type` 추가나 필드 컨트롤 변경 | `utils/ast/types.ts`의 `BINDING_TYPES`, `panel/field-kind.ts`, `panel/field.tsx`                               |
+| 바인딩 `type` 추가나 필드 컨트롤 변경 | `utils/ast/types.ts`의 `BINDING_TYPES`, `panel/fields/field-kind.ts`, `panel/field.tsx`                        |
 | 섹션 작업의 동작 변경                 | `dnd/state/use-section-document.ts`                                                                            |
 | 패널 편집의 commit 방식 변경          | `dnd/state/use-section-editing.ts`의 `commitChanges`                                                           |
-| 배열이나 children 편집 변경           | `panel/use-dnd-items.ts` / `use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`                         |
+| 배열이나 children 편집 변경           | `panel/items/use-dnd-items.ts` / `children/use-dnd-children.ts`, `utils/ast/items.ts` / `children.ts`          |
 | 커스텀 패널에 무언가 공개             | `dnd/types.ts`의 `DndPanel`, 그다음 `dnd/index.ts`와 공개 API 스냅샷                                           |
 | 미리보기 격리나 크기 조절 변경        | `components/frame/`                                                                                            |
 | UI 문구 추가                          | `components/context/messages.ts`와 한국어 세트                                                                 |

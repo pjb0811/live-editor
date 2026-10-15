@@ -6,7 +6,7 @@ import { EditorView } from '@uiw/react-codemirror';
 import Live from '../src';
 import { useDndPanel } from '../src/components/dnd';
 import ElementFields from '../src/components/dnd/panel/element-fields';
-import Items from '../src/components/dnd/panel/items';
+import Items from '../src/components/dnd/panel/items/items';
 
 const selectionItems = `[{ label: 'A' }, { label: 'B' }, { label: 'C' }]`;
 const fallbackItems = `[
