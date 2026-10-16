@@ -60,7 +60,11 @@ const editor = () => screen.getByTestId('editor') as HTMLTextAreaElement;
 const provider = () => screen.getByTestId('provider').textContent;
 const type = (text: string) =>
   fireEvent.change(editor(), { target: { value: text } });
-const elapse = (ms: number) => act(() => vi.advanceTimersByTime(ms));
+// `act` runs a synchronous callback before it returns, so the thenable it
+// also returns needs no await.
+const elapse = (ms: number) => {
+  void act(() => vi.advanceTimersByTime(ms));
+};
 
 describe('uncontrolled Editor: the provider owns the document', () => {
   it('shows each keystroke at once and reaches the provider after the debounce', () => {

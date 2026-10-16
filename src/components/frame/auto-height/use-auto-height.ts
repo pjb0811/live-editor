@@ -60,7 +60,7 @@ export const useAutoHeight = (
 
         trackedAnimationsRef.current.add(animation);
 
-        animation.finished
+        void animation.finished
           .catch(() => undefined)
           .then(() => updateHeightRef.current?.());
       });
