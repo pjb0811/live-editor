@@ -41,7 +41,7 @@ const FORCEABLE: Section = {
 };
 
 const INITIAL_DOCUMENT = documentWith([
-  PALETTE_SECTIONS[0],
+  ...PALETTE_SECTIONS.slice(0, 1),
   THROWING,
   FORCEABLE,
 ]);
