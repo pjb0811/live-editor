@@ -1,5 +1,50 @@
 # Changelog
 
+## 5.0.0
+
+### Major Changes
+
+- bf81d85: Require Node.js `^22.18.0 || >=24.11.0`. The runtime compiler, `@babel/standalone`, is now on Babel 8, which supports only that range, so `engines.node` moves from `>=20` to match. On older Node, npm warns on install and pnpm with `engine-strict` refuses it. Upgrade Node to 22.18 or later, or stay on 4.x.
+
+  Compiled preview code is unchanged: JSX still compiles to `React.createElement`, so documents need no `react/jsx-runtime`.
+
+- 5c4e531: Remove the exports deprecated in 4.x. The Utilities docs page lists each removed name with what to use instead.
+
+  - **`./utils`:** the internal helpers `transformCode`, `detectTypeScript`, `registerEditorSession`, `getCachedScriptBlob`, `clearScriptCache`, `generateSection`, `generateSections`, `createSectionPreviewCache` and `SectionPreviewCache`. Use `compile`, `preloadScripts` and `clearEditorCaches`.
+  - **`./utils/ast`:**
+    - the internal helpers behind `useDndItems`, `extract` and the document layer, such as `parseBinding`, `extractNodeValue`, `moveArrayItems`, `parseDocument`, `fillIds` and `generateCode`. Use `extract`, `update`, `updateAll`, `useDndItems`, `extractSections`, `replaceSections` and `checkDocument`.
+    - `bulkUpdate`. Use `updateAll`, which applies every entry or none. `UpdateResult` no longer has `failures`, which only `bulkUpdate` set.
+  - **`./dnd` and the package root:** the earlier names `useItemsEditor`, `useChildrenEditor`, `ItemsEditor*` and `ChildrenEditor*`. Use `useDndItems`, `useDndChildren`, `DndItems*` and `DndChildren*`.
+
+### Minor Changes
+
+- 61b420f: Add binding constraints: `minLength` / `maxLength` for text, `step` for numbers, `minItems` / `maxItems` for arrays, `minDate` / `maxDate` for dates, `protocols` for URLs, and `patternMessage` to say what a `pattern` expects. `validateBindingValue` checks them, and the built-in panel uses them: the number input gets `step`, and the Items editor disables add, duplicate and delete at the item limits. `useDndItems` takes `minItems` / `maxItems`, refuses actions past them, and returns `canAddItems` / `canRemoveItems`.
+
+  `ValidationMessages` gains `minLength`, `maxLength`, `step`, `minItems`, `maxItems`, `minDate`, `maxDate` and `protocol`. They show in English until translated, and a message set typed as the full `LiveMessages` needs them added.
+
+  These keys were carried in `meta` before. A binding that wrote one of them at the top level, such as `step: 5`, now gets it as the constraint, checked on edit, and no longer finds it in `meta`. Control settings belong on `widget` (`widget: { type: 'slider', step: 5 }`), which is unchanged.
+
+- 3057cb4: Add the `email` and `tel` binding types. The built-in panel draws them with the browser's email and phone inputs. `email` checks for a `name@domain.tld` shape; `tel` has no built-in format, since phone formats differ by country, so use `pattern` for one. `getFieldKind` returns `'email'` and `'tel'` for them, and `ValidationMessages` gains `email` and the panel messages `emailPlaceholder` and `telPlaceholder`.
+
+  `type: 'date'` now accepts only a `YYYY-MM-DD` value naming a real day, the format the date picker writes. Before, anything `Date.parse` read passed, including `1` and `2026/10/13`, and `2026-02-30` rolled over to March. This changes only what `validateBindingValue` accepts on edit; existing source isn't rewritten.
+
+- 03a5017: The built-in Items and Children editors get a "Select all" checkbox above their rows. It's checked when every row is selected and indeterminate when only some are. Clicking it selects every row, or clears the selection once all are selected, so a bulk action can reach the whole list without clicking each row. It follows the Items editor's structure lock, and the item limits from `minItems` / `maxItems` still disable bulk duplicate and delete. The text comes from the new `selection.selectAll` message.
+- 6bb206a: Add the `time` and `datetime` binding types. `time` holds a 24-hour `HH:mm` value and the built-in panel draws it with ui-kit's time picker. `datetime` holds a local `YYYY-MM-DDTHH:mm` value with no zone, as `datetime-local` writes it, and the panel draws it with the date picker's time mode. `validateBindingValue` checks both formats, with the new `time` and `datetime` messages, and `getFieldKind` returns `'time'` and `'datetime'`.
+
+  `minDate` and `maxDate` now also accept `YYYY-MM-DDTHH:mm` and apply to `datetime`. A date-only bound covers the whole day, so `maxDate: '2026-12-31'` allows `2026-12-31T23:59`.
+
+### Patch Changes
+
+- 655a9ec: Editing a string attribute in the panel now writes the value by JSX rules instead of JavaScript rules. A value with a double quote no longer leaves the section unparsable, a backslash is no longer doubled (a `pattern` such as `\d+` keeps its meaning), and a typed entity such as `&amp;` stays literal. A line break or tab is written as `{"..."}`, since JSX collapses a line break plus spaces inside an attribute string. Plain values are written exactly as before.
+- 727bd1a: Duplicating or adding a child in the panel's Children editor now keeps the parent's layout. In a parent written one child per line, the copy goes on its own line under the last child with the same indentation (and the file's line ending), where it used to land at column 0 against the closing tag. A parent on one line, an empty parent, and a last child followed by a comment on its line are handled as before.
+- 7ad6cab: The outline a panel field draws on its element now follows the element when an edit moves or resizes it, not only when the canvas scrolls or the window resizes. The element picker's Escape key and the error guard's `unhandledrejection` handling work as before. `@jbpark/use-hooks` is now `^4.6.0` and `@jbpark/ui-kit` `^10.3.0`.
+- 69e0071: Editing an `innerText` binding now escapes the text for JSX. Typing `<`, `>`, `{` or `}` used to leave the section unparsable or turn `{x}` into an expression, and a typed `&amp;` was read back as `&`. These are now written as entities (`&lt;`, `&gt;`, `&#123;`, `&#125;`, `&amp;amp;`), which the panel reads back as typed. Text without these characters is written exactly as before.
+- 6366d1c: Editing an `innerText` binding now overwrites whitespace that sits on the same line as the text, such as the spaces in `<h1> Old </h1>`. The panel trims that whitespace, so it could not be seen or removed, and the new value used to land between the old spaces. Whitespace that contains a line break is still kept as layout.
+- 708f5b2: The built-in panel's field labels now name their controls. Text, number, URL, email, phone and time fields are tied to their label by id, so a screen reader announces the label and clicking it focuses the field. A select or color field names itself with the label. A failed validation sets `aria-invalid` on the field and links the message through `aria-describedby`, and the message is announced as an alert. `Live.Dnd.Field` used in a custom panel's own markup names its control with the binding's label. Date, checkbox and rich text fields stay unnamed until ui-kit lets them take these attributes (pjb0811/ui-kit#534).
+- f456bbf: Removing an attribute that sits alone on its line now also removes the comments after it on that line. They used to stay behind and end up beside the previous attribute, describing the wrong thing.
+- 575fdf4: Adding or copying a section now keeps the document's layout. The new section starts on its own line at the indentation of the sections around it, and the section after it keeps its indentation, where it used to be pushed to column 0. In a document with CRLF line endings the new section is written with CRLF too, so the file no longer ends up with mixed line endings. A document written on one line, an empty container, and a section that shares its line with other code are handled as before.
+- 74ed3ff: Moving a section with the arrow buttons, or dragging it to a new position, no longer deletes what sits between the sections. A comment, another element, a conditional expression, text, or a wrapper element around a section used to disappear, and swapping sections that lived in different wrappers left both in the first one. The sections now trade places and everything else stays where it was. Adding, copying, editing and deleting a single section are unchanged.
+
 ## 4.6.1
 
 ### Patch Changes
