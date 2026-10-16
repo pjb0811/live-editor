@@ -21,6 +21,11 @@ export default tseslint.config([
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      // Type information for the promise rules below.
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     rules: {
       '@typescript-eslint/no-unused-vars': [
@@ -36,6 +41,11 @@ export default tseslint.config([
         },
       ],
       'react-refresh/only-export-components': 'warn',
+      // Every promise is awaited, handled, or marked deliberate with `void`
+      // (#656).
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
     },
   },
 ]);

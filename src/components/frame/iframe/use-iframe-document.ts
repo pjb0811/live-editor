@@ -4,9 +4,10 @@ import type { RefObject } from 'react';
 import { withScriptBlobs } from '~/utils/scripts';
 
 // Adds each script to the document's head as a `<script>` that loads from a
-// blob URL.
+// blob URL. Not awaited: a script that fails to load becomes an unhandled
+// rejection on the host page.
 const injectScripts = (doc: Document, srcs: string[]) => {
-  withScriptBlobs(srcs, blobUrls => {
+  void withScriptBlobs(srcs, blobUrls => {
     if (!doc.head) {
       return;
     }

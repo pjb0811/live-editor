@@ -22,7 +22,9 @@ export const useDynamicTailwind = (code: string, enabled: boolean) => {
 
     let cancelled = false;
 
-    import('~/utils/tailwind')
+    // Not awaited: a failure to generate the CSS becomes an unhandled
+    // rejection on the host page.
+    void import('~/utils/tailwind')
       .then(({ generateTailwindCSSFromDOM }) =>
         generateTailwindCSSFromDOM(element),
       )
