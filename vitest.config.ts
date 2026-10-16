@@ -18,6 +18,7 @@ export default defineConfig({
     // "0 failures" while never actually running (#277).
     // Plus the release tooling's own pure helpers under .github/scripts.
     include: ['src/**/*.test.{ts,tsx}', '.github/scripts/**/*.test.mjs'],
+    setupFiles: ['./vitest.setup.ts'],
     // @jbpark/ui-kit ships CSS side-effect imports (e.g. swiper.css). Left
     // externalized, Node's ESM loader throws "Unknown file extension .css";
     // inlining routes it through Vite so the CSS resolves to an empty module.
