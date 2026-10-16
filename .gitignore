@@ -13,6 +13,7 @@ dist-demo
 dist-ssr
 playwright-report
 test-results
+coverage
 *.local
 
 # Local notes and scratch files, never committed

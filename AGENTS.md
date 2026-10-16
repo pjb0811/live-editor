@@ -193,6 +193,7 @@ pnpm check-api-surface # 빌드된 dist의 export 목록을 스냅샷과 비교 
 pnpm lint          # ESLint
 pnpm knip          # 안 쓰는 export·파일 검사 (CI에서 실행, 설정은 knip.jsonc)
 pnpm test          # Vitest 1회 실행
+pnpm test:coverage # Vitest 1회 실행과 커버리지 요약 (CI에서 실행, 설정은 vitest.config.ts)
 pnpm test:watch    # Vitest watch 모드
 pnpm bench         # Vitest 벤치마크
 pnpm build:demo    # 로컬 앱을 dist-demo에 빌드

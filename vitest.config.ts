@@ -28,5 +28,21 @@ export default defineConfig({
         inline: [/@jbpark\/ui-kit/],
       },
     },
+    // Used by `pnpm test:coverage` (`--coverage`); `pnpm test` stays without
+    // it. The package's code only: not the dev app, the tests or the palette
+    // data. No thresholds, since `e2e/` covers the frames too (#658).
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/pages/**',
+        'src/main.tsx',
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.bench.ts',
+        'src/**/*.d.ts',
+        'src/constants/palette-sections.ts',
+      ],
+      reporter: ['text-summary', 'json-summary'],
+    },
   },
 });
