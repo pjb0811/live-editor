@@ -28,4 +28,4 @@ description: "Which checks to run in live-editor before committing or opening a 
 
 ## CI만 돌리는 것
 
-`ci.yml`의 `lint-and-build`는 위 검사에 더해 `pnpm depcheck`, `check-package-types.mjs`, `check-node-entries.mjs`(가장 오래 지원하는 Node에서도), `check-entry-babel.mjs`를 돌립니다. 로컬에서 돌리지 않았으면 PR에 그렇게 적고 CI 결과로 확인합니다.
+`ci.yml`의 `lint-and-build`는 위 검사에 더해 `check-package-types.mjs`, `check-node-entries.mjs`(가장 오래 지원하는 Node에서도), `check-entry-babel.mjs`를 돌립니다. 로컬에서 돌리지 않았으면 PR에 그렇게 적고 CI 결과로 확인합니다.
