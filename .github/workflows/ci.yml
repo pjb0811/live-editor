@@ -33,7 +33,7 @@ jobs:
         run: pnpm run knip
 
       - name: Type check
-        run: tsc -b
+        run: pnpm run check-types
 
       - name: Test
         run: pnpm test:coverage
