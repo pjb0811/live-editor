@@ -2,11 +2,11 @@
 
 [English](./README.md) | [한국어](./README.ko.md)
 
-An interactive editor for building UIs with real-time preview and drag‑and‑drop. Canvas edits are synced back to source code via AST transforms, and the result renders inside an iframe for DOM/CSS isolation. Built with React 19 and TypeScript. See [Security Notes](#-security-notes) — the iframe is not a security sandbox.
+An interactive editor for building UIs with real-time preview and drag‑and‑drop. Canvas edits are synced back to source code via AST transforms, and the result renders inside an iframe for DOM/CSS isolation. Built with React 19 and TypeScript. See [Security Notes](#security-notes) — the iframe is not a security sandbox.
 
 📖 **Documentation & live demos:** https://live-editor-lab.vercel.app
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 live-editor/
@@ -37,16 +37,16 @@ live-editor/
 How the pieces fit together — the read and write paths, the commit levels and
 a glossary — is in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-## 🎯 Highlights
+## Highlights
 
 - **Real-time code updates**: Canvas interactions (add/move/remove, property edits) are propagated back to source code safely.
 - **Interactive property panel**: Edit numbers, strings, booleans, arrays, and objects from the side panel.
 - **Advanced JSX binding system**: Automatically detects and enables editing for all JSX element properties (children, label, icon, etc.) through type-based detection.
 - **Smart Items editor**: Manage array items with add/move/delete operations, edit properties and nested JSX components with stable component identity across reorders.
-- **Preview runtime**: Renders compiled output inside an iframe for DOM/CSS isolation (not a security sandbox — see [Security Notes](#-security-notes)).
+- **Preview runtime**: Renders compiled output inside an iframe for DOM/CSS isolation (not a security sandbox — see [Security Notes](#security-notes)).
 - **Robust drag-and-drop**: Powered by `@dnd-kit` for smooth sorting and positioning.
 
-## 📦 Installation
+## Installation
 
 ```bash
 pnpm add @jbpark/live-editor react react-dom
@@ -56,7 +56,7 @@ pnpm add @jbpark/live-editor react react-dom
 optional peer — install it too if you want the editor's format-on-save; without
 it the editor still works and simply skips formatting.
 
-## 🧑‍💻 Usage
+## Usage
 
 Import the stylesheet once near your app root — it is **required** and is not
 imported by the JS entry:
@@ -97,7 +97,7 @@ export default function Example() {
 See the [documentation site](https://live-editor-lab.vercel.app) for the full
 guide (how Tailwind reaches the preview, custom panels, and more).
 
-## 🧩 Entry points
+## Entry points
 
 The package ships subpath exports so a consumer who needs only one feature area
 can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — see
@@ -116,13 +116,13 @@ can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — s
 | `@jbpark/live-editor/utils/tailwind` | Tailwind theme helpers                      |
 | `@jbpark/live-editor/style.css`      | Compiled stylesheet (required)              |
 
-## 🔒 Security Notes
+## Security Notes
 
 - The `sandbox` prop on the preview `<iframe>` (`src/components/frame/iframe/iframe.tsx`) is **not a security boundary**. Compiled preview code is executed via `new Function(...)` in the host page's own JS realm (`compileModule` in `src/utils/compile.ts`); only the resulting React elements are portaled into the iframe's `contentDocument` for DOM/CSS rendering. The iframe itself never evaluates user code.
 - Practical implication: previewed code runs with the same JS-level access as the host application (cookies, DOM, in-memory state) — the iframe boundary does not contain it.
 - Only open/edit projects you trust. Don't use this editor to preview arbitrary third-party project files without adding real isolation yourself (e.g. running compilation inside the iframe's own `contentWindow` realm and communicating results back via `postMessage`) — that isolation is not implemented here today.
 
-## 🧰 Tech Stack
+## Tech Stack
 
 - **Core**: React 19, TypeScript 6, Vite 8
 - **DnD**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/modifiers`
@@ -130,16 +130,16 @@ can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — s
 - **UI/Styling**: `@jbpark/ui-kit`, `lucide-react`, Tailwind CSS 4
 - **Transform**: Babel (standalone) for in-browser transforms
 
-## ⚙️ Requirements
+## Requirements
 
 - Peer deps: `react >=19`, `react-dom >=19`
 - Package metadata declares Node.js `^22.18.0 || >=24.11.0`, the range Babel 8 supports. CI checks that the entries meant for Node (`utils`, `utils/ast`, `utils/tailwind`, `provider`, `error`) load on Node 22.18. Repository development, builds and the rest of CI use the version pinned in `.nvmrc` (currently 24.18.0).
 - **pnpm** (developing this repo only): the version in `packageManager` (currently 12.8.1), managed via [Corepack](https://nodejs.org/api/corepack.html). Installing the package works with any package manager.
 
-## 🚀 Development (this repo)
+## Development (this repo)
 
 > Working on Live Editor itself. To _use_ the package in your app, see
-> [Installation](#-installation) above. Start with
+> [Installation](#installation) above. Start with
 > [ARCHITECTURE.md](./ARCHITECTURE.md) for how the code is organized.
 
 ### pnpm Setup (Recommended)
@@ -193,7 +193,7 @@ pnpm run build:demo
 pnpm exec vite preview --outDir dist-demo
 ```
 
-## 📦 Versioning & Release
+## Versioning & Release
 
 Releases are fully automated via [changesets](https://github.com/changesets/changesets):
 
@@ -210,6 +210,6 @@ CI workflows:
 - The Docusaurus documentation site is built from `website/` and deployed via
   Vercel (see `vercel.json`).
 
-## 📄 License
+## License
 
 [MIT License](./LICENSE) — Copyright (c) 2026 jbpark
