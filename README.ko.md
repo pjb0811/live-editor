@@ -2,11 +2,11 @@
 
 [English](./README.md) | [한국어](./README.ko.md)
 
-실시간 프리뷰와 드래그 앤 드롭을 지원하는 인터랙티브 UI 에디터입니다. 캔버스에서의 편집 내용은 AST 변환을 통해 실제 소스 코드에 정확히 반영되며, 결과는 DOM/CSS 격리를 위해 iframe 안에서 렌더링됩니다. React 19와 TypeScript로 구현되었습니다. iframe은 보안 샌드박스가 아닙니다 — [보안 참고사항](#-보안-참고사항)을 확인하세요.
+실시간 프리뷰와 드래그 앤 드롭을 지원하는 인터랙티브 UI 에디터입니다. 캔버스에서의 편집 내용은 AST 변환을 통해 실제 소스 코드에 정확히 반영되며, 결과는 DOM/CSS 격리를 위해 iframe 안에서 렌더링됩니다. React 19와 TypeScript로 구현되었습니다. iframe은 보안 샌드박스가 아닙니다 — [보안 참고사항](#보안-참고사항)을 확인하세요.
 
 📖 **문서 & 라이브 데모:** https://live-editor-lab.vercel.app
 
-## 📁 프로젝트 구조
+## 프로젝트 구조
 
 ```text
 live-editor/
@@ -36,16 +36,16 @@ live-editor/
 
 각 부분이 어떻게 맞물리는지(읽기·쓰기 경로, commit 단계, 용어집)는 [ARCHITECTURE.ko.md](./ARCHITECTURE.ko.md)에 있습니다.
 
-## 🎯 주요 기능
+## 주요 기능
 
 - **AST 기반 실시간 코드 반영**: 캔버스 상호작용(추가/이동/삭제, 속성 변경)을 안전하게 소스 코드에 적용합니다.
 - **인터랙티브 속성 패널**: 숫자, 문자열, 불리언, 배열, 객체를 패널에서 바로 편집합니다.
 - **고급 JSX 바인딩 시스템**: 타입 기반 감지를 통해 모든 JSX 요소 속성(children, label, icon 등)을 자동으로 인식하고 편집 가능하게 합니다.
 - **스마트 Items 에디터**: 배열 아이템을 추가/이동/삭제하고, 일반 속성과 중첩된 JSX 컴포넌트를 편집합니다. 순서 변경 시에도 안정적인 컴포넌트 ID를 유지합니다.
-- **프리뷰 런타임**: 컴파일된 결과를 DOM/CSS 격리를 위해 iframe 안에서 렌더링합니다 (보안 샌드박스는 아닙니다 — [보안 참고사항](#-보안-참고사항) 참고).
+- **프리뷰 런타임**: 컴파일된 결과를 DOM/CSS 격리를 위해 iframe 안에서 렌더링합니다 (보안 샌드박스는 아닙니다 — [보안 참고사항](#보안-참고사항) 참고).
 - **강력한 드래그 앤 드롭**: `@dnd-kit` 기반으로 부드러운 정렬과 배치를 지원합니다.
 
-## 📦 설치
+## 설치
 
 ```bash
 pnpm add @jbpark/live-editor react react-dom
@@ -55,7 +55,7 @@ pnpm add @jbpark/live-editor react react-dom
 peer로, 에디터의 저장 시 포맷(format-on-save)을 쓰려면 함께 설치하세요. 없어도
 에디터는 정상 동작하며 포맷만 건너뜁니다.
 
-## 🧑‍💻 사용법
+## 사용법
 
 스타일시트를 앱 루트 근처에서 한 번 import하세요 — **필수**이며 JS 엔트리가
 자동으로 불러오지 않습니다:
@@ -96,7 +96,7 @@ export default function Example() {
 전체 가이드(Tailwind가 프리뷰에 반영되는 방식, 커스텀 패널 등)는
 [문서 사이트](https://live-editor-lab.vercel.app)를 참고하세요.
 
-## 🧩 엔트리 포인트
+## 엔트리 포인트
 
 패키지는 서브패스 export를 제공해, 한 기능 영역만 필요한 소비자가 나머지를
 번들에 포함하지 않도록 합니다(예: 프리뷰 전용 빌드에는 CodeMirror 미포함) —
@@ -115,13 +115,13 @@ export default function Example() {
 | `@jbpark/live-editor/utils/tailwind` | Tailwind 테마 헬퍼                     |
 | `@jbpark/live-editor/style.css`      | 컴파일된 스타일시트 (필수)             |
 
-## 🔒 보안 참고사항
+## 보안 참고사항
 
 - 프리뷰 `<iframe>`(`src/components/frame/iframe/iframe.tsx`)의 `sandbox` prop은 **실제 보안 경계가 아닙니다**. 컴파일된 프리뷰 코드는 host 페이지 자신의 JS realm에서 `new Function(...)`으로 실행되며(`src/utils/compile.ts`의 `compileModule`), iframe에는 그 결과로 생성된 React 엘리먼트만 `contentDocument`에 포탈되어 DOM/CSS 렌더링 용도로만 쓰입니다. iframe 자체는 사용자 코드를 실행하지 않습니다.
 - 실질적 의미: 미리보기되는 코드는 호스트 애플리케이션과 동일한 수준의 JS 접근 권한(쿠키, DOM, 메모리상의 상태 등)을 가지며, iframe 경계가 이를 막아주지 않습니다.
 - 신뢰할 수 있는 프로젝트만 열어서 편집하세요. 직접 별도의 격리 조치(예: iframe 자체 `contentWindow` realm에서 컴파일을 실행하고 결과를 `postMessage`로 주고받는 방식)를 추가하지 않은 채로, 신뢰할 수 없는 제3자 프로젝트 파일을 미리보기하는 용도로 사용하지 마세요 — 그런 격리는 현재 구현되어 있지 않습니다.
 
-## 🧰 기술 스택
+## 기술 스택
 
 - **Core**: React 19, TypeScript 6, Vite 8
 - **DnD**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/modifiers`
@@ -129,16 +129,16 @@ export default function Example() {
 - **UI/스타일**: `@jbpark/ui-kit`, `lucide-react`, Tailwind CSS 4
 - **변환**: Babel(standalone) 기반 브라우저 내 변환
 
-## ⚙️ 요구 사항
+## 요구 사항
 
 - Peer dependencies: `react >=19`, `react-dom >=19`
 - 패키지 메타데이터는 Babel 8이 지원하는 범위인 Node.js `^22.18.0 || >=24.11.0`을 선언합니다. CI는 Node용 진입점(`utils`, `utils/ast`, `utils/tailwind`, `provider`, `error`)이 Node 22.18에서 로드되는지 확인합니다. 저장소 개발·빌드와 나머지 CI는 `.nvmrc`에 고정된 버전(현재 24.18.0)을 사용합니다.
 - **pnpm**: 10.x 이상 ([Corepack](https://nodejs.org/api/corepack.html)으로 관리)
 
-## 🚀 개발 (이 저장소)
+## 개발 (이 저장소)
 
 > Live Editor 자체를 개발할 때 참고하세요. 패키지를 앱에서 _사용_ 하려면
-> 위의 [설치](#-설치)를 보세요. 코드 구조는
+> 위의 [설치](#설치)를 보세요. 코드 구조는
 > [ARCHITECTURE.ko.md](./ARCHITECTURE.ko.md)부터 읽기를 권합니다.
 
 ### pnpm 설정 (권장)
@@ -191,7 +191,7 @@ pnpm run build:demo
 pnpm exec vite preview --outDir dist-demo
 ```
 
-## 📦 버전 관리 & 배포
+## 버전 관리 & 배포
 
 배포는 [changesets](https://github.com/changesets/changesets)로 완전히 자동화되어 있습니다:
 
@@ -207,6 +207,6 @@ CI 워크플로우:
 - `release.yml`: 기존 태그에 대한 GitHub Release를 수동(`workflow_dispatch`)으로 재생성하는 백업 유틸리티
 - Docusaurus 문서 사이트는 `website/`에서 빌드되며 Vercel로 배포됩니다(`vercel.json` 참고).
 
-## 📄 라이선스
+## 라이선스
 
 [MIT License](./LICENSE) — Copyright (c) 2026 jbpark
