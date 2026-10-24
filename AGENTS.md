@@ -232,7 +232,7 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 
 ## 공유 스킬
 
-모든 pjb0811 저장소가 함께 쓰는 **결정**(언어, 트레일러, 코드 스타일 기본값 등)은 비공개 저장소 `pjb0811/skills`의 `global/CLAUDE.md`에, **절차**는 같은 저장소의 전역 Claude Code 스킬에 있습니다. 둘을 읽을 수 없는 에이전트는 이 파일의 요약을 따릅니다.
+모든 pjb0811 저장소가 함께 쓰는 **결정**(언어, 트레일러, 코드 스타일 기본값 등)은 공개 저장소 [`pjb0811/skills`](https://github.com/pjb0811/skills)의 [`global/CLAUDE.md`](https://github.com/pjb0811/skills/blob/main/global/CLAUDE.md)에, **절차**는 같은 저장소의 전역 Claude Code 스킬에 있습니다. 둘을 설치하지 않은 에이전트는 이 파일의 요약을 따릅니다.
 
 | 스킬                                  | 용도                                                                                                                                    |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -241,6 +241,7 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 | `changesets-release`, `publish-check` | 릴리스 흐름과 배포 전 점검                                                                                                              |
 | `shared-library-first`                | 재사용 UI는 ui-kit, 훅은 use-hooks에 먼저 구현                                                                                          |
 | `ref-verification`                    | 저장소 상태를 작업 트리가 아니라 git ref 기준으로 확인                                                                                  |
+| `repo-settings`                       | 저장소 GitHub 설정(머지 방식, auto-merge, 기본 브랜치 ruleset)을 표준에 맞춤                                                            |
 
 ### 커밋 메시지
 
