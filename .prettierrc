@@ -5,6 +5,8 @@
   "htmlWhitespaceSensitivity": "ignore",
   "arrowParens": "avoid",
   "printWidth": 80,
+  "tailwindFunctions": ["cn", "cva"],
+  "customFunctions": ["cn", "cva"],
   "importOrder": [
     "^react(.*)",
     "^next(.*)",
