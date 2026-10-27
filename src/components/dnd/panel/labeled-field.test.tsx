@@ -111,9 +111,40 @@ describe('panel field labels', () => {
     expect(first!.id).not.toBe(second!.id);
   });
 
-  // A select takes no `id` (#637), so its label points at nothing and the
-  // select names itself instead of leaving a dangling `for`.
-  it('names a select itself and leaves its label without a for', () => {
+  it('names the checkbox and the date picker by the label pointing at them', () => {
+    render(
+      <ElementFields
+        bindings={[
+          binding({
+            label: 'Visible',
+            property: 'visible',
+            type: 'boolean',
+            value: true,
+            rawValue: 'true',
+          }),
+          binding({
+            label: 'Due',
+            property: 'due',
+            type: 'date',
+            value: '2026-01-02',
+            rawValue: '2026-01-02',
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole('checkbox', { name: /Visible/ })).not.toBeNull();
+
+    const datePicker = screen.getByRole('button', { name: /Due/ });
+
+    expect(screen.getByText('Due').closest('label')!.getAttribute('for')).toBe(
+      datePicker.id,
+    );
+  });
+
+  // A select and the rich text editor take no `id`, so they point at their
+  // label with `aria-labelledby`, and the label gets no `for`.
+  it('names a select and the rich text editor by aria-labelledby', () => {
     render(
       <ElementFields
         bindings={[
@@ -127,16 +158,49 @@ describe('panel field labels', () => {
               { label: 'Large', value: 'lg' },
             ],
           }),
+          binding({
+            label: 'Body',
+            property: 'body',
+            type: 'richtext',
+            value: '<p>Hi</p>',
+            rawValue: '<p>Hi</p>',
+          }),
         ]}
       />,
     );
 
-    expect(screen.getByText('Size').closest('label')!.hasAttribute('for')).toBe(
-      false,
+    const sizeLabel = screen.getByText('Size').closest('label')!;
+    const select = screen.getByRole('combobox', { name: /Size/ });
+
+    expect(sizeLabel.hasAttribute('for')).toBe(false);
+    expect(select.getAttribute('aria-labelledby')).toBe(sizeLabel.id);
+    expect(select.hasAttribute('aria-label')).toBe(false);
+
+    const bodyLabel = screen.getByText('Body').closest('label')!;
+
+    expect(
+      screen
+        .getByRole('textbox', { name: /Body/ })
+        .getAttribute('aria-labelledby'),
+    ).toBe(bodyLabel.id);
+  });
+
+  it('names a select itself outside a labelled field', () => {
+    render(
+      <Field
+        binding={binding({
+          label: 'Size',
+          property: 'size',
+          value: 'sm',
+          rawValue: 'sm',
+          options: [{ label: 'Small', value: 'sm' }],
+        })}
+      />,
     );
-    expect(screen.getByLabelText('Size')).not.toBe(
-      screen.getByText('Size').closest('label'),
-    );
+
+    const select = screen.getByRole('combobox', { name: 'Size' });
+
+    expect(select.hasAttribute('aria-labelledby')).toBe(false);
   });
 
   it('names the color picker by the field label', () => {
