@@ -89,7 +89,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   const { id, value, rawValue, onChange } = binding;
 
   const [validationError, setValidationError] = useState<string | null>(null);
-  const { controlId, errorId, isLabelled } = useFieldIds();
+  const { controlId, labelId, errorId, isLabelled } = useFieldIds();
   // For the controls that take them: the id the label points at, a name of
   // their own outside a `LabeledField`, and the error once there is one.
   const controlProps = {
@@ -97,6 +97,12 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     'aria-label': isLabelled ? undefined : binding.label,
     'aria-invalid': validationError ? true : undefined,
     'aria-describedby': validationError ? errorId : undefined,
+  };
+  // For the controls that take no `id`: the label they point at inside a
+  // `LabeledField`, or a name of their own outside one.
+  const labelledByProps = {
+    'aria-label': labelId ? undefined : binding.label,
+    'aria-labelledby': labelId,
   };
 
   // What the user is typing, for the inputs that commit on blur (url,
@@ -166,6 +172,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   if (kind === 'richtext') {
     return (
       <RichTextEditor
+        {...labelledByProps}
         value={rawValue}
         toolbar={RICHTEXT_TOOLBAR}
         onChange={commitIfChanged}
@@ -234,6 +241,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   if (kind === 'boolean') {
     return (
       <Checkbox
+        {...controlProps}
         checked={value === true || value === 'true'}
         onChange={checked => {
           onChange(checked);
@@ -246,9 +254,8 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
 
   if (kind === 'select') {
     return (
-      // Takes no `id`, so the label can't point at it; it names itself.
       <Select
-        aria-label={binding.label}
+        {...labelledByProps}
         value={stringValue}
         options={binding.options ?? []}
         onChange={commitIfChanged}
@@ -272,6 +279,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     return (
       <div>
         <DatePicker
+          {...controlProps}
           value={parseDateValue(stringValue)}
           showTime={withTime}
           onChange={date =>
