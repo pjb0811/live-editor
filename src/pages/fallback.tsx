@@ -4,6 +4,7 @@ import { Switch } from '@jbpark/ui-kit';
 import { TriangleAlert } from 'lucide-react';
 
 import type { DndRenderSectionFallback } from '~/components/dnd';
+import { uiKitFields } from '~/components/ui-kit';
 import { PALETTE_SECTIONS } from '~/constants';
 import Live from '~/index';
 import type { Section } from '~/types';
@@ -106,6 +107,7 @@ const Fallback = () => {
           ) : (
             <Live.Dnd
               frame={IFRAME_FRAME}
+              renderField={uiKitFields}
               items={PALETTE_SECTIONS}
               value={value}
               onChange={setValue}

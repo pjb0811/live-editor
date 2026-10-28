@@ -301,27 +301,33 @@ that use them, and keep a key's name once documents refer to it.
 
 ## Types
 
-| `type`     | Built-in control                                                           | Validation                                                                                                  |
-| ---------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `string`   | Text area                                                                  | `required`, `pattern`, `minLength`, `maxLength`                                                             |
-| `number`   | Number input                                                               | `required`, `min`, `max`, `step`                                                                            |
-| `boolean`  | Checkbox                                                                   | —                                                                                                           |
-| `color`    | Color picker                                                               | —                                                                                                           |
-| `date`     | Date picker (value stored as `YYYY-MM-DD`)                                 | `required`, a real `YYYY-MM-DD` day, `minDate`, `maxDate`                                                   |
-| `time`     | Time picker (value stored as `HH:mm`, 24-hour)                             | `required`, a valid `HH:mm`                                                                                 |
-| `datetime` | Date picker with time (value stored as `YYYY-MM-DDTHH:mm`, local, no zone) | `required`, a real day and time, `minDate`, `maxDate`                                                       |
-| `url`      | URL input                                                                  | `required`, `pattern`, valid URL, `protocols`                                                               |
-| `email`    | Email input                                                                | `required`, `pattern`, a `name@domain.tld` shape, `minLength`, `maxLength`                                  |
-| `tel`      | Phone input                                                                | `required`, `pattern`, `minLength`, `maxLength` (no built-in format, since phone formats differ by country) |
-| `richtext` | Rich text editor                                                           | —                                                                                                           |
-| `jsx`      | Code editor                                                                | —                                                                                                           |
-| `object`   | One nested field per key                                                   | per nested field                                                                                            |
-| `array`    | Item list                                                                  | `minItems`, `maxItems`, and per nested field                                                                |
+| `type`     | Built-in control                                                         | Validation                                                                                                  |
+| ---------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `string`   | Text area                                                                | `required`, `pattern`, `minLength`, `maxLength`                                                             |
+| `number`   | Number input                                                             | `required`, `min`, `max`, `step`                                                                            |
+| `boolean`  | Checkbox                                                                 | —                                                                                                           |
+| `color`    | Color input                                                              | —                                                                                                           |
+| `date`     | Date input (value stored as `YYYY-MM-DD`)                                | `required`, a real `YYYY-MM-DD` day, `minDate`, `maxDate`                                                   |
+| `time`     | Time input (value stored as `HH:mm`, 24-hour)                            | `required`, a valid `HH:mm`                                                                                 |
+| `datetime` | Date and time input (value stored as `YYYY-MM-DDTHH:mm`, local, no zone) | `required`, a real day and time, `minDate`, `maxDate`                                                       |
+| `url`      | URL input                                                                | `required`, `pattern`, valid URL, `protocols`                                                               |
+| `email`    | Email input                                                              | `required`, `pattern`, a `name@domain.tld` shape, `minLength`, `maxLength`                                  |
+| `tel`      | Phone input                                                              | `required`, `pattern`, `minLength`, `maxLength` (no built-in format, since phone formats differ by country) |
+| `richtext` | Text area with the HTML source                                           | —                                                                                                           |
+| `jsx`      | Code editor                                                              | —                                                                                                           |
+| `object`   | One nested field per key                                                 | per nested field                                                                                            |
+| `array`    | Item list                                                                | `minItems`, `maxItems`, and per nested field                                                                |
 
 Without a `type`, the built-in panel picks a control from the current value (a
 checkbox for `true`, a number input for `42`, and so on). A property whose name
-contains `color` also gets a color picker. `options` replaces the text, number,
+contains `color` also gets a color input. `options` replaces the text, number,
 color, date, time, URL, email and phone controls with a select.
+
+The built-in controls are native inputs, selects and text areas. For a date
+picker, a time picker, a color picker and a rich text editor from
+`@jbpark/ui-kit`, pass
+[`uiKitFields`](./custom-palette-panel.mdx#ui-kit-controls-uikitfields) as
+`renderField`.
 
 ## Constraints
 

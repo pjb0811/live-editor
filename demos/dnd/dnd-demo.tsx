@@ -10,6 +10,7 @@ import { useState } from 'react';
 // path. Context + Dnd is all the drag-and-drop canvas needs.
 import Context from '~/components/context';
 import Dnd from '~/components/dnd';
+import { uiKitFields } from '~/components/ui-kit';
 import { DEFAULT_TEMPLATE, PALETTE_SECTIONS } from '~/constants';
 import { SECTION_ROOT_EXAMPLE } from '~/pages/shared/section-root-example';
 
@@ -29,6 +30,7 @@ const DndDemo = () => {
       <div className="h-screen overflow-auto">
         <Dnd
           value={value}
+          renderField={uiKitFields}
           onChange={setValue}
           items={ITEMS}
           frame={{ mode: 'shadow', syncStyle: true }}

@@ -17,6 +17,7 @@ export default defineConfig({
     'utils/index': 'src/utils/index.ts',
     'utils/ast/index': 'src/utils/ast/index.ts',
     'utils/tailwind/index': 'src/utils/tailwind/index.ts',
+    'ui-kit/index': 'src/components/ui-kit/index.ts',
   },
   format: ['esm'],
   // This is a browser UI library (React components, iframe preview). Without

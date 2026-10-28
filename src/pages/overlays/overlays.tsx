@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Radio } from '@jbpark/ui-kit';
 
 import type { FrameProps } from '~/components/frame';
+import { uiKitFields } from '~/components/ui-kit';
 import Live from '~/index';
 
 import { EditorView, ModeSwitch, type ViewMode } from '../shared/editor-view';
@@ -58,6 +59,7 @@ const Overlays = () => {
             // Keyed by mode, so switching frames mounts fresh sections.
             <Live.Dnd
               key={frameMode}
+              renderField={uiKitFields}
               frame={frame}
               value={value}
               onChange={setValue}

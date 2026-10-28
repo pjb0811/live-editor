@@ -78,6 +78,10 @@
       "types": "./dist/utils/tailwind/index.d.ts",
       "import": "./dist/utils/tailwind/index.js"
     },
+    "./ui-kit": {
+      "types": "./dist/ui-kit/index.d.ts",
+      "import": "./dist/ui-kit/index.js"
+    },
     "./style.css": "./dist/style.css"
   },
   "files": [

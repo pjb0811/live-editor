@@ -7,10 +7,12 @@ import {
   type DndEditError,
   type DndNodePick,
   type DndRenderField,
+  type FieldProps,
   getFieldKind,
   useDndInspector,
 } from '~/components/dnd';
 import { toastEditError } from '~/components/dnd/edit-options';
+import { uiKitFields } from '~/components/ui-kit';
 import { DEFAULT_CONTAINER_ID, PALETTE_SECTIONS } from '~/constants';
 import Live from '~/index';
 import type { Section } from '~/types';
@@ -56,6 +58,7 @@ interface LogEntry {
 interface Options {
   useRegistry: boolean;
   useKeys: boolean;
+  useUiKitFields: boolean;
   annotateFields: boolean;
   logErrors: boolean;
   confirmDelete: boolean;
@@ -118,6 +121,7 @@ const Toolbar = ({
       <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
         {toggle('useRegistry', 'bindings: registry')}
         {toggle('useKeys', 'bindingKeys')}
+        {toggle('useUiKitFields', 'renderField: uiKitFields')}
         {toggle('annotateFields', 'renderField: annotate')}
         {toggle('logErrors', 'onEditError: log instead of toast')}
         {toggle('confirmDelete', 'onBeforeDelete: confirm')}
@@ -170,13 +174,13 @@ const EventLog = ({
   </div>
 );
 
-// Wraps each built-in control with the binding's property and the control
+// Wraps a field's control with the binding's property and the control
 // kind the library picked for it.
-const annotate: DndRenderField = ({ binding }, builtin) => (
+const annotate = (props: FieldProps, control: React.ReactNode) => (
   <div>
-    {builtin}
+    {control}
     <div className="mt-0.5 text-[10px] text-gray-400">
-      {binding.property} · {getFieldKind(binding)}
+      {props.binding.property} · {getFieldKind(props.binding)}
     </div>
   </div>
 );
@@ -202,6 +206,7 @@ const Inspector = () => {
   const [options, setOptions] = useState<Options>({
     useRegistry: true,
     useKeys: true,
+    useUiKitFields: true,
     annotateFields: true,
     logErrors: true,
     confirmDelete: true,
@@ -244,6 +249,18 @@ const Inspector = () => {
     return confirmed;
   };
 
+  // `uiKitFields` for the rich controls, then the annotation around
+  // whichever control renders.
+  const renderField: DndRenderField | undefined = options.annotateFields
+    ? (props, builtin) =>
+        annotate(
+          props,
+          (options.useUiKitFields && uiKitFields(props, builtin)) || builtin,
+        )
+    : options.useUiKitFields
+      ? uiKitFields
+      : undefined;
+
   const modeSwitch = <ModeSwitch value={mode} onChange={setMode} />;
 
   // The same document as code. The Dnd options above have nothing to act on
@@ -271,7 +288,7 @@ const Inspector = () => {
         onNodePick={onNodePick}
         bindings={options.useRegistry ? REGISTRY : undefined}
         bindingKeys={options.useKeys ? BINDING_KEYS : undefined}
-        renderField={options.annotateFields ? annotate : undefined}
+        renderField={renderField}
         onEditError={onEditError}
         onBeforeDelete={onBeforeDelete}
         className="flex h-full flex-col"

@@ -113,6 +113,7 @@ export default function Example() {
 | `@jbpark/live-editor/utils`          | 컴파일/섹션 헬퍼                       |
 | `@jbpark/live-editor/utils/ast`      | AST 조작 및 코드 생성                  |
 | `@jbpark/live-editor/utils/tailwind` | Tailwind 테마 헬퍼                     |
+| `@jbpark/live-editor/ui-kit`         | 선택형 `@jbpark/ui-kit` 필드 컨트롤    |
 | `@jbpark/live-editor/style.css`      | 컴파일된 스타일시트 (필수)             |
 
 ## 보안 참고사항

@@ -9,6 +9,7 @@ import {
 } from '@jbpark/use-hooks';
 import { Redo2, Save, Undo2 } from 'lucide-react';
 
+import { uiKitFields } from '~/components/ui-kit';
 import { DEFAULT_TEMPLATE, PALETTE_SECTIONS, STORAGE_KEY } from '~/constants';
 import Live from '~/index';
 
@@ -108,6 +109,7 @@ const Playground = () => {
           ) : (
             <Live.Dnd
               frame={IFRAME_FRAME}
+              renderField={uiKitFields}
               items={PALETTE}
               value={value}
               onChange={setValue}
