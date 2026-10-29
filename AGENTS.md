@@ -28,11 +28,12 @@ live-editor/
 │  │  │  ├─ canvas/         # 캔버스: droppable, sortable(+section-handlers 컨텍스트), overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight, canvas-notice(빈 캔버스 안내)
 │  │  │  ├─ palette/        # 팔레트: draggable, palette-drag(드래그 데이터)
 │  │  │  ├─ state/          # 상태 훅: use-section-document(섹션 문서), use-dnd-keyboard, use-inspector-state, use-delete-flow, use-section-editing(패널 편집 commit), edit-errors(편집 에러 보고)
-│  │  │  └─ panel/          # 프로퍼티 편집 패널: 루트에 panel·field(값 종류별 분기)·element-fields(요소 카드, element-selection)·row-controls, 기능 하위 폴더 items/(Items 편집기와 use-dnd-items 등), children/(Children 편집기, use-dnd-children), fields/(labeled-field, field-kind, field-ids, color-picker-field, jsx-editor-field), selection/(행 선택 체크박스·전체 선택·bulk bar, use-structural-selection)
+│  │  │  └─ panel/          # 프로퍼티 편집 패널: 루트에 panel·field(값 종류별 분기)·element-fields(요소 카드, element-selection)·row-controls, 기능 하위 폴더 items/(Items 편집기와 use-dnd-items 등), children/(Children 편집기, use-dnd-children), fields/(labeled-field, field-kind, field-ids, use-field-state(값·검증·id 공용 훅), field-error, color-field, control-class, jsx-editor-field), selection/(행 선택 체크박스·전체 선택·bulk bar, use-structural-selection)
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/            # 미리보기 컨테이너: 루트에 frame.tsx, shadow.tsx, style-sync.ts(shadow와 iframe 공용), viewport-units.ts(iframe과 자동 높이 공용), 기능 하위 폴더 iframe/(iframe.tsx, use-iframe-document, inject-assets, use-host-style-sync), auto-height/(auto-height, use-auto-height, measure, animations)
-│  │  └─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, base-modules.ts, use-dynamic-tailwind.ts)
+│  │  ├─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, base-modules.ts, use-dynamic-tailwind.ts)
+│  │  └─ ui-kit/            # 선택형 `@jbpark/live-editor/ui-kit` 진입점: uiKitFields(renderField로 rich text·select·checkbox·date·time·color를 ui-kit 컨트롤로), ui-kit-field, color-picker-field, date-value
 │  ├─ pages/
 │  │  ├─ index.tsx          # 로컬 개발 앱 셸 (해시로 페이지 전환, 다크 모드 토글)
 │  │  ├─ playground/        # playground.tsx(+diff-modal): 코드 에디터·DnD 토글, undo/redo, 저장
@@ -228,7 +229,7 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 
 ---
 
-라이브러리는 tsdown으로 ESM과 타입 선언을 빌드합니다. `package.json`의 `/provider`, `/editor`, `/dnd`, `/preview`, `/error`, `/utils` 및 AST/Tailwind 하위 진입점으로 기능별 import를 제공합니다. `Live.Dnd`는 `Palette`, `Canvas`, `Panel`, `Layout`과 커스텀 패널용 훅을 공개합니다.
+라이브러리는 tsdown으로 ESM과 타입 선언을 빌드합니다. `package.json`의 `/provider`, `/editor`, `/dnd`, `/preview`, `/error`, `/utils`, `/ui-kit` 및 AST/Tailwind 하위 진입점으로 기능별 import를 제공합니다. `Live.Dnd`는 `Palette`, `Canvas`, `Panel`, `Layout`과 커스텀 패널용 훅을 공개합니다.
 
 ## 공유 스킬
 

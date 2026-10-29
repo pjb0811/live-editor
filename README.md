@@ -114,6 +114,7 @@ can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — s
 | `@jbpark/live-editor/utils`          | Compile/section helpers                     |
 | `@jbpark/live-editor/utils/ast`      | AST manipulation & code generation          |
 | `@jbpark/live-editor/utils/tailwind` | Tailwind theme helpers                      |
+| `@jbpark/live-editor/ui-kit`         | Opt-in `@jbpark/ui-kit` field controls      |
 | `@jbpark/live-editor/style.css`      | Compiled stylesheet (required)              |
 
 ## Security Notes

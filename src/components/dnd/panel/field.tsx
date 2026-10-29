@@ -1,120 +1,36 @@
-import { type ComponentProps, useState } from 'react';
-
-import {
-  Checkbox,
-  DatePicker,
-  Input,
-  RichTextEditor,
-  Select,
-  TimePicker,
-} from '@jbpark/ui-kit';
-
 import { useLiveMessages } from '~/components/context/messages';
 import { type DataAttrNode } from '~/utils/ast/types';
-import { validateBindingValue } from '~/utils/ast/validate';
 import { parseValue } from '~/utils/ast/value';
+import { cn } from '~/utils/cn';
 
 import { useDndEditOptions } from '../edit-options';
 import { resolveRenderEntry, toBindingFields } from '../panel-binding';
 import Children from './children/children';
-import ColorPickerField from './fields/color-picker-field';
-import { useFieldIds } from './fields/field-ids';
+import ColorField from './fields/color-field';
+import { CONTROL_CLASS } from './fields/control-class';
+import FieldError from './fields/field-error';
 import { getFieldKind } from './fields/field-kind';
 import JSXEditorField from './fields/jsx-editor-field';
 import LabeledField from './fields/labeled-field';
+import { useFieldState } from './fields/use-field-state';
 import Items from './items/items';
 import type { FieldProps } from './types';
 
-// A `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` value as a local `Date`, or
-// `undefined` for anything else.
-const parseDateValue = (value: string): Date | undefined => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(
-    value.trim(),
-  );
-
-  if (!match) {
-    return undefined;
-  }
-
-  const [, year, month, day, hours = '0', minutes = '0'] = match;
-  const date = new Date(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hours),
-    Number(minutes),
-  );
-
-  return Number.isNaN(date.getTime()) ? undefined : date;
-};
-
-const pad = (value: number) => String(value).padStart(2, '0');
-
-// `YYYY-MM-DD`, or `YYYY-MM-DDTHH:mm` with `withTime`, in local time.
-const formatDateValue = (date: Date, withTime = false): string => {
-  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-
-  return withTime
-    ? `${day}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-    : day;
-};
-
-// The formatting controls for a small sidebar field, not every preset.
-const RICHTEXT_TOOLBAR: ComponentProps<typeof RichTextEditor>['toolbar'] = [
-  'bold',
-  'italic',
-  'underline',
-  'bulletList',
-  'orderedList',
-  'link',
-];
-
-// `mb-0` matters: `dist/style.css` has no CSS reset, so without it a `<p>`
-// keeps the browser's bottom margin and the fields below jump when the
-// error appears (#409).
-// `role="alert"` announces the message when it appears; the control points
-// at it with `aria-describedby` so it's read again on focus (#637).
-const FieldError = ({ id, message }: { id: string; message: string | null }) =>
-  message ? (
-    <p id={id} role="alert" className="mt-1 mb-0 text-xs text-red-500">
-      {message}
-    </p>
-  ) : null;
-
+// The built-in control for one binding: native inputs, selects and text
+// areas, plus the structural and source editors. `@jbpark/live-editor/ui-kit`
+// offers ui-kit controls in their place through `renderField`.
 const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   const messages = useLiveMessages();
-  const validationOptions = { messages: messages.validation };
-  // `value` is the JS value; `rawValue` is the source text, for the text
-  // controls and the source editors (#238).
   const { id, value, rawValue, onChange } = binding;
-
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const { controlId, labelId, errorId, isLabelled } = useFieldIds();
-  // For the controls that take them: the id the label points at, a name of
-  // their own outside a `LabeledField`, and the error once there is one.
-  const controlProps = {
-    id: controlId,
-    'aria-label': isLabelled ? undefined : binding.label,
-    'aria-invalid': validationError ? true : undefined,
-    'aria-describedby': validationError ? errorId : undefined,
-  };
-  // For the controls that take no `id`: the label they point at inside a
-  // `LabeledField`, or a name of their own outside one.
-  const labelledByProps = {
-    'aria-label': labelId ? undefined : binding.label,
-    'aria-labelledby': labelId,
-  };
-
-  // What the user is typing, for the inputs that commit on blur (url,
-  // number, text area). Reset during render when `rawValue` changes from outside,
-  // such as undo, so the old text isn't committed on blur (#284).
-  const [text, setText] = useState(rawValue);
-  const [prevRawValue, setPrevRawValue] = useState(rawValue);
-
-  if (rawValue !== prevRawValue) {
-    setPrevRawValue(rawValue);
-    setText(rawValue);
-  }
+  const {
+    text,
+    setText,
+    validationError,
+    errorId,
+    controlProps,
+    commitIfChanged,
+    validateAndCommit,
+  } = useFieldState(binding);
 
   const kind = getFieldKind(binding);
 
@@ -131,31 +47,6 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  // Skips a commit that doesn't change anything, comparing a string with
-  // `rawValue` and anything else with `value`.
-  const commitIfChanged = (next: unknown) => {
-    const current = typeof next === 'string' ? rawValue : value;
-
-    if (next !== current) {
-      onChange(next);
-    }
-  };
-
-  // Commits `next` if it passes the binding's validation, else shows why
-  // not.
-  const validateAndCommit = (next: unknown) => {
-    const result = validateBindingValue(binding, next, validationOptions);
-
-    if (!result.valid) {
-      setValidationError(result.message ?? messages.panel.invalidValue);
-
-      return;
-    }
-
-    setValidationError(null);
-    commitIfChanged(next);
-  };
-
   if (kind === 'items') {
     return (
       <Items
@@ -171,11 +62,15 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
 
   if (kind === 'richtext') {
     return (
-      <RichTextEditor
-        {...labelledByProps}
-        value={rawValue}
-        toolbar={RICHTEXT_TOOLBAR}
-        onChange={commitIfChanged}
+      // The HTML source as text; `@jbpark/live-editor/ui-kit` offers a
+      // formatting editor instead.
+      <textarea
+        {...controlProps}
+        rows={4}
+        value={text}
+        className={cn(CONTROL_CLASS, 'font-mono text-xs')}
+        onChange={e => setText(e.target.value)}
+        onBlur={e => commitIfChanged(e.target.value)}
       />
     );
   }
@@ -240,64 +135,56 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
 
   if (kind === 'boolean') {
     return (
-      <Checkbox
+      <input
         {...controlProps}
+        type="checkbox"
         checked={value === true || value === 'true'}
-        onChange={checked => {
-          onChange(checked);
+        className="size-4"
+        onChange={e => {
+          onChange(e.target.checked);
         }}
       />
     );
   }
 
-  const stringValue = rawValue;
-
   if (kind === 'select') {
     return (
-      <Select
-        {...labelledByProps}
-        value={stringValue}
-        options={binding.options ?? []}
-        onChange={commitIfChanged}
-      />
+      <select
+        {...controlProps}
+        value={rawValue}
+        className={CONTROL_CLASS}
+        onChange={e => commitIfChanged(e.target.value)}
+      >
+        {(binding.options ?? []).map(option => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     );
   }
 
   if (kind === 'color') {
     return (
-      <ColorPickerField
-        value={stringValue}
-        label={binding.label}
+      <ColorField
+        {...controlProps}
+        value={rawValue}
         onChange={commitIfChanged}
       />
     );
   }
 
-  if (kind === 'date' || kind === 'datetime') {
-    const withTime = kind === 'datetime';
-
+  if (kind === 'date' || kind === 'datetime' || kind === 'time') {
+    // The stored formats (`YYYY-MM-DD`, `YYYY-MM-DDTHH:mm`, `HH:mm`) are the
+    // ones these inputs read and write, so no conversion is needed.
     return (
       <div>
-        <DatePicker
+        <input
           {...controlProps}
-          value={parseDateValue(stringValue)}
-          showTime={withTime}
-          onChange={date =>
-            validateAndCommit(date ? formatDateValue(date, withTime) : '')
-          }
-        />
-        <FieldError id={errorId} message={validationError} />
-      </div>
-    );
-  }
-
-  if (kind === 'time') {
-    return (
-      <div>
-        <TimePicker
-          {...controlProps}
-          value={stringValue || null}
-          onChange={time => validateAndCommit(time ?? '')}
+          type={kind === 'datetime' ? 'datetime-local' : kind}
+          value={rawValue}
+          className={CONTROL_CLASS}
+          onChange={e => validateAndCommit(e.target.value)}
         />
         <FieldError id={errorId} message={validationError} />
       </div>
@@ -307,10 +194,11 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   if (kind === 'url' || kind === 'email' || kind === 'tel') {
     return (
       <div>
-        <Input
+        <input
           {...controlProps}
           type={kind}
           value={text}
+          className={CONTROL_CLASS}
           onChange={e => setText(e.target.value)}
           placeholder={
             kind === 'url'
@@ -329,11 +217,12 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   if (kind === 'number') {
     return (
       <div>
-        <Input
+        <input
           {...controlProps}
           type="number"
           step={binding.step}
           value={text}
+          className={CONTROL_CLASS}
           onChange={e => setText(e.target.value)}
           placeholder={messages.panel.numberPlaceholder}
           onBlur={e => {
@@ -354,9 +243,11 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
 
   return (
     <div>
-      <Input.TextArea
+      <textarea
         {...controlProps}
+        rows={2}
         value={text}
+        className={CONTROL_CLASS}
         onChange={e => setText(e.target.value)}
         placeholder={messages.panel.textPlaceholder}
         onBlur={e => {

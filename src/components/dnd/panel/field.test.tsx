@@ -29,50 +29,6 @@ vi.mock('~/components/editor/core', () => ({
   },
 }));
 
-vi.mock('@jbpark/ui-kit', async importOriginal => {
-  const actual = await importOriginal<typeof import('@jbpark/ui-kit')>();
-
-  return {
-    ...actual,
-    // Reports what it was given and picks 2026-10-13 14:30 on click, so the
-    // tests read the field's own parsing and formatting, not the calendar.
-    DatePicker: ({
-      value,
-      showTime,
-      onChange,
-    }: {
-      value?: Date;
-      showTime?: boolean;
-      onChange?: (date: Date | undefined) => void;
-    }) => (
-      <button
-        type="button"
-        data-testid="date-picker"
-        data-value={value ? value.toString() : ''}
-        data-show-time={String(Boolean(showTime))}
-        onClick={() => onChange?.(new Date(2026, 9, 13, 14, 30))}
-      />
-    ),
-    Select: ({
-      options,
-      onChange,
-      value,
-    }: {
-      options?: { label: string; value: string }[];
-      onChange?: (value: string) => void;
-      value?: string;
-    }) => (
-      <select value={value} onChange={event => onChange?.(event.target.value)}>
-        {options?.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    ),
-  };
-});
-
 const binding = (override: Partial<PanelBinding> = {}): PanelBinding => ({
   id: 'el',
   label: 'Value',
@@ -366,32 +322,31 @@ describe('Field time and datetime', () => {
   });
 
   it.each([
-    ['date', '2026-10-13'],
-    ['datetime', '2026-10-13T14:30'],
-  ] as const)('reads and writes a %s value', (type, written) => {
-    const onChange = vi.fn();
+    ['date', 'date', '2026-01-02', '2026-10-13'],
+    ['datetime', 'datetime-local', '2026-01-02T03:04', '2026-10-13T14:30'],
+  ] as const)(
+    'reads and writes a %s value in its native format',
+    (type, inputType, stored, written) => {
+      const onChange = vi.fn();
+      const { container } = render(
+        <Field
+          binding={binding({
+            type,
+            value: stored,
+            rawValue: stored,
+            onChange,
+          })}
+        />,
+      );
+      const input = container.querySelector<HTMLInputElement>(
+        `input[type="${inputType}"]`,
+      )!;
 
-    render(
-      <Field
-        binding={binding({
-          type,
-          value: '2026-01-02T03:04',
-          rawValue: type === 'date' ? '2026-01-02' : '2026-01-02T03:04',
-          onChange,
-        })}
-      />,
-    );
-    const picker = screen.getByTestId('date-picker');
+      expect(input.value).toBe(stored);
 
-    expect(picker.dataset.showTime).toBe(String(type === 'datetime'));
-    expect(new Date(picker.dataset.value!).getTime()).toBe(
-      type === 'date'
-        ? new Date(2026, 0, 2).getTime()
-        : new Date(2026, 0, 2, 3, 4).getTime(),
-    );
+      fireEvent.change(input, { target: { value: written } });
 
-    fireEvent.click(picker);
-
-    expect(onChange).toHaveBeenCalledWith(written);
-  });
+      expect(onChange).toHaveBeenCalledWith(written);
+    },
+  );
 });

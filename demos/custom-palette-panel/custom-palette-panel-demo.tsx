@@ -19,6 +19,7 @@ import Dnd, {
   useDndPanel,
   withPanelCommit,
 } from '~/components/dnd';
+import { uiKitFields } from '~/components/ui-kit';
 import { DEFAULT_TEMPLATE } from '~/constants';
 import { cn } from '~/utils';
 import {
@@ -873,6 +874,7 @@ const CustomPalettePanelDemo = ({
         <Dnd
           value={value}
           onChange={setValue}
+          renderField={uiKitFields}
           frame={{ mode: 'shadow', syncStyle: true }}
           dynamicTailwind
           className="min-h-0 flex-1 overflow-y-auto"

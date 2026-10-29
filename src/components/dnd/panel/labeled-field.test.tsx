@@ -111,78 +111,50 @@ describe('panel field labels', () => {
     expect(first!.id).not.toBe(second!.id);
   });
 
-  it('names the checkbox and the date picker by the label pointing at them', () => {
+  // Every built-in control is a native element, so each label points at its
+  // control with `for`.
+  it.each<[string, Partial<PanelBinding>, string]>([
+    ['checkbox', { type: 'boolean', value: true, rawValue: 'true' }, 'INPUT'],
+    [
+      'date',
+      { type: 'date', value: '2026-01-02', rawValue: '2026-01-02' },
+      'INPUT',
+    ],
+    ['time', { type: 'time', value: '09:00', rawValue: '09:00' }, 'INPUT'],
+    [
+      'color',
+      { type: 'color', value: '#ff0000', rawValue: '#ff0000' },
+      'INPUT',
+    ],
+    [
+      'select',
+      {
+        value: 'sm',
+        rawValue: 'sm',
+        options: [
+          { label: 'Small', value: 'sm' },
+          { label: 'Large', value: 'lg' },
+        ],
+      },
+      'SELECT',
+    ],
+    [
+      'rich text',
+      { type: 'richtext', value: '<p>Hi</p>', rawValue: '<p>Hi</p>' },
+      'TEXTAREA',
+    ],
+  ])('points the label at the %s control', (_, override, tagName) => {
     render(
       <ElementFields
-        bindings={[
-          binding({
-            label: 'Visible',
-            property: 'visible',
-            type: 'boolean',
-            value: true,
-            rawValue: 'true',
-          }),
-          binding({
-            label: 'Due',
-            property: 'due',
-            type: 'date',
-            value: '2026-01-02',
-            rawValue: '2026-01-02',
-          }),
-        ]}
+        bindings={[binding({ label: 'Field', property: 'field', ...override })]}
       />,
     );
+    const control = screen.getByLabelText(/Field/);
 
-    expect(screen.getByRole('checkbox', { name: /Visible/ })).not.toBeNull();
-
-    const datePicker = screen.getByRole('button', { name: /Due/ });
-
-    expect(screen.getByText('Due').closest('label')!.getAttribute('for')).toBe(
-      datePicker.id,
-    );
-  });
-
-  // A select and the rich text editor take no `id`, so they point at their
-  // label with `aria-labelledby`, and the label gets no `for`.
-  it('names a select and the rich text editor by aria-labelledby', () => {
-    render(
-      <ElementFields
-        bindings={[
-          binding({
-            label: 'Size',
-            property: 'size',
-            value: 'sm',
-            rawValue: 'sm',
-            options: [
-              { label: 'Small', value: 'sm' },
-              { label: 'Large', value: 'lg' },
-            ],
-          }),
-          binding({
-            label: 'Body',
-            property: 'body',
-            type: 'richtext',
-            value: '<p>Hi</p>',
-            rawValue: '<p>Hi</p>',
-          }),
-        ]}
-      />,
-    );
-
-    const sizeLabel = screen.getByText('Size').closest('label')!;
-    const select = screen.getByRole('combobox', { name: /Size/ });
-
-    expect(sizeLabel.hasAttribute('for')).toBe(false);
-    expect(select.getAttribute('aria-labelledby')).toBe(sizeLabel.id);
-    expect(select.hasAttribute('aria-label')).toBe(false);
-
-    const bodyLabel = screen.getByText('Body').closest('label')!;
-
+    expect(control.tagName).toBe(tagName);
     expect(
-      screen
-        .getByRole('textbox', { name: /Body/ })
-        .getAttribute('aria-labelledby'),
-    ).toBe(bodyLabel.id);
+      screen.getByText('Field').closest('label')!.getAttribute('for'),
+    ).toBe(control.id);
   });
 
   it('names a select itself outside a labelled field', () => {
@@ -201,24 +173,6 @@ describe('panel field labels', () => {
     const select = screen.getByRole('combobox', { name: 'Size' });
 
     expect(select.hasAttribute('aria-labelledby')).toBe(false);
-  });
-
-  it('names the color picker by the field label', () => {
-    render(
-      <ElementFields
-        bindings={[
-          binding({
-            label: 'Accent',
-            property: 'color',
-            type: 'color',
-            value: '#ff0000',
-            rawValue: '#ff0000',
-          }),
-        ]}
-      />,
-    );
-
-    expect(screen.getByRole('button', { name: 'Accent' })).not.toBeNull();
   });
 
   // `Live.Dnd.Field` in a custom panel's own markup has no `LabeledField`

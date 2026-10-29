@@ -451,17 +451,17 @@ on it can't drift from the built-in panel:
 | ------------ | ------------------------------------------------------ | --------------------------------------------------------- |
 | `'readonly'` | Preserved source with a note to use the code editor    | `canEditValue` is `false`                                 |
 | `'items'`    | Items editor (`useDndItems` for your own markup)       | `property` is `items` or `data`, or `type` is `array`     |
-| `'richtext'` | Rich text editor                                       | `type` is `richtext`                                      |
+| `'richtext'` | Text area with the HTML source                         | `type` is `richtext`                                      |
 | `'html'`     | Code editor, HTML mode                                 | `property` is `innerHTML`                                 |
 | `'jsx'`      | Code editor                                            | `type` is `jsx`                                           |
 | `'children'` | Children editor (`useDndChildren` for your own markup) | `property` is `children` and `value` is an array of nodes |
 | `'object'`   | One nested field per key                               | `value` is a plain object                                 |
 | `'boolean'`  | Checkbox                                               | `type` is `boolean`, or `value` is a boolean              |
 | `'select'`   | Select                                                 | `options` is set                                          |
-| `'color'`    | Color picker                                           | `type` is `color`, or `property` contains `color`         |
-| `'date'`     | Date picker                                            | `type` is `date`                                          |
-| `'time'`     | Time picker                                            | `type` is `time`                                          |
-| `'datetime'` | Date picker with time                                  | `type` is `datetime`                                      |
+| `'color'`    | Color input                                            | `type` is `color`, or `property` contains `color`         |
+| `'date'`     | Date input                                             | `type` is `date`                                          |
+| `'time'`     | Time input                                             | `type` is `time`                                          |
+| `'datetime'` | Date and time input                                    | `type` is `datetime`                                      |
 | `'url'`      | URL input                                              | `type` is `url`                                           |
 | `'email'`    | Email input                                            | `type` is `email`                                         |
 | `'tel'`      | Phone input                                            | `type` is `tel`                                           |
@@ -550,6 +550,38 @@ again.
 A replacement commits through `binding.onChange` like any other control, so
 validate first with `validateBindingValue(binding, value)` if the field
 declares constraints.
+
+### ui-kit controls: `uiKitFields`
+
+The built-in controls are native inputs, selects and text areas, so the
+editor needs no UI kit to edit fields. `@jbpark/live-editor/ui-kit` exports
+`uiKitFields`, a `renderField` that draws the rich text, checkbox, select,
+color, date, datetime and time fields with `@jbpark/ui-kit` instead, and
+keeps the built-in control for the rest:
+
+```tsx
+import { uiKitFields } from '@jbpark/live-editor/ui-kit';
+
+<Live.Dnd value={value} onChange={setValue} renderField={uiKitFields} />;
+```
+
+The labels and validation messages are tied to these controls the same way
+as to the built-in ones. To combine `uiKitFields` with your own replacements,
+call it for the fields yours leave alone:
+
+```tsx
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  renderField={(props, builtin) =>
+    props.binding.widget?.type === 'slider' ? (
+      <MySlider binding={props.binding} />
+    ) : (
+      uiKitFields(props, builtin)
+    )
+  }
+/>
+```
 
 ### Handling edit errors: `onEditError`
 
