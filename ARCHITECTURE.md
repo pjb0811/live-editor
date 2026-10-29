@@ -188,9 +188,13 @@ Two things make this work:
   document with only its own section inside the container. Imports and helper
   components outside the container still work, an unchanged section produces
   the same string (so `React.memo` skips it), and an error stays in its slot.
+- **An edited section keeps its DOM.** A recompile returns a new component
+  function. The slot renders it under one stable component type, keyed by the
+  hook calls in the section's code, so React updates only what the edit
+  changed. A change to the hook calls changes the key and remounts the slot.
 
 Files: `components/dnd/state/use-section-document.ts` (top half),
-`components/dnd/state/use-section-editing.ts` (the `fields` memo), `components/dnd/canvas/renderer.tsx`,
+`components/dnd/state/use-section-editing.ts` (the `fields` memo), `components/dnd/canvas/renderer.tsx`, `components/preview/stable-component.ts`,
 `components/dnd/panel-binding.ts`, `utils/ast/document.ts`,
 `utils/ast/extract.ts`.
 
