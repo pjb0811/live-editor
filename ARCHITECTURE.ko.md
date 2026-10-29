@@ -154,8 +154,9 @@ extractSections              → Section[] { id, name, code }
 
 - **양쪽이 id를 같은 방식으로 채웁니다.** 캔버스 미리보기와 패널은 비어 있는 `data-id=""`를 섹션 id와 요소 위치로 똑같이 채웁니다. 그래서 미리보기에서 요소를 클릭하면(요소 picker), 편집으로 id가 소스에 쓰이기 전에도 그 요소의 필드를 찾을 수 있습니다.
 - **섹션 미리보기는 각각 별도의 문서입니다.** 각 칸은 컨테이너에 자기 섹션만 넣은 문서 전체를 컴파일합니다. 그래서 컨테이너 밖의 import와 헬퍼 컴포넌트가 그대로 동작하고, 바뀌지 않은 섹션은 같은 문자열이 나와 `React.memo`가 건너뛰며, 에러는 그 칸 안에 머뭅니다.
+- **편집한 섹션은 DOM을 유지합니다.** 다시 컴파일하면 새 컴포넌트 함수가 나옵니다. 칸은 이 함수를 섹션 코드의 훅 호출 목록을 key로 한 고정된 컴포넌트 타입 아래에서 렌더링하므로, React는 편집으로 바뀐 부분만 갱신합니다. 훅 호출이 바뀌면 key가 바뀌어 칸이 다시 마운트됩니다.
 
-파일: `components/dnd/state/use-section-document.ts`(앞부분), `components/dnd/state/use-section-editing.ts`(`fields` memo), `components/dnd/canvas/renderer.tsx`, `components/dnd/panel-binding.ts`, `utils/ast/document.ts`, `utils/ast/extract.ts`.
+파일: `components/dnd/state/use-section-document.ts`(앞부분), `components/dnd/state/use-section-editing.ts`(`fields` memo), `components/dnd/canvas/renderer.tsx`, `components/preview/stable-component.ts`, `components/dnd/panel-binding.ts`, `utils/ast/document.ts`, `utils/ast/extract.ts`.
 
 ## 쓰기 경로: 세 단계의 commit
 
