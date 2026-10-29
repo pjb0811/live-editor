@@ -4,6 +4,7 @@ import { useLiveMessages } from '~/components/context/messages';
 import ErrorBoundary from '~/components/error/boundary';
 import LiveError from '~/components/error/error';
 import Frame, { type FrameProps } from '~/components/frame';
+import { renderStableComponent } from '~/components/preview/stable-component';
 import { useCompiledModule } from '~/components/preview/use-compiled-module';
 import { useDynamicTailwind } from '~/components/preview/use-dynamic-tailwind';
 
@@ -126,11 +127,11 @@ const Renderer = ({
           >
             {renderProvider(
               <>
-                <Component
-                  headers={headers}
-                  container={container}
-                  //
-                />
+                {/* Keeps the section's DOM when an edit leaves its hooks alone. */}
+                {renderStableComponent(Component, preview, {
+                  headers,
+                  container,
+                })}
                 {dynamicTailwind && dynamicCSS && <style>{dynamicCSS}</style>}
               </>,
             )}
