@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useEffect } from 'react';
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import ContextProvider from '~/components/context/context';
@@ -101,5 +101,59 @@ describe('Preview', () => {
     expect(screen.getByRole('region', { name: 'host' }).textContent).toContain(
       'inside',
     );
+  });
+});
+
+// A component with a click count in state and a heading of `title`.
+// `extraHook` adds a second hook call.
+const counter = (title: string, extraHook = false) => `
+import { useState } from 'react';
+
+export default function App() {
+  const [count, setCount] = useState(0);
+  ${extraHook ? 'const [other] = useState(1);' : ''}
+
+  return (
+    <>
+      <h1>${title}</h1>
+      <button type="button" onClick={() => setCount(count + 1)}>
+        clicked {count}
+      </button>
+    </>
+  );
+}
+`;
+
+// Each edit compiles a new component function. Rendered as is, it is a new
+// component type, and React rebuilt the preview's DOM and dropped its state
+// on every keystroke.
+describe('an edited preview', () => {
+  const preview = (code: string) => (
+    <ContextProvider>
+      <Preview code={code} />
+    </ContextProvider>
+  );
+
+  it('keeps its DOM and state when an edit leaves the hooks alone', () => {
+    const view = render(preview(counter('Hello')));
+    const heading = screen.getByRole('heading', { name: 'Hello' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'clicked 0' }));
+    view.rerender(preview(counter('World')));
+
+    expect(heading.isConnected).toBe(true);
+    expect(heading.textContent).toBe('World');
+    expect(screen.getByRole('button', { name: 'clicked 1' })).toBeTruthy();
+  });
+
+  it('remounts when an edit changes the hook calls', () => {
+    const view = render(preview(counter('Hello')));
+    const heading = screen.getByRole('heading', { name: 'Hello' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'clicked 0' }));
+    view.rerender(preview(counter('Hello', true)));
+
+    expect(heading.isConnected).toBe(false);
+    expect(screen.getByRole('button', { name: 'clicked 0' })).toBeTruthy();
   });
 });

@@ -9,6 +9,7 @@ import Frame, { type FrameProps } from '~/components/frame';
 import { cn } from '~/utils/cn';
 
 import { NO_MODULES, NO_PROPS } from './defaults';
+import { renderStableComponent } from './stable-component';
 import type { Props } from './types';
 import { useCompiledModule } from './use-compiled-module';
 import { useDynamicTailwind } from './use-dynamic-tailwind';
@@ -82,7 +83,11 @@ const Client = ({
                 >
                   {renderProvider(
                     <LiveError.Guard onError={e => setError(e.message)}>
-                      <Component {...componentProps} container={container} />
+                      {/* Keeps the DOM when an edit leaves the hooks alone. */}
+                      {renderStableComponent(Component, effectiveCode, {
+                        ...componentProps,
+                        container,
+                      })}
                       {dynamicTailwind && dynamicCSS && (
                         <style>{dynamicCSS}</style>
                       )}
@@ -112,7 +117,11 @@ const Client = ({
           >
             {renderProvider(
               <LiveError.Guard onError={e => setError(e.message)}>
-                <Component {...componentProps} />
+                {renderStableComponent(
+                  Component,
+                  effectiveCode,
+                  componentProps,
+                )}
                 {dynamicTailwind && dynamicCSS && <style>{dynamicCSS}</style>}
               </LiveError.Guard>,
             )}
