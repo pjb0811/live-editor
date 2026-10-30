@@ -10,25 +10,30 @@ import { useState } from 'react';
 // path. Context + Dnd is all the drag-and-drop canvas needs.
 import Context from '~/components/context';
 import Dnd from '~/components/dnd';
-import { uiKitFields } from '~/components/ui-kit';
-import { DEFAULT_TEMPLATE, PALETTE_SECTIONS } from '~/constants';
+import {
+  createUiKitDocument,
+  uiKitFields,
+  uiKitModules,
+  uiKitPaletteSections,
+} from '~/components/ui-kit';
 import { SECTION_ROOT_EXAMPLE } from '~/pages/shared/section-root-example';
 
 // The default palette plus a Banner whose own `<section>` carries a
 // `data-binding`, so its background and padding are editable from the panel
 // (see "Binding the section itself" in the Data Binding guide).
-const ITEMS = [...PALETTE_SECTIONS, SECTION_ROOT_EXAMPLE];
+const ITEMS = [...uiKitPaletteSections, SECTION_ROOT_EXAMPLE];
 
 // The interactive Drag & Drop demo embedded in the docs' DnD page. Mirrors the
 // app's own `pages/docs/dnd` (same props, same starting template) so the
 // embedded demo matches what the full editor does.
 const DndDemo = () => {
-  const [value, setValue] = useState(DEFAULT_TEMPLATE);
+  const [value, setValue] = useState(createUiKitDocument());
 
   return (
     <Context>
       <div className="h-screen overflow-auto">
         <Dnd
+          modules={uiKitModules}
           value={value}
           renderField={uiKitFields}
           onChange={setValue}

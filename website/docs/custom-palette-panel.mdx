@@ -583,6 +583,40 @@ call it for the fields yours leave alone:
 />
 ```
 
+### ui-kit sections and modules
+
+The rest of `@jbpark/live-editor/ui-kit` brings back the editor's
+ui-kit-based defaults in one place:
+
+| Export                          | What it is                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `uiKitModules`                  | The `ui-kit` and `ui-kit/utils` modules, for `modules`. Compiled code imports neither without it. |
+| `uiKitPaletteSections`          | The default palette's sections built with ui-kit, for `items`. They use `ui` and `cn`.            |
+| `createUiKitDocument(options?)` | `createDocument()` with `import * as ui from 'ui-kit'` and `cn` imported, for those sections.     |
+| `uiKitFields`                   | The ui-kit field controls, for `renderField` (above).                                             |
+
+```tsx
+import {
+  createUiKitDocument,
+  uiKitFields,
+  uiKitModules,
+  uiKitPaletteSections,
+} from '@jbpark/live-editor/ui-kit';
+
+const [value, setValue] = useState(createUiKitDocument);
+
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  items={uiKitPaletteSections}
+  modules={uiKitModules}
+  renderField={uiKitFields}
+/>;
+```
+
+Pass `uiKitModules` to `Live.Preview` too when its code imports `ui-kit`. To
+add modules of your own, spread them in: `modules={{ ...uiKitModules, chart }}`.
+
 ### Handling edit errors: `onEditError`
 
 When an edit can't be applied, the editor shows a toast and leaves the source

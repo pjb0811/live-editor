@@ -36,7 +36,7 @@ const next = replaceSections(code, [
 
 | Function                                 | Returns         | What it does                                                                                                                                   |
 | ---------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createDocument(options?)`               | `string`        | An empty document with the container. Start a controlled `Live.Dnd` from it. See [Document structure](./drag-and-drop.mdx#document-structure). |
+| `createDocument(options?)`               | `string`        | An empty document with the container and no imports. Start a controlled `Live.Dnd` from it. See [Document structure](./drag-and-drop.mdx#document-structure). |
 | `extractSections(code, options?)`        | `Section[]`     | The container's sections, each `{ id, name, code }`. `[]` when the code doesn't parse or has no container.                                     |
 | `replaceSections(code, codes, options?)` | `string`        | The document with its sections replaced by `codes`, in order. Everything outside the container is kept as written.                             |
 | `checkDocument(code, options?)`          | `DocumentCheck` | Whether `Live.Dnd` can edit the document. See below.                                                                                           |

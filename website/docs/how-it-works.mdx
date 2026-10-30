@@ -47,8 +47,6 @@ When you pass `value` and `onChange` to `Live.Dnd`, your app owns the code and
 **document**: a module whose default export is a component.
 
 ```tsx
-import * as ui from 'ui-kit';
-
 const App = () => (
   <main id="app-container">
     {/* each <section> in here is one section on the canvas */}
@@ -136,8 +134,9 @@ into an iframe, a shadow root, or in place ([Preview Modes](./preview-modes.mdx)
 The iframe isolates DOM and CSS, not JavaScript: the code can reach your page
 like any other script. Only run code you trust.
 
-Compiled code can import `react`, `ui-kit`, `ui-kit/utils`, and whatever you
-pass in `modules`.
+Compiled code can import `react` and whatever you pass in `modules`.
+`uiKitModules` from `@jbpark/live-editor/ui-kit` adds `ui-kit` and
+`ui-kit/utils`.
 
 ## One word, several meanings
 

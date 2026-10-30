@@ -179,7 +179,7 @@ describe('a layout supplied as children', () => {
     // Both regions read Dnd's state through the layout context, so selecting
     // on the canvas has to reach the panel wherever the two sit in the tree.
     expect(container.textContent).not.toContain('Please select a section.');
-    expect(container.textContent).toContain('Stats Items');
+    expect(container.textContent).toContain('Stats Cards');
   });
 
   it('can wrap the built-in layout instead of rebuilding it', () => {

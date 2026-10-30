@@ -32,8 +32,8 @@ live-editor/
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/            # 미리보기 컨테이너: 루트에 frame.tsx, shadow.tsx, style-sync.ts(shadow와 iframe 공용), viewport-units.ts(iframe과 자동 높이 공용), 기능 하위 폴더 iframe/(iframe.tsx, use-iframe-document, inject-assets, use-host-style-sync), auto-height/(auto-height, use-auto-height, measure, animations)
-│  │  ├─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, base-modules.ts, use-dynamic-tailwind.ts)
-│  │  └─ ui-kit/            # 선택형 `@jbpark/live-editor/ui-kit` 진입점: uiKitFields(renderField로 rich text·select·checkbox·date·time·color를 ui-kit 컨트롤로), ui-kit-field, color-picker-field, date-value
+│  │  ├─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, stable-component.ts, use-dynamic-tailwind.ts)
+│  │  └─ ui-kit/            # 선택형 `@jbpark/live-editor/ui-kit` 진입점: uiKitFields(renderField로 rich text·select·checkbox·date·time·color를 ui-kit 컨트롤로), uiKitModules(`ui-kit`·`ui-kit/utils` 모듈), uiKitPaletteSections(ui-kit판 기본 팔레트), createUiKitDocument(ui-kit import가 있는 새 문서), ui-kit-field, color-picker-field, date-value
 │  ├─ pages/
 │  │  ├─ index.tsx          # 로컬 개발 앱 셸 (해시로 페이지 전환, 다크 모드 토글)
 │  │  ├─ playground/        # playground.tsx(+diff-modal): 코드 에디터·DnD 토글, undo/redo, 저장
@@ -73,7 +73,7 @@ live-editor/
 │  │  │  ├─ validate.ts     # 바인딩 값 검증
 │  │  │  └─ tree.ts         # replaceIds()/fillIds()/clone()
 │  │  └─ tailwind/          # Tailwind 관련 유틸
-│  ├─ constants/            # index.ts: 상수, 정규식, 기본 템플릿 / palette-sections.ts: 기본 팔레트 섹션 (PALETTE_SECTIONS)
+│  ├─ constants/            # index.ts: 상수, 정규식, 기본 템플릿 / palette-sections.ts: 기본 팔레트 섹션 (PALETTE_SECTIONS, 일반 요소와 Tailwind 클래스, 모듈 불필요)
 │  ├─ types/index.ts        # TypeScript 타입 정의
 │  ├─ index.tsx             # 라이브러리 공개 API (Live 및 합성 컴포넌트)
 │  └─ main.tsx              # 로컬 개발 앱 진입점

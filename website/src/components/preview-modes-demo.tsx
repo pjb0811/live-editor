@@ -1,5 +1,6 @@
 import Preview from '@jbpark/live-editor/preview';
 import Context from '@jbpark/live-editor/provider';
+import { uiKitModules } from '@jbpark/live-editor/ui-kit';
 
 import styles from './preview-modes-demo.module.css';
 
@@ -84,6 +85,7 @@ const PreviewModesDemo = ({
           <Context>
             <Preview
               code={code}
+              modules={uiKitModules}
               dynamicTailwind
               frame={{ mode: 'iframe', syncStyle: true }}
             />
@@ -96,6 +98,7 @@ const PreviewModesDemo = ({
           <Context>
             <Preview
               code={code}
+              modules={uiKitModules}
               dynamicTailwind
               frame={{ mode: 'shadow', syncStyle: true }}
             />

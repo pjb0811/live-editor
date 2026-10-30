@@ -65,12 +65,12 @@ import { useState } from 'react';
 import Live from '@jbpark/live-editor';
 
 const SAMPLE = `
-import * as ui from 'ui-kit';
-
 const App = () => (
   <div className="flex flex-col items-start gap-2 p-6">
-    <ui.Typography.Title level={3}>Hello</ui.Typography.Title>
-    <ui.Button type="primary">Edit me</ui.Button>
+    <h3 className="text-xl font-semibold">Hello</h3>
+    <button type="button" className="rounded bg-indigo-500 px-3 py-1 text-white">
+      Edit me
+    </button>
   </div>
 );
 
@@ -154,16 +154,16 @@ for what does and doesn't apply there.
 
 ### `Live.Preview`
 
-| Prop              | Type                                  | Description                                                                                                                                                                                                                                                                |
-| ----------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `code`            | `string?`                             | Explicit code to compile and render. Omit it to render whatever's in `Live`'s shared context instead (the usual `Live.Editor` + `Live.Preview` pairing).                                                                                                                   |
-| `showError`       | `boolean?`                            | Show compile/runtime errors inline instead of failing silently.                                                                                                                                                                                                            |
-| `frame`           | `boolean \| FrameProps?`              | Isolation strategy — see [Preview Modes](./preview-modes.mdx).                                                                                                                                                                                                             |
-| `dynamicTailwind` | `boolean?`                            | Generate Tailwind CSS for the current code at runtime — see [How Tailwind reaches the preview](#how-tailwind-reaches-the-preview) above.                                                                                                                                   |
-| `modules`         | `Record<string, unknown>?`            | Extra specifiers resolvable from compiled code's `import` statements, merged with the built-in `baseModules`. Every sample's `import * as ui from 'ui-kit'` resolves through `baseModules` — pass your own map here to make additional specifiers resolvable the same way. |
-| `props`           | `Record<string, unknown>?`            | Props forwarded to the compiled code's default-exported component.                                                                                                                                                                                                         |
-| `provider`        | `(children: ReactNode) => ReactNode?` | Wrap the rendered output in your own context providers. `Live.Dnd` takes it too; there, pass a stable function rather than an inline one — see [Keeping edits fast](./drag-and-drop.mdx#keeping-edits-fast).                                                               |
-| `container`       | `HTMLElement \| null?`                | Currently unused — reserved for future use, has no effect today.                                                                                                                                                                                                           |
+| Prop              | Type                                  | Description                                                                                                                                                                                                       |
+| ----------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code`            | `string?`                             | Explicit code to compile and render. Omit it to render whatever's in `Live`'s shared context instead (the usual `Live.Editor` + `Live.Preview` pairing).                                                          |
+| `showError`       | `boolean?`                            | Show compile/runtime errors inline instead of failing silently.                                                                                                                                                   |
+| `frame`           | `boolean \| FrameProps?`              | Isolation strategy — see [Preview Modes](./preview-modes.mdx).                                                                                                                                                    |
+| `dynamicTailwind` | `boolean?`                            | Generate Tailwind CSS for the current code at runtime — see [How Tailwind reaches the preview](#how-tailwind-reaches-the-preview) above.                                                                          |
+| `modules`         | `Record<string, unknown>?`            | Specifiers compiled code can `import`, besides `react`. Pass `uiKitModules` from `@jbpark/live-editor/ui-kit` to make `import * as ui from 'ui-kit'` and `ui-kit/utils` resolvable, merged with your own entries. |
+| `props`           | `Record<string, unknown>?`            | Props forwarded to the compiled code's default-exported component.                                                                                                                                                |
+| `provider`        | `(children: ReactNode) => ReactNode?` | Wrap the rendered output in your own context providers. `Live.Dnd` takes it too; there, pass a stable function rather than an inline one — see [Keeping edits fast](./drag-and-drop.mdx#keeping-edits-fast).      |
+| `container`       | `HTMLElement \| null?`                | Currently unused — reserved for future use, has no effect today.                                                                                                                                                  |
 
 ### Replacing injected modules
 

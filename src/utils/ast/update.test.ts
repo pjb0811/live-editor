@@ -2,7 +2,7 @@ import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 import { describe, expect, it } from 'vitest';
 
-import { PALETTE_SECTIONS } from '~/constants';
+import { uiKitPaletteSections } from '~/components/ui-kit';
 
 import { getCurrentValue } from './binding';
 import { setEditableValue } from './editable-value';
@@ -799,7 +799,7 @@ describe('updateAll', () => {
 // text, so a single "+ Add" has to survive the round trip through `update`.
 // Neither shipped `items` binding declares a `type`, which is exactly the
 // case #238's gate missed.
-describe('adding an item to a shipped section', () => {
+describe('adding an item to a shipped ui-kit section', () => {
   const flatten = (nodes: DataAttrNode[]): DataAttrNode[] =>
     nodes.flatMap(node => [node, ...flatten(node.children ?? [])]);
 
@@ -807,7 +807,7 @@ describe('adding an item to a shipped section', () => {
     ['FAQ', 'FAQ Items'],
     ['Stats', 'Stats Items'],
   ])('keeps the %s section parseable', (name, label) => {
-    const section = PALETTE_SECTIONS.find(item => item.name === name)!;
+    const section = uiKitPaletteSections.find(item => item.name === name)!;
     const node = flatten(extract(section.code)).find(candidate =>
       candidate.bindings?.some(binding => binding.property === 'items'),
     )!;
