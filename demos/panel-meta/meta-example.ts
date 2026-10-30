@@ -1,4 +1,4 @@
-import { DEFAULT_TEMPLATE } from '~/constants';
+import { createUiKitDocument } from '~/components/ui-kit';
 import type { Section } from '~/types';
 import type { BindingKeyMap } from '~/utils/ast';
 import { replaceSections } from '~/utils/sections';
@@ -110,6 +110,6 @@ export const META_EXAMPLE: Section = {
     `,
 };
 
-export const META_DOCUMENT = replaceSections(DEFAULT_TEMPLATE, [
+export const META_DOCUMENT = replaceSections(createUiKitDocument(), [
   META_EXAMPLE.code,
 ]);

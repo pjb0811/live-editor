@@ -6,7 +6,7 @@ import { useLiveMessages } from '~/components/context/messages';
 import type { Module } from '~/types';
 import { compile } from '~/utils/compile';
 
-import { baseModules } from './base-modules';
+import { NO_MODULES } from './defaults';
 
 // Compiles code into a component, for `Live.Preview` and each canvas
 // section, so both handle errors the same way (#246). `null` for empty code,
@@ -21,23 +21,18 @@ export const useCompiledModule = (
   const modules = useStableValue(_modules);
   const { unknown } = useLiveMessages().errors;
 
-  const mergedModules = useMemo(
-    () => ({ ...baseModules, ...modules }),
-    [modules],
-  );
-
   return useMemo(() => {
     if (!code) {
       return null;
     }
 
     try {
-      return compile(code, mergedModules);
+      return compile(code, modules ?? NO_MODULES);
     } catch (e) {
       return {
         exports: {},
         error: e instanceof Error ? e.message : unknown,
       };
     }
-  }, [code, mergedModules, unknown]);
+  }, [code, modules, unknown]);
 };

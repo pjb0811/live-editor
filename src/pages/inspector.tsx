@@ -12,8 +12,12 @@ import {
   useDndInspector,
 } from '~/components/dnd';
 import { toastEditError } from '~/components/dnd/edit-options';
-import { uiKitFields } from '~/components/ui-kit';
-import { DEFAULT_CONTAINER_ID, PALETTE_SECTIONS } from '~/constants';
+import {
+  uiKitFields,
+  uiKitModules,
+  uiKitPaletteSections,
+} from '~/components/ui-kit';
+import { DEFAULT_CONTAINER_ID } from '~/constants';
 import Live from '~/index';
 import type { Section } from '~/types';
 
@@ -29,14 +33,14 @@ import {
 import { SECTION_ROOT_EXAMPLE } from './shared/section-root-example';
 
 const PALETTE = [
-  ...PALETTE_SECTIONS,
+  ...uiKitPaletteSections,
   SECTION_ROOT_EXAMPLE,
   REGISTRY_EXAMPLE,
   KEYED_EXAMPLE,
 ];
 
 const INITIAL_DOCUMENT = documentWith([
-  ...PALETTE_SECTIONS.slice(0, 1),
+  ...uiKitPaletteSections.slice(0, 1),
   SECTION_ROOT_EXAMPLE,
   REGISTRY_EXAMPLE,
   KEYED_EXAMPLE,
@@ -281,6 +285,7 @@ const Inspector = () => {
   return (
     <Live>
       <Live.Dnd
+        modules={uiKitModules}
         frame={IFRAME_FRAME}
         items={PALETTE}
         value={value}

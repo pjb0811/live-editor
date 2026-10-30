@@ -2,7 +2,8 @@
 import { act, fireEvent, render, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_TEMPLATE, PALETTE_SECTIONS } from '~/constants';
+import { uiKitPaletteSections } from '~/components/ui-kit';
+import { DEFAULT_TEMPLATE } from '~/constants';
 import type { Section } from '~/types';
 
 import { PreviewContext } from '../context/states';
@@ -41,7 +42,9 @@ beforeAll(() => {
   };
 });
 
-const stats = PALETTE_SECTIONS.find(item => item.id === 'stats')!;
+// The ui-kit Stats section: a marquee whose `items` value holds the cards,
+// so most of its elements are reachable only through that value (#308).
+const stats = uiKitPaletteSections.find(item => item.id === 'stats')!;
 
 const documentWith = (sectionCode: string) =>
   DEFAULT_TEMPLATE.replace(

@@ -65,9 +65,6 @@ export const DEFAULT_CONTAINER_ID = 'app-container';
 // `@jbpark/live-editor/utils` is the public way in; this is the template
 // behind it and behind `DEFAULT_TEMPLATE`.
 export const documentTemplate = (containerId: string) => `
-import * as ui from 'ui-kit';
-import { cn } from 'ui-kit/utils';
-
 const App = () => {
   return (
     <main id="${containerId}"></main>

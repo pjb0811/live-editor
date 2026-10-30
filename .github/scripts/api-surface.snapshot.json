@@ -117,7 +117,7 @@
       "types": ["CoreProps", "EditorRenderData", "Props"]
     },
     "./preview": {
-      "values": ["baseModules", "default"],
+      "values": ["default"],
       "types": ["Props"]
     },
     "./error": {
@@ -192,7 +192,12 @@
       "types": []
     },
     "./ui-kit": {
-      "values": ["uiKitFields"],
+      "values": [
+        "createUiKitDocument",
+        "uiKitFields",
+        "uiKitModules",
+        "uiKitPaletteSections"
+      ],
       "types": []
     }
   }

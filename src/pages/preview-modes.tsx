@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Splitter, Switch } from '@jbpark/ui-kit';
 
 import type { FrameProps } from '~/components/frame';
+import { uiKitModules } from '~/components/ui-kit';
 import Live from '~/index';
 
 import { IFRAME_FRAME, SHADOW_FRAME } from './shared/frames';
@@ -99,6 +100,7 @@ const PreviewModes = () => {
                     </header>
                     <div className="min-h-0 flex-1 overflow-auto">
                       <Live.Preview
+                        modules={uiKitModules}
                         code={code}
                         showError
                         frame={mode.frame(syncStyle)}

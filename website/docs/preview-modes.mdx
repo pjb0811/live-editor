@@ -51,6 +51,7 @@ as when previewing a mobile layout in a narrow column.
 
 ```tsx
 import Live from '@jbpark/live-editor';
+import { uiKitModules } from '@jbpark/live-editor/ui-kit';
 
 const SAMPLE = `
 import * as ui from 'ui-kit';
@@ -72,6 +73,7 @@ export default function PreviewModes() {
       <Live>
         <Live.Preview
           code={SAMPLE}
+          modules={uiKitModules}
           dynamicTailwind
           frame={{ mode: 'iframe', syncStyle: true }}
         />
@@ -81,6 +83,7 @@ export default function PreviewModes() {
       <Live>
         <Live.Preview
           code={SAMPLE}
+          modules={uiKitModules}
           dynamicTailwind
           frame={{ mode: 'shadow', syncStyle: true }}
         />
@@ -99,7 +102,8 @@ to isolate (the sample is a fixed string, not wired to an editor).
 A preview's default export receives a `container` prop when the preview has a
 frame. Pass it to an overlay's portal target, such as ui-kit's `Modal` and
 `Drawer`, so the overlay opens inside the preview instead of over the host
-page:
+page. The example imports `ui-kit`, so pass `modules={uiKitModules}` to the
+preview:
 
 ```tsx
 import { useState } from 'react';
