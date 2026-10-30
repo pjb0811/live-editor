@@ -1,5 +1,27 @@
 # Changelog
 
+## 6.0.0
+
+### Major Changes
+
+- ac2b2f9: The built-in panel's field controls are now native inputs, selects and text areas, so the panel needs no UI kit to edit fields. The checkbox, select, date, datetime, time and color fields use `<input type="checkbox">`, `<select>`, `<input type="date">`, `<input type="datetime-local">`, `<input type="time">` and `<input type="color">`, and a `richtext` field edits its HTML source in a text area. Labels and validation messages are tied to each control with `for`, `aria-describedby` and `aria-invalid`.
+
+  The `@jbpark/ui-kit` controls move to a new `@jbpark/live-editor/ui-kit` entry. To keep the previous date picker, time picker, color picker, rich text editor, select and checkbox, pass its `uiKitFields` as `renderField`:
+
+  ```tsx
+  import { uiKitFields } from '@jbpark/live-editor/ui-kit';
+  
+  <Live.Dnd value={value} onChange={setValue} renderField={uiKitFields} />;
+  ```
+
+  If you already pass a `renderField`, return `uiKitFields(props, builtin)` for the fields yours leaves alone.
+
+### Patch Changes
+
+- 3ad0c4d: Typing in the code editor no longer rebuilds `Live.Preview`. As with canvas sections, the preview now renders each compile under a component type that survives a recompile, so React updates only what changed and the preview keeps its state, as long as the edit leaves the component's hook calls alone. An edit that adds, removes or reorders hook calls still remounts it.
+- 767b584: Editing a field no longer rebuilds the edited canvas section. Each edit recompiles the section into a new component, which React treated as a new type and remounted, so the section's whole DOM was replaced and its state, images and animations reset on every edit. The section now renders under a type that survives a recompile, so React updates only what changed, as long as the edit leaves the component's hook calls alone. An edit that adds, removes or reorders hook calls still remounts the section.
+- c0cc955: The built-in panel's checkbox, date picker, select and rich text editor are now named by their field label. The label points at the checkbox and the date picker with `for`, and the select and the rich text editor point at the label with `aria-labelledby`. A date picker's validation error is tied to it with `aria-describedby` and `aria-invalid`, as the text inputs already were. The `@jbpark/ui-kit` dependency moves to `^10.5.0`, which adds these props.
+
 ## 5.0.0
 
 ### Major Changes
