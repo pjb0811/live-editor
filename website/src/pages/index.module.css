@@ -3,13 +3,13 @@
  * and scoped locally.
  *
  * Plain hand-written CSS rather than Tailwind utility classes for layout:
- * this page only gets `@jbpark/live-editor/style.css`'s pre-compiled output
- * (imported wholesale in custom.css, not run through this site's own
- * Tailwind build), so a utility class only renders if something in
- * live-editor's own source happened to use it too — grid-cols-* and several
- * responsive/color variants aren't. ui-kit's own components (Button, Card,
- * Typography) are safe since their internal classes ship with the package
- * regardless of what this page uses them for.
+ * this page only gets the pre-compiled stylesheets custom.css imports
+ * (`@jbpark/live-editor/style.css` and `@jbpark/live-editor/ui-kit/style.css`,
+ * not run through this site's own Tailwind build), so a utility class only
+ * renders if ui-kit's stylesheet happens to include it — grid-cols-* and
+ * several responsive/color variants don't. ui-kit's own components (Button,
+ * Card, Typography) are safe since their internal classes ship in that
+ * stylesheet regardless of what this page uses them for.
  */
 
 .main {

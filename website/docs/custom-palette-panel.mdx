@@ -558,7 +558,24 @@ The built-in controls are native inputs, selects and text areas, so the
 editor needs no UI kit to edit fields. `@jbpark/live-editor/ui-kit` exports
 `uiKitFields`, a `renderField` that draws the rich text, checkbox, select,
 color, date, datetime and time fields with `@jbpark/ui-kit` instead, and
-keeps the built-in control for the rest:
+keeps the built-in control for the rest.
+
+`@jbpark/ui-kit` is an optional peer dependency, so install it, and import
+its stylesheet once next to the editor's:
+
+```bash
+npm install @jbpark/ui-kit
+```
+
+```ts
+import '@jbpark/live-editor/style.css';
+import '@jbpark/live-editor/ui-kit/style.css';
+```
+
+Import it through `@jbpark/live-editor/ui-kit/style.css` rather than
+`@jbpark/ui-kit/style.css`: this copy sits in its own `ui-kit` cascade layer,
+below the editor's, so ui-kit's reset doesn't restyle the editor and its
+utilities don't mix with your own Tailwind's.
 
 ```tsx
 import { uiKitFields } from '@jbpark/live-editor/ui-kit';
@@ -603,6 +620,7 @@ import {
   uiKitModules,
   uiKitPaletteSections,
 } from '@jbpark/live-editor/ui-kit';
+import '@jbpark/live-editor/ui-kit/style.css';
 
 const [value, setValue] = useState(createUiKitDocument);
 
@@ -615,7 +633,8 @@ const [value, setValue] = useState(createUiKitDocument);
 />;
 ```
 
-Pass `uiKitModules` to `Live.Preview` too when its code imports `ui-kit`. To
+Pass `uiKitModules` to `Live.Preview` too when its code imports `ui-kit`, and
+keep the ui-kit stylesheet imported for its components. To
 add modules of your own, spread them in: `modules={{ ...uiKitModules, chart }}`.
 
 ### Handling edit errors: `onEditError`

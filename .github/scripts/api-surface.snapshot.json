@@ -8,6 +8,7 @@
     "./provider",
     "./style.css",
     "./ui-kit",
+    "./ui-kit/style.css",
     "./utils",
     "./utils/ast",
     "./utils/tailwind"

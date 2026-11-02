@@ -8,6 +8,14 @@
 @import 'tailwindcss';
 
 /*
+ * ui-kit's stylesheet in its `ui-kit` layer, for the demos that turn on the
+ * ui-kit entry. Imported through the library's copy, not
+ * `@jbpark/ui-kit/style.css`: unlayered, it would merge into this file's
+ * Tailwind layers (#259).
+ */
+@import '../src/components/ui-kit/style.css';
+
+/*
  * The library's palette/panel/editor chrome is styled with Tailwind utility
  * classes that live in the library source, so point Tailwind's content scanner
  * at it explicitly — the demos' Vite root is `demos/`, which otherwise wouldn't

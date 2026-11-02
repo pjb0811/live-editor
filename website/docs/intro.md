@@ -26,6 +26,10 @@ To enable formatting:
 npm install prettier@^3
 ```
 
+To use the opt-in `@jbpark/live-editor/ui-kit` entry (ui-kit field controls,
+palette and preview modules), install `@jbpark/ui-kit` as well. See
+[ui-kit controls](./custom-palette-panel.mdx#ui-kit-controls-uikitfields).
+
 Import the stylesheet once, near your app root:
 
 ```ts

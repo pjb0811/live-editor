@@ -29,6 +29,9 @@
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
 
+/* The pages turn on the ui-kit entry and use ui-kit themselves. */
+@import '../components/ui-kit/style.css';
+
 @layer base {
   /*
    * ui-kit's `Layout.Header` pairs `w-full` with its own padding, and
