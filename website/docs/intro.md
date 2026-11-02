@@ -61,7 +61,7 @@ import Dnd from '@jbpark/live-editor/dnd';
 import Editor from '@jbpark/live-editor/editor';
 import LiveError from '@jbpark/live-editor/error';
 import Preview from '@jbpark/live-editor/preview';
-import { ContextProvider } from '@jbpark/live-editor/provider';
+import ContextProvider from '@jbpark/live-editor/provider';
 ```
 
 `./preview` and `./editor` genuinely shrink what gets bundled (no CodeMirror
