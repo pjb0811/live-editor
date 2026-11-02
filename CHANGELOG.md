@@ -1,5 +1,92 @@
 # Changelog
 
+## 6.0.0
+
+### Major Changes
+
+- b738346: Style the editor's own UI with CSS Modules and `--live-editor-*` custom properties
+
+  - The palette, canvas and panel no longer use Tailwind classes or the simple ui-kit components (`Button`, `Card`, `Checkbox`, `Space`, `Typography`). They render plain markup styled by CSS Modules in the `components` cascade layer.
+  - `@jbpark/live-editor/style.css` no longer contains an uncompiled `@tailwind utilities;` line or Tailwind's theme variables. Preview code that uses Tailwind classes gets them from your own Tailwind build or from `dynamicTailwind`, as before.
+  - Restyle the editor by setting `--live-editor-*` properties (colors, font sizes, radii) on `:root` or an ancestor of the editor. Dark values apply under `[data-theme="dark"]` or `.dark`.
+  - A `className` on `Live.Dnd.Palette`, `Canvas`, `Panel` or `Live.Dnd` still overrides the region's own styles when it is a Tailwind utility or an unlayered rule. It is no longer merged with `tailwind-merge`, so a rule in a cascade layer declared before `components` loses to the region's styles.
+  - The row and "Select all" checkboxes in the Items and Children editors are native `<input type="checkbox">` elements. Code that read their state from `aria-checked` should read `checked` and `indeterminate` instead.
+
+- 8e85632: Draw the rest of the editor chrome without `@jbpark/ui-kit`
+
+  - The desktop layout's three panes are plain markup now. Each side pane has a `role="separator"` handle. You can drag it, move it with the arrow keys, Home and End, or collapse and restore the pane with Enter or a double-click.
+  - The mobile palette and properties Drawers are a modal `<dialog>` that slides up from the bottom. Escape, the close button or a click on the backdrop closes them.
+  - The default edit error toast is the editor's own, styled by the `--live-editor-*` tokens. It no longer goes through ui-kit's `Toast`, so ui-kit's toast settings don't apply to it. Pass `onEditError` to show errors your own way, as before.
+  - `Live.Editor` uses `@uiw/react-codemirror` directly instead of ui-kit's `CodeEditor`, with the same options and Cmd/Ctrl+S formatting.
+  - New `messages.canvas` keys: `close` (the Drawers' close button), and `resizePalette` and `resizePanel` (the pane handles).
+
+- ac2b2f9: The built-in panel's field controls are now native inputs, selects and text areas, so the panel needs no UI kit to edit fields. The checkbox, select, date, datetime, time and color fields use `<input type="checkbox">`, `<select>`, `<input type="date">`, `<input type="datetime-local">`, `<input type="time">` and `<input type="color">`, and a `richtext` field edits its HTML source in a text area. Labels and validation messages are tied to each control with `for`, `aria-describedby` and `aria-invalid`.
+
+  The `@jbpark/ui-kit` controls move to a new `@jbpark/live-editor/ui-kit` entry. To keep the previous date picker, time picker, color picker, rich text editor, select and checkbox, pass its `uiKitFields` as `renderField`:
+
+  ```tsx
+  import { uiKitFields } from '@jbpark/live-editor/ui-kit';
+  
+  <Live.Dnd value={value} onChange={setValue} renderField={uiKitFields} />;
+  ```
+
+  If you already pass a `renderField`, return `uiKitFields(props, builtin)` for the fields yours leaves alone.
+
+- af09ce0: Compiled code no longer imports `@jbpark/ui-kit` by default, and the default palette and new documents no longer use it.
+
+  - `import * as ui from 'ui-kit'` and `ui-kit/utils` resolve only when you pass `uiKitModules` from `@jbpark/live-editor/ui-kit` as `modules`, to `Live.Dnd`, `Live.Preview` or `compile()`. `baseModules` is removed from `@jbpark/live-editor/preview`.
+  - `createDocument()` returns a document without the `ui` and `cn` imports. `createUiKitDocument()` from `@jbpark/live-editor/ui-kit` returns one with them.
+  - The default palette's sections are rewritten with plain elements and Tailwind classes, under the same ids and names. FAQ, Stats and Roadmap now list their entries as child elements (a Children binding) instead of a component's `items` or `data` array. The previous sections are `uiKitPaletteSections` from `@jbpark/live-editor/ui-kit`.
+
+  To keep the previous setup:
+
+  ```tsx
+  import {
+    createUiKitDocument,
+    uiKitFields,
+    uiKitModules,
+    uiKitPaletteSections,
+  } from '@jbpark/live-editor/ui-kit';
+  
+  const [value, setValue] = useState(createUiKitDocument);
+  
+  <Live.Dnd
+    value={value}
+    onChange={setValue}
+    items={uiKitPaletteSections}
+    modules={uiKitModules}
+    renderField={uiKitFields}
+  />;
+  ```
+
+  Pass `modules={uiKitModules}` to `Live.Preview` too when its code imports `ui-kit`.
+
+- b3111da: Ship ui-kit's stylesheet with the opt-in ui-kit entry, and make `@jbpark/ui-kit` an optional peer dependency
+
+  - `@jbpark/live-editor/style.css` no longer contains `@jbpark/ui-kit`'s stylesheet. It holds only the editor's own styles now, about 23 KB instead of about 146 KB.
+  - ui-kit's stylesheet is now `@jbpark/live-editor/ui-kit/style.css`, in its own `ui-kit` cascade layer below the editor's styles.
+  - `@jbpark/ui-kit` moves from `dependencies` to an optional peer dependency. The editor no longer installs or imports it; only `@jbpark/live-editor/ui-kit` uses it.
+  - `@codemirror/merge` is no longer a dependency.
+
+  If you use `@jbpark/live-editor/ui-kit` (`uiKitFields`, `uiKitModules`, `uiKitPaletteSections` or `createUiKitDocument`), install ui-kit and import its stylesheet next to the editor's:
+
+  ```bash
+  npm install @jbpark/ui-kit
+  ```
+
+  ```ts
+  import '@jbpark/live-editor/style.css';
+  import '@jbpark/live-editor/ui-kit/style.css';
+  ```
+
+  If your own app uses ui-kit components and relied on the editor's stylesheet for their styles, import `@jbpark/live-editor/ui-kit/style.css` or `@jbpark/ui-kit/style.css` yourself.
+
+### Patch Changes
+
+- 3ad0c4d: Typing in the code editor no longer rebuilds `Live.Preview`. As with canvas sections, the preview now renders each compile under a component type that survives a recompile, so React updates only what changed and the preview keeps its state, as long as the edit leaves the component's hook calls alone. An edit that adds, removes or reorders hook calls still remounts it.
+- 767b584: Editing a field no longer rebuilds the edited canvas section. Each edit recompiles the section into a new component, which React treated as a new type and remounted, so the section's whole DOM was replaced and its state, images and animations reset on every edit. The section now renders under a type that survives a recompile, so React updates only what changed, as long as the edit leaves the component's hook calls alone. An edit that adds, removes or reorders hook calls still remounts the section.
+- c0cc955: The built-in panel's checkbox, date picker, select and rich text editor are now named by their field label. The label points at the checkbox and the date picker with `for`, and the select and the rich text editor point at the label with `aria-labelledby`. A date picker's validation error is tied to it with `aria-describedby` and `aria-invalid`, as the text inputs already were. The `@jbpark/ui-kit` dependency moves to `^10.5.0`, which adds these props.
+
 ## 5.0.0
 
 ### Major Changes
