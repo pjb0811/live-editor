@@ -69,12 +69,12 @@ import '@jbpark/live-editor/style.css';
 // 필수 — JS 엔트리가 import하지 않음
 
 const SAMPLE = `
-import * as ui from 'ui-kit';
-
 const App = () => (
   <div className="flex flex-col items-start gap-2 p-6">
-    <ui.Typography.Title level={3}>Hello</ui.Typography.Title>
-    <ui.Button type="primary">Edit me</ui.Button>
+    <h3 className="text-xl font-semibold">Hello</h3>
+    <button type="button" className="rounded bg-indigo-500 px-3 py-1 text-white">
+      Edit me
+    </button>
   </div>
 );
 

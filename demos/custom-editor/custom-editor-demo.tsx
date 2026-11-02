@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Context from '~/components/context';
 import Editor from '~/components/editor';
 import Preview from '~/components/preview';
+import { uiKitModules } from '~/components/ui-kit';
 import { cn } from '~/utils';
 
 const SAMPLE_CODE = `
@@ -36,6 +37,7 @@ const CustomEditorDemo = () => {
           )}
         >
           <Preview
+            modules={uiKitModules}
             showError
             frame={{ mode: 'shadow', syncStyle: true }}
             dynamicTailwind

@@ -12,7 +12,7 @@ import Dnd, {
   useDndLayout,
   useDndPanel,
 } from '~/components/dnd';
-import { uiKitFields } from '~/components/ui-kit';
+import { uiKitFields, uiKitModules } from '~/components/ui-kit';
 import { cn } from '~/utils';
 
 import { META_BINDING_KEYS, META_DOCUMENT, META_EXAMPLE } from './meta-example';
@@ -286,6 +286,7 @@ const PanelMetaDemo = ({
   return (
     <Context>
       <Dnd
+        modules={uiKitModules}
         value={value}
         renderField={uiKitFields}
         onChange={setValue}

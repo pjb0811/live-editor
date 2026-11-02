@@ -279,7 +279,7 @@ code ─► compile(code, modules)          utils/compile.ts
 
 - **코드는 호스트 페이지의 JavaScript realm에서 실행됩니다.** iframe은 portal로 렌더링 결과만 받습니다. DOM과 CSS를 격리할 뿐 JavaScript는 격리하지 않으니, 신뢰할 수 있는 코드만 실행하세요.
 - `compile()`은 코드와 각 모듈의 identity를 키로 최대 50개까지 캐시합니다. 모듈 구현이 바뀌면 새 `modules` 객체를 넘기세요.
-- `Live.Preview`는 문서 전체를 한 번 컴파일합니다(`preview/client.tsx`). `Live.Dnd`는 칸마다 섹션 미리보기를 하나씩 컴파일합니다(`dnd/canvas/renderer.tsx`). 둘 다 `useCompiledModule`을 쓰며, 이 훅이 호스트의 `modules`에 기본 모듈(`preview/base-modules.ts`)을 더합니다. 둘 다 컴파일한 컴포넌트를 `renderStableComponent`(`preview/stable-component.ts`)로 렌더링하므로, 훅 호출을 바꾸지 않는 편집은 DOM을 다시 마운트하지 않고 그 자리에서 갱신합니다.
+- `Live.Preview`는 문서 전체를 한 번 컴파일합니다(`preview/client.tsx`). `Live.Dnd`는 칸마다 섹션 미리보기를 하나씩 컴파일합니다(`dnd/canvas/renderer.tsx`). 둘 다 `useCompiledModule`을 쓰며, 이 훅은 호스트의 `modules`만으로 컴파일합니다. `ui-kit`은 호스트가 `uiKitModules`(`ui-kit/modules.ts`)를 넘길 때만 해석됩니다. 둘 다 컴파일한 컴포넌트를 `renderStableComponent`(`preview/stable-component.ts`)로 렌더링하므로, 훅 호출을 바꾸지 않는 편집은 DOM을 다시 마운트하지 않고 그 자리에서 갱신합니다.
 
 ## 에러, 문구, 캐시
 

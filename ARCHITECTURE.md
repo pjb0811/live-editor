@@ -386,8 +386,9 @@ code ─► compile(code, modules)          utils/compile.ts
   entries. Pass a new `modules` object when a module's implementation changes.
 - `Live.Preview` compiles the whole document once (`preview/client.tsx`).
   `Live.Dnd` compiles one section preview per slot (`dnd/canvas/renderer.tsx`). Both
-  use `useCompiledModule`, which adds the base modules
-  (`preview/base-modules.ts`) to the host's `modules`. Both render the
+  use `useCompiledModule`, which compiles with the host's `modules` and
+  nothing else: `ui-kit` resolves only when the host passes `uiKitModules`
+  (`ui-kit/modules.ts`). Both render the
   compiled component through `renderStableComponent`
   (`preview/stable-component.ts`), so an edit that leaves the hook calls alone
   updates the DOM in place instead of remounting it.

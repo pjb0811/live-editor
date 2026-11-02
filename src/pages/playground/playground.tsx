@@ -9,8 +9,13 @@ import {
 } from '@jbpark/use-hooks';
 import { Redo2, Save, Undo2 } from 'lucide-react';
 
-import { uiKitFields } from '~/components/ui-kit';
-import { DEFAULT_TEMPLATE, PALETTE_SECTIONS, STORAGE_KEY } from '~/constants';
+import {
+  createUiKitDocument,
+  uiKitFields,
+  uiKitModules,
+  uiKitPaletteSections,
+} from '~/components/ui-kit';
+import { STORAGE_KEY } from '~/constants';
 import Live from '~/index';
 
 import { EditorView, ModeSwitch, type ViewMode } from '../shared/editor-view';
@@ -20,7 +25,7 @@ import DiffModal from './diff-modal';
 
 // The default palette plus a Banner whose own `<section>` carries a
 // `data-binding`, to try section-root bindings (#429) by hand.
-const PALETTE = [...PALETTE_SECTIONS, SECTION_ROOT_EXAMPLE];
+const PALETTE = [...uiKitPaletteSections, SECTION_ROOT_EXAMPLE];
 
 // The whole editing loop on one document: the code editor and the Dnd
 // canvas edit the same value, with undo/redo across both and a reviewed save
@@ -28,7 +33,7 @@ const PALETTE = [...PALETTE_SECTIONS, SECTION_ROOT_EXAMPLE];
 const Playground = () => {
   const [savedValue, setSavedValue] = useLocalStorage(
     STORAGE_KEY,
-    DEFAULT_TEMPLATE,
+    createUiKitDocument(),
   );
 
   const [value, setValue] = useState(savedValue);
@@ -108,6 +113,7 @@ const Playground = () => {
             <EditorView value={value} onChange={setValue} />
           ) : (
             <Live.Dnd
+              modules={uiKitModules}
               frame={IFRAME_FRAME}
               renderField={uiKitFields}
               items={PALETTE}

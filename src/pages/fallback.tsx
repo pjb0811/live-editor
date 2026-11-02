@@ -4,8 +4,11 @@ import { Switch } from '@jbpark/ui-kit';
 import { TriangleAlert } from 'lucide-react';
 
 import type { DndRenderSectionFallback } from '~/components/dnd';
-import { uiKitFields } from '~/components/ui-kit';
-import { PALETTE_SECTIONS } from '~/constants';
+import {
+  uiKitFields,
+  uiKitModules,
+  uiKitPaletteSections,
+} from '~/components/ui-kit';
 import Live from '~/index';
 import type { Section } from '~/types';
 
@@ -42,7 +45,7 @@ const FORCEABLE: Section = {
 };
 
 const INITIAL_DOCUMENT = documentWith([
-  ...PALETTE_SECTIONS.slice(0, 1),
+  ...uiKitPaletteSections.slice(0, 1),
   THROWING,
   FORCEABLE,
 ]);
@@ -106,9 +109,10 @@ const Fallback = () => {
             <EditorView value={value} onChange={setValue} />
           ) : (
             <Live.Dnd
+              modules={uiKitModules}
               frame={IFRAME_FRAME}
               renderField={uiKitFields}
-              items={PALETTE_SECTIONS}
+              items={uiKitPaletteSections}
               value={value}
               onChange={setValue}
               renderSectionFallback={custom ? customFallback : undefined}

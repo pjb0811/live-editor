@@ -1,4 +1,4 @@
-import { DEFAULT_TEMPLATE } from '~/constants';
+import { createUiKitDocument } from '~/components/ui-kit';
 import type { Section } from '~/types';
 import { replaceSections } from '~/utils/sections';
 
@@ -6,6 +6,6 @@ import { replaceSections } from '~/utils/sections';
 // to select instead of an empty canvas.
 export const documentWith = (sections: Section[]) =>
   replaceSections(
-    DEFAULT_TEMPLATE,
+    createUiKitDocument(),
     sections.map(section => section.code),
   );

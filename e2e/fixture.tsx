@@ -7,6 +7,7 @@ import Live from '../src';
 import { useDndPanel } from '../src/components/dnd';
 import ElementFields from '../src/components/dnd/panel/element-fields';
 import Items from '../src/components/dnd/panel/items/items';
+import { uiKitModules } from '../src/components/ui-kit';
 
 const selectionItems = `[{ label: 'A' }, { label: 'B' }, { label: 'C' }]`;
 const fallbackItems = `[
@@ -312,6 +313,7 @@ export const OverlayFixture = () => (
     >
       <Live.Preview
         code={overlayCode}
+        modules={uiKitModules}
         frame={{ mode: 'shadow', syncStyle: true }}
       />
     </div>

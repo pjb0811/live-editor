@@ -19,8 +19,11 @@ import Dnd, {
   useDndPanel,
   withPanelCommit,
 } from '~/components/dnd';
-import { uiKitFields } from '~/components/ui-kit';
-import { DEFAULT_TEMPLATE } from '~/constants';
+import {
+  createUiKitDocument,
+  uiKitFields,
+  uiKitModules,
+} from '~/components/ui-kit';
 import { cn } from '~/utils';
 import {
   type DataAttrNode,
@@ -808,7 +811,7 @@ const CustomPalettePanelDemo = ({
   value?: string;
   onChange?: (value: string) => void;
 }) => {
-  const [ownValue, setOwnValue] = useState(DEFAULT_TEMPLATE);
+  const [ownValue, setOwnValue] = useState(createUiKitDocument());
   const value = controlledValue ?? ownValue;
   const setValue = onChange ?? setOwnValue;
   const [mode, setMode] = useState<PanelMode>('custom');
@@ -872,6 +875,7 @@ const CustomPalettePanelDemo = ({
           </div>
         </div>
         <Dnd
+          modules={uiKitModules}
           value={value}
           onChange={setValue}
           renderField={uiKitFields}

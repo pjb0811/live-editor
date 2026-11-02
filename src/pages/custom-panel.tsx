@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { DEFAULT_TEMPLATE } from '~/constants';
+import { createUiKitDocument } from '~/components/ui-kit';
 import Live from '~/index';
 
 import CustomPalettePanelDemo from '../../demos/custom-palette-panel/custom-palette-panel-demo';
@@ -12,7 +12,7 @@ import { EditorView, ModeSwitch, type ViewMode } from './shared/editor-view';
 // example and this check from drifting apart. The page holds the document,
 // so the Editor view shows the same code the demo edits.
 const CustomPanel = () => {
-  const [value, setValue] = useState(DEFAULT_TEMPLATE);
+  const [value, setValue] = useState(createUiKitDocument());
   const [mode, setMode] = useState<ViewMode>('dnd');
 
   return (

@@ -2,6 +2,7 @@ import { Radio, Splitter } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 
 import type { FrameProps } from '~/components/frame';
+import { uiKitModules } from '~/components/ui-kit';
 import Live from '~/index';
 
 import { IFRAME_FRAME } from './frames';
@@ -56,6 +57,7 @@ export const EditorView = ({
       <Splitter.Panel defaultSize="50%" minSize="20%" maxSize="80%" collapsible>
         <div className="h-full overflow-auto p-2">
           <Live.Preview
+            modules={uiKitModules}
             showError
             frame={frame}
             dynamicTailwind={dynamicTailwind}
