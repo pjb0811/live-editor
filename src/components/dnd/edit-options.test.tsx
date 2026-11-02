@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { Toast } from '@jbpark/ui-kit';
 import {
   act,
   cleanup,
@@ -24,7 +23,10 @@ import type { PanelBinding } from './panel-binding';
 import Field from './panel/field';
 import Items from './panel/items/items';
 import { useDndItems } from './panel/items/use-dnd-items';
+import { showErrorToast } from './toast';
 import type { DndPanel } from './types';
+
+vi.mock('./toast', () => ({ showErrorToast: vi.fn() }));
 
 vi.mock('./canvas/renderer', () => ({
   default: () => <div data-testid="renderer" />,
@@ -41,6 +43,7 @@ beforeAll(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.mocked(showErrorToast).mockClear();
 });
 
 const section = `
@@ -208,7 +211,7 @@ describe('renderField', () => {
 
 describe('onEditError', () => {
   it('receives a rejected field update instead of the toast', () => {
-    const toast = vi.spyOn(Toast, 'error');
+    const toast = vi.mocked(showErrorToast);
     const onEditError = vi.fn();
     const { getData } = renderDnd({ onEditError });
     const missing = getData().bindings.find(
@@ -233,7 +236,7 @@ describe('onEditError', () => {
   });
 
   it('keeps the toast when no handler is given', () => {
-    const toast = vi.spyOn(Toast, 'error').mockImplementation(() => 'test');
+    const toast = vi.mocked(showErrorToast);
     const { getData } = renderDnd({});
     const missing = getData().bindings.find(
       binding => binding.label === 'Required',
@@ -243,7 +246,7 @@ describe('onEditError', () => {
 
     expect(toast).toHaveBeenCalledWith(
       'Cannot remove "Required"',
-      expect.objectContaining({ description: expect.any(String) }),
+      expect.any(String),
     );
   });
 
@@ -258,7 +261,7 @@ describe('onEditError', () => {
   });
 
   it('reports an items value that fails to parse once, not on every render', () => {
-    const toast = vi.spyOn(Toast, 'error');
+    const toast = vi.mocked(showErrorToast);
     const first = vi.fn();
     const second = vi.fn();
     const tree = (reportError: (error: DndEditError) => void) => (
@@ -280,7 +283,7 @@ describe('onEditError', () => {
   });
 
   it('reports an array edit that could not be applied', () => {
-    const toast = vi.spyOn(Toast, 'error');
+    const toast = vi.mocked(showErrorToast);
     const reportError = vi.fn();
     const onChange = vi.fn();
     const { result } = renderHook(

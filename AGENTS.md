@@ -24,6 +24,7 @@ live-editor/
 │  │  │  ├─ types.ts        # DndPanel·DndPalette·Props 공개 타입 (dnd.tsx와 분리)
 │  │  │  ├─ layout.tsx      # Palette/Canvas/Panel/Layout 합성 컴포넌트
 │  │  │  ├─ button.tsx      # 에디터 UI 공용 버튼 (variant·tone·size, button.module.css)
+│  │  │  ├─ split-panes.tsx, drawer.tsx, toast.ts # 데스크톱 3칸 리사이즈 레이아웃, 모바일 `<dialog>` 시트, 편집 에러 토스트(DOM 직접 생성)
 │  │  │  ├─ layout-context.ts # 커스텀 레이아웃·팔레트·패널 훅
 │  │  │  ├─ edit-options.ts, panel-binding.ts, inspector.ts # 편집 에러·패널 바인딩·요소 picker (여러 영역 공용)
 │  │  │  ├─ canvas/         # 캔버스: droppable, sortable(+section-handlers 컨텍스트), overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight, canvas-notice(빈 캔버스 안내)
@@ -225,14 +226,14 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 
 ## 기술 스택
 
-| 영역   | 기술                                        |
-| ------ | ------------------------------------------- |
-| Core   | React 19, TypeScript 6                      |
-| 번들러 | Vite 8 (dev), tsdown (lib build)            |
-| DnD    | @dnd-kit/core, sortable, modifiers          |
-| 에디터 | @jbpark/ui-kit/CodeEditor (CodeMirror 기반) |
-| UI     | CSS Modules, @jbpark/ui-kit, lucide-react   |
-| AST    | @babel/standalone (인브라우저)              |
+| 영역   | 기술                                                                 |
+| ------ | -------------------------------------------------------------------- |
+| Core   | React 19, TypeScript 6                                               |
+| 번들러 | Vite 8 (dev), tsdown (lib build)                                     |
+| DnD    | @dnd-kit/core, sortable, modifiers                                   |
+| 에디터 | @uiw/react-codemirror (CodeMirror 6)                                 |
+| UI     | CSS Modules, lucide-react (선택형 `/ui-kit` 진입점만 @jbpark/ui-kit) |
+| AST    | @babel/standalone (인브라우저)                                       |
 
 ---
 

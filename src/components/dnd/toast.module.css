@@ -1,0 +1,38 @@
+@layer components {
+  .region {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+    transform: translateX(-50%);
+  }
+
+  .toast {
+    box-sizing: border-box;
+    max-width: 24rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--live-editor-color-danger);
+    border-left-width: 4px;
+    border-radius: var(--live-editor-radius-lg);
+    background: var(--live-editor-color-surface);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    color: var(--live-editor-color-text);
+    font-size: var(--live-editor-font-size-sm);
+    cursor: pointer;
+  }
+
+  .title {
+    font-weight: 600;
+    color: var(--live-editor-color-danger);
+  }
+
+  .description {
+    margin-top: 0.25rem;
+    color: var(--live-editor-color-text-muted);
+  }
+}

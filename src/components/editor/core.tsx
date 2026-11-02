@@ -1,8 +1,13 @@
-import type { ComponentProps } from 'react';
+import { useRef } from 'react';
 
-import CodeEditor from '@jbpark/ui-kit/CodeEditor';
+import { javascript } from '@codemirror/lang-javascript';
 import { vscodeLight } from '@uiw/codemirror-theme-vscode';
-import { type Extension } from '@uiw/react-codemirror';
+import CodeMirror, {
+  EditorView,
+  type Extension,
+  type ReactCodeMirrorProps,
+  type ReactCodeMirrorRef,
+} from '@uiw/react-codemirror';
 
 import { cn } from '~/utils/cn';
 
@@ -19,13 +24,20 @@ export interface Props {
   onChange?: (value: string) => void;
   onSave?: (value: string) => void;
   onError?: (error: string | null) => void;
-  onCreateEditor?: ComponentProps<typeof CodeEditor>['onCreateEditor'];
-  onUpdate?: ComponentProps<typeof CodeEditor>['onUpdate'];
+  onCreateEditor?: ReactCodeMirrorProps['onCreateEditor'];
+  onUpdate?: ReactCodeMirrorProps['onUpdate'];
 }
 
-// `@jbpark/ui-kit`'s CodeEditor with this library's options (#346, #309):
-// `raw`, `fragment` and `prettierOptions` shape the Prettier formatter, and
-// `onError` is its `onFormatError`.
+// JSX and TypeScript highlighting, with long lines wrapped.
+const EXTENSIONS = [
+  javascript({ jsx: true, typescript: true }),
+  EditorView.lineWrapping,
+];
+
+// CodeMirror with this library's options (#346, #309). Cmd/Ctrl+S formats
+// the code with Prettier, shaped by `raw`, `fragment` and
+// `prettierOptions`, then calls `onChange` and `onSave`; a formatter error
+// goes to `onError`.
 const Core = ({
   value,
   theme,
@@ -41,20 +53,65 @@ const Core = ({
 }: Props) => {
   const formatCode = useFormatCode({ fragment, prettierOptions });
 
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
+
+  const save = async () => {
+    const view = editorRef.current?.view;
+
+    if (!view) {
+      return;
+    }
+
+    const current = view.state.doc.toString();
+
+    try {
+      // `raw` (e.g. innerHTML) skips Prettier.
+      const next = raw ? current : await formatCode(current);
+
+      // An edit landed while Prettier ran: keep it rather than the result.
+      if (view.state.doc.toString() !== current) {
+        onError?.(null);
+
+        return;
+      }
+
+      if (next !== current) {
+        view.dispatch({
+          changes: { from: 0, to: current.length, insert: next },
+          selection: {
+            anchor: Math.min(view.state.selection.main.head, next.length),
+          },
+        });
+      }
+
+      onChange?.(next);
+      onSave?.(next);
+      onError?.(null);
+    } catch (e) {
+      onError?.(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   return (
-    <CodeEditor
-      value={value}
-      theme={theme ?? vscodeLight}
-      height={height || '100%'}
+    <div
       className={cn(className)}
-      // `raw` (e.g. innerHTML) skips prettier; otherwise reuse the shared
-      // prettier wiring as the Cmd+S formatter rather than reimplementing it.
-      formatCode={raw ? undefined : formatCode}
-      onChange={onChange}
-      onSave={onSave}
-      onFormatError={onError}
-      {...props}
-    />
+      onKeyDown={e => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+          e.preventDefault();
+          void save();
+        }
+      }}
+    >
+      <CodeMirror
+        ref={editorRef}
+        value={value}
+        theme={theme ?? vscodeLight}
+        height={height || '100%'}
+        extensions={EXTENSIONS}
+        onChange={onChange}
+        {...props}
+      />
+    </div>
   );
 };
 

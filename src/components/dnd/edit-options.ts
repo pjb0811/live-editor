@@ -1,11 +1,10 @@
 import { createContext, useContext } from 'react';
 
-import { Toast } from '@jbpark/ui-kit';
-
 import type { BindingOptions } from '~/utils/ast/types';
 import type { UpdateFailure } from '~/utils/ast/update';
 
 import type { FieldProps } from './panel/types';
+import { showErrorToast } from './toast';
 
 // An edit the editor didn't apply. `title` and `description` are what the
 // built-in toast shows, so a host can show them its own way.
@@ -81,10 +80,7 @@ interface DndEditOptions {
 }
 
 export const toastEditError = (error: DndEditError) => {
-  Toast.error(
-    error.title,
-    error.description ? { description: error.description } : undefined,
-  );
+  showErrorToast(error.title, error.description);
 };
 
 // The edit options every `Field` reads, wherever it renders: nested, inside

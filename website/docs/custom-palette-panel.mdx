@@ -8,7 +8,7 @@ import DemoFrame from '@site/src/components/demo-frame';
 
 # Custom Palette & Panel
 
-`Live.Dnd` ships a complete editor — a 3-pane Splitter on desktop, a stacked
+`Live.Dnd` ships a complete editor — three resizable panes on desktop, a stacked
 canvas with Drawers on mobile — and renders it whenever you don't say
 otherwise. Everything behind that layout is also reachable as plain data
 through three hooks (`useDndPalette()`, `useDndPanel()`, `useDndLayout()`), so
@@ -20,7 +20,7 @@ There are two ways in, and they compose:
 
 - **Keep the built-in layout, swap a region.** Render
   `<Live.Dnd.Layout palette={...} panel={...} />` and fill only the slot you
-  care about. The Splitter, the mobile FAB, and both Drawers stay.
+  care about. The resizable panes, the mobile FAB, and both Drawers stay.
 - **Replace the layout.** Pass your own `children` and place
   `Live.Dnd.Canvas` (plus whatever you want around it) wherever you like.
 
@@ -42,7 +42,7 @@ one opaque blob for the whole array.
 
 ## Custom layout
 
-By default `Live.Dnd` renders a 3-pane Splitter (palette / canvas / panel)
+By default `Live.Dnd` renders three resizable panes (palette / canvas / panel)
 on desktop, and on mobile a full-width canvas with the palette and property
 panel in Drawers. Pass `children` to design that layout yourself, composing
 the three regions wherever you want them:
@@ -75,7 +75,7 @@ drag context they share.
 | `Live.Dnd.Palette` | The built-in palette draggables, in a scroll container.                                                                                                                                                                                              |
 | `Live.Dnd.Canvas`  | The drop target and the sortable list of sections.                                                                                                                                                                                                   |
 | `Live.Dnd.Panel`   | The built-in property panel, in a scroll container.                                                                                                                                                                                                  |
-| `Live.Dnd.Layout`  | The built-in arrangement, so you can wrap it (a toolbar above it, say) rather than rebuild it, and replace one region through its `palette`/`panel` slots. Also how to get the built-in Splitter layout without importing `@jbpark/ui-kit` yourself. |
+| `Live.Dnd.Layout`  | The built-in arrangement, so you can wrap it (a toolbar above it, say) rather than rebuild it, and replace one region through its `palette`/`panel` slots. Also how to get the built-in resizable layout without building it yourself.               |
 
 Each takes the props of a `div` (the region's own styles sit in the
 `components` cascade layer, so a Tailwind utility or a rule outside any layer
@@ -122,7 +122,7 @@ so you can hand it your own component and keep everything else:
 </Live.Dnd>
 ```
 
-That keeps the desktop Splitter, the mobile FAB, and both Drawers — your
+That keeps the desktop panes, the mobile FAB, and both Drawers — your
 `panel` is placed in the right-hand pane on desktop and in the properties
 Drawer on mobile. A slot goes in raw, so it owns its own container (the
 built-in regions bring theirs); `palette` works the same way.

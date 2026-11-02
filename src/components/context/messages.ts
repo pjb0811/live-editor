@@ -22,6 +22,11 @@ export interface LiveMessages {
     palette: string;
     // The mobile panel Drawer title.
     properties: string;
+    // The mobile Drawers' close button.
+    close: string;
+    // The handles that resize the desktop palette and panel panes.
+    resizePalette: string;
+    resizePanel: string;
     pickElement: string;
     pickElementActive: string;
     dropHere: string;
@@ -165,6 +170,9 @@ export const defaultMessages: LiveMessages = {
   canvas: {
     palette: 'Components',
     properties: 'Properties',
+    close: 'Close',
+    resizePalette: 'Resize the components pane',
+    resizePanel: 'Resize the properties pane',
     pickElement: 'Pick an element',
     pickElementActive: 'Click an element to edit it. Esc to cancel.',
     dropHere: 'Drop here',
