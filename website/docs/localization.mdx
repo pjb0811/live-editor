@@ -37,18 +37,18 @@ const messages = {
 
 ## Groups
 
-| Group           | Where it shows                                                                               |
-| --------------- | -------------------------------------------------------------------------------------------- |
-| `section`       | The section toolbar on the canvas and the panel header: move, duplicate, delete.             |
-| `canvas`        | Empty states, the drop zone, the element picker, the mobile Drawer titles, the stale banner. |
-| `panel`         | The panel's notices, placeholders and the fallback validation message.                       |
-| `items`         | The built-in editor for an array value.                                                      |
-| `children`      | The built-in editor for child elements.                                                      |
-| `selection`     | The bar shown while items or children are selected.                                          |
-| `editErrors`    | The `title` and `description` of every `DndEditError`, which the default toast shows.        |
-| `announcements` | What a screen reader hears during a drag, and the drag instructions.                         |
-| `errors`        | The error boxes of `Live.Preview`, `Live.Error` and canvas sections.                         |
-| `validation`    | `validateBindingValue`'s messages. See [below](#validation).                                 |
+| Group           | Where it shows                                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| `section`       | The section toolbar on the canvas and the panel header: move, duplicate, delete.                                |
+| `canvas`        | Empty states, the drop zone, the element picker, the mobile Drawers, the pane resize handles, the stale banner. |
+| `panel`         | The panel's notices, placeholders and the fallback validation message.                                          |
+| `items`         | The built-in editor for an array value.                                                                         |
+| `children`      | The built-in editor for child elements.                                                                         |
+| `selection`     | The bar shown while items or children are selected.                                                             |
+| `editErrors`    | The `title` and `description` of every `DndEditError`, which the default toast shows.                           |
+| `announcements` | What a screen reader hears during a drag, and the drag instructions.                                            |
+| `errors`        | The error boxes of `Live.Preview`, `Live.Error` and canvas sections.                                            |
+| `validation`    | `validateBindingValue`'s messages. See [below](#validation).                                                    |
 
 `LiveMessages` is the full type, and `defaultMessages` the English set, both
 exported from `@jbpark/live-editor`.
@@ -112,6 +112,9 @@ export const koMessages: LiveMessages = {
   canvas: {
     palette: '컴포넌트',
     properties: '속성',
+    close: '닫기',
+    resizePalette: '컴포넌트 영역 크기 조절',
+    resizePanel: '속성 영역 크기 조절',
     pickElement: '요소 선택',
     pickElementActive: '편집할 요소를 클릭하세요. Esc로 취소합니다.',
     dropHere: '여기에 놓기',

@@ -1,4 +1,3 @@
-import { Drawer, Splitter } from '@jbpark/ui-kit';
 import { Crosshair, LayoutGrid } from 'lucide-react';
 
 import { useLiveMessages } from '~/components/context/messages';
@@ -7,10 +6,12 @@ import { cn } from '~/utils/cn';
 import styles from './layout.module.css';
 
 import Button from './button';
+import Drawer from './drawer';
 import { useDndInspector } from './inspector';
 import { useDndRegions } from './layout-context';
 import { DefaultDraggableItem } from './palette/draggable';
 import PropertyPanel from './panel';
+import SplitPanes from './split-panes';
 
 // A region's props: everything a `div` takes except `children`, which comes
 // from context. The region's styles sit in the `components` cascade layer,
@@ -146,7 +147,7 @@ export interface DndLayoutProps {
   panel?: React.ReactNode;
 }
 
-// What `Live.Dnd` renders without children: a three-pane Splitter on
+// What `Live.Dnd` renders without children: three resizable panes on
 // desktop, and on mobile the canvas with a button and Drawers.
 export const Layout = ({ palette, panel }: DndLayoutProps) => {
   const { isMobile, selectedId, clearSelection, paletteOpen, setPaletteOpen } =
@@ -158,27 +159,15 @@ export const Layout = ({ palette, panel }: DndLayoutProps) => {
       {isMobile ? (
         <Canvas />
       ) : (
-        <Splitter withHandle orientation="horizontal">
-          <Splitter.Panel
-            defaultSize="20%"
-            minSize="15%"
-            maxSize="35%"
-            collapsible
-          >
-            {palette ?? <Palette />}
-          </Splitter.Panel>
-          <Splitter.Panel defaultSize="60%">
-            <Canvas />
-          </Splitter.Panel>
-          <Splitter.Panel
-            defaultSize="20%"
-            minSize="15%"
-            maxSize="35%"
-            collapsible
-          >
-            {panel ?? <Panel />}
-          </Splitter.Panel>
-        </Splitter>
+        <SplitPanes
+          start={palette ?? <Palette />}
+          center={<Canvas />}
+          end={panel ?? <Panel />}
+          labels={{
+            start: messages.canvas.resizePalette,
+            end: messages.canvas.resizePanel,
+          }}
+        />
       )}
       <Button
         variant="solid"
@@ -195,18 +184,16 @@ export const Layout = ({ palette, panel }: DndLayoutProps) => {
       <Drawer
         open={isMobile && paletteOpen}
         onClose={() => setPaletteOpen(false)}
-        direction="bottom"
-        size="large"
         title={messages.canvas.palette}
+        closeLabel={messages.canvas.close}
       >
         {palette ?? <PaletteItems subject="<Live.Dnd.Layout>" />}
       </Drawer>
       <Drawer
         open={isMobile && Boolean(selectedId)}
         onClose={clearSelection}
-        direction="bottom"
-        size="large"
         title={messages.canvas.properties}
+        closeLabel={messages.canvas.close}
       >
         {panel ?? <PanelFields subject="<Live.Dnd.Layout>" />}
       </Drawer>

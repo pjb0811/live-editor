@@ -13,6 +13,9 @@ export const KO_MESSAGES: LiveMessages = {
   canvas: {
     palette: '컴포넌트',
     properties: '속성',
+    close: '닫기',
+    resizePalette: '컴포넌트 영역 크기 조절',
+    resizePanel: '속성 영역 크기 조절',
     pickElement: '요소 선택',
     pickElementActive: '편집할 요소를 클릭하세요. Esc로 취소합니다.',
     dropHere: '여기에 놓기',

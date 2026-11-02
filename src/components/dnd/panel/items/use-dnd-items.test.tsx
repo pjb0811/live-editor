@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
-import { Toast } from '@jbpark/ui-kit';
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { BindingRegistry, DataAttrNode } from '~/utils/ast';
 
 import { DndEditOptionsContext } from '../../edit-options';
+import { showErrorToast } from '../../toast';
 import { type DndItemsItem, useDndItems } from './use-dnd-items';
+
+vi.mock('../../toast', () => ({ showErrorToast: vi.fn() }));
 
 const objects = `[
   { key: 'a', label: 'Alpha' },
@@ -261,7 +263,7 @@ describe('useDndItems source fidelity', () => {
 
   it('preserves selection and source when sparse structural edits are refused', () => {
     const onChange = vi.fn();
-    const toast = vi.spyOn(Toast, 'error').mockImplementation(() => 'test');
+    const toast = vi.mocked(showErrorToast);
     const { result } = renderHook(() =>
       useDndItems(`[, {label:'A'}, {label:'B'}]`, { onChange }),
     );
@@ -275,12 +277,10 @@ describe('useDndItems source fidelity', () => {
       expect([...result.current.selection.selected]).toEqual([1]);
       expect(toast).toHaveBeenCalledWith(
         'Failed to update this item',
-        expect.objectContaining({
-          description: expect.stringContaining('source was preserved'),
-        }),
+        expect.stringContaining('source was preserved'),
       );
     } finally {
-      toast.mockRestore();
+      toast.mockClear();
     }
   });
 

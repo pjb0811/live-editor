@@ -1,0 +1,60 @@
+@layer components {
+  .drawer {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    height: 80dvh;
+    max-height: 80dvh;
+    margin: auto 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--live-editor-radius-lg) var(--live-editor-radius-lg) 0 0;
+    background: var(--live-editor-color-surface);
+    color: var(--live-editor-color-text);
+    animation: slide-up 0.2s ease-out;
+
+    &::backdrop {
+      background: rgb(0 0 0 / 0.4);
+    }
+  }
+
+  /* Fills the dialog, so a click outside it lands on the backdrop only. */
+  .content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--live-editor-color-border-subtle);
+  }
+
+  .title {
+    margin: 0;
+    font-size: var(--live-editor-font-size-lg);
+    font-weight: 600;
+  }
+
+  .body {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drawer {
+      animation: none;
+    }
+  }
+}
