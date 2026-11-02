@@ -1,0 +1,121 @@
+/* A sublayer of `components`, so the styles a caller adds through
+   `className` (in `components` itself) override these. */
+@layer components.primitives {
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    height: 2rem;
+    margin: 0;
+    padding: 0 0.75rem;
+    border: 1px solid transparent;
+    border-radius: var(--live-editor-radius-lg);
+    font: inherit;
+    font-size: var(--live-editor-font-size-sm);
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+
+    /* The tone each variant draws with. */
+    --tone: var(--live-editor-color-text);
+    --tone-soft: var(--live-editor-color-surface-muted);
+    --tone-border: var(--live-editor-color-border);
+    --tone-text: var(--live-editor-color-surface);
+
+    &:focus-visible {
+      outline: 2px solid var(--live-editor-color-focus);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    & svg {
+      flex-shrink: 0;
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+
+  .small {
+    height: 1.5rem;
+    padding: 0 0.5rem;
+    font-size: var(--live-editor-font-size-xs);
+
+    & svg {
+      width: 0.75rem;
+      height: 0.75rem;
+    }
+  }
+
+  .iconOnly {
+    width: 2rem;
+    padding: 0;
+
+    &.small {
+      width: 1.5rem;
+    }
+  }
+
+  .circle {
+    border-radius: 9999px;
+  }
+
+  .primary {
+    --tone: var(--live-editor-color-primary);
+    --tone-soft: var(--live-editor-color-primary-soft);
+    --tone-border: var(--live-editor-color-primary-border);
+    --tone-text: var(--live-editor-color-primary-text);
+  }
+
+  .danger {
+    --tone: var(--live-editor-color-danger);
+    --tone-soft: var(--live-editor-color-danger-soft);
+    --tone-border: var(--live-editor-color-danger);
+    --tone-text: #ffffff;
+  }
+
+  .success {
+    --tone: var(--live-editor-color-success);
+    --tone-soft: var(--live-editor-color-surface-muted);
+    --tone-border: var(--live-editor-color-success);
+    --tone-text: #ffffff;
+  }
+
+  .outlined {
+    border-color: var(--tone-border);
+    background: var(--live-editor-color-surface);
+    color: var(--tone);
+
+    &:hover:not(:disabled) {
+      background: var(--tone-soft);
+    }
+  }
+
+  .solid {
+    border-color: var(--tone);
+    background: var(--tone);
+    color: var(--tone-text);
+
+    &:hover:not(:disabled) {
+      filter: brightness(0.92);
+    }
+  }
+
+  .text {
+    background: transparent;
+    color: var(--tone);
+
+    &:hover:not(:disabled) {
+      background: var(--tone-soft);
+    }
+  }
+}

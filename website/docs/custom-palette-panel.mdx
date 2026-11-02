@@ -77,15 +77,16 @@ drag context they share.
 | `Live.Dnd.Panel`   | The built-in property panel, in a scroll container.                                                                                                                                                                                                  |
 | `Live.Dnd.Layout`  | The built-in arrangement, so you can wrap it (a toolbar above it, say) rather than rebuild it, and replace one region through its `palette`/`panel` slots. Also how to get the built-in Splitter layout without importing `@jbpark/ui-kit` yourself. |
 
-Each takes the props of a `div` (`className` is merged over the region's own
-defaults, so overriding one wins rather than fighting), and each should be
+Each takes the props of a `div` (the region's own styles sit in the
+`components` cascade layer, so a Tailwind utility or a rule outside any layer
+in your `className` overrides them), and each should be
 rendered at most once — `Canvas` in particular carries the scroll container
 the section iframes size themselves against, plus fixed drag ids that a
 second copy would duplicate.
 
 Two things to know:
 
-- **`Canvas` needs a height-constrained parent.** It fills one (`h-full`),
+- **`Canvas` needs a height-constrained parent.** It fills one (`height: 100%`),
   so a parent with no height of its own collapses it.
 - **`children` replaces the mobile chrome too** — the floating palette
   button and both Drawers are part of the default layout, not of `Live.Dnd`.
@@ -345,9 +346,9 @@ const MyPanel = () => (
 ```
 
 It reads `useDndPanel()` itself, so wrapping it can't drop a callback on the
-way through — `onNodeChange` included. (`className` is merged over the
-region's defaults, so `h-auto` overrides its own `h-full` and the header above
-it doesn't push it out of view.)
+way through — `onNodeChange` included. (`className` overrides the region's
+own styles, so `h-auto` replaces its `height: 100%` and the header above it
+doesn't push it out of view.)
 
 `onNodeChange` matters more than it looks. `bindings` covers the elements
 `extract()` finds by walking the section's markup, which does not include

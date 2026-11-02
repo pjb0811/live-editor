@@ -1,0 +1,17 @@
+@layer components {
+  .fill {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  /* Hides the preview while the runtime error overlay covers it. */
+  .hidden {
+    display: none;
+  }
+}

@@ -1,6 +1,8 @@
-import { Checkbox } from '@jbpark/ui-kit';
+import { useEffect, useRef } from 'react';
 
 import { useLiveMessages } from '~/components/context/messages';
+
+import styles from './selection.module.css';
 
 interface Props {
   total: number;
@@ -22,18 +24,30 @@ const SelectAllCheckbox = ({
 }: Props) => {
   const messages = useLiveMessages();
 
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const isAllSelected = total > 0 && selected >= total;
+  const isIndeterminate = selected > 0 && !isAllSelected;
+
+  // `indeterminate` is a DOM property only, with no attribute for it.
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = isIndeterminate;
+    }
+  }, [isIndeterminate]);
 
   return (
-    <Checkbox
-      className="text-xs"
-      checked={isAllSelected}
-      indeterminate={selected > 0 && !isAllSelected}
-      disabled={disabled}
-      onChange={() => (isAllSelected ? onClear() : onSelectAll())}
-    >
+    <label className={styles.selectAll}>
+      <input
+        ref={inputRef}
+        type="checkbox"
+        className={styles.checkbox}
+        checked={isAllSelected}
+        disabled={disabled}
+        onChange={() => (isAllSelected ? onClear() : onSelectAll())}
+      />
       {messages.selection.selectAll}
-    </Checkbox>
+    </label>
   );
 };
 

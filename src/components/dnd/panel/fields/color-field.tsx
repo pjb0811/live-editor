@@ -4,7 +4,7 @@ import { useDebounce } from '@jbpark/use-hooks';
 
 import { cn } from '~/utils/cn';
 
-import { CONTROL_CLASS } from './control-class';
+import styles from './fields.module.css';
 
 // A color input reports every drag frame, and each commit re-parses and
 // recompiles (#130). So the commit waits this long after the last change,
@@ -76,19 +76,19 @@ const ColorField = ({ value: source, onChange, ...controlProps }: Props) => {
   });
 
   return (
-    <div className="flex items-center gap-2">
+    <div className={styles.color}>
       <input
         {...controlProps}
         type="color"
         value={liveValue}
-        className={cn(CONTROL_CLASS, 'h-8 w-12 shrink-0 p-0.5')}
+        className={cn(styles.control, styles.colorSwatch)}
         onChange={e => {
           setLiveValue(e.target.value);
           debouncedCommit();
         }}
         onBlur={() => commit(liveValue)}
       />
-      <code className="text-xs text-gray-600">{source}</code>
+      <code className={styles.colorSource}>{source}</code>
     </div>
   );
 };

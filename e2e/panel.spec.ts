@@ -100,12 +100,12 @@ test('a validation error keeps the declared field spacing without a preflight', 
   await link.fill('not a url');
   await link.blur();
 
-  const error = page.locator('p.text-red-500');
+  const error = page.getByRole('alert');
 
   await expect(error).toBeVisible();
   await expect(error).toHaveCSS('margin-bottom', '0px');
 
-  // The error's own height (plus its `mt-1`) is the only shift allowed —
+  // The error's own height (plus its top margin) is the only shift allowed —
   // no UA bottom margin collapsing into the gap before the next field.
   const errorBox = await error.evaluate(el => {
     const rect = el.getBoundingClientRect();

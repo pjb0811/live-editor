@@ -1,8 +1,8 @@
 import { useDraggable } from '@dnd-kit/core';
-import { Card } from '@jbpark/ui-kit';
 
 import type { Section } from '~/types';
-import { cn } from '~/utils/cn';
+
+import styles from '../layout.module.css';
 
 import { paletteDragData } from './palette-drag';
 
@@ -51,18 +51,11 @@ export const DefaultDraggableItem = ({
 }: DefaultDraggableItemProps) => (
   <DraggableItem item={item}>
     {({ ref, dragProps, isDragging }) => (
-      <Card
+      <div
         ref={ref}
         style={{ opacity: isDragging ? 0.5 : 1 }}
         {...dragProps}
-        className={cn(
-          'cursor-grab',
-          // A visible ring for keyboard focus only, instead of no outline at
-          // all: the card is reachable with Tab (#435).
-          'outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-          'hover:border-blue-300 hover:shadow-md',
-          isDragging && 'opacity-50',
-        )}
+        className={styles.card}
         onClick={tapToAdd && onAdd ? () => onAdd(item) : undefined}
         onDoubleClick={onAdd ? () => onAdd(item) : undefined}
         // The card is a `role="button"`: Enter adds it, the keyboard
@@ -83,7 +76,7 @@ export const DefaultDraggableItem = ({
         }}
       >
         {item.name}
-      </Card>
+      </div>
     )}
   </DraggableItem>
 );

@@ -3,11 +3,12 @@ import { type DataAttrNode } from '~/utils/ast/types';
 import { parseValue } from '~/utils/ast/value';
 import { cn } from '~/utils/cn';
 
+import styles from './fields/fields.module.css';
+
 import { useDndEditOptions } from '../edit-options';
 import { resolveRenderEntry, toBindingFields } from '../panel-binding';
 import Children from './children/children';
 import ColorField from './fields/color-field';
-import { CONTROL_CLASS } from './fields/control-class';
 import FieldError from './fields/field-error';
 import { getFieldKind } from './fields/field-kind';
 import JSXEditorField from './fields/jsx-editor-field';
@@ -36,12 +37,9 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
 
   if (kind === 'readonly') {
     return (
-      <div
-        className="space-y-1 rounded border border-dashed border-amber-200 p-3
-          text-xs text-amber-700"
-      >
+      <div className={styles.readonly}>
         <div>{messages.panel.expressionPreserved}</div>
-        <code className="block overflow-x-auto text-amber-800">{rawValue}</code>
+        <code className={styles.readonlyCode}>{rawValue}</code>
         <div>{messages.panel.useCodeEditor}</div>
       </div>
     );
@@ -68,7 +66,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
         {...controlProps}
         rows={4}
         value={text}
-        className={cn(CONTROL_CLASS, 'font-mono text-xs')}
+        className={cn(styles.control, styles.mono)}
         onChange={e => setText(e.target.value)}
         onBlur={e => commitIfChanged(e.target.value)}
       />
@@ -99,15 +97,15 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     const objectValue = value as Record<string, unknown>;
 
     return (
-      <div className="space-y-2 rounded border border-gray-200 bg-gray-50 p-2">
+      <div className={styles.object}>
         {Object.entries(objectValue).map(([key, val]) => {
           const nested = resolveRenderEntry(binding.render, key);
 
           return (
-            <div key={key} className="space-y-1">
+            <div key={key} className={styles.stack}>
               <LabeledField
                 binding={{ ...nested, value: val }}
-                labelClassName="block text-xs font-medium text-gray-600"
+                labelClassName={styles.label}
                 label={nested.label}
               >
                 <Field
@@ -139,7 +137,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
         {...controlProps}
         type="checkbox"
         checked={value === true || value === 'true'}
-        className="size-4"
+        className={styles.checkbox}
         onChange={e => {
           onChange(e.target.checked);
         }}
@@ -152,7 +150,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
       <select
         {...controlProps}
         value={rawValue}
-        className={CONTROL_CLASS}
+        className={styles.control}
         onChange={e => commitIfChanged(e.target.value)}
       >
         {(binding.options ?? []).map(option => (
@@ -183,7 +181,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           {...controlProps}
           type={kind === 'datetime' ? 'datetime-local' : kind}
           value={rawValue}
-          className={CONTROL_CLASS}
+          className={styles.control}
           onChange={e => validateAndCommit(e.target.value)}
         />
         <FieldError id={errorId} message={validationError} />
@@ -198,7 +196,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           {...controlProps}
           type={kind}
           value={text}
-          className={CONTROL_CLASS}
+          className={styles.control}
           onChange={e => setText(e.target.value)}
           placeholder={
             kind === 'url'
@@ -222,7 +220,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
           type="number"
           step={binding.step}
           value={text}
-          className={CONTROL_CLASS}
+          className={styles.control}
           onChange={e => setText(e.target.value)}
           placeholder={messages.panel.numberPlaceholder}
           onBlur={e => {
@@ -247,7 +245,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
         {...controlProps}
         rows={2}
         value={text}
-        className={CONTROL_CLASS}
+        className={styles.control}
         onChange={e => setText(e.target.value)}
         placeholder={messages.panel.textPlaceholder}
         onBlur={e => {

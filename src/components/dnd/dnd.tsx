@@ -19,6 +19,9 @@ import type { Section } from '~/types';
 import type { DocumentProblem } from '~/utils/ast/document';
 import { type BindingOptions } from '~/utils/ast/types';
 
+import canvasStyles from './canvas/canvas.module.css';
+import layoutStyles from './layout.module.css';
+
 import { cn } from '../../utils/cn';
 import { preloadScripts } from '../../utils/scripts';
 import type { LiveMessages } from '../context/messages';
@@ -301,31 +304,13 @@ const Dnd = ({
   const canvas = (
     <SectionHandlersContext.Provider value={sectionHandlers}>
       {stale && (
-        <div
-          role="status"
-          className={cn(
-            'sticky top-0 z-70',
-            'border-b border-amber-200 bg-amber-50 px-3 py-2',
-            'text-sm text-amber-900',
-          )}
-        >
+        <div role="status" className={canvasStyles.stale}>
           {messages.canvas.stale}
         </div>
       )}
-      <Droppable
-        className={cn(
-          !sections.length && 'h-full',
-          //
-        )}
-      >
+      <Droppable className={cn(!sections.length && canvasStyles.fill)}>
         {!sections.length ? (
-          <div
-            className={cn(
-              'flex items-center justify-center',
-              'h-full',
-              'text-gray-500',
-            )}
-          >
+          <div className={canvasStyles.empty}>
             <CanvasNotice {...emptyCanvasNotice(messages, problem, isMobile)} />
           </div>
         ) : (
@@ -383,14 +368,7 @@ const Dnd = ({
         ]}
         onDragEnd={onDragEnd}
       >
-        <div
-          className={cn(
-            'relative flex h-full w-full',
-            className,
-            //
-          )}
-          {...restProps}
-        >
+        <div className={cn(layoutStyles.root, className)} {...restProps}>
           {/* Not memoized: `palette`, `panel` and `canvas` are new every
               render anyway. */}
           <DndEditOptionsContext.Provider

@@ -96,7 +96,8 @@ const Renderer = ({
       {container => (
         <div
           ref={wrapperRef}
-          className="w-full overflow-x-hidden"
+          // Inside the frame, which may not have the editor's stylesheet.
+          style={{ width: '100%', overflowX: 'hidden' }}
           data-editor-mode
         >
           {/*

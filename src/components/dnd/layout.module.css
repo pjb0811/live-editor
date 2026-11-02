@@ -1,0 +1,91 @@
+@layer components {
+  .root {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    color: var(--live-editor-color-text);
+  }
+
+  .palette {
+    box-sizing: border-box;
+    height: 100%;
+    padding: 1rem;
+    overflow-y: auto;
+    background: var(--live-editor-color-surface-muted);
+  }
+
+  .paletteItems {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .panel {
+    height: 100%;
+  }
+
+  /* Pins the element picker's switch to the bottom-left of the scroll area. */
+  .pickerDock {
+    position: sticky;
+    bottom: 0;
+    z-index: 70;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .picker {
+    position: absolute;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    pointer-events: auto;
+  }
+
+  .paletteButton {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 20;
+
+    @media (min-width: 768px) {
+      display: none;
+    }
+  }
+
+  .card {
+    box-sizing: border-box;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--live-editor-color-border-subtle);
+    border-radius: var(--live-editor-radius-lg);
+    background: var(--live-editor-color-surface);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    font-size: var(--live-editor-font-size-sm);
+    cursor: grab;
+    transition:
+      border-color 0.15s,
+      box-shadow 0.15s;
+
+    &:hover {
+      border-color: var(--live-editor-color-primary-border);
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    /* A visible ring for keyboard focus only: the card is reachable with
+       Tab (#435). */
+    &:focus {
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--live-editor-color-focus);
+      outline-offset: 2px;
+    }
+  }
+}

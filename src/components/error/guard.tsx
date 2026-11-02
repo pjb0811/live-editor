@@ -78,7 +78,7 @@ const Guard = ({ children, onError }: Props) => {
       <ErrorComponent
         title={messages.errors.runtime}
         message={error}
-        className="m-4"
+        style={{ margin: 16 }}
         onReset={() => {
           setError(null);
           errorHandled.current = false;

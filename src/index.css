@@ -1,18 +1,15 @@
 /*
- * Import Tailwind WITHOUT its global preflight (base) layer.
- *
- * `@import 'tailwindcss'` also pulls in preflight — a document-wide reset
- * (`*, ::before, ::after { margin: 0; box-sizing: border-box; border: 0 }`,
- * bare-tag resets on headings/lists/buttons/etc). Shipping that in
- * `dist/style.css` flattens the spacing/typography of any host page that
- * imports it (e.g. a Docusaurus/Infima site), which is a leak, not our job.
- *
- * Consumers that run their own Tailwind still get preflight from their own
- * build, so this library's chrome is unaffected either way.
+ * The cascade layers of this stylesheet, lowest first. The chrome's CSS
+ * Modules sit in `components`, below `utilities`, so a host's Tailwind
+ * utility on a region's `className` overrides the region's own styles, and
+ * any host rule outside a layer overrides them too. The chrome uses no
+ * Tailwind classes, so no Tailwind CSS ships here: preview code gets its
+ * Tailwind from the host or from `dynamicTailwind`.
  */
-@layer theme, base, components, ui-kit, utilities;
-@import 'tailwindcss/theme.css' layer(theme);
-@import 'tailwindcss/utilities.css' layer(utilities);
+@layer theme, base, ui-kit, components, utilities;
+
+/* The chrome's `--live-editor-*` tokens. */
+@import './tokens.css';
 
 /*
  * Pull @jbpark/ui-kit's compiled stylesheet in here (at the CSS level,
@@ -41,7 +38,9 @@
  * Layering spec's import-with-layer-name behavior), and declaring `ui-kit`
  * before `utilities` above keeps this file's own utilities the tie-breaker
  * regardless of import order, without discarding ui-kit's own internal
- * layer structure.
+ * layer structure. It also sits before `components`, so ui-kit's reset
+ * (which matches anything inside a ui-kit component, such as a Splitter
+ * panel) can't override the chrome's own styles.
  */
 @import '@jbpark/ui-kit/style.css' layer(ui-kit);
 

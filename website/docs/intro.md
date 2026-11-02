@@ -32,6 +32,20 @@ Import the stylesheet once, near your app root:
 import '@jbpark/live-editor/style.css';
 ```
 
+The editor's own UI (palette, canvas and panel) takes its colors, font sizes
+and radii from CSS custom properties named `--live-editor-*`. Set them on
+`:root`, or on any element around the editor, to restyle it:
+
+```css
+:root {
+  --live-editor-color-primary: #7c3aed;
+}
+```
+
+The dark values apply under an element with `data-theme="dark"` or the
+`dark` class. [`src/tokens.css`](https://github.com/pjb0811/live-editor/blob/main/src/tokens.css)
+lists every token.
+
 ### Smaller bundles with subpath imports
 
 `import Live from '@jbpark/live-editor'` pulls in every feature area (Dnd,
