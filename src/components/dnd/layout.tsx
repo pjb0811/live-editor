@@ -1,16 +1,20 @@
-import { Button, Drawer, Space, Splitter } from '@jbpark/ui-kit';
+import { Drawer, Splitter } from '@jbpark/ui-kit';
 import { Crosshair, LayoutGrid } from 'lucide-react';
 
 import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
+import styles from './layout.module.css';
+
+import Button from './button';
 import { useDndInspector } from './inspector';
 import { useDndRegions } from './layout-context';
 import { DefaultDraggableItem } from './palette/draggable';
 import PropertyPanel from './panel';
 
 // A region's props: everything a `div` takes except `children`, which comes
-// from context. `className` is merged over the defaults, so yours wins.
+// from context. The region's styles sit in the `components` cascade layer,
+// so a Tailwind utility or an unlayered rule in `className` wins.
 export type DndRegionProps = Omit<
   React.ComponentPropsWithRef<'div'>,
   'children'
@@ -25,7 +29,7 @@ const PaletteItems = ({ subject }: { subject: string }) => {
   } = useDndRegions(subject);
 
   return (
-    <Space orientation="vertical" align="start">
+    <div className={styles.paletteItems}>
       {items.map(item => (
         <DefaultDraggableItem
           key={item.id}
@@ -34,7 +38,7 @@ const PaletteItems = ({ subject }: { subject: string }) => {
           tapToAdd={isMobile}
         />
       ))}
-    </Space>
+    </div>
   );
 };
 
@@ -72,14 +76,7 @@ const PanelFields = ({ subject }: { subject: string }) => {
 // own component in `Layout`'s `palette` slot or anywhere in `Live.Dnd`'s
 // children, and read `useDndPalette()`.
 export const Palette = ({ className, ...restProps }: DndRegionProps) => (
-  <div
-    className={cn(
-      'h-full overflow-y-auto bg-gray-50 p-4',
-      className,
-      //
-    )}
-    {...restProps}
-  >
+  <div className={cn(styles.palette, className)} {...restProps}>
     <PaletteItems subject="<Live.Dnd.Palette>" />
   </div>
 );
@@ -96,11 +93,7 @@ export const Canvas = ({ className, style, ...restProps }: DndRegionProps) => {
 
   return (
     <div
-      className={cn(
-        'relative h-full w-full overflow-y-auto',
-        className,
-        //
-      )}
+      className={cn(styles.canvas, className)}
       data-frame-container
       style={{
         isolation: 'isolate',
@@ -115,11 +108,11 @@ export const Canvas = ({ className, style, ...restProps }: DndRegionProps) => {
           the scroll area, clear of the selected section's own buttons at its
           top-right and of the mobile palette button at the bottom-right. */}
       {!documentError && (
-        <div className="pointer-events-none sticky bottom-0 z-70 h-0">
-          <div className="pointer-events-auto absolute bottom-3 left-3">
+        <div className={styles.pickerDock}>
+          <div className={styles.picker}>
             <Button
               icon={<Crosshair />}
-              color="primary"
+              tone="primary"
               variant={inspector.active ? 'solid' : 'outlined'}
               aria-pressed={inspector.active}
               aria-label={messages.canvas.pickElement}
@@ -140,14 +133,7 @@ export const Canvas = ({ className, style, ...restProps }: DndRegionProps) => {
 // The built-in property panel. Replace it like `Palette`, through
 // `Layout`'s `panel` slot or `Live.Dnd`'s children, reading `useDndPanel()`.
 export const Panel = ({ className, ...restProps }: DndRegionProps) => (
-  <div
-    className={cn(
-      'h-full',
-      className,
-      //
-    )}
-    {...restProps}
-  >
+  <div className={cn(styles.panel, className)} {...restProps}>
     <PanelFields subject="<Live.Dnd.Panel>" />
   </div>
 );
@@ -195,11 +181,12 @@ export const Layout = ({ palette, panel }: DndLayoutProps) => {
         </Splitter>
       )}
       <Button
-        type="primary"
+        variant="solid"
+        tone="primary"
         shape="circle"
         icon={<LayoutGrid />}
         aria-label={messages.canvas.palette}
-        className="fixed right-4 bottom-4 z-20 md:hidden"
+        className={styles.paletteButton}
         onClick={() => setPaletteOpen(true)}
       />
       {/* A slot goes in as-is; the built-ins go in without their region

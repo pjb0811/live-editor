@@ -1,11 +1,13 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, Space } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Copy, Trash } from 'lucide-react';
 
 import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
+import styles from './canvas.module.css';
+
+import Button from '../button';
 import { paletteSectionOf } from '../palette/palette-drag';
 import { type SectionNavigation, useSectionHandlers } from './section-handlers';
 
@@ -130,17 +132,13 @@ const Sortable = ({
       onKeyDown={onKeyDown}
       onClick={onClick}
       className={cn(
-        'relative',
-        selected && 'z-10 outline-2 outline-offset-2 outline-blue-500',
-        isPaletteSectionOver && 'border-t-4 border-t-green-500',
-        //
+        styles.section,
+        selected && styles.sectionSelected,
+        isPaletteSectionOver && styles.sectionDropTarget,
       )}
     >
       <div
-        className={cn(
-          'absolute inset-0 z-50',
-          //
-        )}
+        className={styles.sectionShield}
         onPointerMove={
           inspecting
             ? e =>
@@ -171,12 +169,7 @@ const Sortable = ({
       />
       {children}
       {selected && (
-        <Space
-          className={cn(
-            'absolute top-1 right-1 z-60',
-            //
-          )}
-        >
+        <div className={styles.sectionToolbar}>
           {onMoveUp && (
             <Button
               icon={<ChevronUp />}
@@ -199,12 +192,12 @@ const Sortable = ({
             aria-label={messages.section.duplicate}
           />
           <Button
-            danger
+            tone="danger"
             icon={<Trash />}
             onClick={press(() => onDelete?.(id))}
             aria-label={messages.section.delete}
           />
-        </Space>
+        </div>
       )}
     </div>
   );

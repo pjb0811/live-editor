@@ -28,6 +28,8 @@ import {
 } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
+import styles from '../structure.module.css';
+
 import type { DndItemsItem } from './use-dnd-items';
 
 // The default announcements would read out the items' generated ids.
@@ -109,7 +111,7 @@ export const SortableItems = ({
         strategy={verticalListSortingStrategy}
         disabled={disabled}
       >
-        <div className="space-y-4">{items.map(children)}</div>
+        <div className={styles.stackLoose}>{items.map(children)}</div>
       </SortableContext>
     </DndContext>
   );
@@ -153,10 +155,10 @@ export const ItemCard = ({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn(className, isDragging && 'relative z-10 shadow-md')}
+      className={cn(className, isDragging && styles.dragging)}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-1">
+      <div className={styles.row}>
+        <div className={styles.rowStart}>
           <button
             type="button"
             ref={setActivatorNodeRef}
@@ -164,9 +166,7 @@ export const ItemCard = ({
             {...listeners}
             aria-label={messages.items.reorder(title)}
             disabled={disabled}
-            className="cursor-grab rounded p-0.5 text-gray-400
-              hover:text-gray-700 disabled:cursor-not-allowed
-              disabled:opacity-40"
+            className={styles.handle}
           >
             <GripVertical size={14} />
           </button>
@@ -175,8 +175,7 @@ export const ItemCard = ({
             type="button"
             aria-expanded={expanded}
             onClick={onToggle}
-            className="inline-flex items-center space-x-1 rounded px-1 text-xs
-              font-medium"
+            className={styles.toggle}
           >
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             <span>{title}</span>

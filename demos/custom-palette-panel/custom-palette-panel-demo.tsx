@@ -716,8 +716,9 @@ const MyPanel = ({ mode }: { mode: PanelMode }) => {
 // around it. `Live.Dnd.Panel` reads `useDndPanel()` itself, so wrapping it
 // can't drop a callback on the way through — `onNodeChange` included, which
 // nested array/children edits need to commit (#308). `h-auto` overrides the
-// region's own `h-full` (className is tailwind-merged over the defaults), so
-// the header above it doesn't push it out of view.
+// region's own `height: 100%` (its styles sit in the `components` layer,
+// below Tailwind's utilities), so the header above it doesn't push it out of
+// view.
 const WrappedPanel = () => (
   <div className="h-full overflow-y-auto">
     <p

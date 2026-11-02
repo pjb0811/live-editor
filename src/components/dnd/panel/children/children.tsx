@@ -1,12 +1,15 @@
 import { useMemo } from 'react';
 
-import { Button } from '@jbpark/ui-kit';
 import { Plus } from 'lucide-react';
 
 import { useLiveMessages } from '~/components/context/messages';
 import { findEditableChildren } from '~/utils/ast/binding';
 import { type DataAttrNode } from '~/utils/ast/types';
+import { cn } from '~/utils/cn';
 
+import styles from '../structure.module.css';
+
+import Button from '../../button';
 import {
   type PanelNodeChange,
   resolvePanelBindings,
@@ -51,14 +54,14 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
   }, [items]);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-green-700">
+    <div className={cn(styles.children, styles.stackLoose)}>
+      <div className={styles.row}>
+        <div className={styles.heading}>
           {messages.children.heading(items.length)}
         </div>
         <Button
           size="small"
-          color="green"
+          tone="success"
           icon={<Plus />}
           onClick={actions.add}
         >
@@ -87,17 +90,14 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
       />
 
       {items.map((item, itemIndex) => (
-        <div
-          key={item.id || itemIndex}
-          className="space-y-2 rounded border border-green-200 bg-green-50 p-3"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+        <div key={item.id || itemIndex} className={styles.card}>
+          <div className={styles.row}>
+            <div className={styles.rowStart}>
               <SelectionCheckbox
                 checked={selection.isSelected(itemIndex)}
                 onToggle={shiftKey => selection.toggle(itemIndex, shiftKey)}
               />
-              <div className="text-xs font-medium text-green-800">
+              <div className={styles.label}>
                 {messages.children.child(
                   itemIndex + 1,
                   item.tagName || 'fragment',
@@ -115,8 +115,8 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
           </div>
 
           {editableChildrenMap.has(itemIndex) && (
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-green-700">
+            <div className={styles.stack}>
+              <div className={styles.label}>
                 {messages.children.editableBindings}
               </div>
               {editableChildrenMap.get(itemIndex)!.map((editableNode, idx) => {
@@ -128,10 +128,9 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
                   <ElementFields
                     key={`editable-${nodeId || idx}`}
                     id={nodeId ?? undefined}
-                    className="rounded border border-green-100 bg-white p-2
-                      data-[picked]:ring-2 data-[picked]:ring-blue-400"
+                    className={styles.element}
                     header={
-                      <div className="mb-1 text-xs text-green-600">
+                      <div className={styles.elementTag}>
                         {editableNode.tagName}
                       </div>
                     }
@@ -144,14 +143,12 @@ const Children = ({ value, onChange, onNodeChange }: Props) => {
           )}
 
           {!!item.children && !editableChildrenMap.has(itemIndex) && (
-            <div className="space-y-1">
-              <div className="text-xs font-medium text-green-700">
-                {messages.children.childNodes}
-              </div>
+            <div className={styles.stackTight}>
+              <div className={styles.label}>{messages.children.childNodes}</div>
               {item.children.map((node, nodeIndex) => (
                 <ElementFields
                   key={`node-${itemIndex}-${nodeIndex}`}
-                  className="ml-2 rounded border border-green-100 bg-white p-2"
+                  className={cn(styles.element, styles.indented)}
                   bindings={bindingsOf(node, onNodeChange)}
                   onNodeChange={onNodeChange}
                 />

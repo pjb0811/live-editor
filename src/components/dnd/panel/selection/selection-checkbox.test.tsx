@@ -21,8 +21,8 @@ describe('SelectionCheckbox', () => {
   it('shows the checked state it is given', () => {
     render(<SelectionCheckbox checked onToggle={() => {}} />);
 
-    expect(screen.getByRole('checkbox').getAttribute('aria-checked')).toBe(
-      'true',
+    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(
+      true,
     );
   });
 

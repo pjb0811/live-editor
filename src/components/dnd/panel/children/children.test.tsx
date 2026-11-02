@@ -66,8 +66,8 @@ describe('Children panel integration', () => {
     // The moved child stays selected at its new position (#342), so the
     // bulk actions stay available for it.
     expect(
-      rowCheckboxes().map(box => box.getAttribute('aria-checked')),
-    ).toEqual(['true', 'false']);
+      rowCheckboxes().map(box => (box as HTMLInputElement).checked),
+    ).toEqual([true, false]);
 
     fireEvent.click(screen.getByTitle('Duplicate selected'));
     await waitFor(() => expect(screen.getAllByRole('textbox')).toHaveLength(3));

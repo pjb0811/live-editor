@@ -15,15 +15,19 @@
  * `p { margin: 0 }` would defeat `.space-y-*` (emitted as a zero-specificity
  * `:where(.space-y-1 > :not(:last-child))`).
  *
- * The `@layer` line pins the two names in the order `src/index.css` declares
- * them. A layer's position is fixed by its first appearance anywhere in the
+ * The `@layer` line pins the layer names in the order `src/index.css`
+ * declares them. A layer's position is fixed by its first appearance anywhere in the
  * document, and this file is imported before that one (the editor page imports
  * its own stylesheet above `Live`, which pulls that one in) — without this
  * line, the `base` block below was the first mention of any layer and put
  * `base` ahead of `theme`, reordering the cascade for every stylesheet in the
  * app.
  */
-@layer theme, base;
+@layer theme, base, ui-kit, components, utilities;
+
+/* This app's own pages use Tailwind; the library's stylesheet ships none. */
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 
 @layer base {
   /*

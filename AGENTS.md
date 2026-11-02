@@ -23,6 +23,7 @@ live-editor/
 │  │  │  ├─ dnd.tsx, index.ts # Live.Dnd 컴포넌트와 공개 export
 │  │  │  ├─ types.ts        # DndPanel·DndPalette·Props 공개 타입 (dnd.tsx와 분리)
 │  │  │  ├─ layout.tsx      # Palette/Canvas/Panel/Layout 합성 컴포넌트
+│  │  │  ├─ button.tsx      # 에디터 UI 공용 버튼 (variant·tone·size, button.module.css)
 │  │  │  ├─ layout-context.ts # 커스텀 레이아웃·팔레트·패널 훅
 │  │  │  ├─ edit-options.ts, panel-binding.ts, inspector.ts # 편집 에러·패널 바인딩·요소 picker (여러 영역 공용)
 │  │  │  ├─ canvas/         # 캔버스: droppable, sortable(+section-handlers 컨텍스트), overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight, canvas-notice(빈 캔버스 안내)
@@ -76,6 +77,7 @@ live-editor/
 │  ├─ constants/            # index.ts: 상수, 정규식, 기본 템플릿 / palette-sections.ts: 기본 팔레트 섹션 (PALETTE_SECTIONS, 일반 요소와 Tailwind 클래스, 모듈 불필요)
 │  ├─ types/index.ts        # TypeScript 타입 정의
 │  ├─ index.tsx             # 라이브러리 공개 API (Live 및 합성 컴포넌트)
+│  ├─ index.css, tokens.css # dist/style.css 진입점(레이어 순서, ui-kit 스타일) / 에디터 UI의 --live-editor-* 토큰
 │  └─ main.tsx              # 로컬 개발 앱 진입점
 ├─ demos/                   # 문서용 독립 iframe 데모
 ├─ website/                 # Docusaurus 문서 사이트
@@ -155,8 +157,13 @@ TypeScript와 Vite/Vitest 설정에 같은 별칭을 사용합니다.
 
 ### CSS
 
-- **Tailwind CSS 4** + `cn()` 유틸리티 (`clsx` + `tailwind-merge`)
-- inline style은 미리보기 프레임 내부 또는 Tailwind로 표현 불가한 동적 스타일에만 사용
+- 라이브러리 UI(`src/components/`)는 **CSS Modules**(`*.module.css`)로 씁니다. Tailwind 클래스는 쓰지 않습니다. `dist/style.css`에 Tailwind를 컴파일해 넣지 않으므로, 쓰면 호스트에서 스타일이 빠집니다
+- 각 모듈 파일은 규칙을 `@layer components { ... }` 안에 둡니다. 호스트의 Tailwind 유틸리티나 레이어 밖 규칙이 이기게 하기 위해서입니다. 호출하는 쪽이 `className`으로 덮어쓰는 기본 컴포넌트(`dnd/button.tsx`)는 `@layer components.primitives`에 둡니다
+- 색·글자 크기·radius는 `src/tokens.css`의 `--live-editor-*` 토큰을 씁니다. 다크 값은 같은 파일의 `[data-theme='dark']`, `.dark` 블록에 둡니다
+- 호스트 reset이 꺼 둘 수 있는 속성(`appearance` 등)은 직접 지정합니다
+- 클래스 조합은 `cn()`(`clsx` + `tailwind-merge`)으로 합니다
+- inline style은 미리보기 프레임 내부(프레임에 라이브러리 스타일시트가 없을 수 있음)나 동적 스타일에만 사용
+- 로컬 개발 앱(`src/pages/`)과 데모는 Tailwind를 씁니다. `src/pages/index.css`가 Tailwind를 import하고, Prettier의 `tailwindStylesheet`도 이 파일을 가리킵니다
 
 ### 상태 관리
 
@@ -218,14 +225,14 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 
 ## 기술 스택
 
-| 영역   | 기술                                         |
-| ------ | -------------------------------------------- |
-| Core   | React 19, TypeScript 6                       |
-| 번들러 | Vite 8 (dev), tsdown (lib build)             |
-| DnD    | @dnd-kit/core, sortable, modifiers           |
-| 에디터 | @jbpark/ui-kit/CodeEditor (CodeMirror 기반)  |
-| UI     | @jbpark/ui-kit, lucide-react, Tailwind CSS 4 |
-| AST    | @babel/standalone (인브라우저)               |
+| 영역   | 기술                                        |
+| ------ | ------------------------------------------- |
+| Core   | React 19, TypeScript 6                      |
+| 번들러 | Vite 8 (dev), tsdown (lib build)            |
+| DnD    | @dnd-kit/core, sortable, modifiers          |
+| 에디터 | @jbpark/ui-kit/CodeEditor (CodeMirror 기반) |
+| UI     | CSS Modules, @jbpark/ui-kit, lucide-react   |
+| AST    | @babel/standalone (인브라우저)              |
 
 ---
 

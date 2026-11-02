@@ -8,6 +8,8 @@ import LiveError from '~/components/error';
 import Frame, { type FrameProps } from '~/components/frame';
 import { cn } from '~/utils/cn';
 
+import styles from './preview.module.css';
+
 import { NO_MODULES, NO_PROPS } from './defaults';
 import { renderStableComponent } from './stable-component';
 import type { Props } from './types';
@@ -29,7 +31,7 @@ const Client = ({
   const messages = useLiveMessages();
   const isError = !!showError && !!error;
 
-  const classNames = cn(isError && 'hidden', className);
+  const classNames = cn(isError && styles.hidden, className);
 
   const effectiveCode = _code === undefined ? code : _code;
 
@@ -56,7 +58,7 @@ const Client = ({
   if (module && module.error) {
     return (
       <>
-        <div className={cn('relative h-full w-full', classNames)}>
+        <div className={cn(styles.fill, classNames)}>
           <LiveError message={module.error} title={messages.errors.compile} />
         </div>
         <LiveError.Runtime open={isError} />
@@ -73,7 +75,7 @@ const Client = ({
   return (
     <>
       {frame ? (
-        <div className={cn('h-full w-full', classNames)}>
+        <div className={cn(styles.fill, classNames)}>
           <Frame {...(frame as FrameProps)}>
             {container => (
               <div ref={contentRef} style={{ display: 'contents' }}>
@@ -101,10 +103,7 @@ const Client = ({
       ) : (
         <div
           ref={contentRef}
-          className={cn(
-            'relative h-full w-full overflow-x-hidden overflow-y-auto',
-            classNames,
-          )}
+          className={cn(styles.fill, styles.scroll, classNames)}
           style={{
             isolation: 'isolate',
             transform: 'translateZ(0)',

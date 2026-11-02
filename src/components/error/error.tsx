@@ -7,7 +7,7 @@ export interface Props extends React.ComponentPropsWithRef<'div'> {
   onReset?: () => void;
 }
 
-const Error = ({ message, title, className, onReset }: Props) => {
+const Error = ({ message, title, className, style, onReset }: Props) => {
   const messages = useLiveMessages();
 
   if (!message) {
@@ -23,6 +23,7 @@ const Error = ({ message, title, className, onReset }: Props) => {
         border: '1px solid #fca5a5',
         borderRadius: '6px',
         color: '#7f1d1d',
+        ...style,
       }}
     >
       <h3 style={{ fontSize: '14px', fontWeight: 'bold', margin: 0 }}>

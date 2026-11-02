@@ -14,7 +14,12 @@ const rowBoxes = () =>
   screen
     .getAllByRole('checkbox')
     .filter(box => box !== selectAll() && !selectAll().contains(box));
-const stateOf = (box: HTMLElement) => box.getAttribute('aria-checked');
+// A native checkbox's state, as `aria-checked` would spell it.
+const stateOf = (box: HTMLElement) => {
+  const input = box as HTMLInputElement;
+
+  return input.indeterminate ? 'mixed' : String(input.checked);
+};
 
 afterEach(cleanup);
 
@@ -66,17 +71,18 @@ describe('select all in the Items editor', () => {
   it('is disabled while the array can only be edited in code', () => {
     render(<Items value={`[{ label: 'A' }, ...rest]`} />);
 
-    expect(selectAll().getAttribute('aria-disabled')).toBe('true');
+    expect((selectAll() as HTMLInputElement).disabled).toBe(true);
   });
 
-  it('works with the keyboard', () => {
+  // jsdom doesn't turn Space into a click, so this checks for the native
+  // control a browser toggles with Space.
+  it('is a native checkbox, so it works with the keyboard', () => {
     render(<Items value={three} />);
 
-    selectAll().focus();
-    fireEvent.keyDown(selectAll(), { key: ' ', code: 'Space' });
-    fireEvent.keyUp(selectAll(), { key: ' ', code: 'Space' });
+    const box = selectAll() as HTMLInputElement;
 
-    expect(screen.getByText('3 selected')).not.toBeNull();
+    expect(box.tagName).toBe('INPUT');
+    expect(box.type).toBe('checkbox');
   });
 });
 

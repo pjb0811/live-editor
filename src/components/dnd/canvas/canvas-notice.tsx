@@ -1,4 +1,4 @@
-import { Space, Typography } from '@jbpark/ui-kit';
+import styles from './canvas.module.css';
 
 interface Props {
   title: React.ReactNode;
@@ -7,10 +7,10 @@ interface Props {
 
 // What an empty canvas says: why it is empty, and what to do about it.
 const CanvasNotice = ({ title, detail }: Props) => (
-  <Space orientation="vertical" align="center">
-    <Typography.Paragraph>{title}</Typography.Paragraph>
-    <Typography.Text>{detail}</Typography.Text>
-  </Space>
+  <div className={styles.notice}>
+    <p>{title}</p>
+    <span>{detail}</span>
+  </div>
 );
 
 export default CanvasNotice;

@@ -1,5 +1,8 @@
-import { Button } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
+
+import styles from './row-controls.module.css';
+
+import Button from '../button';
 
 interface Props {
   // The row's position among `count` rows.
@@ -22,7 +25,7 @@ const RowControls = ({
   onMove,
   onDelete,
 }: Props) => (
-  <div className="flex space-x-1">
+  <div className={styles.controls}>
     <Button
       size="small"
       icon={<ArrowUp />}
@@ -38,7 +41,7 @@ const RowControls = ({
       onClick={() => onMove(index + 1)}
     />
     <Button
-      danger
+      tone="danger"
       size="small"
       icon={<X />}
       aria-label={labels.delete}

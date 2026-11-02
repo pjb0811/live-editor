@@ -1,7 +1,10 @@
-import { Button } from '@jbpark/ui-kit';
 import { ArrowDown, ArrowUp, Copy, X } from 'lucide-react';
 
 import { useLiveMessages } from '~/components/context/messages';
+
+import styles from './selection.module.css';
+
+import Button from '../../button';
 
 interface BulkActionsBarProps {
   count: number;
@@ -34,14 +37,9 @@ const BulkActionsBar = ({
   }
 
   return (
-    <div
-      className="flex items-center justify-between rounded border
-        border-blue-200 bg-blue-50 p-2"
-    >
-      <div className="text-xs font-medium text-blue-700">
-        {messages.selection.count(count)}
-      </div>
-      <div className="flex items-center space-x-1">
+    <div className={styles.bar}>
+      <div className={styles.count}>{messages.selection.count(count)}</div>
+      <div className={styles.actions}>
         <Button
           size="small"
           icon={<Copy />}
@@ -64,7 +62,7 @@ const BulkActionsBar = ({
           onClick={onMoveDown}
         />
         <Button
-          danger
+          tone="danger"
           size="small"
           icon={<X />}
           title={messages.selection.delete}

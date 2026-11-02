@@ -1,4 +1,4 @@
-import { Checkbox } from '@jbpark/ui-kit';
+import styles from './selection.module.css';
 
 interface Props {
   checked: boolean;
@@ -6,20 +6,19 @@ interface Props {
   onToggle: (shiftKey: boolean) => void;
 }
 
-// The checkbox that selects an Items or Children row. ui-kit's `Checkbox`
-// reports only the new state, so the click around it reads Shift for range
-// selection; Space and Shift+Space reach it as a click too.
+// The checkbox that selects an Items or Children row. Reads Shift from the
+// click for range selection; Space and Shift+Space reach it as a click too.
+// The parent owns `checked`, so the box shows the new state once `onToggle`
+// updates it.
 const SelectionCheckbox = ({ checked, disabled = false, onToggle }: Props) => (
-  <div
-    onClick={e => {
-      if (!disabled) {
-        onToggle(e.shiftKey);
-      }
-    }}
-    className="inline-flex"
-  >
-    <Checkbox checked={checked} disabled={disabled} />
-  </div>
+  <input
+    type="checkbox"
+    className={styles.checkbox}
+    checked={checked}
+    disabled={disabled}
+    readOnly
+    onClick={e => onToggle(e.shiftKey)}
+  />
 );
 
 export default SelectionCheckbox;

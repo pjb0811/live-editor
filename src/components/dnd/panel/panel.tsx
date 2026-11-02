@@ -1,12 +1,13 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Button, Typography } from '@jbpark/ui-kit';
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
 import { useLiveMessages } from '~/components/context/messages';
 import type { Section } from '~/types';
-import { cn } from '~/utils/cn';
 
+import styles from './panel.module.css';
+
+import Button from '../button';
 import { DndInspectorContext } from '../inspector';
 import type { PanelBinding, PanelNodeChange } from '../panel-binding';
 import ElementFields from './element-fields';
@@ -122,16 +123,7 @@ const Panel = ({
   );
 
   if (!item) {
-    return (
-      <Typography.Paragraph
-        className={cn(
-          'p-4 text-sm text-gray-500',
-          //
-        )}
-      >
-        {messages.panel.selectSection}
-      </Typography.Paragraph>
-    );
+    return <p className={styles.empty}>{messages.panel.selectSection}</p>;
   }
 
   return (
@@ -145,17 +137,11 @@ const Panel = ({
           setFocusedId(null);
         }
       }}
-      className={cn(
-        'h-full space-y-4 p-4',
-        'overflow-x-hidden overflow-y-auto',
-        //
-      )}
+      className={styles.panel}
     >
-      <div className="flex items-center justify-between">
-        <Typography.Title className="text-lg font-semibold">
-          {item.name}
-        </Typography.Title>
-        <div className="flex items-center gap-1">
+      <div className={styles.header}>
+        <h2 className={styles.title}>{item.name}</h2>
+        <div className={styles.actions}>
           {onMoveUp && (
             <Button
               icon={<ChevronUp />}
@@ -174,7 +160,7 @@ const Panel = ({
           )}
           {onDelete && (
             <Button
-              danger
+              tone="danger"
               icon={<Trash />}
               onClick={() => onDelete(item.id)}
               aria-label={messages.section.delete}
@@ -183,14 +169,12 @@ const Panel = ({
         </div>
       </div>
       {readOnly && (
-        <Typography.Text role="status" className="block text-xs text-amber-700">
+        <span role="status" className={styles.readOnly}>
           {messages.panel.readOnly}
-        </Typography.Text>
+        </span>
       )}
       {!groups.length && (
-        <Typography.Text className="text-xs text-gray-400">
-          {messages.panel.noEditableElements}
-        </Typography.Text>
+        <span className={styles.note}>{messages.panel.noEditableElements}</span>
       )}
       <ElementSelectionContext.Provider value={selection}>
         {groups.map(group => {
@@ -202,23 +186,15 @@ const Panel = ({
               id={group[0]!.id}
               role="group"
               aria-label={element.label}
-              className="rounded data-[picked]:ring-2
-                data-[picked]:ring-blue-400 data-[picked]:ring-offset-2"
+              className={styles.element}
               header={
                 // Only needed once fields of more than one element share the
                 // panel; a single element reads the same as before (#514).
                 groups.length > 1 && (
-                  <div
-                    className="mb-2 flex min-w-0 items-baseline gap-1.5 border-b
-                      border-gray-100 pb-1 text-xs"
-                  >
-                    <code className="shrink-0 text-gray-500">
-                      {element.tagName}
-                    </code>
+                  <div className={styles.elementHeader}>
+                    <code className={styles.elementTag}>{element.tagName}</code>
                     {element.text && (
-                      <span className="truncate text-gray-400">
-                        {element.text}
-                      </span>
+                      <span className={styles.elementText}>{element.text}</span>
                     )}
                   </div>
                 )

@@ -1,9 +1,12 @@
-import { Button } from '@jbpark/ui-kit';
 import { Plus } from 'lucide-react';
 
 import { useLiveMessages } from '~/components/context/messages';
 import type { BindingRenderMap } from '~/utils/ast/types';
+import { cn } from '~/utils/cn';
 
+import styles from '../structure.module.css';
+
+import Button from '../../button';
 import type { PanelNodeChange } from '../../panel-binding';
 import ElementFields from '../element-fields';
 import Field from '../field';
@@ -39,30 +42,25 @@ const NestedGroup = ({
 }) => {
   if (group.fallback) {
     return (
-      <div className="space-y-2">
-        <div className="text-xs font-medium text-blue-700">
-          {group.property}
-        </div>
+      <div className={styles.stack}>
+        <div className={styles.label}>{group.property}</div>
         <Field binding={group.fallback} onNodeChange={onNodeChange} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <div className="text-xs font-medium text-blue-700">
+    <div className={styles.stack}>
+      <div className={styles.label}>
         {group.property} Bindings ({group.elements.length}):
       </div>
       {group.elements.map(element => (
         <ElementFields
           key={`${group.property}-${element.id}`}
           id={element.id}
-          className="rounded border border-blue-100 bg-blue-50 p-2
-            data-[picked]:ring-2 data-[picked]:ring-blue-400"
+          className={styles.element}
           header={
-            <div className="mb-1 text-xs text-blue-600">
-              &lt;{element.tagName}&gt;
-            </div>
+            <div className={styles.elementTag}>&lt;{element.tagName}&gt;</div>
           }
           bindings={element.bindings}
           onNodeChange={onNodeChange}
@@ -102,8 +100,8 @@ const Items = ({
   });
 
   const header = (
-    <div className="flex items-center justify-between">
-      <div className="text-sm font-semibold">
+    <div className={styles.row}>
+      <div className={styles.heading}>
         {messages.items.heading(items.length)}
       </div>
       {/* Add copies an existing item, so it is offered only once there is
@@ -113,7 +111,7 @@ const Items = ({
           size="small"
           icon={<Plus />}
           variant="solid"
-          color="green"
+          tone="success"
           disabled={!canAddItems()}
           onClick={actions.add}
         >
@@ -125,14 +123,9 @@ const Items = ({
 
   if (parseError) {
     return (
-      <div className="space-y-4">
+      <div className={cn(styles.items, styles.stackLoose)}>
         {header}
-        <div
-          className="rounded border border-dashed border-red-200 p-3 text-xs
-            text-red-600"
-        >
-          {messages.items.unreadable}
-        </div>
+        <div className={styles.noticeDanger}>{messages.items.unreadable}</div>
       </div>
     );
   }
@@ -141,14 +134,9 @@ const Items = ({
   // the source itself has `[]`, or only holes and spreads.
   if (items.length === 0) {
     return (
-      <div className="space-y-4">
+      <div className={cn(styles.items, styles.stackLoose)}>
         {header}
-        <div
-          className="rounded border border-dashed border-gray-200 p-3 text-xs
-            text-gray-500"
-        >
-          {messages.items.empty}
-        </div>
+        <div className={styles.notice}>{messages.items.empty}</div>
       </div>
     );
   }
@@ -169,25 +157,25 @@ const Items = ({
 
   const objectBody = (item: DndItemsItem) => (
     <>
-      <div className="space-y-2">
+      <div className={styles.stack}>
         {item.properties.map(binding => (
           <div key={`${item.id}-${binding.property}-${binding.label}`}>
-            <div className="flex flex-col space-y-2">
+            <div className={styles.stack}>
               <LabeledField
                 binding={binding}
-                labelClassName="w-20 shrink-0 text-xs font-medium"
+                labelClassName={styles.propertyLabel}
                 label={binding.label}
               >
                 <Field binding={binding} onNodeChange={onChildChange} />
               </LabeledField>
             </div>
-            <span className="text-right text-xs text-gray-500">
+            <span className={styles.valueType}>
               ({String(binding.meta?.valueType)})
             </span>
           </div>
         ))}
       </div>
-      <div className="space-y-3 border-t pt-2">
+      <div className={styles.nested}>
         {item.nested.length ? (
           item.nested.map(group => (
             <NestedGroup
@@ -197,7 +185,7 @@ const Items = ({
             />
           ))
         ) : (
-          <div className="text-xs text-gray-500">
+          <div className={styles.muted}>
             <span aria-hidden="true">✓</span> {messages.items.noNestedBindings}
           </div>
         )}
@@ -208,10 +196,10 @@ const Items = ({
   const allExpanded = expansion.expandedIds.length === items.length;
 
   return (
-    <div className="space-y-4">
+    <div className={cn(styles.items, styles.stackLoose)}>
       {header}
 
-      <div className="flex items-center justify-between">
+      <div className={styles.row}>
         <SelectAllCheckbox
           total={items.length}
           selected={selection.selected.size}
@@ -241,10 +229,7 @@ const Items = ({
       {bulkBar}
 
       {!canEditStructure && (
-        <div
-          className="rounded border border-dashed border-amber-200 p-3 text-xs
-            text-amber-700"
-        >
+        <div className={styles.noticeWarning}>
           {messages.items.structureLocked}
         </div>
       )}
@@ -280,11 +265,10 @@ const Items = ({
                 onDelete={() => actions.remove(item.elementIndex)}
               />
             }
-            className={
-              kind === 'primitive'
-                ? 'space-y-2 rounded border border-gray-100 bg-gray-50 p-2'
-                : 'space-y-3 rounded border bg-gray-50 p-3'
-            }
+            className={cn(
+              styles.card,
+              kind === 'primitive' && styles.cardCompact,
+            )}
           >
             {kind === 'primitive' ? (
               <Field binding={item.value!} onNodeChange={onChildChange} />

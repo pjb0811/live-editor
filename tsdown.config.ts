@@ -33,6 +33,11 @@ export default defineConfig({
   define: {
     'process.env.NODE_ENV': '"production"',
   },
+  css: {
+    // Vite's default build target (`baseline-widely-available`), so the
+    // chrome's nested CSS reaches browsers without native nesting flattened.
+    target: ['chrome107', 'edge107', 'firefox104', 'safari16'],
+  },
   dts: { build: true },
   outDir: 'dist',
   clean: true,

@@ -1,5 +1,7 @@
 import { useContext, useEffect, useRef } from 'react';
 
+import styles from './panel.module.css';
+
 import type { PanelBinding, PanelNodeChange } from '../panel-binding';
 import { ElementSelectionContext } from './element-selection';
 import Field from './field';
@@ -76,32 +78,30 @@ const ElementFields = ({
     >
       {header}
       {bindings.length > 0 && (
-        <div className="space-y-2 rounded">
-          <div className="space-y-1">
-            {/* Keyed by `property` and `label`, since two bindings can share
-                a label (#318). */}
-            {bindings.map(binding => (
-              <div
-                key={`${binding.property}-${binding.label}`}
-                className="space-y-1"
+        <div className={styles.bindings}>
+          {/* Keyed by `property` and `label`, since two bindings can share
+              a label (#318). */}
+          {bindings.map(binding => (
+            <div
+              key={`${binding.property}-${binding.label}`}
+              className={styles.binding}
+            >
+              <LabeledField
+                binding={binding}
+                labelClassName={styles.bindingLabel}
+                label={
+                  <>
+                    {binding.label}
+                    <span className={styles.bindingProperty}>
+                      ({binding.property})
+                    </span>
+                  </>
+                }
               >
-                <LabeledField
-                  binding={binding}
-                  labelClassName="block text-xs font-semibold text-gray-700"
-                  label={
-                    <>
-                      {binding.label}
-                      <span className="ml-1 text-gray-400">
-                        ({binding.property})
-                      </span>
-                    </>
-                  }
-                >
-                  <Field binding={binding} onNodeChange={onNodeChange} />
-                </LabeledField>
-              </div>
-            ))}
-          </div>
+                <Field binding={binding} onNodeChange={onNodeChange} />
+              </LabeledField>
+            </div>
+          ))}
         </div>
       )}
       {children}

@@ -1,0 +1,63 @@
+/*
+ * The editor chrome's design tokens. Every chrome style reads these, so a
+ * host restyles the chrome by setting them, on `:root` or on any ancestor
+ * of the editor. They sit in the `base` layer, so a host rule outside a
+ * layer, or in a later one, wins. Under `[data-theme='dark']` (ui-kit's
+ * convention) or `.dark` (Tailwind's) the dark values apply.
+ */
+@layer base {
+  :root {
+    --live-editor-font-size-xs: 0.75rem;
+    --live-editor-font-size-sm: 0.875rem;
+    --live-editor-font-size-lg: 1.125rem;
+    --live-editor-font-mono:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --live-editor-radius: 0.25rem;
+    --live-editor-radius-lg: 0.5rem;
+
+    --live-editor-color-text: #111827;
+    --live-editor-color-text-muted: #6b7280;
+    --live-editor-color-text-subtle: #9ca3af;
+    --live-editor-color-surface: #ffffff;
+    --live-editor-color-surface-muted: #f9fafb;
+    --live-editor-color-border: #d1d5db;
+    --live-editor-color-border-subtle: #e5e7eb;
+
+    --live-editor-color-primary: #2563eb;
+    --live-editor-color-primary-text: #ffffff;
+    --live-editor-color-primary-soft: #eff6ff;
+    --live-editor-color-primary-border: #93c5fd;
+    --live-editor-color-focus: #3b82f6;
+
+    --live-editor-color-danger: #dc2626;
+    --live-editor-color-danger-soft: #fef2f2;
+    --live-editor-color-success: #22c55e;
+    --live-editor-color-warning-text: #92400e;
+    --live-editor-color-warning-soft: #fffbeb;
+    --live-editor-color-warning-border: #fde68a;
+  }
+
+  [data-theme='dark'],
+  .dark {
+    --live-editor-color-text: #f3f4f6;
+    --live-editor-color-text-muted: #9ca3af;
+    --live-editor-color-text-subtle: #6b7280;
+    --live-editor-color-surface: #18181b;
+    --live-editor-color-surface-muted: #111113;
+    --live-editor-color-border: #3f3f46;
+    --live-editor-color-border-subtle: #27272a;
+
+    --live-editor-color-primary: #3b82f6;
+    --live-editor-color-primary-text: #ffffff;
+    --live-editor-color-primary-soft: rgb(59 130 246 / 0.15);
+    --live-editor-color-primary-border: #1e40af;
+    --live-editor-color-focus: #60a5fa;
+
+    --live-editor-color-danger: #f87171;
+    --live-editor-color-danger-soft: rgb(248 113 113 / 0.15);
+    --live-editor-color-success: #4ade80;
+    --live-editor-color-warning-text: #fbbf24;
+    --live-editor-color-warning-soft: rgb(251 191 36 / 0.1);
+    --live-editor-color-warning-border: #92400e;
+  }
+}

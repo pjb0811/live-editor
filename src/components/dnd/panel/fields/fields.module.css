@@ -1,0 +1,108 @@
+@layer components {
+  /* The look shared by the built-in native inputs, selects and text areas.
+     `appearance` is set because a host reset may turn it off. */
+  .control {
+    appearance: auto;
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--live-editor-color-border);
+    border-radius: var(--live-editor-radius);
+    background: var(--live-editor-color-surface);
+    color: var(--live-editor-color-text);
+    font: inherit;
+    font-size: var(--live-editor-font-size-sm);
+
+    &:focus {
+      border-color: var(--live-editor-color-focus);
+      outline: none;
+    }
+
+    &[aria-invalid='true'] {
+      border-color: var(--live-editor-color-danger);
+    }
+  }
+
+  .mono {
+    font-family: var(--live-editor-font-mono);
+    font-size: var(--live-editor-font-size-xs);
+  }
+
+  /* `appearance` is set because a host reset may turn it off. */
+  .checkbox {
+    appearance: auto;
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: var(--live-editor-color-primary);
+  }
+
+  /* `margin-bottom: 0` keeps the fields below from jumping when the error
+     appears: a host page's `<p>` margin would push them (#409). */
+  .error {
+    margin: 0.25rem 0 0;
+    font-size: var(--live-editor-font-size-xs);
+    color: var(--live-editor-color-danger);
+  }
+
+  .label {
+    display: block;
+    font-size: var(--live-editor-font-size-xs);
+    font-weight: 500;
+    color: var(--live-editor-color-text-muted);
+  }
+
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .object {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--live-editor-color-border-subtle);
+    border-radius: var(--live-editor-radius);
+    background: var(--live-editor-color-surface-muted);
+  }
+
+  .readonly {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    border: 1px dashed var(--live-editor-color-warning-border);
+    border-radius: var(--live-editor-radius);
+    font-size: var(--live-editor-font-size-xs);
+    color: var(--live-editor-color-warning-text);
+  }
+
+  .readonlyCode {
+    display: block;
+    overflow-x: auto;
+    font-family: var(--live-editor-font-mono);
+  }
+
+  .color {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .colorSwatch {
+    flex-shrink: 0;
+    width: 3rem;
+    height: 2rem;
+    padding: 0.125rem;
+  }
+
+  .colorSource {
+    font-family: var(--live-editor-font-mono);
+    font-size: var(--live-editor-font-size-xs);
+    color: var(--live-editor-color-text-muted);
+  }
+}
