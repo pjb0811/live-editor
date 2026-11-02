@@ -35,7 +35,7 @@ live-editor/
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/            # 미리보기 컨테이너: 루트에 frame.tsx, shadow.tsx, style-sync.ts(shadow와 iframe 공용), viewport-units.ts(iframe과 자동 높이 공용), 기능 하위 폴더 iframe/(iframe.tsx, use-iframe-document, inject-assets, use-host-style-sync), auto-height/(auto-height, use-auto-height, measure, animations)
 │  │  ├─ preview/           # 컴파일 + 렌더링 (client.tsx, use-compiled-module.ts, stable-component.ts, use-dynamic-tailwind.ts)
-│  │  └─ ui-kit/            # 선택형 `@jbpark/live-editor/ui-kit` 진입점: uiKitFields(renderField로 rich text·select·checkbox·date·time·color를 ui-kit 컨트롤로), uiKitModules(`ui-kit`·`ui-kit/utils` 모듈), uiKitPaletteSections(ui-kit판 기본 팔레트), createUiKitDocument(ui-kit import가 있는 새 문서), ui-kit-field, color-picker-field, date-value
+│  │  └─ ui-kit/            # 선택형 `@jbpark/live-editor/ui-kit` 진입점: uiKitFields(renderField로 rich text·select·checkbox·date·time·color를 ui-kit 컨트롤로), uiKitModules(`ui-kit`·`ui-kit/utils` 모듈), uiKitPaletteSections(ui-kit판 기본 팔레트), createUiKitDocument(ui-kit import가 있는 새 문서), style.css(빌드 때 `dist/ui-kit/style.css`로 묶는 ui-kit 스타일시트, `ui-kit` 레이어), ui-kit-field, color-picker-field, date-value
 │  ├─ pages/
 │  │  ├─ index.tsx          # 로컬 개발 앱 셸 (해시로 페이지 전환, 다크 모드 토글)
 │  │  ├─ playground/        # playground.tsx(+diff-modal): 코드 에디터·DnD 토글, undo/redo, 저장
@@ -78,7 +78,7 @@ live-editor/
 │  ├─ constants/            # index.ts: 상수, 정규식, 기본 템플릿 / palette-sections.ts: 기본 팔레트 섹션 (PALETTE_SECTIONS, 일반 요소와 Tailwind 클래스, 모듈 불필요)
 │  ├─ types/index.ts        # TypeScript 타입 정의
 │  ├─ index.tsx             # 라이브러리 공개 API (Live 및 합성 컴포넌트)
-│  ├─ index.css, tokens.css # dist/style.css 진입점(레이어 순서, ui-kit 스타일) / 에디터 UI의 --live-editor-* 토큰
+│  ├─ index.css, tokens.css # dist/style.css 진입점(레이어 순서, ui-kit 스타일은 없음) / 에디터 UI의 --live-editor-* 토큰
 │  └─ main.tsx              # 로컬 개발 앱 진입점
 ├─ demos/                   # 문서용 독립 iframe 데모
 ├─ website/                 # Docusaurus 문서 사이트

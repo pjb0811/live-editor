@@ -1,4 +1,28 @@
+import { bundleAsync } from 'lightningcss';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { defineConfig } from 'tsdown';
+
+const require = createRequire(import.meta.url);
+
+// `@jbpark/live-editor/ui-kit/style.css`: ui-kit's stylesheet in the
+// `ui-kit` layer, for hosts that turn on the ui-kit entry. A separate file,
+// so the default `style.css` carries none of it.
+const buildUiKitStyle = async () => {
+  const { code } = await bundleAsync({
+    filename: 'src/components/ui-kit/style.css',
+    resolver: {
+      resolve: (specifier, from) =>
+        specifier.startsWith('.')
+          ? path.resolve(path.dirname(from), specifier)
+          : require.resolve(specifier),
+    },
+  });
+
+  await mkdir('dist/ui-kit', { recursive: true });
+  await writeFile('dist/ui-kit/style.css', code);
+};
 
 export default defineConfig({
   // Object form (rather than an array) so each key controls its own output
@@ -39,6 +63,9 @@ export default defineConfig({
     target: ['chrome107', 'edge107', 'firefox104', 'safari16'],
   },
   dts: { build: true },
+  hooks: {
+    'build:done': buildUiKitStyle,
+  },
   outDir: 'dist',
   clean: true,
   sourcemap: true,

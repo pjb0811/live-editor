@@ -4,45 +4,14 @@
  * utility on a region's `className` overrides the region's own styles, and
  * any host rule outside a layer overrides them too. The chrome uses no
  * Tailwind classes, so no Tailwind CSS ships here: preview code gets its
- * Tailwind from the host or from `dynamicTailwind`.
+ * Tailwind from the host or from `dynamicTailwind`. `ui-kit` holds
+ * `@jbpark/live-editor/ui-kit/style.css` when a host imports it, below
+ * `components`, so ui-kit's reset can't override the chrome.
  */
 @layer theme, base, ui-kit, components, utilities;
 
 /* The chrome's `--live-editor-*` tokens. */
 @import './tokens.css';
-
-/*
- * Pull @jbpark/ui-kit's compiled stylesheet in here (at the CSS level,
- * resolved at build time into dist/style.css) instead of importing it as a
- * bare `import '@jbpark/ui-kit/style.css'` from src/index.tsx. That JS-side
- * import survived into dist/index.js as a literal, unresolved
- * `import "@jbpark/ui-kit/style.css"` statement — which requires every
- * consumer's toolchain to resolve and handle a CSS import straight out of
- * node_modules, breaking plain Node resolution and any non-CSS-aware
- * bundler (see #190). The single documented `@jbpark/live-editor/style.css`
- * import now carries both this library's own [data-editor-mode] styles and
- * ui-kit's, so nothing else needs to change for consumers already following
- * the docs.
- *
- * Imported into its own `ui-kit` layer rather than left unlayered — ui-kit's
- * stylesheet declares its own `theme`/`base`/`components`/`utilities` layers
- * internally, and an unlayered `@import` merges those straight into this
- * file's SAME-NAMED layers, appended after this file's own content. Any
- * class both sheets emit (Tailwind's own utility classes, since ui-kit is
- * built with the same Tailwind) then resolves by import order instead of by
- * the responsive variant actually intended to win — e.g. `hidden md:block`
- * silently stayed hidden at any width, because ui-kit's own unconditional
- * `.hidden` landed after this file's `.md\:block` in the merged utilities
- * layer (see #259). `layer(ui-kit)` nests ui-kit's internal layers under
- * this one instead (`ui-kit.utilities`, etc. — see the CSS Cascading and
- * Layering spec's import-with-layer-name behavior), and declaring `ui-kit`
- * before `utilities` above keeps this file's own utilities the tie-breaker
- * regardless of import order, without discarding ui-kit's own internal
- * layer structure. It also sits before `components`, so ui-kit's reset
- * (which matches anything inside a ui-kit component, such as a Splitter
- * panel) can't override the chrome's own styles.
- */
-@import '@jbpark/ui-kit/style.css' layer(ui-kit);
 
 @layer utilities {
   /* 편집 모드 기본 설정 */

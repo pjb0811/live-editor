@@ -103,19 +103,20 @@ The package ships subpath exports so a consumer who needs only one feature area
 can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — see
 [#194](https://github.com/pjb0811/live-editor/issues/194):
 
-| Import                               | Contains                                    |
-| ------------------------------------ | ------------------------------------------- |
-| `@jbpark/live-editor`                | Everything (`Live` provider + all surfaces) |
-| `@jbpark/live-editor/provider`       | The shared editing context provider only    |
-| `@jbpark/live-editor/dnd`            | Drag-and-drop canvas + property panel       |
-| `@jbpark/live-editor/editor`         | CodeMirror code editor                      |
-| `@jbpark/live-editor/preview`        | Isolated preview runtime                    |
-| `@jbpark/live-editor/error`          | Error boundary                              |
-| `@jbpark/live-editor/utils`          | Compile/section helpers                     |
-| `@jbpark/live-editor/utils/ast`      | AST manipulation & code generation          |
-| `@jbpark/live-editor/utils/tailwind` | Tailwind theme helpers                      |
-| `@jbpark/live-editor/ui-kit`         | Opt-in `@jbpark/ui-kit` field controls      |
-| `@jbpark/live-editor/style.css`      | Compiled stylesheet (required)              |
+| Import                                 | Contains                                                                       |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| `@jbpark/live-editor`                  | Everything (`Live` provider + all surfaces)                                    |
+| `@jbpark/live-editor/provider`         | The shared editing context provider only                                       |
+| `@jbpark/live-editor/dnd`              | Drag-and-drop canvas + property panel                                          |
+| `@jbpark/live-editor/editor`           | CodeMirror code editor                                                         |
+| `@jbpark/live-editor/preview`          | Isolated preview runtime                                                       |
+| `@jbpark/live-editor/error`            | Error boundary                                                                 |
+| `@jbpark/live-editor/utils`            | Compile/section helpers                                                        |
+| `@jbpark/live-editor/utils/ast`        | AST manipulation & code generation                                             |
+| `@jbpark/live-editor/utils/tailwind`   | Tailwind theme helpers                                                         |
+| `@jbpark/live-editor/ui-kit`           | Opt-in `@jbpark/ui-kit` fields, modules and palette (install `@jbpark/ui-kit`) |
+| `@jbpark/live-editor/ui-kit/style.css` | ui-kit's stylesheet, for the ui-kit entry                                      |
+| `@jbpark/live-editor/style.css`        | Compiled stylesheet (required)                                                 |
 
 ## Security Notes
 

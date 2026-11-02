@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 
 import { EditorView } from '@uiw/react-codemirror';
 
+// The overlay scenario's ui-kit Modal needs ui-kit's styles.
+import '../src/components/ui-kit/style.css';
+
 import Live from '../src';
 import { useDndPanel } from '../src/components/dnd';
 import ElementFields from '../src/components/dnd/panel/element-fields';

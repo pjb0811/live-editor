@@ -102,19 +102,20 @@ export default function Example() {
 번들에 포함하지 않도록 합니다(예: 프리뷰 전용 빌드에는 CodeMirror 미포함) —
 [#194](https://github.com/pjb0811/live-editor/issues/194) 참고:
 
-| Import                               | 내용                                   |
-| ------------------------------------ | -------------------------------------- |
-| `@jbpark/live-editor`                | 전체 (`Live` 프로바이더 + 모든 서피스) |
-| `@jbpark/live-editor/provider`       | 공유 편집 컨텍스트 프로바이더만        |
-| `@jbpark/live-editor/dnd`            | 드래그 앤 드롭 캔버스 + 속성 패널      |
-| `@jbpark/live-editor/editor`         | CodeMirror 코드 에디터                 |
-| `@jbpark/live-editor/preview`        | 격리된 프리뷰 런타임                   |
-| `@jbpark/live-editor/error`          | 에러 바운더리                          |
-| `@jbpark/live-editor/utils`          | 컴파일/섹션 헬퍼                       |
-| `@jbpark/live-editor/utils/ast`      | AST 조작 및 코드 생성                  |
-| `@jbpark/live-editor/utils/tailwind` | Tailwind 테마 헬퍼                     |
-| `@jbpark/live-editor/ui-kit`         | 선택형 `@jbpark/ui-kit` 필드 컨트롤    |
-| `@jbpark/live-editor/style.css`      | 컴파일된 스타일시트 (필수)             |
+| Import                                 | 내용                                                                  |
+| -------------------------------------- | --------------------------------------------------------------------- |
+| `@jbpark/live-editor`                  | 전체 (`Live` 프로바이더 + 모든 서피스)                                |
+| `@jbpark/live-editor/provider`         | 공유 편집 컨텍스트 프로바이더만                                       |
+| `@jbpark/live-editor/dnd`              | 드래그 앤 드롭 캔버스 + 속성 패널                                     |
+| `@jbpark/live-editor/editor`           | CodeMirror 코드 에디터                                                |
+| `@jbpark/live-editor/preview`          | 격리된 프리뷰 런타임                                                  |
+| `@jbpark/live-editor/error`            | 에러 바운더리                                                         |
+| `@jbpark/live-editor/utils`            | 컴파일/섹션 헬퍼                                                      |
+| `@jbpark/live-editor/utils/ast`        | AST 조작 및 코드 생성                                                 |
+| `@jbpark/live-editor/utils/tailwind`   | Tailwind 테마 헬퍼                                                    |
+| `@jbpark/live-editor/ui-kit`           | 선택형 `@jbpark/ui-kit` 필드·모듈·팔레트 (`@jbpark/ui-kit` 설치 필요) |
+| `@jbpark/live-editor/ui-kit/style.css` | ui-kit 진입점용 ui-kit 스타일시트                                     |
+| `@jbpark/live-editor/style.css`        | 컴파일된 스타일시트 (필수)                                            |
 
 ## 보안 참고사항
 

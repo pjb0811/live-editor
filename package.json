@@ -82,6 +82,7 @@
       "types": "./dist/ui-kit/index.d.ts",
       "import": "./dist/ui-kit/index.js"
     },
+    "./ui-kit/style.css": "./dist/ui-kit/style.css",
     "./style.css": "./dist/style.css"
   },
   "files": [
@@ -109,12 +110,10 @@
   "dependencies": {
     "@babel/standalone": "^8.0.6",
     "@codemirror/lang-javascript": "^6.2.5",
-    "@codemirror/merge": "^6.12.2",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@jbpark/ui-kit": "^10.5.0",
     "@jbpark/use-hooks": "^4.6.0",
     "@uiw/codemirror-theme-vscode": "^4.25.11",
     "@uiw/react-codemirror": "^4.25.11",
@@ -124,11 +123,15 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
+    "@jbpark/ui-kit": "^10.5.0",
     "prettier": "^3.0.0",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0"
   },
   "peerDependenciesMeta": {
+    "@jbpark/ui-kit": {
+      "optional": true
+    },
     "prettier": {
       "optional": true
     }
@@ -139,7 +142,9 @@
     "@babel/traverse": "^8.0.6",
     "@babel/types": "^8.0.6",
     "@changesets/cli": "^3.0.0",
+    "@codemirror/merge": "^6.12.2",
     "@eslint/js": "^10.0.0",
+    "@jbpark/ui-kit": "^10.5.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/dom": "^10.4.1",
@@ -160,6 +165,7 @@
     "husky": "^9.1.7",
     "jsdom": "^30.0.1",
     "knip": "^5.88.1",
+    "lightningcss": "^1.33.0",
     "lint-staged": "^17.3.0",
     "nanoid": "^6.0.0",
     "prettier": "^3.9.6",

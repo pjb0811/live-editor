@@ -1,0 +1,14 @@
+/*
+ * The source of `@jbpark/live-editor/ui-kit/style.css`: ui-kit's compiled
+ * stylesheet, bundled at build time (see `tsdown.config.ts`).
+ *
+ * It goes in its own `ui-kit` layer. ui-kit's stylesheet declares its own
+ * `theme`, `base`, `components` and `utilities` layers, and imported without
+ * a layer they would merge into a host's layers of the same names, where
+ * import order instead of the intended variant decides between classes both
+ * emit (#259). Inside `ui-kit` they nest as `ui-kit.utilities` and so on.
+ * The editor's stylesheet declares `ui-kit` below `components`, so ui-kit's
+ * reset can't override the chrome. Loaded before the editor's, `ui-kit` is
+ * still the first of the two in the cascade, so that holds either way.
+ */
+@import '@jbpark/ui-kit/style.css' layer(ui-kit);
