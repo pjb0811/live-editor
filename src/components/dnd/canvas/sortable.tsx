@@ -93,6 +93,26 @@ const Sortable = ({
       return;
     }
 
+    // Before the arrow keys below, which navigate without Alt.
+    if (
+      e.altKey &&
+      (e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
+      handlers
+    ) {
+      e.preventDefault();
+      handlers.onMoveKey(id, e.key === 'ArrowUp' ? 'up' : 'down');
+
+      return;
+    }
+
+    // Also keeps the browser's own Cmd/Ctrl+D (bookmark) from running.
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd' && handlers) {
+      e.preventDefault();
+      handlers.onCopyKey(id);
+
+      return;
+    }
+
     const to = NAVIGATION_KEYS[e.key];
 
     if (to && handlers) {

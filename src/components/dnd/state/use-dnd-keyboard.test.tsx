@@ -23,6 +23,7 @@ const setup = (
     selectedIndex: -1,
     selectOnly,
     move,
+    copy: vi.fn(),
     requestDelete: vi.fn(),
     ...overrides,
   };
