@@ -189,7 +189,7 @@ importers:
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.8)
       '@jbpark/use-hooks':
-        specifier: ^4.6.0
+        specifier: ^4.7.0
         version: 4.7.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@uiw/codemirror-theme-vscode':
         specifier: ^4.25.11
