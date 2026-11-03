@@ -121,6 +121,43 @@ A promise is waited for, and the section is removed from the document as it
 is when the answer comes, so edits made while your dialog was open are kept.
 If `onBeforeDelete` throws or rejects, the section is kept.
 
+### With a modal of your own
+
+`confirm()` blocks the page and can't be styled. To use your own dialog, wrap
+it in a promise that resolves when the user answers. With `Modal.confirm` from
+`@jbpark/ui-kit`:
+
+```tsx
+import type { Section } from '@jbpark/live-editor';
+import { Modal } from '@jbpark/ui-kit';
+
+const confirmDelete = (section: Section) =>
+  new Promise<boolean>(resolve => {
+    Modal.confirm({
+      title: 'Delete section?',
+      content: `"${section.name}" will be removed from the document.`,
+      okText: 'Delete',
+      cancelText: 'Cancel',
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false),
+    });
+  });
+
+<Live.Dnd value={value} onChange={setValue} onBeforeDelete={confirmDelete} />;
+```
+
+Any dialog works the same way, as long as every way of closing it resolves
+the promise: resolve `false` on cancel, on Escape and on a click outside, or
+the section stays undecided and is never removed.
+
+A popover anchored to the delete button, such as ui-kit's `Popconfirm`, doesn't
+fit here: `onBeforeDelete` gets the section, not the control that asked, and
+the Delete key has no control to anchor to. Use a dialog that doesn't need an
+anchor.
+
+`onBeforeDelete` covers sections only. Removing an item in the Items editor or
+a child in the Children editor doesn't ask.
+
 ## Picking an element
 
 The crosshair button at the bottom-left of the canvas turns on the element
