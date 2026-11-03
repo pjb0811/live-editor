@@ -211,6 +211,8 @@ const Dnd = ({
     sectionNodes,
     onNavigate,
     onDeleteKey,
+    onMoveKey,
+    onCopyKey,
     onMoveButton,
   } = useDndKeyboard({
     sections,
@@ -218,6 +220,7 @@ const Dnd = ({
     selectedIndex,
     selectOnly,
     move: moveSection,
+    copy: onCopy,
     requestDelete,
   });
 
@@ -297,6 +300,8 @@ const Dnd = ({
     nodeRef: sectionNodes.register,
     onNavigate,
     onDeleteKey,
+    onMoveKey,
+    onCopyKey,
   };
 
   // The canvas content. Its frame container belongs to `Live.Dnd.Canvas`, so

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   type Announcements,
@@ -62,19 +62,21 @@ interface Options {
   selectedIndex: number;
   selectOnly: (id: string) => void;
   move: (id: string | null, direction: 'up' | 'down') => void;
+  copy: (id: string) => void;
   requestDelete: (id: string, onDeleted?: () => void) => void;
 }
 
 // Everything the keyboard does on the canvas (#435): dnd-kit's sensors and
 // what it announces, moving focus and selection between sections, Delete on
-// a focused section, and keeping focus put when a move button disables
-// itself (#505).
+// a focused section, Alt+Arrow and Cmd/Ctrl+D on one (#640), and keeping
+// focus put when a move button disables itself (#505).
 export const useDndKeyboard = ({
   sections,
   selectedId,
   selectedIndex,
   selectOnly,
   move,
+  copy,
   requestDelete,
 }: Options) => {
   const { announcements: say } = useLiveMessages();
@@ -188,6 +190,43 @@ export const useDndKeyboard = ({
     }
   };
 
+  // Set by a keyboard move or copy: once the new order renders, focus goes
+  // to the selected section, the moved one or the copy. The copy has no
+  // node until then, and a reorder may move the focused node itself, which
+  // drops its focus.
+  const focusSelectedRef = useRef(false);
+
+  // Alt+ArrowUp and Alt+ArrowDown on a focused section: selects it and
+  // moves it one place. Nothing happens at either end.
+  const onMoveKey = (id: string, direction: 'up' | 'down') => {
+    const to =
+      sections.findIndex(section => section.id === id) +
+      (direction === 'up' ? -1 : 1);
+
+    if (to < 0 || to >= sections.length) {
+      return;
+    }
+
+    selectOnly(id);
+    move(id, direction);
+    focusSelectedRef.current = true;
+  };
+
+  // Cmd/Ctrl+D on a focused section: copies it, and the copy is selected.
+  const onCopyKey = (id: string) => {
+    copy(id);
+    focusSelectedRef.current = true;
+  };
+
+  useEffect(() => {
+    if (!focusSelectedRef.current || selectedId === null) {
+      return;
+    }
+
+    focusSelectedRef.current = false;
+    focusSection(selectedId);
+  });
+
   // Keeps the selected section on screen when it moves out of view without
   // the keyboard taking it there: a move from the panel, or a copy that lands
   // below the fold. After the next frame, once the new order is laid out.
@@ -210,6 +249,8 @@ export const useDndKeyboard = ({
     sectionNodes,
     onNavigate,
     onDeleteKey,
+    onMoveKey,
+    onCopyKey,
     onMoveButton,
   };
 };

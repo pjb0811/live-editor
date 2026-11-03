@@ -42,3 +42,48 @@ test('sections keep their injected scripts and styles after a reorder', async ({
     .poll(() => frames(page))
     .toEqual([section('Second section'), section('First section')]);
 });
+
+// The canvas sections in order, by the names screen readers hear.
+const sortables = (page: Page) =>
+  page.locator('[aria-roledescription="sortable"]');
+
+// A keyboard move reorders the DOM, which drops focus in a browser; the
+// section that moved keeps it (#640).
+test('Alt+Arrow moves the focused section and keeps it focused', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixture.html?scenario=reorder');
+
+  await expect
+    .poll(() => frames(page))
+    .toEqual([section('First section'), section('Second section')]);
+
+  await sortables(page).first().focus();
+  await page.keyboard.press('Alt+ArrowDown');
+
+  await expect
+    .poll(() => frames(page))
+    .toEqual([section('Second section'), section('First section')]);
+  await expect(sortables(page).nth(1)).toBeFocused();
+
+  await page.keyboard.press('Alt+ArrowUp');
+
+  await expect
+    .poll(() => frames(page))
+    .toEqual([section('First section'), section('Second section')]);
+  await expect(sortables(page).first()).toBeFocused();
+});
+
+test('Control+D copies the focused section and focuses the copy', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixture.html?scenario=reorder');
+
+  await expect(sortables(page)).toHaveCount(2);
+
+  await sortables(page).first().focus();
+  await page.keyboard.press('Control+d');
+
+  await expect(sortables(page)).toHaveCount(3);
+  await expect(sortables(page).nth(1)).toBeFocused();
+});

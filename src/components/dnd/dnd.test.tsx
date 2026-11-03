@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { useState } from 'react';
+
 import { act, fireEvent, render, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -1264,16 +1266,29 @@ describe('keyboard navigation', () => {
       return <div data-testid="panel" />;
     };
 
-    const utils = render(
-      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+    // Feeds each change back as the value, as a host does, so the canvas
+    // shows the new order.
+    const Host = () => {
+      const [value, setValue] = useState(threeSections);
+
+      return (
         <Dnd
-          value={threeSections}
-          onChange={onChange}
+          value={value}
+          onChange={next => {
+            onChange(next);
+            setValue(next);
+          }}
           onBeforeDelete={onBeforeDelete}
         >
           <Canvas />
           <Probe />
         </Dnd>
+      );
+    };
+
+    const utils = render(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Host />
       </PreviewContext.Provider>,
     );
 
@@ -1281,12 +1296,23 @@ describe('keyboard navigation', () => {
       utils.container.querySelectorAll<HTMLElement>(
         '[aria-roledescription="sortable"]',
       );
-    const press = (index: number, key: string) =>
+    const press = (
+      index: number,
+      key: string,
+      modifiers: {
+        altKey?: boolean;
+        ctrlKey?: boolean;
+        metaKey?: boolean;
+      } = {},
+    ) =>
       act(() => {
         sortables()[index]!.focus();
-        fireEvent.keyDown(sortables()[index]!, { key, code: key });
+        fireEvent.keyDown(sortables()[index]!, {
+          key,
+          code: key,
+          ...modifiers,
+        });
       });
-
     return { onChange, sortables, press, getPanel: () => panel! };
   };
 
@@ -1359,6 +1385,51 @@ describe('keyboard navigation', () => {
     expect(document.activeElement).toBe(sortables()[1]);
   });
 
+  // #640
+  it('moves the focused section with Alt+Arrow and keeps it focused and selected', () => {
+    const { onChange, sortables, press, getPanel } = renderNav();
+
+    press(0, 'ArrowDown', { altKey: true });
+
+    const committed = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(committed.indexOf('data-id="s2"')).toBeLessThan(
+      committed.indexOf('data-id="s1"'),
+    );
+    expect(getPanel().item?.id).toBe('s1');
+    expect(document.activeElement).toBe(sortables()[1]);
+
+    press(1, 'ArrowUp', { altKey: true });
+
+    expect(getPanel().item?.id).toBe('s1');
+    expect(document.activeElement).toBe(sortables()[0]);
+  });
+
+  it('does nothing on Alt+Arrow past either end', () => {
+    const { onChange, press, getPanel } = renderNav();
+
+    press(0, 'ArrowUp', { altKey: true });
+    press(2, 'ArrowDown', { altKey: true });
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(getPanel().item).toBeUndefined();
+  });
+
+  it.each([
+    ['Ctrl', { ctrlKey: true }],
+    ['Cmd', { metaKey: true }],
+  ])('copies the focused section with %s+D and focuses the copy', (_, mod) => {
+    const { onChange, sortables, press, getPanel } = renderNav();
+
+    press(1, 'd', mod);
+
+    expect(sortables()).toHaveLength(4);
+    expect(onChange).toHaveBeenCalled();
+    expect(getPanel().item?.name).toBe('Second');
+    expect(getPanel().item?.id).not.toBe('s2');
+    expect(document.activeElement).toBe(sortables()[2]);
+  });
+
   it('ignores the keys when they come from inside the section', () => {
     const { sortables, getPanel } = renderNav();
     const inner = sortables()[0]!.querySelector('div')!;
@@ -1366,6 +1437,8 @@ describe('keyboard navigation', () => {
     act(() => {
       fireEvent.keyDown(inner, { key: 'ArrowDown', code: 'ArrowDown' });
       fireEvent.keyDown(inner, { key: 'Delete', code: 'Delete' });
+      fireEvent.keyDown(inner, { key: 'ArrowDown', altKey: true });
+      fireEvent.keyDown(inner, { key: 'd', ctrlKey: true });
     });
 
     expect(getPanel().item).toBeUndefined();

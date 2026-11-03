@@ -29,6 +29,10 @@ export interface SectionHandlers {
   onNavigate: (sectionId: string, to: SectionNavigation) => void;
   // Delete or Backspace on a focused section.
   onDeleteKey: (sectionId: string) => void;
+  // Alt+ArrowUp or Alt+ArrowDown on a focused section (#640).
+  onMoveKey: (sectionId: string, direction: 'up' | 'down') => void;
+  // Cmd/Ctrl+D on a focused section (#640).
+  onCopyKey: (sectionId: string) => void;
 }
 
 // Provided around the canvas only. The drag overlay's copy of a section
