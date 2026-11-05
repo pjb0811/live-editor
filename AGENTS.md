@@ -18,13 +18,12 @@ live-editor/
 │  └─ skills/               # 이 저장소 전용 스킬(ast, binding-field, ui-messages, verify, version-management)과 vendored Vercel 스킬 (아래 "공유 스킬" 참고)
 ├─ src/
 │  ├─ components/
+│  │  ├─ chrome/            # 에디터 UI의 기본 마크업 컴포넌트(배럴 없이 파일을 직접 import): button(variant·tone·size), split-panes(데스크톱 3칸 리사이즈 레이아웃), drawer(모바일 `<dialog>` 시트), toast(편집 에러 토스트, DOM 직접 생성). 각각 CSS Module을 둠
 │  │  ├─ context/           # 전역 상태 (PreviewContext, ErrorContext, MessagesContext — UI 문구 `messages`)
 │  │  ├─ dnd/               # DnD 시스템 (Canvas + Panel + Palette)
 │  │  │  ├─ dnd.tsx, index.ts # Live.Dnd 컴포넌트와 공개 export
 │  │  │  ├─ types.ts        # DndPanel·DndPalette·Props 공개 타입 (dnd.tsx와 분리)
 │  │  │  ├─ layout.tsx      # Palette/Canvas/Panel/Layout 합성 컴포넌트
-│  │  │  ├─ button.tsx      # 에디터 UI 공용 버튼 (variant·tone·size, button.module.css)
-│  │  │  ├─ split-panes.tsx, drawer.tsx, toast.ts # 데스크톱 3칸 리사이즈 레이아웃, 모바일 `<dialog>` 시트, 편집 에러 토스트(DOM 직접 생성)
 │  │  │  ├─ layout-context.ts # 커스텀 레이아웃·팔레트·패널 훅
 │  │  │  ├─ edit-options.ts, panel-binding.ts, inspector.ts # 편집 에러·패널 바인딩·요소 picker (여러 영역 공용)
 │  │  │  ├─ canvas/         # 캔버스: droppable, sortable(+section-handlers 컨텍스트), overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight, canvas-notice(빈 캔버스 안내)
@@ -159,7 +158,7 @@ TypeScript와 Vite/Vitest 설정에 같은 별칭을 사용합니다.
 ### CSS
 
 - 라이브러리 UI(`src/components/`)는 **CSS Modules**(`*.module.css`)로 씁니다. Tailwind 클래스는 쓰지 않습니다. `dist/style.css`에 Tailwind를 컴파일해 넣지 않으므로, 쓰면 호스트에서 스타일이 빠집니다
-- 각 모듈 파일은 규칙을 `@layer components { ... }` 안에 둡니다. 호스트의 Tailwind 유틸리티나 레이어 밖 규칙이 이기게 하기 위해서입니다. 호출하는 쪽이 `className`으로 덮어쓰는 기본 컴포넌트(`dnd/button.tsx`)는 `@layer components.primitives`에 둡니다
+- 각 모듈 파일은 규칙을 `@layer components { ... }` 안에 둡니다. 호스트의 Tailwind 유틸리티나 레이어 밖 규칙이 이기게 하기 위해서입니다. 호출하는 쪽이 `className`으로 덮어쓰는 기본 컴포넌트(`chrome/button.tsx`)는 `@layer components.primitives`에 둡니다
 - 색·글자 크기·radius는 `src/tokens.css`의 `--live-editor-*` 토큰을 씁니다. 다크 값은 같은 파일의 `[data-theme='dark']`, `.dark` 블록에 둡니다
 - 호스트 reset이 꺼 둘 수 있는 속성(`appearance` 등)은 직접 지정합니다
 - 클래스 조합은 `cn()`(`clsx` + `tailwind-merge`)으로 합니다

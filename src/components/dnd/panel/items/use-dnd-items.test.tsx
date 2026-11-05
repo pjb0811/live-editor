@@ -2,13 +2,13 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { showErrorToast } from '~/components/chrome/toast';
 import type { BindingRegistry, DataAttrNode } from '~/utils/ast';
 
 import { DndEditOptionsContext } from '../../edit-options';
-import { showErrorToast } from '../../toast';
 import { type DndItemsItem, useDndItems } from './use-dnd-items';
 
-vi.mock('../../toast', () => ({ showErrorToast: vi.fn() }));
+vi.mock('~/components/chrome/toast', () => ({ showErrorToast: vi.fn() }));
 
 const objects = `[
   { key: 'a', label: 'Alpha' },

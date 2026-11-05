@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { showErrorToast } from '~/components/chrome/toast';
 import { DEFAULT_TEMPLATE } from '~/constants';
 
 import { PreviewContext } from '../context/states';
@@ -23,10 +24,9 @@ import type { PanelBinding } from './panel-binding';
 import Field from './panel/field';
 import Items from './panel/items/items';
 import { useDndItems } from './panel/items/use-dnd-items';
-import { showErrorToast } from './toast';
 import type { DndPanel } from './types';
 
-vi.mock('./toast', () => ({ showErrorToast: vi.fn() }));
+vi.mock('~/components/chrome/toast', () => ({ showErrorToast: vi.fn() }));
 
 vi.mock('./canvas/renderer', () => ({
   default: () => <div data-testid="renderer" />,

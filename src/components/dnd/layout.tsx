@@ -1,17 +1,17 @@
 import { Crosshair, LayoutGrid } from 'lucide-react';
 
+import Button from '~/components/chrome/button';
+import Drawer from '~/components/chrome/drawer';
+import SplitPanes from '~/components/chrome/split-panes';
 import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
 import styles from './layout.module.css';
 
-import Button from './button';
-import Drawer from './drawer';
 import { useDndInspector } from './inspector';
 import { useDndRegions } from './layout-context';
 import { DefaultDraggableItem } from './palette/draggable';
 import PropertyPanel from './panel';
-import SplitPanes from './split-panes';
 
 // A region's props: everything a `div` takes except `children`, which comes
 // from context. The region's styles sit in the `components` cascade layer,

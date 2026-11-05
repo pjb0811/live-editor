@@ -1,10 +1,10 @@
 import { createContext, useContext } from 'react';
 
+import { showErrorToast } from '~/components/chrome/toast';
 import type { BindingOptions } from '~/utils/ast/types';
 import type { UpdateFailure } from '~/utils/ast/update';
 
 import type { FieldProps } from './panel/types';
-import { showErrorToast } from './toast';
 
 // An edit the editor didn't apply. `title` and `description` are what the
 // built-in toast shows, so a host can show them its own way.
