@@ -9,8 +9,6 @@ import CodeMirror, {
   type ReactCodeMirrorRef,
 } from '@uiw/react-codemirror';
 
-import { cn } from '~/utils/cn';
-
 import { useFormatCode } from './use-format-code';
 
 export interface Props {
@@ -94,7 +92,7 @@ const Core = ({
 
   return (
     <div
-      className={cn(className)}
+      className={className}
       onKeyDown={e => {
         if ((e.metaKey || e.ctrlKey) && e.key === 's') {
           e.preventDefault();

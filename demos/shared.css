@@ -16,10 +16,10 @@
 @import '../src/components/ui-kit/style.css';
 
 /*
- * The library's palette/panel/editor chrome is styled with Tailwind utility
- * classes that live in the library source, so point Tailwind's content scanner
- * at it explicitly — the demos' Vite root is `demos/`, which otherwise wouldn't
- * see `src/`.
+ * The palette sections and sample documents the demos render live in the
+ * library source and use Tailwind classes, so point Tailwind's content
+ * scanner at it explicitly — the demos' Vite root is `demos/`, which otherwise
+ * wouldn't see `src/`.
  */
 @source '../src';
 

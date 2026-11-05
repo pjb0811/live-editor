@@ -1,5 +1,4 @@
 import { useLiveMessages } from '~/components/context/messages';
-import { cn } from '~/utils/cn';
 
 export interface Props extends React.ComponentPropsWithRef<'div'> {
   message?: string | null;
@@ -16,7 +15,7 @@ const Error = ({ message, title, className, style, onReset }: Props) => {
 
   return (
     <div
-      className={cn(className)}
+      className={className}
       style={{
         padding: '16px',
         backgroundColor: '#fee2e2',
