@@ -294,8 +294,8 @@ describe('Field email and tel', () => {
   });
 });
 
-// `time` and `datetime` (#629) use ui-kit's TimePicker and DatePicker's
-// `showTime`.
+// `time` and `datetime` (#629) use the native `<input type="time">` and
+// `<input type="datetime-local">`.
 describe('Field time and datetime', () => {
   it('commits an HH:mm time from the time picker', () => {
     const onChange = vi.fn();

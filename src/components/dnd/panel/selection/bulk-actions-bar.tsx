@@ -1,10 +1,9 @@
 import { ArrowDown, ArrowUp, Copy, X } from 'lucide-react';
 
+import Button from '~/components/chrome/button';
 import { useLiveMessages } from '~/components/context/messages';
 
 import styles from './selection.module.css';
-
-import Button from '../../button';
 
 interface BulkActionsBarProps {
   count: number;

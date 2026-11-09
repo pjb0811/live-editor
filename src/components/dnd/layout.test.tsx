@@ -26,7 +26,7 @@ beforeAll(() => {
 // `useResponsiveSize` with no options measures `document.body.offsetWidth`,
 // which jsdom reports as 0 — so the default breakpoint is `xs` and Dnd takes
 // the mobile branch unless a test says otherwise. Stubbing the width is
-// enough to get the desktop Splitter, since the hook measures the body on
+// enough to get the desktop panes, since the hook measures the body on
 // mount (useLayoutEffect) rather than only on resize.
 const withViewportWidth = (width: number) => {
   Object.defineProperty(document.body, 'offsetWidth', {
@@ -120,9 +120,7 @@ describe("the built-in layout's slots", () => {
 
     act(() => fab.click());
 
-    // The Drawer portals out of Dnd's own subtree, so look for the slot in
-    // the whole document rather than the render container.
-    const slot = document.body.querySelector('[data-testid="my-palette"]')!;
+    const slot = container.querySelector('[data-testid="my-palette"]')!;
 
     expect(slot).not.toBeNull();
     expect(slot.textContent).toBe(`${PALETTE_SECTIONS.length} items`);

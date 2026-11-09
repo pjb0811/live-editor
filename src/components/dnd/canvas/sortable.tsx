@@ -2,12 +2,12 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ChevronDown, ChevronUp, Copy, Trash } from 'lucide-react';
 
+import Button from '~/components/chrome/button';
 import { useLiveMessages } from '~/components/context/messages';
 import { cn } from '~/utils/cn';
 
 import styles from './canvas.module.css';
 
-import Button from '../button';
 import { paletteSectionOf } from '../palette/palette-drag';
 import { type SectionNavigation, useSectionHandlers } from './section-handlers';
 

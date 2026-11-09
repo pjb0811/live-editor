@@ -1,12 +1,12 @@
 import { Plus } from 'lucide-react';
 
+import Button from '~/components/chrome/button';
 import { useLiveMessages } from '~/components/context/messages';
 import type { BindingRenderMap } from '~/utils/ast/types';
 import { cn } from '~/utils/cn';
 
 import styles from '../structure.module.css';
 
-import Button from '../../button';
 import type { PanelNodeChange } from '../../panel-binding';
 import ElementFields from '../element-fields';
 import Field from '../field';

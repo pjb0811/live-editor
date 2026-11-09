@@ -2,12 +2,12 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ChevronDown, ChevronUp, Trash } from 'lucide-react';
 
+import Button from '~/components/chrome/button';
 import { useLiveMessages } from '~/components/context/messages';
 import type { Section } from '~/types';
 
 import styles from './panel.module.css';
 
-import Button from '../button';
 import { DndInspectorContext } from '../inspector';
 import type { PanelBinding, PanelNodeChange } from '../panel-binding';
 import ElementFields from './element-fields';

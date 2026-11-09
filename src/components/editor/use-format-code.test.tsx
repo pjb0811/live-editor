@@ -20,7 +20,7 @@ describe('useFormatCode', () => {
 
     vi.doUnmock('prettier');
     // Generous timeout: the first import pulls the ~/utils barrel
-    // (@babel/standalone + ui-kit) through Vite's transform, which is slow the
+    // (@babel/standalone) through Vite's transform, which is slow the
     // first time but has nothing to do with the assertion.
   }, 30000);
 });

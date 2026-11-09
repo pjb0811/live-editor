@@ -68,8 +68,8 @@ type DndComponent = typeof DndImpl & {
   Palette: typeof Palette;
   Canvas: typeof Canvas;
   Panel: typeof Panel;
-  // The built-in arrangement, which `Live.Dnd` renders without children: a
-  // three-pane Splitter on desktop, and on mobile the canvas with a button
+  // The built-in arrangement, which `Live.Dnd` renders without children:
+  // three resizable panes on desktop, and on mobile the canvas with a button
   // and Drawers. Use it to wrap the editor (a toolbar above it, say) or to
   // replace one region through its `palette` or `panel` slot.
   Layout: typeof Layout;

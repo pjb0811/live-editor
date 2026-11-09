@@ -1,8 +1,8 @@
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 
-import styles from './row-controls.module.css';
+import Button from '~/components/chrome/button';
 
-import Button from '../button';
+import styles from './row-controls.module.css';
 
 interface Props {
   // The row's position among `count` rows.

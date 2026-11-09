@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import { Plus } from 'lucide-react';
 
+import Button from '~/components/chrome/button';
 import { useLiveMessages } from '~/components/context/messages';
 import { findEditableChildren } from '~/utils/ast/binding';
 import { type DataAttrNode } from '~/utils/ast/types';
@@ -9,7 +10,6 @@ import { cn } from '~/utils/cn';
 
 import styles from '../structure.module.css';
 
-import Button from '../../button';
 import {
   type PanelNodeChange,
   resolvePanelBindings,
