@@ -60,7 +60,15 @@ export const getCachedScriptBlob = async (src: string): Promise<string> => {
   }
 
   const promise = fetch(src)
-    .then(res => res.text())
+    .then(res => {
+      // An error page is no script: refuse it rather than cache it as one
+      // (#725).
+      if (!res.ok) {
+        throw new Error(`Failed to load script ${src}: HTTP ${res.status}`);
+      }
+
+      return res.text();
+    })
     .then(text => {
       const blob = new Blob([text], { type: 'application/javascript' });
       const blobUrl = URL.createObjectURL(blob);
