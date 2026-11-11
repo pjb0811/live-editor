@@ -5,6 +5,7 @@ import { useEventListener, useLatest } from '@jbpark/use-hooks';
 import { useLiveMessages } from '~/components/context/messages';
 
 import ErrorComponent from './error';
+import { isIgnoredPageError } from './ignored-page-error';
 
 // Exported although no file imports it: the declaration of `App` in
 // `src/index.tsx` names it, and TypeScript can't name a type from another
@@ -25,7 +26,9 @@ const Guard = ({ children, onError }: Props) => {
   useEventListener(
     'error',
     event => {
-      if (errorHandled.current) {
+      // Checked before `errorHandled` is set, so an ignored notice doesn't
+      // drop the real error that follows it.
+      if (errorHandled.current || isIgnoredPageError(event.message)) {
         return;
       }
 
@@ -36,10 +39,8 @@ const Guard = ({ children, onError }: Props) => {
         event.message ||
         messagesRef.current.errors.unknown;
 
-      console.error('⚡ [Guard] Event handler error:', errorMessage);
-
-      event.preventDefault();
-
+      // Not `preventDefault()`: the browser still reports the error in the
+      // console, with its stack (#714).
       setError(errorMessage);
       onError?.(event.error || new window.Error(errorMessage));
 
@@ -62,7 +63,6 @@ const Guard = ({ children, onError }: Props) => {
       const errorMessage =
         event.reason?.message || messagesRef.current.errors.unhandledRejection;
 
-      event.preventDefault();
       setError(errorMessage);
       onError?.(event.reason || new window.Error(errorMessage));
 
@@ -73,21 +73,26 @@ const Guard = ({ children, onError }: Props) => {
     { capture: true },
   );
 
-  if (error) {
-    return (
-      <ErrorComponent
-        title={messages.errors.runtime}
-        message={error}
-        style={{ margin: 16 }}
-        onReset={() => {
-          setError(null);
-          errorHandled.current = false;
-        }}
-      />
-    );
-  }
-
-  return <div>{children}</div>;
+  // The box goes next to the children, not in place of them: the listener
+  // can't tell where an error came from, so an error from the host page must
+  // not unmount the preview and lose its state (#714). `children` stay the
+  // second child, so React keeps them mounted when the box appears.
+  return (
+    <>
+      {error && (
+        <ErrorComponent
+          title={messages.errors.runtime}
+          message={error}
+          style={{ margin: 16 }}
+          onReset={() => {
+            setError(null);
+            errorHandled.current = false;
+          }}
+        />
+      )}
+      <div>{children}</div>
+    </>
+  );
 };
 
 export default Guard;
