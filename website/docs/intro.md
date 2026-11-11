@@ -211,7 +211,7 @@ for what does and doesn't apply there.
 | `modules`         | `Record<string, unknown>?`            | Specifiers compiled code can `import`, besides `react`. Pass `uiKitModules` from `@jbpark/live-editor/ui-kit` to make `import * as ui from 'ui-kit'` and `ui-kit/utils` resolvable, merged with your own entries. |
 | `props`           | `Record<string, unknown>?`            | Props forwarded to the compiled code's default-exported component.                                                                                                                                                |
 | `provider`        | `(children: ReactNode) => ReactNode?` | Wrap the rendered output in your own context providers. `Live.Dnd` takes it too; there, pass a stable function rather than an inline one — see [Keeping edits fast](./drag-and-drop.mdx#keeping-edits-fast).      |
-| `container`       | `HTMLElement \| null?`                | Currently unused — reserved for future use, has no effect today.                                                                                                                                                  |
+| `container`       | `HTMLElement \| null?`                | Deprecated: has no effect, and will be removed in the next major version.                                                                                                                                         |
 
 ### Replacing injected modules
 

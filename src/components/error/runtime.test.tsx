@@ -124,4 +124,21 @@ describe('Runtime', () => {
 
     expect(reset).toHaveBeenCalledOnce();
   });
+
+  it('applies the div props to its box (#721)', () => {
+    const { container } = render(
+      <ContextProvider>
+        <Runtime id="runtime" data-testid="rt" />
+      </ContextProvider>,
+    );
+
+    act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { message: 'boom' }));
+    });
+
+    const box = container.querySelector<HTMLElement>('#runtime')!;
+
+    expect(box.dataset.testid).toBe('rt');
+    expect(box.textContent).toContain('boom');
+  });
 });
