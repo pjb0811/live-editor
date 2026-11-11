@@ -579,8 +579,17 @@ function extractFromNode(
     dataAttrs,
     bindings,
     childrenBinding,
+    arrayBindings,
     rawChildren,
   } = readNodeBindingInfo(node, source, options);
+
+  // The Items editor reads the JSX inside an array value itself, as the
+  // top-level visitor does: listing it here too shows it twice (#308, #723).
+  if (processedNodes) {
+    for (const arrayBinding of arrayBindings) {
+      skipItemsChildren(node, processedNodes, arrayBinding.property);
+    }
+  }
 
   let childrenNodes: DataAttrNode[] | undefined;
 
