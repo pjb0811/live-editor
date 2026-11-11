@@ -2,6 +2,7 @@
 import { createRef, useEffect } from 'react';
 
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -168,6 +169,124 @@ describe('an edited preview', () => {
 
     expect(heading.isConnected).toBe(false);
     expect(screen.getByRole('button', { name: 'clicked 0' })).toBeTruthy();
+  });
+});
+
+// Page errors reach the preview through two `window` listeners, which can't
+// tell where an error came from (#714). Each case passes `code` as a prop,
+// which never goes through the provider's `setCode`.
+describe('a page error', () => {
+  const pageError = (message: string) =>
+    act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { message }));
+    });
+
+  const preview = (code: string, showError = true) => (
+    <ContextProvider>
+      <Preview code={code} showError={showError} />
+      <ErrorProbe />
+    </ContextProvider>
+  );
+
+  // `showError` hides the preview's wrapper while the context has an error.
+  const isShown = (element: HTMLElement) =>
+    !element.closest('[class*="hidden"]');
+
+  it.each([false, true])(
+    'keeps the preview mounted with its state (showError: %s)',
+    showError => {
+      render(preview(counter('Hello'), showError));
+      fireEvent.click(screen.getByRole('button', { name: 'clicked 0' }));
+      pageError('host-app-error');
+
+      expect(screen.getByRole('button', { name: 'clicked 1' })).toBeTruthy();
+    },
+  );
+
+  it('shows the preview again after Try Again with showError', () => {
+    render(preview(counter('Hello')));
+    fireEvent.click(screen.getByRole('button', { name: 'clicked 0' }));
+    pageError('host-app-error');
+
+    const button = screen.getByRole('button', { name: 'clicked 1' });
+
+    expect(isShown(button)).toBe(false);
+
+    // One box from `Guard` and one from `Runtime`; either clears its own.
+    for (const tryAgain of screen.getAllByText('Try Again')) {
+      fireEvent.click(tryAgain);
+    }
+
+    expect(isShown(button)).toBe(true);
+    expect(screen.getByRole('status').textContent).toBe('none');
+  });
+
+  it('ignores the browser ResizeObserver notice', () => {
+    render(preview(counter('Hello')));
+    pageError('ResizeObserver loop completed with undelivered notifications.');
+
+    expect(screen.queryByText('Runtime Error')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe('none');
+  });
+});
+
+describe('a render error with code passed as a prop', () => {
+  const preview = (code: string) => (
+    <ContextProvider>
+      <Preview code={code} showError />
+      <ErrorProbe />
+    </ContextProvider>
+  );
+
+  const throwing = (message: string) =>
+    `export default () => { throw new Error('${message}'); }`;
+
+  it('goes away when the code is fixed (#714)', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const view = render(preview(throwing('render broke')));
+
+    expect(screen.getByRole('status').textContent).toBe('render broke');
+
+    view.rerender(preview(component('fixed')));
+
+    const fixed = screen.getByText('fixed');
+
+    expect(fixed.closest('[class*="hidden"]')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe('none');
+  });
+
+  it("is replaced by the new code's own render error", () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const view = render(preview(throwing('first')));
+
+    view.rerender(preview(throwing('second')));
+
+    expect(screen.getByRole('status').textContent).toBe('second');
+  });
+});
+
+describe('an event handler error in the previewed code', () => {
+  it('reaches the error context', () => {
+    render(
+      <ContextProvider>
+        <Preview code={component('ok')} />
+        <ErrorProbe />
+      </ContextProvider>,
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new ErrorEvent('error', {
+          error: new Error('handler broke'),
+          message: 'handler broke',
+        }),
+      );
+    });
+
+    expect(screen.getByRole('status').textContent).toBe('handler broke');
+    expect(screen.getByText('ok')).toBeTruthy();
   });
 });
 

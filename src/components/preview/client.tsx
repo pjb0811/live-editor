@@ -1,6 +1,4 @@
-'use client';
-
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo } from 'react';
 
 import { useMergedRef } from '@jbpark/use-hooks';
 
@@ -8,6 +6,7 @@ import { useLiveMessages } from '~/components/context/messages';
 import { useError, usePreview } from '~/components/context/states';
 import LiveError from '~/components/error';
 import Frame, { type FrameProps } from '~/components/frame';
+import { useIsClient } from '~/components/frame/use-is-client';
 import { cn } from '~/utils/cn';
 
 import styles from './preview.module.css';
@@ -43,7 +42,19 @@ const Client = ({
 
   const effectiveCode = _code === undefined ? code : _code;
 
-  const module = useCompiledModule(effectiveCode, modules);
+  const isClient = useIsClient();
+
+  // A frame renders nothing on the server, so the code isn't compiled or run
+  // there. Without one the server renders the preview, as before (#716).
+  const module = useCompiledModule(
+    frame && !isClient ? '' : effectiveCode,
+    modules,
+  );
+
+  // Clears the error when the code changes, as the provider's `setCode`
+  // does, which a `code` prop never calls (#714). In the cleanup, which runs
+  // before the new code's own render error is reported, so that one stays.
+  useLayoutEffect(() => () => setError(null), [effectiveCode, setError]);
 
   // Attached to the wrapper below; scans the rendered DOM so classes coming
   // from an imported component are picked up too. See the hook for details.
@@ -61,6 +72,8 @@ const Client = ({
     [props],
   );
 
+  const clearError = () => setError(null);
+
   const renderProvider = (component: React.ReactNode) => {
     return provider ? provider(component) : component;
   };
@@ -76,7 +89,7 @@ const Client = ({
         >
           <LiveError message={module.error} title={messages.errors.compile} />
         </div>
-        <LiveError.Runtime open={isError} />
+        <LiveError.Runtime open={isError} reset={clearError} />
       </>
     );
   }
@@ -151,7 +164,7 @@ const Client = ({
           </LiveError.Boundary>
         </div>
       )}
-      <LiveError.Runtime open={isError} />
+      <LiveError.Runtime open={isError} reset={clearError} />
     </>
   );
 };

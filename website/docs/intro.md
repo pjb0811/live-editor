@@ -71,6 +71,36 @@ exception: its property panel reuses the editor's own CodeMirror `Core` and
 CodeMirror/prettier come along with `./dnd` too — that's a real dependency of
 the feature, not something this subpath split was able to remove.
 
+### Next.js and server rendering
+
+The components are client components. In the Next.js App Router, render them
+from a file that starts with `'use client'`:
+
+```tsx
+'use client';
+
+import Live from '@jbpark/live-editor';
+
+export const Editor = ({ code }: { code: string }) => (
+  <Live>
+    <Live.Preview code={code} frame />
+  </Live>
+);
+```
+
+Pre-rendering on the server is safe:
+
+- `Live.Editor` and a `Live.Preview` without `frame` render on the server.
+- `Live.Dnd`'s sections and a `Live.Preview` with `frame` render nothing on the
+  server and appear once the page hydrates.
+- A `Live.Preview` without `frame` compiles and runs the previewed code on the
+  server while pre-rendering, with the server's privileges (see
+  [Security Notes](https://github.com/pjb0811/live-editor#security-notes)). To
+  avoid that, give it a `frame`, or load it with `next/dynamic` and
+  `ssr: false`.
+- `./utils`, `./utils/ast` and `./utils/tailwind` hold no React components and
+  work in Server Components and plain Node.
+
 ## Quick start
 
 `Live` is the provider that holds the shared editing context. Everything else

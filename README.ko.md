@@ -117,6 +117,14 @@ export default function Example() {
 | `@jbpark/live-editor/ui-kit/style.css` | ui-kit 진입점용 ui-kit 스타일시트                                     |
 | `@jbpark/live-editor/style.css`        | 컴파일된 스타일시트 (필수)                                            |
 
+## Next.js와 서버 렌더링
+
+컴포넌트는 클라이언트 컴포넌트입니다. Next.js App Router에서는 `'use client'`로 시작하는 파일에서 렌더링합니다.
+
+- 서버 사전 렌더링은 안전합니다. `Live.Editor`와 `frame` 없는 `Live.Preview`는 서버에서 렌더링되고, `Live.Dnd`의 섹션과 `frame`이 있는 `Live.Preview`는 hydration 뒤에 나타납니다.
+- `frame` 없는 `Live.Preview`는 사전 렌더링 중 서버에서 미리보기 코드를 컴파일하고 실행하며, 서버 권한으로 실행됩니다([보안 참고사항](#보안-참고사항) 참고). 피하려면 `frame`을 주거나 `next/dynamic`의 `ssr: false`로 불러옵니다.
+- `./utils`, `./utils/ast`, `./utils/tailwind`에는 React 컴포넌트가 없어 Server Component와 일반 Node에서 쓸 수 있습니다.
+
 ## 보안 참고사항
 
 - 프리뷰 `<iframe>`(`src/components/frame/iframe/iframe.tsx`)의 `sandbox` prop은 **실제 보안 경계가 아닙니다**. 컴파일된 프리뷰 코드는 host 페이지 자신의 JS realm에서 `new Function(...)`으로 실행되며(`src/utils/compile.ts`의 `compileModule`), iframe에는 그 결과로 생성된 React 엘리먼트만 `contentDocument`에 포탈되어 DOM/CSS 렌더링 용도로만 쓰입니다. iframe 자체는 사용자 코드를 실행하지 않습니다.
