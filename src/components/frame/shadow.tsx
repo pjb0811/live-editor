@@ -95,12 +95,16 @@ const Shadow = ({ syncStyle = false, children }: Props) => {
     autoInvoke: false,
   });
 
-  useMutationObserver(document.head, debouncedApplyStyle, {
-    enabled: syncStyle,
-    childList: true,
-    subtree: true,
-    attributes: true,
-  });
+  useMutationObserver(
+    typeof document === 'undefined' ? null : document.head,
+    debouncedApplyStyle,
+    {
+      enabled: syncStyle,
+      childList: true,
+      subtree: true,
+      attributes: true,
+    },
+  );
 
   useLayoutEffect(() => {
     if (!hostRef.current) {

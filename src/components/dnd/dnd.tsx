@@ -1,4 +1,4 @@
-import { Children, useEffect, useMemo, useState } from 'react';
+import { Children, useEffect, useId, useMemo, useState } from 'react';
 
 import {
   DndContext,
@@ -121,6 +121,9 @@ const Dnd = ({
   const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false);
 
   const { breakpoint } = useResponsiveSize();
+  // dnd-kit otherwise names its ids from a counter that keeps growing on a
+  // server, so they differ from the client's on hydration (#716).
+  const dndContextId = useId();
   const isMobile = breakpoint.current === 'xs' || breakpoint.current === 'sm';
 
   // Only read here, for `value` below. `useSectionDocument` writes it.
@@ -361,6 +364,7 @@ const Dnd = ({
   return (
     <SectionFallbackContext.Provider value={renderSectionFallback}>
       <DndContext
+        id={dndContextId}
         sensors={sensors}
         collisionDetection={closestCenter}
         accessibility={{

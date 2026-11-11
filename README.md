@@ -118,6 +118,14 @@ can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — s
 | `@jbpark/live-editor/ui-kit/style.css` | ui-kit's stylesheet, for the ui-kit entry                                      |
 | `@jbpark/live-editor/style.css`        | Compiled stylesheet (required)                                                 |
 
+## Next.js and server rendering
+
+The components are client components: in the Next.js App Router, render them from a file that starts with `'use client'`.
+
+- Pre-rendering is safe. `Live.Editor` and a `Live.Preview` without `frame` render on the server; `Live.Dnd`'s sections and a framed `Live.Preview` appear once the page hydrates.
+- A `Live.Preview` without `frame` compiles and runs the previewed code on the server while pre-rendering, with the server's privileges (see [Security Notes](#security-notes)). Give it a `frame`, or load it with `next/dynamic` and `ssr: false`, to avoid that.
+- `./utils`, `./utils/ast` and `./utils/tailwind` hold no React components and work in Server Components and plain Node.
+
 ## Security Notes
 
 - The `sandbox` prop on the preview `<iframe>` (`src/components/frame/iframe/iframe.tsx`) is **not a security boundary**. Compiled preview code is executed via `new Function(...)` in the host page's own JS realm (`compileModule` in `src/utils/compile.ts`); only the resulting React elements are portaled into the iframe's `contentDocument` for DOM/CSS rendering. The iframe itself never evaluates user code.

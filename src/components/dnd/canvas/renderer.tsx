@@ -4,6 +4,7 @@ import { useLiveMessages } from '~/components/context/messages';
 import ErrorBoundary from '~/components/error/boundary';
 import LiveError from '~/components/error/error';
 import Frame, { type FrameProps } from '~/components/frame';
+import { useIsClient } from '~/components/frame/use-is-client';
 import { renderStableComponent } from '~/components/preview/stable-component';
 import { useCompiledModule } from '~/components/preview/use-compiled-module';
 import { useDynamicTailwind } from '~/components/preview/use-dynamic-tailwind';
@@ -42,8 +43,14 @@ const Renderer = ({
   dynamicTailwind = false,
   provider,
 }: Props) => {
-  // A forced section compiles empty code, so none of its code runs.
-  const module = useCompiledModule(forceFallback ? '' : preview, modules);
+  const isClient = useIsClient();
+
+  // A forced section compiles empty code, so none of its code runs. So does
+  // every section on the server, where its frame renders nothing (#716).
+  const module = useCompiledModule(
+    forceFallback || !isClient ? '' : preview,
+    modules,
+  );
   const section = { id: sectionId, name: sectionName, code: sectionCode };
   const messages = useLiveMessages();
 

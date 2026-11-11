@@ -1,11 +1,10 @@
-'use client';
-
 import { useMemo } from 'react';
 
 import { useLiveMessages } from '~/components/context/messages';
 import { useError, usePreview } from '~/components/context/states';
 import LiveError from '~/components/error';
 import Frame, { type FrameProps } from '~/components/frame';
+import { useIsClient } from '~/components/frame/use-is-client';
 import { cn } from '~/utils/cn';
 
 import styles from './preview.module.css';
@@ -35,7 +34,14 @@ const Client = ({
 
   const effectiveCode = _code === undefined ? code : _code;
 
-  const module = useCompiledModule(effectiveCode, modules);
+  const isClient = useIsClient();
+
+  // A frame renders nothing on the server, so the code isn't compiled or run
+  // there. Without one the server renders the preview, as before (#716).
+  const module = useCompiledModule(
+    frame && !isClient ? '' : effectiveCode,
+    modules,
+  );
 
   // Attached to the wrapper below; scans the rendered DOM so classes coming
   // from an imported component are picked up too. See the hook for details.
