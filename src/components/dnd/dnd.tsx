@@ -347,7 +347,7 @@ const Dnd = ({
                   frame={frame}
                   dynamicTailwind={dynamicTailwind}
                   provider={provider}
-                  {...props}
+                  componentProps={props}
                 />
               </Sortable>
             ))}
@@ -410,9 +410,7 @@ const Dnd = ({
               modules,
               frame,
               dynamicTailwind,
-              ...props,
-              // After the spread, so a preview prop with the same name can't
-              // point the overlay at a different container.
+              componentProps: props,
               containerId,
             }}
           />

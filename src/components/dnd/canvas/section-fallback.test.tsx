@@ -275,3 +275,74 @@ describe('Live.Dnd section fallback props', () => {
     expect(renders).toBe(before);
   });
 });
+
+// #710: `Live.Dnd`'s `props` are the sections' component props, as
+// `Live.Preview`'s are for its component.
+describe('Live.Dnd props', () => {
+  const propsDocument = (body: string) => `const App = (props) => (
+  <main id="app-container">
+    <section data-id="s1" data-name="One">${body}</section>
+  </main>
+);
+export default App;`;
+  const probe = propsDocument(
+    `<p data-testid="out">title={String(props.title)} preview={String(props.preview)} keys={Object.keys(props).sort().join(',')}</p>`,
+  );
+
+  it("passes every key to the section's component, plus container", () => {
+    renderDnd({ value: probe, props: { title: 'hello', headers: { a: 1 } } });
+
+    expect(screen.getByTestId('out').textContent).toBe(
+      'title=hello preview=undefined keys=container,headers,title',
+    );
+  });
+
+  it("passes a key named like one of the renderer's props through unchanged", () => {
+    const other = `const App = () => <b>hijacked</b>;\nexport default App;`;
+
+    renderDnd({ value: probe, props: { preview: other, title: 't' } });
+
+    // The section still compiles its own content, and gets `preview` as a
+    // prop like any other key.
+    expect(screen.queryByText('hijacked')).toBeNull();
+    expect(screen.getByTestId('out').textContent).toContain(`preview=${other}`);
+  });
+
+  it('re-renders sections only when an entry of an inline props object changes', () => {
+    let renders = 0;
+    const Counter = ({ label }: { label: unknown }) => {
+      renders += 1;
+
+      return <p>{String(label)}</p>;
+    };
+    const modules = { counter: { Counter } };
+    const value = `import { Counter } from 'counter';\n${propsDocument(
+      '<Counter label={props.label} />',
+    )}`;
+    const tree = (label: string) => (
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd
+          value={value}
+          modules={modules}
+          props={{ label }}
+          onChange={vi.fn()}
+        >
+          <Canvas />
+        </Dnd>
+      </PreviewContext.Provider>
+    );
+
+    const { rerender } = render(tree('a'));
+    const before = renders;
+
+    act(() => rerender(tree('a')));
+
+    expect(before).toBeGreaterThan(0);
+    expect(renders).toBe(before);
+
+    act(() => rerender(tree('b')));
+
+    expect(renders).toBeGreaterThan(before);
+    expect(screen.getByText('b')).not.toBeNull();
+  });
+});
