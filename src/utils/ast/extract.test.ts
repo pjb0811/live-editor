@@ -163,6 +163,25 @@ describe('extract', () => {
     expect(results[0]!.tagName).toBe('ul');
   });
 
+  // #723: the same holds when the element with the items binding is read
+  // as a child of a `children` binding rather than at the top level.
+  it('leaves JSX inside items out of the results under a children binding', () => {
+    const bind = `data-binding={[{label:'T',property:'innerText'}]}`;
+    const tabs = `<Tabs data-id="t" data-binding={[{label:'Items',property:'items'}]} items={[{ key: 'a', label: <b data-id="inner" ${bind}>x</b> }]} />`;
+    const ids = (src: string) =>
+      extract(src).map(
+        node =>
+          node.dataAttributes.find(attr => attr.name === 'data-id')?.value,
+      );
+
+    expect(
+      ids(
+        `<div data-id="p" data-binding={[{label:'Kids',property:'children'}]}>${tabs}</div>`,
+      ),
+    ).toEqual(['p']);
+    expect(ids(`<div data-id="p">${tabs}</div>`)).toEqual(['p', 't']);
+  });
+
   it('caches results by raw source string, and clearExtractCache() invalidates the cache', () => {
     clearExtractCache();
     const code = `<div data-id="a" data-binding="[{label:'A',property:'innerText'}]">A</div>`;
