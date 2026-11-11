@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo } from 'react';
 
 import { useLiveMessages } from '~/components/context/messages';
 import { useError, usePreview } from '~/components/context/states';
@@ -43,6 +43,11 @@ const Client = ({
     modules,
   );
 
+  // Clears the error when the code changes, as the provider's `setCode`
+  // does, which a `code` prop never calls (#714). In the cleanup, which runs
+  // before the new code's own render error is reported, so that one stays.
+  useLayoutEffect(() => () => setError(null), [effectiveCode, setError]);
+
   // Attached to the wrapper below; scans the rendered DOM so classes coming
   // from an imported component are picked up too. See the hook for details.
   const { ref: contentRef, css: dynamicCSS } = useDynamicTailwind(
@@ -57,6 +62,8 @@ const Client = ({
     [props],
   );
 
+  const clearError = () => setError(null);
+
   const renderProvider = (component: React.ReactNode) => {
     return provider ? provider(component) : component;
   };
@@ -67,7 +74,7 @@ const Client = ({
         <div className={cn(styles.fill, classNames)}>
           <LiveError message={module.error} title={messages.errors.compile} />
         </div>
-        <LiveError.Runtime open={isError} />
+        <LiveError.Runtime open={isError} reset={clearError} />
       </>
     );
   }
@@ -133,7 +140,7 @@ const Client = ({
           </LiveError.Boundary>
         </div>
       )}
-      <LiveError.Runtime open={isError} />
+      <LiveError.Runtime open={isError} reset={clearError} />
     </>
   );
 };

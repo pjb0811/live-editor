@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import ContextProvider from '~/components/context/context';
 import { useError } from '~/components/context/states';
@@ -63,5 +69,59 @@ describe('Runtime', () => {
     );
 
     expect(screen.getByRole('status').textContent).toBe('none');
+  });
+
+  it.each([
+    'ResizeObserver loop completed with undelivered notifications.',
+    'ResizeObserver loop limit exceeded',
+  ])('ignores the browser notice %j (#714)', message => {
+    render(
+      <ContextProvider>
+        <Runtime />
+        <ErrorProbe />
+      </ContextProvider>,
+    );
+
+    act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { message }));
+    });
+
+    expect(screen.getByRole('status').textContent).toBe('none');
+  });
+
+  it('leaves the event to the browser (#714)', () => {
+    render(
+      <ContextProvider>
+        <Runtime />
+      </ContextProvider>,
+    );
+
+    const event = new ErrorEvent('error', {
+      message: 'boom',
+      cancelable: true,
+    });
+
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('offers Try Again when given reset (#714)', () => {
+    const reset = vi.fn();
+
+    render(
+      <ContextProvider>
+        <Runtime reset={reset} />
+      </ContextProvider>,
+    );
+
+    act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { message: 'boom' }));
+    });
+    fireEvent.click(screen.getByText('Try Again'));
+
+    expect(reset).toHaveBeenCalledOnce();
   });
 });
