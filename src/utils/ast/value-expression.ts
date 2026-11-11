@@ -5,6 +5,21 @@ import type { NodeValueType } from './types';
 // Builds AST expressions and source text from JS values: the inverse of
 // reading them in `value.ts`.
 
+// A number literal, with a negative written as `-n`: Babel rejects a
+// negative `numericLiteral`. `null` for `NaN` and `Infinity`, which have no
+// literal form (#712).
+const numberToExpression = (value: number): t.Expression | null => {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+
+  if (value < 0 || Object.is(value, -0)) {
+    return t.unaryExpression('-', t.numericLiteral(-value));
+  }
+
+  return t.numericLiteral(value);
+};
+
 export const createNodeFromValue = (
   type: NodeValueType,
   value: unknown,
@@ -14,7 +29,7 @@ export const createNodeFromValue = (
       return t.booleanLiteral(value === true);
     }
     case 'number': {
-      return t.numericLiteral(Number(value));
+      return numberToExpression(Number(value));
     }
     case 'string': {
       return t.stringLiteral(String(value));
@@ -43,9 +58,7 @@ export const valueToExpression = (value: unknown): t.Expression | null => {
   }
 
   if (typeof value === 'number') {
-    return value < 0
-      ? t.unaryExpression('-', t.numericLiteral(-value))
-      : t.numericLiteral(value);
+    return numberToExpression(value);
   }
 
   if (typeof value === 'boolean') {

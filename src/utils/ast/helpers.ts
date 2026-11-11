@@ -41,7 +41,12 @@ export const attrValue = ({
   const trimmed = value.trim();
 
   if (REGEX.NUMBER.test(trimmed)) {
-    return t.jsxExpressionContainer(t.numericLiteral(parseFloat(trimmed)));
+    const magnitude = t.numericLiteral(Math.abs(parseFloat(trimmed)));
+
+    // A negative is `-n`: Babel rejects a negative `numericLiteral` (#712).
+    return t.jsxExpressionContainer(
+      trimmed.startsWith('-') ? t.unaryExpression('-', magnitude) : magnitude,
+    );
   }
 
   if (REGEX.BOOLEAN_OR_NULL.test(trimmed)) {

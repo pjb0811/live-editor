@@ -270,6 +270,23 @@ describe('Items render-map leaves', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  // Babel rejects a negative `numericLiteral`, which threw out of the
+  // commit and lost the edit (#712).
+  it('commits a negative number', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <Items value={`[{ label: 'A', n: 1 }]`} onChange={onChange} />,
+    );
+    const input = container.querySelector<HTMLInputElement>(
+      'input[type="number"]',
+    )!;
+
+    fireEvent.change(input, { target: { value: '-5' } });
+    fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(`[{ label: 'A', n: -5 }]`);
+  });
+
   it('blocks an empty commit for a required leaf', () => {
     const onChange = vi.fn();
     const { container } = render(

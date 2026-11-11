@@ -59,6 +59,15 @@ describe('item kinds in a mixed array', () => {
 });
 
 describe('updateArrayItemProperty', () => {
+  it('writes a negative number property as -n (#712)', () => {
+    expect(updateArrayItemProperty('[{ n: 1 }]', 0, 'n', -5)).toBe(
+      '[{ n: -5 }]',
+    );
+    expect(updateArrayItemProperty('[{ n: 1 }]', 0, 'n', '-5')).toBe(
+      '[{ n: -5 }]',
+    );
+  });
+
   it('writes a string property', () => {
     expect(updateArrayItemProperty(OBJECTS, 0, 'title', 'zz')).toContain(
       'title: "zz"',
@@ -259,6 +268,15 @@ describe('updateArrayItemValue', () => {
 
   it('returns null for an index that does not exist', () => {
     expect(updateArrayItemValue(PRIMITIVES, 9, 'z')).toBeNull();
+  });
+
+  // Babel rejects a negative `numericLiteral` (#712).
+  it('writes a negative number as -n', () => {
+    expect(updateArrayItemValue('[1, 2, 3]', 0, '-5')).toBe('[-5, 2, 3]');
+  });
+
+  it('refuses text that is not a number in a number item instead of throwing', () => {
+    expect(updateArrayItemValue('[1, 2, 3]', 0, 'abc')).toBeNull();
   });
 });
 

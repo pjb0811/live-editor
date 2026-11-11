@@ -18,6 +18,12 @@ describe('parseValue', () => {
     expect(parseValue('3.14')).toBe(3.14);
   });
 
+  it('parses a negative number string as a number (#712)', () => {
+    expect(parseValue('-5')).toBe(-5);
+    expect(parseValue('-0.5')).toBe(-0.5);
+    expect(parseValue('-')).toBe('-');
+  });
+
   it('parses boolean/null/undefined literals', () => {
     expect(parseValue('true')).toBe(true);
     expect(parseValue('false')).toBe(false);
