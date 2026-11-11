@@ -1,12 +1,23 @@
 import { useLiveMessages } from '~/components/context/messages';
 
-export interface Props extends React.ComponentPropsWithRef<'div'> {
+export interface Props extends Omit<
+  React.ComponentPropsWithRef<'div'>,
+  // The component renders its own content.
+  'children' | 'dangerouslySetInnerHTML'
+> {
   message?: string | null;
   title?: string;
   onReset?: () => void;
 }
 
-const Error = ({ message, title, className, style, onReset }: Props) => {
+const Error = ({
+  message,
+  title,
+  className,
+  style,
+  onReset,
+  ...divProps
+}: Props) => {
   const messages = useLiveMessages();
 
   if (!message) {
@@ -15,6 +26,7 @@ const Error = ({ message, title, className, style, onReset }: Props) => {
 
   return (
     <div
+      {...divProps}
       className={className}
       style={{
         padding: '16px',

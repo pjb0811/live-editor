@@ -2,6 +2,8 @@
 
 import { useMemo } from 'react';
 
+import { useMergedRef } from '@jbpark/use-hooks';
+
 import { useLiveMessages } from '~/components/context/messages';
 import { useError, usePreview } from '~/components/context/states';
 import LiveError from '~/components/error';
@@ -25,6 +27,12 @@ const Client = ({
   frame,
   dynamicTailwind = false,
   provider,
+  // Kept out of the DOM; it has no effect.
+  container: _container,
+  style,
+  ref,
+  // The remaining div props, for the outer wrapper in every branch (#721).
+  ...divProps
 }: Props) => {
   const { code } = usePreview();
   const { error, setError } = useError();
@@ -44,6 +52,8 @@ const Client = ({
     dynamicTailwind,
   );
 
+  const mergedRef = useMergedRef(contentRef, ref);
+
   const componentProps = useMemo(
     () => ({
       ...props,
@@ -58,7 +68,12 @@ const Client = ({
   if (module && module.error) {
     return (
       <>
-        <div className={cn(styles.fill, classNames)}>
+        <div
+          {...divProps}
+          ref={ref}
+          className={cn(styles.fill, classNames)}
+          style={style}
+        >
           <LiveError message={module.error} title={messages.errors.compile} />
         </div>
         <LiveError.Runtime open={isError} />
@@ -75,7 +90,12 @@ const Client = ({
   return (
     <>
       {frame ? (
-        <div className={cn(styles.fill, classNames)}>
+        <div
+          {...divProps}
+          ref={ref}
+          className={cn(styles.fill, classNames)}
+          style={style}
+        >
           <Frame {...(frame as FrameProps)}>
             {container => (
               <div ref={contentRef} style={{ display: 'contents' }}>
@@ -102,12 +122,16 @@ const Client = ({
         </div>
       ) : (
         <div
-          ref={contentRef}
+          {...divProps}
+          ref={mergedRef}
           className={cn(styles.fill, styles.scroll, classNames)}
+          // The host's style last, so it can override these, as in
+          // `Live.Error`.
           style={{
             isolation: 'isolate',
             transform: 'translateZ(0)',
             containerType: 'inline-size',
+            ...style,
           }}
         >
           <LiveError.Boundary
