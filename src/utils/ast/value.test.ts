@@ -2,7 +2,12 @@ import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 import { describe, expect, it, vi } from 'vitest';
 
-import { flattenEditableValue, setEditableValue } from './editable-value';
+import {
+  flattenEditableValue,
+  getEditableSource,
+  setEditableSource,
+  setEditableValue,
+} from './editable-value';
 import { generateCode } from './helpers';
 import {
   extractNodeValue,
@@ -304,6 +309,28 @@ describe('flattenEditableValue', () => {
     expect(flattenEditableValue('{a: 1, b: null, c: undefined}')).toEqual([
       { path: ['a'], value: 1 },
     ]);
+  });
+});
+
+// #722: the source of a nested object or array, read and replaced as written.
+describe('getEditableSource and setEditableSource', () => {
+  const value = "{ color: 'red', box: { pad: 1 /* px */ }, list: [1, 2] }";
+
+  it('reads the nested object or array as written', () => {
+    expect(getEditableSource(value, ['box'])).toBe('{ pad: 1 /* px */ }');
+    expect(getEditableSource(value, ['list'])).toBe('[1, 2]');
+  });
+
+  it('replaces it and keeps the rest', () => {
+    expect(setEditableSource(value, ['box'], '{ pad: 2 /* px */ }')).toBe(
+      "{ color: 'red', box: { pad: 2 /* px */ }, list: [1, 2] }",
+    );
+  });
+
+  it('gives null for a primitive, a missing key or source that does not parse', () => {
+    expect(getEditableSource(value, ['color'])).toBeNull();
+    expect(setEditableSource(value, ['missing'], '{}')).toBeNull();
+    expect(getEditableSource('{ broken', ['box'])).toBeNull();
   });
 });
 

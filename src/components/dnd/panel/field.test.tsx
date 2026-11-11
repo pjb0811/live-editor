@@ -1,13 +1,23 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { parseExpression } from '@babel/parser';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import type {
   EditorSelection,
   EditorView,
   ViewUpdate,
 } from '@uiw/react-codemirror';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { update } from '~/utils/ast/update';
+import { evaluateLiteral } from '~/utils/ast/value';
 
 import type { PanelBinding } from '../panel-binding';
 import Field from './field';
@@ -281,6 +291,85 @@ describe('Field object values', () => {
     expect(screen.getByText('Size')).not.toBeNull();
     expect(screen.getByText('gap')).not.toBeNull();
     expect(screen.queryByText('size')).toBeNull();
+  });
+
+  // An edit to one key keeps the rest of the object as written (#722).
+  describe('editing one key', () => {
+    const style = (rawValue: string, onChange: (next: unknown) => void) => (
+      <Field
+        binding={binding({
+          property: 'style',
+          type: 'object',
+          value: evaluateLiteral(parseExpression(rawValue)),
+          rawValue,
+          onChange,
+        })}
+      />
+    );
+
+    const commitText = (container: HTMLElement, from: string, to: string) => {
+      const field = [
+        ...container.querySelectorAll<HTMLTextAreaElement | HTMLInputElement>(
+          'textarea, input',
+        ),
+      ].find(control => control.value === from)!;
+
+      fireEvent.change(field, { target: { value: to } });
+      fireEvent.blur(field);
+    };
+
+    // The reproduction from #722, through the color control.
+    it('replaces only that value in the source', async () => {
+      const onChange = vi.fn();
+      const { container } = render(
+        style("{ color: '#ff0000', fontSize: 12 }", onChange),
+      );
+
+      fireEvent.change(container.querySelector('input[type="color"]')!, {
+        target: { value: '#0000ff' },
+      });
+
+      await waitFor(() =>
+        expect(onChange).toHaveBeenCalledExactlyOnceWith(
+          "{ color: '#0000ff', fontSize: 12 }",
+        ),
+      );
+
+      // What the panel then writes into the element.
+      const src = `<Foo data-id="a" data-binding={[{label:'S',property:'style'}]} style={{ color: '#ff0000', fontSize: 12 }} />`;
+
+      expect(
+        update(src, 'a', 'S', onChange.mock.calls[0]![0], 'style').code,
+      ).toBe(
+        `<Foo data-id="a" data-binding={[{label:'S',property:'style'}]} style={{ color: '#0000ff', fontSize: 12 }} />`,
+      );
+    });
+
+    it('keeps quoted keys and a number value as written', () => {
+      const onChange = vi.fn();
+      const { container } = render(
+        style('{ "font-size": 12, title: "old" }', onChange),
+      );
+
+      commitText(container, 'old', 'new');
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(
+        '{ "font-size": 12, title: "new" }',
+      );
+    });
+
+    it('edits a key of a nested object in place', () => {
+      const onChange = vi.fn();
+      const { container } = render(
+        style("{ title: 'old', box: { pad: 'a', m: 'x' } }", onChange),
+      );
+
+      commitText(container, 'a', 'b');
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(
+        "{ title: 'old', box: { pad: 'b', m: 'x' } }",
+      );
+    });
   });
 });
 
