@@ -20,7 +20,8 @@ interface Props {
   // Skip compiling and render the fallback (`shouldForceSectionFallback`).
   forceFallback?: boolean;
   modules?: Record<string, unknown>;
-  headers?: Record<string, boolean>;
+  // `Live.Dnd`'s `props`, for the section's component.
+  componentProps?: Record<string, unknown>;
   frame?: FrameProps;
   dynamicTailwind?: boolean;
   provider?: (children: React.ReactNode) => React.ReactNode;
@@ -35,7 +36,7 @@ const Renderer = ({
   sectionName = '',
   sectionCode = preview,
   forceFallback = false,
-  headers,
+  componentProps,
   modules,
   frame,
   dynamicTailwind = false,
@@ -130,7 +131,7 @@ const Renderer = ({
               <>
                 {/* Keeps the section's DOM when an edit leaves its hooks alone. */}
                 {renderStableComponent(Component, preview, {
-                  headers,
+                  ...componentProps,
                   container,
                 })}
                 {dynamicTailwind && dynamicCSS && <style>{dynamicCSS}</style>}
@@ -143,10 +144,10 @@ const Renderer = ({
   );
 };
 
-// Compares `frame` by value, since it's usually written inline and is a new
-// object every render (#348): arrays by their entries, objects (`style`)
-// shallowly, anything else by identity, so a new `onLoaded` still
-// re-renders.
+// Compares a `frame` entry or `componentProps` by value, since both are
+// usually written inline and are new objects every render (#348, #710):
+// arrays by their entries, objects shallowly, anything else by identity, so
+// a new `onLoaded` still re-renders.
 const sameValue = (a: unknown, b: unknown): boolean => {
   if (Object.is(a, b)) {
     return true;
@@ -196,15 +197,23 @@ const sameFrame = (a?: FrameProps, b?: FrameProps): boolean => {
   );
 };
 
-// Every other prop is compared by identity, as `memo` does by default.
+// `componentProps` is compared entry by entry, since a host usually writes
+// `props` inline (#710). Every other prop is compared by identity, as `memo`
+// does by default.
 const arePropsEqual = (prev: Props, next: Props): boolean => {
   const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
 
-  return [...keys].every(key =>
-    key === 'frame'
-      ? sameFrame(prev.frame, next.frame)
-      : Object.is(prev[key as keyof Props], next[key as keyof Props]),
-  );
+  return [...keys].every(key => {
+    if (key === 'frame') {
+      return sameFrame(prev.frame, next.frame);
+    }
+
+    if (key === 'componentProps') {
+      return sameValue(prev.componentProps, next.componentProps);
+    }
+
+    return Object.is(prev[key as keyof Props], next[key as keyof Props]);
+  });
 };
 
 export default memo(Renderer, arePropsEqual);

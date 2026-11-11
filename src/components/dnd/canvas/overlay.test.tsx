@@ -18,8 +18,16 @@ vi.mock('@dnd-kit/core', async importOriginal => ({
 
 // Stands in for the compiled preview, showing what the overlay hands it.
 vi.mock('./renderer', () => ({
-  default: (props: { preview: string; forceFallback: boolean }) => (
-    <div data-testid="renderer" data-forced={String(props.forceFallback)}>
+  default: (props: {
+    preview: string;
+    forceFallback: boolean;
+    componentProps?: Record<string, unknown>;
+  }) => (
+    <div
+      data-testid="renderer"
+      data-forced={String(props.forceFallback)}
+      data-component-props={JSON.stringify(props.componentProps)}
+    >
       {props.preview}
     </div>
   ),
@@ -33,7 +41,10 @@ const sections: Section[] = [
   { id: 's2', name: 'Footer', code: OTHER },
 ];
 
-const renderOverlay = (isForced?: (section: Section) => boolean) =>
+const renderOverlay = (
+  isForced?: (section: Section) => boolean,
+  componentProps?: Record<string, unknown>,
+) =>
   render(
     <DndContext>
       <Overlay
@@ -47,6 +58,7 @@ const renderOverlay = (isForced?: (section: Section) => boolean) =>
           ),
           containerId: 'root',
           modules: {},
+          componentProps,
         }}
       />
     </DndContext>,
@@ -92,6 +104,16 @@ describe('Overlay', () => {
     expect(renderer.textContent).toContain('hero');
     expect(renderer.textContent).not.toContain('footer');
     expect(renderer.dataset.forced).toBe('true');
+  });
+
+  // #710: the dragged copy renders with the same props as the section.
+  it("passes Live.Dnd's props to the dragged section", () => {
+    drag.active = { id: 's1', data: { current: {} } };
+    renderOverlay(undefined, { title: 'hello' });
+
+    expect(screen.getByTestId('renderer').dataset.componentProps).toBe(
+      '{"title":"hello"}',
+    );
   });
 
   it('renders nothing for an id that is no longer a section', () => {
