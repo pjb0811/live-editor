@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { Component as ReactComponent, createElement } from 'react';
 
 type Props = Record<string, unknown>;
 type Component = React.ComponentType<Props>;
@@ -31,6 +31,78 @@ interface StableProps {
 // itself, so the function's output belongs to this type.
 const StableComponent = ({ render, props }: StableProps) => render(props);
 
+interface RemountState {
+  error: unknown;
+  // Bumped to remount `StableComponent` with fresh state.
+  attempt: number;
+}
+
+// Remounts `StableComponent` once when a new compile throws on its first
+// render, then lets the error through. `hookSignature` reads hook calls from
+// the whole document, so moving a hook from one component to another keeps
+// the signature while the root component's hook count changes, and React
+// throws (#724). A remount is all it needs. An error from a compile that has
+// rendered before isn't retried: a remount would hide it and reset the state
+// that caused it.
+class RemountOnRecompileError extends ReactComponent<
+  StableProps,
+  RemountState
+> {
+  state: RemountState = { error: null, attempt: 0 };
+
+  // The last compile that rendered without an error.
+  private committedRender: StableProps['render'] | null = null;
+  // The compile already retried, so a second error from it goes through.
+  private retriedRender: StableProps['render'] | null = null;
+
+  static getDerivedStateFromError(error: unknown): Partial<RemountState> {
+    return { error };
+  }
+
+  private canRetry() {
+    const { render } = this.props;
+
+    return (
+      this.committedRender !== null &&
+      this.committedRender !== render &&
+      this.retriedRender !== render
+    );
+  }
+
+  componentDidCatch() {
+    if (this.canRetry()) {
+      this.retriedRender = this.props.render;
+      this.setState(({ attempt }) => ({ error: null, attempt: attempt + 1 }));
+    }
+  }
+
+  componentDidMount() {
+    this.committedRender = this.props.render;
+  }
+
+  componentDidUpdate() {
+    if (this.state.error === null) {
+      this.committedRender = this.props.render;
+    }
+  }
+
+  render() {
+    const { error, attempt } = this.state;
+
+    if (error !== null) {
+      // Thrown from here, the error reaches the boundary outside, which
+      // shows it as before.
+      if (!this.canRetry()) {
+        throw error;
+      }
+
+      return null;
+    }
+
+    return createElement(StableComponent, { ...this.props, key: attempt });
+  }
+}
+
 // Renders `Component`, compiled from `code`, under a component type that
 // survives a recompile. Each compile returns a new function, and React
 // remounts a subtree whose component type changes, so rendering it directly
@@ -45,7 +117,7 @@ export const renderStableComponent = (
   props: Props,
 ): React.ReactElement =>
   isFunctionComponent(Component)
-    ? createElement(StableComponent, {
+    ? createElement(RemountOnRecompileError, {
         key: hookSignature(code),
         render: Component,
         props,

@@ -160,6 +160,28 @@ describe('an edited preview', () => {
     expect(screen.getByRole('button', { name: 'clicked 1' })).toBeTruthy();
   });
 
+  // The hook list is read from the whole document, so moving a hook from
+  // `Child` into `App` keeps it the same while `App`'s own hook count
+  // changes (#724).
+  it('recovers when an edit moves a hook between components', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const before = `const Child = () => { const [n] = React.useState(1); return <i>{n}</i> };
+const App = () => { const [m] = React.useState(5); return <main>{m}<Child /></main> };
+export default App;`;
+    const after = `const Child = () => { return <i>x</i> };
+const App = () => { const [m] = React.useState(5); const [n] = React.useState(1); return <main>{m}{n}<Child /></main> };
+export default App;`;
+    const view = render(preview(before));
+
+    expect(screen.getByRole('main').textContent).toBe('51');
+
+    view.rerender(preview(after));
+
+    expect(screen.getByRole('main').textContent).toBe('51x');
+    expect(screen.queryByText('Rendering Error')).toBeNull();
+  });
+
   it('remounts when an edit changes the hook calls', () => {
     const view = render(preview(counter('Hello')));
     const heading = screen.getByRole('heading', { name: 'Hello' });

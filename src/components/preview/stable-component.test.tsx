@@ -2,7 +2,9 @@
 import { Component, forwardRef, memo, useState } from 'react';
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import ErrorBoundary from '~/components/error/boundary';
 
 import { hookSignature, renderStableComponent } from './stable-component';
 
@@ -60,6 +62,68 @@ describe('renderStableComponent', () => {
     );
 
     expect(screen.getByRole('button').textContent).toBe('b 0');
+  });
+
+  // A remount after a recompile must not hide a real error (#724).
+  describe('with an error', () => {
+    const Fallback = ({ children }: { children: React.ReactNode }) => (
+      <ErrorBoundary fallback={message => <p role="alert">{message}</p>}>
+        {children}
+      </ErrorBoundary>
+    );
+
+    const throwing = (message: string) =>
+      function Broken(): React.ReactNode {
+        throw new Error(message);
+      };
+
+    it('lets an error through from a new compile that throws every time', () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { rerender } = render(
+        <Fallback>
+          {renderStableComponent(compileCounter('a'), 'useState(0)', {})}
+        </Fallback>,
+      );
+
+      rerender(
+        <Fallback>
+          {renderStableComponent(throwing('still broken'), 'useState(0)', {})}
+        </Fallback>,
+      );
+
+      expect(screen.getByRole('alert').textContent).toBe('still broken');
+    });
+
+    it('lets an error through, keeping the state, when a compile that rendered fine throws later', () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Throws once the count reaches 2.
+      function Counter() {
+        const [count, setCount] = useState(0);
+
+        if (count === 2) {
+          throw new Error('count is 2');
+        }
+
+        return (
+          <button type="button" onClick={() => setCount(count + 1)}>
+            {count}
+          </button>
+        );
+      }
+
+      render(
+        <Fallback>
+          {renderStableComponent(Counter, 'useState(0)', {})}
+        </Fallback>,
+      );
+      fireEvent.click(screen.getByRole('button'));
+      fireEvent.click(screen.getByRole('button'));
+
+      // Not remounted back to 0.
+      expect(screen.getByRole('alert').textContent).toBe('count is 2');
+    });
   });
 
   it.each([
