@@ -20,7 +20,10 @@ describe('withScriptBlobs (#443)', () => {
 
   beforeEach(() => {
     vi.stubGlobal('fetch', () =>
-      Promise.resolve({ text: () => Promise.resolve('export default 1;') }),
+      Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve('export default 1;'),
+      }),
     );
     vi.stubGlobal('URL', {
       ...URL,
@@ -83,9 +86,15 @@ describe('withScriptBlobs (#443)', () => {
       src === SLOW
         ? new Promise(resolve => {
             finishSlow = () =>
-              resolve({ text: () => Promise.resolve('export default 1;') });
+              resolve({
+                ok: true,
+                text: () => Promise.resolve('export default 1;'),
+              });
           })
-        : Promise.resolve({ text: () => Promise.resolve('export default 1;') }),
+        : Promise.resolve({
+            ok: true,
+            text: () => Promise.resolve('export default 1;'),
+          }),
     );
 
     let held: string[] = [];
@@ -113,9 +122,9 @@ describe('withScriptBlobs (#443)', () => {
       'fetch',
       vi
         .fn()
-        .mockResolvedValueOnce({ text: () => Promise.resolve('ok') })
+        .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('ok') })
         .mockRejectedValueOnce(new Error('offline'))
-        .mockResolvedValue({ text: () => Promise.resolve('ok') }),
+        .mockResolvedValue({ ok: true, text: () => Promise.resolve('ok') }),
     );
 
     const use = vi.fn();
@@ -130,5 +139,40 @@ describe('withScriptBlobs (#443)', () => {
     await Promise.all(SOURCES.slice(2).map(getCachedScriptBlob));
 
     expect(revoked).toContain('blob:stub/1');
+  });
+});
+
+describe('getCachedScriptBlob', () => {
+  beforeEach(() => {
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: () => 'blob:stub/1',
+      revokeObjectURL: () => {},
+    });
+    clearScriptCache();
+  });
+
+  afterEach(() => {
+    clearScriptCache();
+    vi.unstubAllGlobals();
+  });
+
+  // #725: an error page used to be cached and injected as the script.
+  it('rejects a response that is not ok, caches nothing, and fetches again next time', async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: () => Promise.resolve('<html>Not Found</html>'),
+    });
+
+    vi.stubGlobal('fetch', fetch);
+
+    const src = 'https://example.test/missing.js';
+
+    await expect(getCachedScriptBlob(src)).rejects.toThrow(
+      `Failed to load script ${src}: HTTP 404`,
+    );
+    await expect(getCachedScriptBlob(src)).rejects.toThrow('HTTP 404');
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });

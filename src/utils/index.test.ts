@@ -292,7 +292,10 @@ export default App;`;
     revoked = [];
 
     vi.stubGlobal('fetch', () =>
-      Promise.resolve({ text: () => Promise.resolve('export default 1;') }),
+      Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve('export default 1;'),
+      }),
     );
     vi.stubGlobal('URL', {
       ...URL,
@@ -440,7 +443,10 @@ describe('getCachedScriptBlob failure handling', () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new Error('network down'))
-      .mockResolvedValue({ text: () => Promise.resolve('export default 1;') });
+      .mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve('export default 1;'),
+      });
 
     vi.stubGlobal('fetch', fetchMock);
 
@@ -453,9 +459,10 @@ describe('getCachedScriptBlob failure handling', () => {
   });
 
   it('still shares one in-flight request between concurrent callers', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue({ text: () => Promise.resolve('export default 1;') });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('export default 1;'),
+    });
 
     vi.stubGlobal('fetch', fetchMock);
 
