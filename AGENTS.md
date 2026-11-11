@@ -173,7 +173,7 @@ TypeScript와 Vite/Vitest 설정에 같은 별칭을 사용합니다.
 ### 컴파일 & 캐시
 
 - `compile(code, modules)` — 바운디드 LRU 캐시 (최대 50개)
-- Babel의 TypeScript/React/env 프리셋으로 변환하고 호스트에서 모듈 실행
+- Babel의 TypeScript/React 프리셋과 CommonJS 모듈 변환으로 변환하고 호스트에서 모듈 실행. 모든 문서를 TypeScript로 파싱하고(#713), ES5로 낮추는 `env` 프리셋은 쓰지 않음(#717)
 - 캐시 일치 조건: 원본 코드 + 정렬한 모듈 이름·값 스냅샷. 객체/함수는 참조, 원시값은 `Object.is`로 비교하며 서로 다른 모듈 조합도 50개 LRU 한도 안에서 별도 보관
 - 문서 파싱 캐시와 섹션 미리보기 캐시는 `src/utils/ast/document.ts`에서 관리
 

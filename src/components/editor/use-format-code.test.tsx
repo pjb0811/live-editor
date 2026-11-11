@@ -23,4 +23,27 @@ describe('useFormatCode', () => {
     // (@babel/standalone) through Vite's transform, which is slow the
     // first time but has nothing to do with the assertion.
   }, 30000);
+
+  // One parser for both, as `compile()` uses one preset (#713). The `babel`
+  // parser, which a heuristic picked when it missed the TypeScript, threw on
+  // the first.
+  it.each([
+    {
+      name: 'TypeScript the old heuristic missed',
+      input: 'const m=new Map<string,number>()',
+      output: 'const m = new Map<string, number>();\n',
+    },
+    { name: 'JavaScript', input: 'const  x=1', output: 'const x = 1;\n' },
+  ])(
+    'formats $name',
+    async ({ input, output }) => {
+      vi.resetModules();
+
+      const { useFormatCode } = await import('./use-format-code');
+      const { result } = renderHook(() => useFormatCode());
+
+      await expect(result.current(input)).resolves.toBe(output);
+    },
+    30000,
+  );
 });

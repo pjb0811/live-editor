@@ -1,8 +1,11 @@
+import { createElement } from 'react';
+import { renderToString } from 'react-dom/server';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { DEFAULT_TEMPLATE } from '../constants';
 import { clearDocumentParseCache, parseDocument } from './ast/document';
 import { clearExtractCache, extract } from './ast/extract';
-import { detectTypeScript } from './detect-typescript';
 import { registerEditorSession } from './editor-caches';
 import {
   clearCompilationCache,
@@ -12,95 +15,98 @@ import {
 } from './index';
 import { clearScriptCache, getCachedScriptBlob } from './scripts';
 
-describe('detectTypeScript', () => {
-  it('does not flag the default template as TypeScript', () => {
-    const code = `
-import * as ui from 'ui-kit';
-import { cn } from 'ui-kit/utils';
+// #713: TypeScript that the old `detectTypeScript` heuristic missed was
+// compiled as JavaScript and failed. Every document now goes through the
+// TypeScript preset.
+describe('compile (TypeScript the old heuristic missed, #713)', () => {
+  const component = (line: string, imports = '') =>
+    `${imports}const App = () => { ${line} return 'ok'; };\nexport default App;`;
 
-const App = () => {
-  return (
-    <main id="app-container"></main>
-  )
-}
+  // Rendered, not only compiled: the hook call used to compile to
+  // `useState < string | null > null`, which throws only when it runs.
+  it.each([
+    { name: 'a non-null assertion', line: 'const el = { a: 1 }!;' },
+    {
+      name: 'a generic constructor call',
+      line: 'const m = new Map<string, number>();',
+    },
+    { name: 'satisfies', line: 'const c = { a: 1 } satisfies object;' },
+    {
+      name: 'a generic hook call',
+      line: 'const [s] = useState<string | null>(null);',
+      imports: "import { useState } from 'react';\n",
+    },
+  ])('compiles and renders $name', ({ line, imports = '' }) => {
+    const module = compile(component(line, imports), {});
 
-export default App;
-`;
-    expect(detectTypeScript(code)).toBe(false);
+    expect(module.error).toBeUndefined();
+    expect(
+      renderToString(
+        createElement(module.exports.default as React.ComponentType),
+      ),
+    ).toBe('ok');
   });
 
-  it('does not flag a named import alias as TypeScript', () => {
-    const code = `
-import { Foo as Bar } from 'ui-kit';
-const App = () => <Bar />;
-export default App;
-`;
-    expect(detectTypeScript(code)).toBe(false);
+  it('still compiles plain JavaScript and the default template', () => {
+    expect(compile(DEFAULT_TEMPLATE, {}).error).toBeUndefined();
+    expect(
+      compile(
+        `const App = () => <div>use it as needed</div>;\nexport default App;`,
+        {},
+      ).error,
+    ).toBeUndefined();
+  });
+});
+
+// #720: a failed transform used to hand the source to `new Function`, whose
+// syntax error doesn't say what's wrong.
+describe('compile errors (#720)', () => {
+  it("reports Babel's message, position and code frame", () => {
+    const { error } = compile(
+      `const App = () => <div>\nexport default App;`,
+      {},
+    );
+
+    expect(error).toMatch(/^Unterminated JSX contents\. \(1:23\)/);
+    expect(error).toContain('> 1 | const App = () => <div>');
   });
 
-  it('does not flag an `export * as` re-export as TypeScript', () => {
-    const code = `
-export * as ns from 'ui-kit';
-const App = () => <div />;
-export default App;
-`;
-    expect(detectTypeScript(code)).toBe(false);
-  });
+  it('does not log by itself', () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
 
-  it('flags a real `interface` declaration as TypeScript', () => {
-    const code = `
-interface Props { name: string }
-const App = (props: Props) => <div>{props.name}</div>;
-export default App;
-`;
-    expect(detectTypeScript(code)).toBe(true);
-  });
+    // The test above compiled the same code; a cached result isn't
+    // transformed again.
+    clearCompilationCache();
+    compile(`const App = () => <div>\nexport default App;`, {});
 
-  it('flags a real `type` alias as TypeScript', () => {
-    const code = `
-type Foo = { name: string };
-const App = () => <div>hi</div>;
-export default App;
-`;
-    expect(detectTypeScript(code)).toBe(true);
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
+});
 
-  it('flags a real `as` type assertion as TypeScript', () => {
-    const code = `
-const App = () => {
-  const x = (window as any).foo;
-  return <div>{x}</div>;
-};
-export default App;
-`;
-    expect(detectTypeScript(code)).toBe(true);
-  });
+// #717: without targets, the `env` preset lowered everything to ES5.
+describe('compiled output (#717)', () => {
+  // A function's source text shows what the compiler made of it: lowered,
+  // `read` is a plain function around a generator, and `Box` a function.
+  it('keeps async functions and classes as written', () => {
+    const code = `class Box { #value = 1; get value() { return this.#value; } }
+const read = async ({ a, ...rest }) => { await Promise.resolve(a); return rest; };
+const App = () => [String(read), String(Box), new Box().value];
+export default App;`;
+    const module = compile(code, {});
 
-  it('flags a real `enum` declaration as TypeScript', () => {
-    const code = `
-enum Color { Red, Blue }
-const App = () => <div>{Color.Red}</div>;
-export default App;
-`;
-    expect(detectTypeScript(code)).toBe(true);
-  });
+    expect(module.error).toBeUndefined();
 
-  it('flags an optional parameter as TypeScript', () => {
-    const code = `
-const App = (props?: { name: string }) => <div>{props?.name}</div>;
-export default App;
-`;
-    expect(detectTypeScript(code)).toBe(true);
-  });
+    const [read, box, value] = (
+      module.exports.default as unknown as () => [string, string, number]
+    )();
 
-  it('still detects a real `as` assertion on an exported line', () => {
-    const code = `
-import * as ui from 'ui-kit';
-export const x = (5 as unknown) as string;
-const App = () => <div>{x}</div>;
-export default App;
-`;
-    expect(detectTypeScript(code)).toBe(true);
+    expect(read).toMatch(/^async \(\{\s*a,\s*\.\.\.rest\s*\}\) =>/);
+    expect(box).toMatch(/^class Box/);
+    expect(box).toContain('#value');
+    expect(value).toBe(1);
   });
 });
 
