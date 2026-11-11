@@ -58,19 +58,28 @@ export const useHostStyleSync = (
     autoInvoke: false,
   });
 
-  useMutationObserver(document.head, debouncedApplyStyle, {
-    enabled: syncStyle,
-    childList: true,
-    subtree: true,
-    attributes: true,
-  });
+  // Evaluated during render: `document` is missing on the server (#716).
+  useMutationObserver(
+    typeof document === 'undefined' ? null : document.head,
+    debouncedApplyStyle,
+    {
+      enabled: syncStyle,
+      childList: true,
+      subtree: true,
+      attributes: true,
+    },
+  );
 
   // A theme switch only changes the host's `<html>` attributes, which the head
   // observer above doesn't see.
-  useMutationObserver(document.documentElement, debouncedApplyStyle, {
-    enabled: syncStyle,
-    attributes: true,
-  });
+  useMutationObserver(
+    typeof document === 'undefined' ? null : document.documentElement,
+    debouncedApplyStyle,
+    {
+      enabled: syncStyle,
+      attributes: true,
+    },
+  );
 
   return applyStyle;
 };
