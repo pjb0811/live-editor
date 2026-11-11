@@ -139,6 +139,16 @@ describe('update', () => {
     expect(result.code).toContain('count={42}');
   });
 
+  // #712: a negative attribute reads as a number and stays an expression.
+  it('keeps a negative number attribute an expression', () => {
+    const src = `<Foo data-id="a" data-binding={[{label:'C',property:'count'}]} count={-5} />`;
+
+    expect(update(src, 'a', 'C', -7, 'count').code).toContain('count={-7}');
+    expect(update(src, 'a', 'C', parseValue('-7'), 'count').code).toContain(
+      'count={-7}',
+    );
+  });
+
   it('serializes a real boolean as a boolean expression', () => {
     const result = update(CODE, 'g', 'Count', false);
 

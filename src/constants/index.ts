@@ -32,7 +32,7 @@ export const RESERVED_BINDING_PROPERTIES: readonly string[] = [
 ];
 
 export const REGEX = {
-  NUMBER: /^\d+(\.\d+)?$/,
+  NUMBER: /^-?\d+(\.\d+)?$/,
   BOOLEAN_OR_NULL: /^(true|false|null|undefined)$/,
   MODULE_IMPORT_EXPORT_LINE:
     /^\s*(?:import|export)\b[^\n]*\bfrom\s+['"][^'"]*['"];?\s*$/gm,

@@ -38,6 +38,14 @@ describe('attrValue', () => {
     }
   });
 
+  it('wraps a negative number in a unary expression (#712)', () => {
+    const result = attrValue({ name: 'x', value: '-5' });
+
+    expect(
+      t.isJSXExpressionContainer(result) && generateCode(result.expression),
+    ).toBe('-5');
+  });
+
   it('parses boolean/null values as expressions', () => {
     const result = attrValue({ name: 'x', value: 'true' });
     expect(t.isJSXExpressionContainer(result)).toBe(true);

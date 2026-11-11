@@ -540,6 +540,14 @@ describe('getStructuredValue', () => {
     expect(getStructuredValue(node, 'count')).toBe(3);
   });
 
+  it('recovers a negative number attribute as a number (#712)', () => {
+    const node = makeNode({
+      attributes: [{ name: 'count', value: '-5', isStringLiteral: false }],
+    });
+
+    expect(getStructuredValue(node, 'count')).toBe(-5);
+  });
+
   it('recovers an object expression attribute as an object', () => {
     const node = makeNode({
       attributes: [
