@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createRootAttributeSync,
@@ -204,6 +204,92 @@ describe('reconcileStyles', () => {
 });
 
 // The host's theme lives on its `<html>`, which an iframe doesn't share (#497).
+// Every head change reaches every copy in every frame, so a pass must write
+// only what changed: setting a `<style>`'s text makes the browser parse it
+// again (#719).
+describe('reconcileStyles on an unrelated change', () => {
+  const setup = () => {
+    const source = document.implementation.createHTMLDocument();
+    const target = createTarget();
+    const manager = createStyleSyncManager();
+    const transform = vi.fn((content: string) => content.replace('1vh', '9px'));
+
+    source.head.innerHTML = `
+      <style id="first" media="screen">.first { height: 1vh; }</style>
+      <link id="sheet" rel="stylesheet" href="https://example.test/a.css">
+    `;
+    reconcileStyles(source, target, manager, true, transform);
+
+    return { source, target, manager, transform };
+  };
+
+  // Every mutation made to the copies after `act` starts.
+  const recordMutations = (target: ShadowRoot, act: () => void) => {
+    const observer = new MutationObserver(() => {});
+
+    observer.observe(target, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      characterData: true,
+    });
+    act();
+
+    const records = observer.takeRecords();
+
+    observer.disconnect();
+
+    return records;
+  };
+
+  it('leaves the existing copies untouched', () => {
+    const { source, target, manager, transform } = setup();
+    const records = recordMutations(target, () => {
+      const unrelated = source.createElement('style');
+
+      unrelated.textContent = '.unrelated { color: red; }';
+      source.head.appendChild(unrelated);
+      reconcileStyles(source, target, manager, true, transform);
+    });
+
+    // Only the new copy is added; nothing in the two existing ones changes.
+    expect(
+      records.map(record => [
+        record.type,
+        [...record.addedNodes].map(node => (node as Element).tagName),
+      ]),
+    ).toEqual([['childList', ['STYLE']]]);
+    expect(syncedStyles(target)).toHaveLength(3);
+  });
+
+  it('transforms a style again only when its text changes', () => {
+    const { source, target, manager, transform } = setup();
+
+    expect(transform).toHaveBeenCalledOnce();
+
+    reconcileStyles(source, target, manager, true, transform);
+    expect(transform).toHaveBeenCalledOnce();
+
+    source.head.querySelector('#first')!.textContent =
+      '.first { height: 2vh; }';
+    reconcileStyles(source, target, manager, true, transform);
+
+    expect(transform).toHaveBeenCalledTimes(2);
+    expect(target.querySelector('#first')!.textContent).toBe(
+      '.first { height: 2vh; }',
+    );
+  });
+
+  it('still copies a changed attribute', () => {
+    const { source, target, manager, transform } = setup();
+
+    source.head.querySelector('#first')!.setAttribute('media', 'print');
+    reconcileStyles(source, target, manager, true, transform);
+
+    expect(target.querySelector('#first')!.getAttribute('media')).toBe('print');
+  });
+});
+
 describe('reconcileRootAttributes', () => {
   const roots = () => {
     const source = document.implementation.createHTMLDocument();
