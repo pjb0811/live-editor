@@ -130,6 +130,63 @@ describe('useSectionEditing', () => {
     );
   });
 
+  // `innerHTML` and `jsx` values are written as source, so an edit can
+  // produce a section that doesn't parse (#711).
+  const html = `<p data-id="" data-binding={[{ label: 'Body', property: 'innerHTML' }]}>old</p>`;
+  const icon = `<Icon data-id="" data-binding={[{ label: 'Body', property: 'icon', type: 'jsx' }]} icon={<i>i</i>} />`;
+
+  it.each([
+    { kind: 'innerHTML', property: 'innerHTML', markup: html, value: 'a > b' },
+    {
+      kind: 'innerHTML',
+      property: 'innerHTML',
+      markup: html,
+      value: '<b>unclosed',
+    },
+    { kind: 'jsx', property: 'icon', markup: icon, value: '<i>' },
+    { kind: 'jsx', property: 'icon', markup: icon, value: '' },
+  ])(
+    'refuses a $kind value that would stop the section parsing: $value',
+    ({ property, markup, value }) => {
+      const { result, onChange, onEditError } = setup({
+        selectedSection: {
+          id: 's',
+          name: 'S',
+          code: `<section data-id="">${markup}</section>`,
+        },
+      });
+
+      act(() => bindingOf(result.current.bindings, property).onChange(value));
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onEditError).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          type: 'update',
+          label: 'Body',
+          property,
+          failure: expect.objectContaining({ reason: 'parse-error' }),
+        }),
+      );
+    },
+  );
+
+  it('still commits a valid value to an innerHTML binding', () => {
+    const { result, onChange, onEditError } = setup({
+      selectedSection: {
+        id: 's',
+        name: 'S',
+        code: `<section data-id=""><p data-id="" data-binding={[{ label: 'Body', property: 'innerHTML' }]}>old</p></section>`,
+      },
+    });
+
+    act(() =>
+      bindingOf(result.current.bindings, 'innerHTML').onChange('<i>new</i>'),
+    );
+
+    expect(onEditError).not.toHaveBeenCalled();
+    expect(onChange.mock.calls[0]![0].code).toContain('<i>new</i></p>');
+  });
+
   it('refuses an edit while the source does not parse', () => {
     const { result, onChange, onEditError } = setup({
       stale: true,

@@ -525,6 +525,32 @@ export const FieldErrorFixture = () => (
   <ElementFields bindings={fieldErrorBindings} />
 );
 
+// #711: the built-in panel's source editor for an `innerHTML` binding,
+// next to a plain text field.
+const sourceFieldCode = `const App = () => (
+  <main id="app-container">
+    <section data-id="s1" data-name="One">
+      <div data-id="html" data-binding={[{ label: 'Body', property: 'innerHTML' }]}><b>old</b></div>
+      <p data-id="txt" data-binding={[{ label: 'Text', property: 'innerText' }]}>plain</p>
+    </section>
+  </main>
+);
+
+export default App;`;
+
+export const SourceFieldFixture = () => {
+  const [code, setCode] = useState(sourceFieldCode);
+
+  return (
+    <Live>
+      <div style={{ height: 600 }}>
+        <Live.Dnd value={code} onChange={setCode} />
+      </div>
+      <output data-testid="source">{code}</output>
+    </Live>
+  );
+};
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
@@ -537,6 +563,7 @@ const fixtures = {
   reorder: <ReorderFixture />,
   history: <HistoryFixture />,
   'field-error': <FieldErrorFixture />,
+  'source-field': <SourceFieldFixture />,
 } as const;
 
 createRoot(document.getElementById('root')!).render(

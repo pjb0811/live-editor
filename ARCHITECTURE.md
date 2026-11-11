@@ -261,6 +261,11 @@ code. `update()` (`utils/ast/update.ts`):
 A refused edit returns an `UpdateFailure` with a `reason`. `describeUpdateFailure`
 turns it into the edit error's title and description.
 
+`update()` writes an `innerHTML` or `jsx` value as source, as written, so its
+result can fail to parse. `commitChanges` parses the result before passing it
+on, and refuses one that doesn't parse with a `parse-error` failure. Committing
+it would make the whole document read-only (#711).
+
 ### ③ Value level — Items and Children
 
 Some values have structure of their own. An `items` value is an array literal,

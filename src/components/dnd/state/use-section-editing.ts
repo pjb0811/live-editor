@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 
 import type { Section } from '~/types';
 import { extract } from '~/utils/ast/extract';
+import { assertJsxParses } from '~/utils/ast/helpers';
 import { fillIdsFrom } from '~/utils/ast/tree';
 import { type BindingOptions, type DataAttrNode } from '~/utils/ast/types';
 import { updateAll } from '~/utils/ast/update';
@@ -160,6 +161,28 @@ export const useSectionEditing = ({
         failure: result.failure,
         ...describeUpdateFailure(result.failure, label, messages),
       });
+      return;
+    }
+
+    // `update()` writes `innerHTML` and `jsx` values as source, as written
+    // (#239), so the result can fail to parse. Committing it would leave the
+    // whole document read-only (#711). Blamed on the first change, since
+    // the parse error doesn't say which one caused it.
+    try {
+      assertJsxParses(result.code);
+    } catch (error) {
+      const { id, label, property } = changes[0]!;
+      const failure = { reason: 'parse-error' as const, error };
+
+      reportError({
+        type: 'update',
+        id,
+        label,
+        property,
+        failure,
+        ...describeUpdateFailure(failure, label, messages),
+      });
+
       return;
     }
 

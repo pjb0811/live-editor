@@ -116,3 +116,45 @@ test('a validation error keeps the declared field spacing without a preflight', 
 
   expect(topAfter - topBefore).toBeCloseTo(errorBox, 0);
 });
+
+test('the source editor saves on blur and refuses markup that does not parse', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixture.html?scenario=source-field');
+
+  const source = page.getByTestId('source');
+  const body = page.locator('[data-node-id="html"] .cm-content');
+  const text = page.locator('[data-node-id="txt"] textarea');
+
+  await page
+    .locator('section[data-id="s1"]')
+    .first()
+    .click({
+      position: { x: 5, y: 5 },
+    });
+  await expect(body).toBeVisible();
+
+  // insertText, so the editor's tag auto-closing doesn't add to the value.
+  await body.click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.insertText('<i>new</i>');
+  await text.click();
+
+  await expect(source).toContainText('<div data-id="html"');
+  await expect(source).toContainText('><i>new</i></div>');
+
+  await body.click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.insertText('a > b');
+  await text.click();
+
+  await expect(page.getByText('Failed to update "Body"')).toBeVisible();
+  await expect(source).toContainText('><i>new</i></div>');
+  await expect(source).not.toContainText('a > b');
+
+  // The document still parses, so other fields still edit.
+  await text.fill('changed');
+  await text.blur();
+
+  await expect(source).toContainText('>changed</p>');
+});

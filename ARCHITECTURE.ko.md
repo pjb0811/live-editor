@@ -203,6 +203,8 @@ extractSections              → Section[] { id, name, code }
 
 거절된 편집은 `reason`이 있는 `UpdateFailure`를 돌려줍니다. `describeUpdateFailure`가 이것을 편집 에러의 제목과 설명으로 바꿉니다.
 
+`update()`는 `innerHTML`·`jsx` 값을 적힌 그대로 소스로 쓰므로 결과가 파싱되지 않을 수 있습니다. `commitChanges`는 결과를 넘기기 전에 파싱해 보고, 파싱되지 않으면 `parse-error` 실패로 거절합니다. 그대로 commit하면 문서 전체가 읽기 전용이 되기 때문입니다(#711).
+
 ### ③ 값 단계 — Items와 Children
 
 어떤 값은 그 자체로 구조를 가집니다. `items` 값은 배열 리터럴이라 행을 이동·복제·추가·삭제할 수 있고, `children` 값은 요소의 JSX 자식입니다.

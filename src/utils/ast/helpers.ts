@@ -1,5 +1,5 @@
 import generate from '@babel/generator';
-import { parseExpression } from '@babel/parser';
+import { parse, parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 
 import { REGEX } from '../../constants';
@@ -14,6 +14,16 @@ export const unwrap = (generated: string) => {
     .replace(/^<>\s*/g, '')
     .replace(/\s*<\/>\s*;?\s*$/g, '')
     .trim();
+};
+
+// Throws Babel's error when `code`, JSX such as a section's source, doesn't
+// parse. Strict, like the document parse, unlike `extract()`, which recovers
+// from errors.
+export const assertJsxParses = (code: string) => {
+  parse(wrap(code), {
+    sourceType: 'module',
+    plugins: ['jsx', 'typescript'],
+  });
 };
 
 export const attrValue = ({

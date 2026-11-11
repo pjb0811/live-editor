@@ -171,6 +171,71 @@ describe('Field JSX editor lifecycle', () => {
 
     expect(focus).not.toHaveBeenCalled();
   });
+
+  // Typing into the editor, as CodeMirror reports it.
+  const typeSource = (text: string) => {
+    act(() => {
+      coreEditorMock.props!.onUpdate?.({
+        docChanged: true,
+        state: { selection: {}, doc: { toString: () => text } },
+      } as unknown as ViewUpdate);
+    });
+  };
+
+  const renderSourceField = (onChange: (value: unknown) => void) =>
+    render(
+      <>
+        <Field
+          binding={binding({
+            property: 'innerHTML',
+            value: '<b>old</b>',
+            rawValue: '<b>old</b>',
+            onChange,
+          })}
+        />
+        <button type="button">Outside</button>
+      </>,
+    );
+
+  it('commits the edited source when focus leaves the editor (#711)', async () => {
+    const onChange = vi.fn();
+
+    renderSourceField(onChange);
+    screen.getByTestId('core-editor').focus();
+    typeSource('<i>new</i>');
+    screen.getByRole('button', { name: 'Outside' }).focus();
+    await act(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('<i>new</i>');
+  });
+
+  it('does not commit when focus leaves without an edit', async () => {
+    const onChange = vi.fn();
+
+    renderSourceField(onChange);
+    screen.getByTestId('core-editor').focus();
+    screen.getByRole('button', { name: 'Outside' }).focus();
+    await act(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('does not commit when focus comes back to the editor in the same task', async () => {
+    const onChange = vi.fn();
+
+    renderSourceField(onChange);
+
+    const editor = screen.getByTestId('core-editor');
+
+    editor.focus();
+    typeSource('<i>new</i>');
+    // A recreated view blurs and takes focus back (#359).
+    editor.blur();
+    editor.focus();
+    await act(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });
 
 // The object-valued branch builds a binding per key through the same
