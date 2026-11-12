@@ -23,6 +23,8 @@ import type { PanelBinding } from '../panel-binding';
 import Field from './field';
 
 interface CoreEditorTestProps {
+  raw?: boolean;
+  fragment?: boolean;
   onCreateEditor?: (view: EditorView) => void;
   onUpdate?: (update: ViewUpdate) => void;
 }
@@ -245,6 +247,88 @@ describe('Field JSX editor lifecycle', () => {
     await act(() => new Promise(resolve => setTimeout(resolve, 0)));
 
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('Field function bindings (#741)', () => {
+  const options = [
+    { label: 'Open', value: 'actions.open' },
+    { label: 'Track', value: 'actions.track' },
+  ];
+
+  it('edits the source without Prettier, which would format it as JSX', () => {
+    render(
+      <Field
+        binding={binding({
+          type: 'function',
+          value: '() => go()',
+          rawValue: '() => go()',
+        })}
+      />,
+    );
+
+    expect(screen.getByTestId('core-editor')).not.toBeNull();
+    expect(coreEditorMock.props).toMatchObject({ raw: true, fragment: false });
+  });
+
+  it('formats a jsx binding as before', () => {
+    render(<Field binding={binding({ type: 'jsx', rawValue: '<b />' })} />);
+
+    expect(coreEditorMock.props).toMatchObject({ raw: false, fragment: true });
+  });
+
+  it('offers an empty choice only while no handler is set', () => {
+    const { rerender } = render(
+      <Field
+        binding={binding({
+          type: 'function',
+          options,
+          value: '',
+          rawValue: '',
+        })}
+      />,
+    );
+
+    expect(
+      screen.getAllByRole('option').map(option => option.textContent),
+    ).toEqual(['None', 'Open', 'Track']);
+
+    rerender(
+      <Field
+        binding={binding({
+          type: 'function',
+          options,
+          value: 'actions.open',
+          rawValue: 'actions.open',
+        })}
+      />,
+    );
+
+    expect(
+      screen.getAllByRole('option').map(option => option.textContent),
+    ).toEqual(['Open', 'Track']);
+  });
+
+  it('commits the chosen option as its source', () => {
+    const onChange = vi.fn();
+
+    render(
+      <Field
+        binding={binding({
+          type: 'function',
+          options,
+          value: 'actions.open',
+          rawValue: 'actions.open',
+          onChange,
+        })}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'actions.track' },
+    });
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('actions.track');
   });
 });
 

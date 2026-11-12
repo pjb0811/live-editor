@@ -1262,3 +1262,113 @@ describe('update: innerText special characters (#593)', () => {
     );
   });
 });
+
+describe('update: function bindings (#741)', () => {
+  const handlerCode = (
+    binding: string,
+    attribute = "onClick={() => alert('hi')}",
+  ) =>
+    `<section data-id="s1">
+  <Button data-id="b1" data-binding={[{ label: 'Click', property: 'onClick'${binding} }]}${attribute ? ` ${attribute}` : ''}>Go</Button>
+</section>`;
+
+  const invalid = {
+    reason: 'invalid-function',
+    dataId: 'b1',
+    property: 'onClick',
+  };
+
+  describe.each([
+    ['type: function', ", type: 'function'"],
+    ['no type, on a function expression', ''],
+  ])('%s', (_, binding) => {
+    const code = handlerCode(binding);
+
+    it.each([
+      ["() => console.log('x')", "onClick={() => console.log('x')}"],
+      ['handleClick', 'onClick={handleClick}'],
+      ['actions.open', 'onClick={actions.open}'],
+      ['  handleClick  ', 'onClick={handleClick}'],
+    ])('writes %j as source', (value, attribute) => {
+      const result = update(code, 'b1', 'Click', value, 'onClick');
+
+      expect(result).toEqual({
+        code: code.replace("onClick={() => alert('hi')}", attribute),
+        success: true,
+      });
+    });
+
+    it.each([["alert('boom')"], ['() => {'], [42], [true]])(
+      'refuses %j',
+      value => {
+        expect(update(code, 'b1', 'Click', value, 'onClick')).toEqual({
+          code,
+          success: false,
+          failure: invalid,
+        });
+      },
+    );
+
+    it.each([[''], ['   '], [undefined]])(
+      'removes the attribute for %j',
+      value => {
+        const result = update(code, 'b1', 'Click', value, 'onClick');
+
+        expect(result.success).toBe(true);
+        expect(result.code).toBe(
+          code.replace(" onClick={() => alert('hi')}", ''),
+        );
+      },
+    );
+  });
+
+  it('refuses to empty a required function binding', () => {
+    const code = handlerCode(", type: 'function', required: true");
+
+    expect(update(code, 'b1', 'Click', '', 'onClick').failure).toEqual({
+      reason: 'required-property',
+      dataId: 'b1',
+      property: 'onClick',
+    });
+  });
+
+  it('adds an absent attribute, and leaves it absent for an empty value', () => {
+    const code = handlerCode(", type: 'function'", '');
+
+    expect(
+      update(code, 'b1', 'Click', 'handleClick', 'onClick').code,
+    ).toContain(' onClick={handleClick}>Go');
+    expect(update(code, 'b1', 'Click', '', 'onClick')).toEqual({
+      code,
+      success: true,
+    });
+  });
+
+  it('gives a valueless attribute a value', () => {
+    const code = handlerCode(", type: 'function'", 'onClick');
+
+    expect(
+      update(code, 'b1', 'Click', 'handleClick', 'onClick').code,
+    ).toContain(' onClick={handleClick}>Go');
+  });
+
+  // A bare reference says nothing about what it refers to, like
+  // `className={styles.root}`, so an untyped binding still preserves it.
+  it('still preserves a reference under an untyped binding', () => {
+    const code = handlerCode('', 'onClick={handleClick}');
+
+    expect(update(code, 'b1', 'Click', 'other', 'onClick').failure).toEqual({
+      reason: 'unsupported-syntax',
+      dataId: 'b1',
+      property: 'onClick',
+    });
+  });
+
+  it('leaves a jsx binding on a handler as it was', () => {
+    const code = handlerCode(", type: 'jsx'");
+
+    expect(
+      update(code, 'b1', 'Click', "alert('boom')", 'onClick').code,
+    ).toContain("onClick={alert('boom')}");
+  });
+});

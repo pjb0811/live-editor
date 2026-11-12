@@ -254,7 +254,9 @@ code. `update()` (`utils/ast/update.ts`):
    one.
 4. `editProperty`: runs the editor for that property (`edit-source.ts`):
    `innerText`, `innerHTML` (or richtext), `children`, or an attribute (edit,
-   add or remove).
+   add or remove). A function binding (`type: 'function'`, or an untyped one on
+   a function expression) takes only a function expression or a reference,
+   checked by `function-source.ts`.
 5. Each editor returns **source spans** to replace, never a modified tree.
    `applyEdits` (`utils/ast/patch.ts`) writes those spans into the original text.
 
@@ -342,14 +344,14 @@ Dnd (dnd.tsx)
 `utils/ast/` reads and edits JSX source with `@babel/standalone`. The files
 follow the pipeline:
 
-| Stage     | Files                                                            | What they do                                                                                                                                                    |
-| --------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared    | `types.ts`, `helpers.ts`, `jsx-name.ts`                          | Types; `wrap`/`unwrap` (parse a JSX fragment as a program and back), `generateCode`; tag names as written                                                       |
-| Document  | `document.ts`, `tree.ts`                                         | Parse the document (cached), find the container and sections, splice section lists back in, build section previews; fill and replace `data-id`s                 |
-| Read      | `extract.ts`, `binding.ts`, `value.ts`, `editable-value.ts`      | JSX → `DataAttrNode[]`; resolve and parse bindings; read a literal's value without evaluating code; list and replace an object or array value's editable leaves |
-| Write     | `update.ts`, `edit-source.ts`, `value-expression.ts`, `patch.ts` | Find the element and binding, check the edit, produce source spans (building expressions from values), apply them                                               |
-| Structure | `items.ts`, `array-source.ts`, `children.ts`                     | Edit array literals and JSX children while keeping everything else byte-identical                                                                               |
-| Check     | `validate.ts`                                                    | `validateBindingValue`: required, min/max, pattern, url, date                                                                                                   |
+| Stage     | Files                                                                                  | What they do                                                                                                                                                    |
+| --------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared    | `types.ts`, `helpers.ts`, `jsx-name.ts`                                                | Types; `wrap`/`unwrap` (parse a JSX fragment as a program and back), `generateCode`; tag names as written                                                       |
+| Document  | `document.ts`, `tree.ts`                                                               | Parse the document (cached), find the container and sections, splice section lists back in, build section previews; fill and replace `data-id`s                 |
+| Read      | `extract.ts`, `binding.ts`, `value.ts`, `editable-value.ts`                            | JSX → `DataAttrNode[]`; resolve and parse bindings; read a literal's value without evaluating code; list and replace an object or array value's editable leaves |
+| Write     | `update.ts`, `edit-source.ts`, `value-expression.ts`, `function-source.ts`, `patch.ts` | Find the element and binding, check the edit, produce source spans (building expressions from values), apply them                                               |
+| Structure | `items.ts`, `array-source.ts`, `children.ts`                                           | Edit array literals and JSX children while keeping everything else byte-identical                                                                               |
+| Check     | `validate.ts`                                                                          | `validateBindingValue`: required, min/max, pattern, url, date                                                                                                   |
 
 Rules every change here follows (also in [the AST skill](./.claude/skills/ast/SKILL.md)):
 

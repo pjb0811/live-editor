@@ -17,6 +17,9 @@ export type FieldKind =
   | 'richtext'
   | 'jsx'
   | 'html'
+  // A function prop's source (`type: 'function'`) — a code editor. With
+  // `options` and a listed or empty value, `'select'` instead (#741).
+  | 'function'
   // A plain object value — one nested field per key.
   | 'object'
   | 'boolean'
@@ -46,6 +49,17 @@ export const getFieldKind = (binding: FieldKindBinding): FieldKind => {
 
   if (binding.canEditValue === false) {
     return 'readonly';
+  }
+
+  // A select only while the value is one of the options, or empty: an
+  // inline function written in the code editor would otherwise show as the
+  // first option.
+  if (type === 'function') {
+    const isListed =
+      Array.isArray(binding.options) &&
+      (value === '' || binding.options.some(option => option.value === value));
+
+    return isListed ? 'select' : 'function';
   }
 
   if (property === 'items' || property === 'data' || type === 'array') {

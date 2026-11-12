@@ -11,18 +11,20 @@ import CoreEditor from '~/components/editor/core';
 
 interface Props {
   value: string;
-  isHTML: boolean;
+  // Saves the text as typed: no Prettier on Cmd/Ctrl+S. For `innerHTML` and
+  // a function's source, which Prettier would format as a JSX fragment.
+  raw: boolean;
   onSave: (value: string) => void;
 }
 
-// A source editor for an `innerHTML` or `jsx` binding. Saves when focus
-// leaves it, like the other fields, and on Cmd/Ctrl+S, which also formats
-// a `jsx` value (#711).
+// A source editor for an `innerHTML`, `jsx` or `function` binding. Saves
+// when focus leaves it, like the other fields, and on Cmd/Ctrl+S, which also
+// formats a `jsx` value (#711).
 //
 // Keeps focus and selection when CodeMirror recreates its view, which
 // `@uiw/react-codemirror` does when a moved item's effects reconnect under
 // Strict Effects (#359).
-const JSXEditorField = ({ value, isHTML, onSave }: Props) => {
+const JSXEditorField = ({ value, raw, onSave }: Props) => {
   const onSaveRef = useLatest(onSave);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -85,8 +87,8 @@ const JSXEditorField = ({ value, isHTML, onSave }: Props) => {
       <CoreEditor
         value={value}
         height="150px"
-        fragment={!isHTML}
-        raw={isHTML}
+        fragment={!raw}
+        raw={raw}
         onSave={onSave}
         onUpdate={handleUpdate}
         onCreateEditor={handleCreateEditor}

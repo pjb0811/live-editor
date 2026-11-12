@@ -8,6 +8,7 @@ import {
   TimePicker,
 } from '@jbpark/ui-kit';
 
+import { useLiveMessages } from '~/components/context/messages';
 import FieldError from '~/components/dnd/panel/fields/field-error';
 import { getFieldKind } from '~/components/dnd/panel/fields/field-kind';
 import { useFieldState } from '~/components/dnd/panel/fields/use-field-state';
@@ -27,6 +28,7 @@ const RICHTEXT_TOOLBAR: ComponentProps<typeof RichTextEditor>['toolbar'] = [
 ];
 
 const UiKitField = ({ binding }: FieldProps) => {
+  const messages = useLiveMessages();
   const { value, rawValue, onChange } = binding;
   const {
     validationError,
@@ -64,12 +66,20 @@ const UiKitField = ({ binding }: FieldProps) => {
   }
 
   if (kind === 'select') {
-    // Takes no `id`, so it points at the label instead.
+    const options = binding.options ?? [];
+
+    // Takes no `id`, so it points at the label instead. A function select
+    // with no handler set starts with an empty choice, as the built-in one
+    // does (#741).
     return (
       <Select
         {...labelledByProps}
         value={rawValue}
-        options={binding.options ?? []}
+        options={
+          binding.type === 'function' && rawValue === ''
+            ? [{ label: messages.panel.noFunction, value: '' }, ...options]
+            : options
+        }
         onChange={commitIfChanged}
       />
     );

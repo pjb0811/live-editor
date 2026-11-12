@@ -2,6 +2,7 @@ import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 
 import { STRING_VALUED_TYPES } from './binding';
+import { isFunctionExpressionNode } from './function-source';
 import { generateCode } from './helpers';
 import type { SourceEdit } from './patch';
 import type { BindingType } from './types';
@@ -461,7 +462,7 @@ export const addAttribute = (
   const separator = ownLine ? '\n' : ' ';
 
   const content =
-    type === 'jsx'
+    type === 'jsx' || type === 'function'
       ? `${propertyName}={${String(value).trim()}}`
       : generateCode(
           t.jsxAttribute(
@@ -478,6 +479,26 @@ export const addAttribute = (
       indent: true,
     },
   ];
+};
+
+// Whether an edit goes through the function editor: a `type: 'function'`
+// binding, or one with no `type` on an attribute that holds a function
+// expression (#741). A bare reference such as `className={styles.root}`
+// doesn't count, since nothing says it's a function.
+export const isFunctionBinding = (
+  type: BindingType | undefined,
+  attribute: t.JSXAttribute | undefined,
+): boolean => {
+  if (type === 'function') {
+    return true;
+  }
+
+  return (
+    type === undefined &&
+    t.isJSXExpressionContainer(attribute?.value) &&
+    !t.isJSXEmptyExpression(attribute.value.expression) &&
+    isFunctionExpressionNode(attribute.value.expression)
+  );
 };
 
 export const canEditAttributeValue = (

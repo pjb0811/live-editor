@@ -72,6 +72,7 @@ live-editor/
 │  │  │  ├─ update.ts       # 값 → AST 반영 (update(), updateAll()) — 바인딩 찾기·가드·속성 편집 단계
 │  │  │  ├─ edit-source.ts  # update의 소스 편집기 (innerText/innerHTML/richtext/속성 추가·수정·삭제)
 │  │  │  ├─ validate.ts     # 바인딩 값 검증
+│  │  │  ├─ function-source.ts # type: 'function' 값(함수 식·참조) 판별 — 실행하지 않음
 │  │  │  └─ tree.ts         # replaceIds()/fillIds()/clone()
 │  │  └─ tailwind/          # Tailwind 관련 유틸
 │  ├─ constants/            # index.ts: 상수, 정규식, 기본 템플릿 / palette-sections.ts: 기본 팔레트 섹션 (PALETTE_SECTIONS, 일반 요소와 Tailwind 클래스, 모듈 불필요)

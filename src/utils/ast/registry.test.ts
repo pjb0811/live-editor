@@ -424,3 +424,32 @@ describe('binding keys', () => {
     ]);
   });
 });
+
+// `type: 'function'` arrives the same way from all three sources (#741).
+describe('function bindings from every source', () => {
+  const schema = [{ label: 'Click', property: 'onClick', type: 'function' }];
+
+  it.each([
+    [
+      'data-binding',
+      `<Button data-id="b" data-binding={[{ label: 'Click', property: 'onClick', type: 'function' }]} onClick={go} />`,
+      {},
+    ],
+    [
+      'bindings',
+      `<Button data-id="b" onClick={go} />`,
+      { bindings: { Button: schema } },
+    ],
+    [
+      'bindingKeys',
+      `<button data-id="b" data-binding-key="click" onClick={go} />`,
+      { bindingKeys: { click: schema } },
+    ],
+  ] as const)('keeps the type from %s', (_, code, sources) => {
+    const [node] = extract(code, sources as never);
+
+    expect(node!.bindings).toEqual([
+      { label: 'Click', property: 'onClick', type: 'function' },
+    ]);
+  });
+});

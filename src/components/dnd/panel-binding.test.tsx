@@ -122,6 +122,41 @@ describe('resolvePanelBindings', () => {
     expect(source.bindings[0]!.canEditValue).toBe(false);
   });
 
+  // Read as source, never run (#741).
+  it.each([
+    ['declared', ", type: 'function'", 'onClick={handleClick}', 'handleClick'],
+    ['detected', '', "onClick={() => alert('hi')}", "() => alert('hi')"],
+  ])(
+    'reads a %s function binding as its source',
+    (_, type, attribute, source) => {
+      const [binding] = resolvePanelBindings(
+        nodeOf(
+          `<Button data-id="fn" data-binding={[{ label: 'Click', property: 'onClick'${type} }]} ${attribute} />`,
+          'fn',
+        ),
+      )!.bindings;
+
+      expect(binding).toMatchObject({
+        type: 'function',
+        value: source,
+        rawValue: source,
+      });
+      expect(binding).not.toHaveProperty('canEditValue');
+    },
+  );
+
+  it('keeps an untyped reference code-editor-only', () => {
+    const [binding] = resolvePanelBindings(
+      nodeOf(
+        `<Button data-id="ref" data-binding={[{ label: 'Click', property: 'onClick' }]} onClick={handleClick} />`,
+        'ref',
+      ),
+    )!.bindings;
+
+    expect(binding!.type).toBeUndefined();
+    expect(binding!.canEditValue).toBe(false);
+  });
+
   it('keeps literal attributes and source-safe array editors enabled', () => {
     const source = resolvePanelBindings(
       nodeOf(

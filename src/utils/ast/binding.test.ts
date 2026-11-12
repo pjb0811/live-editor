@@ -578,6 +578,16 @@ describe('getStructuredValue', () => {
     // Declared `string`: stays the literal text.
     expect(getStructuredValue(node, 'label', 'string')).toBe('42');
   });
+
+  it('keeps a function binding as its source text (#741)', () => {
+    const node = makeNode({
+      attributes: [
+        { name: 'onClick', value: '() => go(1)', isStringLiteral: false },
+      ],
+    });
+
+    expect(getStructuredValue(node, 'onClick', 'function')).toBe('() => go(1)');
+  });
 });
 
 describe('findEditableChildren', () => {

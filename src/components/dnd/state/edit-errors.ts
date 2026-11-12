@@ -63,6 +63,11 @@ export const describeUpdateFailure = (
         title: m.cannotEdit(label),
         description: m.unsupportedSyntax(failure.property),
       };
+    case 'invalid-function':
+      return {
+        title: m.cannotEdit(label),
+        description: m.invalidFunction(failure.property),
+      };
     case 'parse-error':
       return {
         title: m.updateFailed(label),

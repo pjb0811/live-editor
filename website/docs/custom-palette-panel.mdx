@@ -70,12 +70,12 @@ collapsible sidebar of your own, panels in a modal, three CSS grid areas —
 as long as each region renders somewhere inside `Live.Dnd`, which owns the
 drag context they share.
 
-| Region             | Renders                                                                                                                                                                                                                                              |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Live.Dnd.Palette` | The built-in palette draggables, in a scroll container.                                                                                                                                                                                              |
-| `Live.Dnd.Canvas`  | The drop target and the sortable list of sections.                                                                                                                                                                                                   |
-| `Live.Dnd.Panel`   | The built-in property panel, in a scroll container.                                                                                                                                                                                                  |
-| `Live.Dnd.Layout`  | The built-in arrangement, so you can wrap it (a toolbar above it, say) rather than rebuild it, and replace one region through its `palette`/`panel` slots. Also how to get the built-in resizable layout without building it yourself.               |
+| Region             | Renders                                                                                                                                                                                                                                |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Live.Dnd.Palette` | The built-in palette draggables, in a scroll container.                                                                                                                                                                                |
+| `Live.Dnd.Canvas`  | The drop target and the sortable list of sections.                                                                                                                                                                                     |
+| `Live.Dnd.Panel`   | The built-in property panel, in a scroll container.                                                                                                                                                                                    |
+| `Live.Dnd.Layout`  | The built-in arrangement, so you can wrap it (a toolbar above it, say) rather than rebuild it, and replace one region through its `palette`/`panel` slots. Also how to get the built-in resizable layout without building it yourself. |
 
 Each takes the props of a `div` (the region's own styles sit in the
 `components` cascade layer, so a Tailwind utility or a rule outside any layer
@@ -241,7 +241,9 @@ const MyPanel = () => {
                 </option>
               ))}
             </select>
-          ) : binding.type === 'jsx' || binding.type === 'richtext' ? (
+          ) : binding.type === 'jsx' ||
+            binding.type === 'richtext' ||
+            binding.type === 'function' ? (
             <textarea
               defaultValue={binding.rawValue}
               onBlur={e => binding.onChange(e.target.value)}
@@ -448,26 +450,27 @@ number or option binding there's little reason to reach for it — a bare
 for a binding. `Field` makes its choice with this same function, so routing
 on it can't drift from the built-in panel:
 
-| Kind         | Built-in control                                       | Chosen when (first match wins)                            |
-| ------------ | ------------------------------------------------------ | --------------------------------------------------------- |
-| `'readonly'` | Preserved source with a note to use the code editor    | `canEditValue` is `false`                                 |
-| `'items'`    | Items editor (`useDndItems` for your own markup)       | `property` is `items` or `data`, or `type` is `array`     |
-| `'richtext'` | Text area with the HTML source                         | `type` is `richtext`                                      |
-| `'html'`     | Code editor, HTML mode                                 | `property` is `innerHTML`                                 |
-| `'jsx'`      | Code editor                                            | `type` is `jsx`                                           |
-| `'children'` | Children editor (`useDndChildren` for your own markup) | `property` is `children` and `value` is an array of nodes |
-| `'object'`   | One nested field per key                               | `value` is a plain object                                 |
-| `'boolean'`  | Checkbox                                               | `type` is `boolean`, or `value` is a boolean              |
-| `'select'`   | Select                                                 | `options` is set                                          |
-| `'color'`    | Color input                                            | `type` is `color`, or `property` contains `color`         |
-| `'date'`     | Date input                                             | `type` is `date`                                          |
-| `'time'`     | Time input                                             | `type` is `time`                                          |
-| `'datetime'` | Date and time input                                    | `type` is `datetime`                                      |
-| `'url'`      | URL input                                              | `type` is `url`                                           |
-| `'email'`    | Email input                                            | `type` is `email`                                         |
-| `'tel'`      | Phone input                                            | `type` is `tel`                                           |
-| `'number'`   | Number input                                           | `type` is `number`, or `value` is a number                |
-| `'text'`     | Text area                                              | anything else                                             |
+| Kind         | Built-in control                                       | Chosen when (first match wins)                                   |
+| ------------ | ------------------------------------------------------ | ---------------------------------------------------------------- |
+| `'readonly'` | Preserved source with a note to use the code editor    | `canEditValue` is `false`                                        |
+| `'items'`    | Items editor (`useDndItems` for your own markup)       | `property` is `items` or `data`, or `type` is `array`            |
+| `'richtext'` | Text area with the HTML source                         | `type` is `richtext`                                             |
+| `'html'`     | Code editor, HTML mode                                 | `property` is `innerHTML`                                        |
+| `'jsx'`      | Code editor                                            | `type` is `jsx`                                                  |
+| `'function'` | Code editor, without formatting                        | `type` is `function`, unless the select below applies            |
+| `'children'` | Children editor (`useDndChildren` for your own markup) | `property` is `children` and `value` is an array of nodes        |
+| `'object'`   | One nested field per key                               | `value` is a plain object                                        |
+| `'boolean'`  | Checkbox                                               | `type` is `boolean`, or `value` is a boolean                     |
+| `'select'`   | Select                                                 | `options` is set; for `function`, also `value` is listed or `''` |
+| `'color'`    | Color input                                            | `type` is `color`, or `property` contains `color`                |
+| `'date'`     | Date input                                             | `type` is `date`                                                 |
+| `'time'`     | Time input                                             | `type` is `time`                                                 |
+| `'datetime'` | Date and time input                                    | `type` is `datetime`                                             |
+| `'url'`      | URL input                                              | `type` is `url`                                                  |
+| `'email'`    | Email input                                            | `type` is `email`                                                |
+| `'tel'`      | Phone input                                            | `type` is `tel`                                                  |
+| `'number'`   | Number input                                           | `type` is `number`, or `value` is a number                       |
+| `'text'`     | Text area                                              | anything else                                                    |
 
 `isStructuralFieldKind(kind)` is `true` for `'items'` and `'children'`. Those
 are the two kinds whose value holds further data-bound elements, which a flat
@@ -982,15 +985,16 @@ it immediately, because its own array edit has already succeeded by then.
 | `protocols`               | `string[]?`                          | The schemes a `url` value may use. Unset allows any.                                                                                                                                                                                                                                                                                                                                                    |
 | `meta`                    | `Record<string, unknown>?`           | Any authored key that isn't one of the fields above (a group name, help text, ...) — see below, and [Common `meta` keys](./data-binding.mdx#common-meta-keys) for a shared set of names. Control settings such as a step or unit belong on `widget` instead. `undefined` when nothing extra was authored, not an empty object.                                                                          |
 | `value`                   | `unknown`                            | Current value as its real JS type — a `number` for a `number` binding, a `boolean`, an `object`/`array`, a `string` otherwise. Switch on it without re-parsing.                                                                                                                                                                                                                                         |
-| `rawValue`                | `string`                             | The exact source text behind `value`, for cases that can't round-trip through a JS value (`jsx`/`richtext`, or an expression attribute you want to edit as text). Use it for an `<input>` `defaultValue` and for `flattenEditableValue`/`setEditableValue`.                                                                                                                                             |
+| `rawValue`                | `string`                             | The exact source text behind `value`, for cases that can't round-trip through a JS value (`jsx`/`richtext`/`function`, or an expression attribute you want to edit as text). Use it for an `<input>` `defaultValue` and for `flattenEditableValue`/`setEditableValue`.                                                                                                                                  |
 | `canEditValue`            | `boolean?`                           | `false` when reconstructing the modeled value could discard a reference, call, spread, hole, or computed property. Hide or disable the value control and direct the user to the code editor. `undefined` means the value is editable.                                                                                                                                                                   |
 | `element`                 | `{ tagName: string; text: string }?` | The element the binding belongs to: its tag name as written and its own text, trimmed (`''` when it has none). The built-in panel heads each element's fields with these. Absent for a binding that isn't an element's, such as an array item's property.                                                                                                                                               |
 | `present`                 | `boolean?`                           | `false` when the binding names an attribute the element doesn't carry. `onChange(undefined)` removes an attribute and `onChange(value)` adds it back, so this is what an on/off control reads. `undefined` means the attribute is there, or the binding is content (`innerText`, `innerHTML`, `children`). See [Optional attributes](./data-binding.mdx#optional-attributes).                           |
 | `onChange`                | `(value: unknown) => void`           | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). Pass the value as its real type — it's serialized once, at the AST boundary, where the declared `type` is known, so no string quoting on your side.                                                                                                                                                      |
 
-`BindingType` is a closed union of 14 data kinds: `array`, `object`,
-`string`, `number`, `boolean`, `color`, `jsx`, `richtext`, `date`, `time`,
-`datetime`, `url`, `email`, `tel`.
+`BindingType` is a closed union of 15 data kinds: `array`, `object`,
+`string`, `number`, `boolean`, `color`, `jsx`, `richtext`, `function`, `date`,
+`time`, `datetime`, `url`, `email`, `tel`. A binding with no `type` on an
+attribute that holds a function expression arrives as `type: 'function'`.
 Switching on it alone is enough for the scalar types; for `object`/`array`
 values, see `flattenEditableValue` below rather than treating them as plain
 text. [Data Binding](./data-binding.mdx) describes how each field is

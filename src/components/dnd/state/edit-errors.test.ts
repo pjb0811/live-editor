@@ -52,6 +52,19 @@ describe('describeUpdateFailure', () => {
     ).toBe(m.editErrors.checkConsole);
   });
 
+  it('says what a function binding takes (#741)', () => {
+    expect(
+      describeUpdateFailure(
+        { reason: 'invalid-function', dataId: 'x', property: 'onClick' },
+        'Click',
+        m,
+      ),
+    ).toEqual({
+      title: m.editErrors.cannotEdit('Click'),
+      description: m.editErrors.invalidFunction('onClick'),
+    });
+  });
+
   it('gives only a title when there is no failure', () => {
     expect(describeUpdateFailure(undefined, 'Title', m)).toEqual({
       title: m.editErrors.updateFailed('Title'),
