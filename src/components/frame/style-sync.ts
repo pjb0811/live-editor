@@ -3,12 +3,22 @@ const SYNCED_STYLE_ATTR = 'data-live-editor-synced-style';
 type SourceStyle = HTMLLinkElement | HTMLStyleElement;
 type SyncedStyle = HTMLLinkElement | HTMLStyleElement;
 
+// A source `<style>`'s text, transformed, so the transform runs again only
+// when that text or the transform changes (#719).
+interface TransformedStyle {
+  text: string;
+  transform: (content: string) => string;
+  output: string;
+}
+
 interface StyleSyncManager {
   clones: Map<SourceStyle, SyncedStyle>;
+  transformed: WeakMap<SourceStyle, TransformedStyle>;
 }
 
 export const createStyleSyncManager = (): StyleSyncManager => ({
   clones: new Map(),
+  transformed: new WeakMap(),
 });
 
 const isDocument = (target: Document | ShadowRoot): target is Document =>
@@ -21,9 +31,33 @@ const sourceStyles = (document: Document): SourceStyle[] =>
     ),
   );
 
+const transformedText = (
+  source: SourceStyle,
+  manager: StyleSyncManager,
+  transformStyle: (content: string) => string,
+): string => {
+  const text = source.textContent || '';
+  const cached = manager.transformed.get(source);
+
+  if (cached && cached.text === text && cached.transform === transformStyle) {
+    return cached.output;
+  }
+
+  const output = transformStyle(text);
+
+  manager.transformed.set(source, { text, transform: transformStyle, output });
+
+  return output;
+};
+
+// Brings `clone` in line with `source`, writing only what differs. Setting a
+// `<style>`'s text, even to the same value, makes the browser parse it again
+// and build a new stylesheet, and every head change reaches every copy in
+// every frame (#719).
 const copyAttributes = (
   source: SourceStyle,
   clone: SyncedStyle,
+  manager: StyleSyncManager,
   transformStyle: (content: string) => string,
 ) => {
   Array.from(clone.attributes).forEach(attribute => {
@@ -36,22 +70,33 @@ const copyAttributes = (
   });
 
   Array.from(source.attributes).forEach(attribute => {
-    clone.setAttribute(attribute.name, attribute.value);
+    if (clone.getAttribute(attribute.name) !== attribute.value) {
+      clone.setAttribute(attribute.name, attribute.value);
+    }
   });
 
   if (source.tagName === 'LINK' && clone.tagName === 'LINK') {
-    (clone as HTMLLinkElement).disabled = (source as HTMLLinkElement).disabled;
+    const disabled = (source as HTMLLinkElement).disabled;
+
+    if ((clone as HTMLLinkElement).disabled !== disabled) {
+      (clone as HTMLLinkElement).disabled = disabled;
+    }
   }
 
-  clone.textContent =
+  const text =
     source.tagName === 'STYLE'
-      ? transformStyle(source.textContent || '')
+      ? transformedText(source, manager, transformStyle)
       : source.textContent;
+
+  if (clone.textContent !== text) {
+    clone.textContent = text;
+  }
 };
 
 const createClone = (
   source: SourceStyle,
   target: Document | ShadowRoot,
+  manager: StyleSyncManager,
   transformStyle: (content: string) => string,
 ): SyncedStyle => {
   const ownerDocument = isDocument(target) ? target : target.ownerDocument;
@@ -60,7 +105,7 @@ const createClone = (
   ) as SyncedStyle;
 
   clone.setAttribute(SYNCED_STYLE_ATTR, '');
-  copyAttributes(source, clone, transformStyle);
+  copyAttributes(source, clone, manager, transformStyle);
 
   return clone;
 };
@@ -117,10 +162,10 @@ export const reconcileStyles = (
     let clone = manager.clones.get(source);
 
     if (!clone) {
-      clone = createClone(source, target, transformStyle);
+      clone = createClone(source, target, manager, transformStyle);
       manager.clones.set(source, clone);
     } else {
-      copyAttributes(source, clone, transformStyle);
+      copyAttributes(source, clone, manager, transformStyle);
     }
 
     const nextSibling = previous
