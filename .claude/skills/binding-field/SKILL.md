@@ -30,7 +30,7 @@ description: "Adding a binding type (BINDING_TYPES) or a binding field/constrain
 ### 필드(제약)를 추가할 때
 
 1. `src/utils/ast/types.ts`의 `BindingFieldSpec`에 필드와 주석.
-2. `binding.ts`의 `KNOWN_BINDING_KEYS`와 `sanitizeField`. `pick(schema, raw.x)`로 읽어서, 값이 잘못되면 그 필드만 빠지게 합니다.
+2. `binding.ts`의 `KNOWN_BINDING_KEYS`와 `sanitizeField`. 같은 파일의 검사 함수(`string`, `number`, `count` 등, 잘 만들어진 값이면 그 값을, 아니면 `undefined`를 돌려줌)로 `raw.x`를 읽어서, 값이 잘못되면 그 필드만 빠지게 합니다. 맞는 검사가 없으면 같은 형태로 하나 추가합니다(#718에서 schema 라이브러리 대신 일반 검사로 바꿈).
 3. `src/components/dnd/panel-binding.ts`의 `PanelBinding` 필드와 `toBindingFields`. `toBindingFields`의 반환 타입 때문에 빠뜨리면 타입 에러가 납니다.
 4. `validate.ts`의 검사와 `ValidationMessages` 키.
 5. 내장 패널이 써야 하면 `field.tsx`(입력 속성), 배열이면 `items/items.tsx`와 `useDndItems`.

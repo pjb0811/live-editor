@@ -637,3 +637,85 @@ describe('findEditableChildren', () => {
     expect(findEditableChildren(root)).toEqual([]);
   });
 });
+
+// The checks replaced zod schemas (#718); these pin the cases where plain
+// checks could drift from what the schemas accepted.
+describe('binding field checks', () => {
+  const field = (extra: Record<string, unknown>) =>
+    buildField({ label: 'L', property: 'p', ...extra });
+
+  // A field built through `parseBindingExpression`, so values JSON can't
+  // express (`NaN`, `Infinity`) reach the checks as they are.
+  const buildField = (raw: Record<string, unknown>) => {
+    const source = `[{ ${Object.entries(raw)
+      .map(([key, value]) => `${key}: ${toSource(value)}`)
+      .join(', ')} }]`;
+
+    return parseBindingExpression(
+      parseExpression(source) as t.ArrayExpression,
+    )[0];
+  };
+
+  const toSource = (value: unknown): string =>
+    typeof value === 'number' && !Number.isFinite(value)
+      ? String(value)
+      : JSON.stringify(value);
+
+  it('takes finite numbers only for min, max and step', () => {
+    expect(field({ min: 1.5, max: -2, step: 0.5 })).toMatchObject({
+      min: 1.5,
+      max: -2,
+      step: 0.5,
+    });
+    expect(field({ min: NaN, max: Infinity })).not.toHaveProperty('min');
+    expect(field({ max: Infinity })).not.toHaveProperty('max');
+    expect(field({ step: 0 })).not.toHaveProperty('step');
+    expect(field({ step: -1 })).not.toHaveProperty('step');
+  });
+
+  it('takes safe non-negative integers for counts', () => {
+    expect(field({ minLength: 0, maxItems: 3 })).toMatchObject({
+      minLength: 0,
+      maxItems: 3,
+    });
+    expect(field({ maxLength: 1.5 })).not.toHaveProperty('maxLength');
+    expect(field({ minItems: -1 })).not.toHaveProperty('minItems');
+    expect(field({ maxItems: 1e21 })).not.toHaveProperty('maxItems');
+  });
+
+  it('keeps only label and value from an option, and drops a malformed one', () => {
+    expect(
+      field({
+        options: [
+          { label: 'A', value: 'a', extra: 1 },
+          { label: 'B', value: 2 },
+        ],
+      })?.options,
+    ).toEqual([{ label: 'A', value: 'a' }]);
+  });
+
+  it("keeps a widget's own config, and drops a widget with a bad step or unit", () => {
+    expect(
+      field({ widget: { type: 'slider', snapTo: [1, 2] } })?.widget,
+    ).toEqual({ type: 'slider', snapTo: [1, 2] });
+    expect(field({ widget: { type: 'slider', step: 'x' } })).not.toHaveProperty(
+      'widget',
+    );
+    expect(field({ widget: { type: 'slider', unit: 3 } })).not.toHaveProperty(
+      'widget',
+    );
+    expect(field({ widget: { type: '' } })).not.toHaveProperty('widget');
+  });
+
+  it('takes protocols only when every entry is a non-empty string', () => {
+    expect(field({ protocols: ['https'] })?.protocols).toEqual(['https']);
+    expect(field({ protocols: ['https', ''] })).not.toHaveProperty('protocols');
+  });
+
+  it('takes a date or date-time for minDate and maxDate', () => {
+    expect(
+      field({ minDate: '2024-01-01', maxDate: '2024-01-01T10:00' }),
+    ).toMatchObject({ minDate: '2024-01-01', maxDate: '2024-01-01T10:00' });
+    expect(field({ minDate: '2024-1-1' })).not.toHaveProperty('minDate');
+  });
+});

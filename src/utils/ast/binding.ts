@@ -1,6 +1,5 @@
 import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
-import { z } from 'zod';
 
 import { BINDING_PROP, DATA_ATTR } from '../../constants';
 import {
@@ -18,33 +17,85 @@ import {
 } from './types';
 import { evaluateLiteral, parseArrayExpression, parseValue } from './value';
 
-const bindingTypeSchema = z.enum(BINDING_TYPES);
-// A length or an item count.
-const countSchema = z.number().int().nonnegative();
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/);
+// Each check gives the value when it's well formed and `undefined` when it
+// isn't. Every key is checked on its own, so a malformed value becomes absent
+// instead of failing the whole binding, and a typo in `min` loses only `min`
+// (#234). Plain checks rather than a schema library, which cost every
+// consumer of `Live.Dnd` or `./utils/ast` about 17 KB gzip for these (#718).
+type Check<T> = (value: unknown) => T | undefined;
 
-const bindingOptionSchema = z.object({
-  label: z.string(),
-  value: z.string(),
-});
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const string: Check<string> = value =>
+  typeof value === 'string' ? value : undefined;
+
+const boolean: Check<boolean> = value =>
+  typeof value === 'boolean' ? value : undefined;
+
+// Finite only: `NaN` and `Infinity` are no bound or step.
+const number: Check<number> = value =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+const positiveNumber: Check<number> = value => {
+  const checked = number(value);
+
+  return checked !== undefined && checked > 0 ? checked : undefined;
+};
+
+// A length or an item count.
+const count: Check<number> = value =>
+  Number.isSafeInteger(value) && (value as number) >= 0
+    ? (value as number)
+    : undefined;
+
+const DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/;
+
+const date: Check<string> = value =>
+  typeof value === 'string' && DATE.test(value) ? value : undefined;
+
+const bindingType: Check<BindingType> = value =>
+  (BINDING_TYPES as readonly unknown[]).includes(value)
+    ? (value as BindingType)
+    : undefined;
+
+// Non-empty strings, as a new array.
+const protocols: Check<string[]> = value =>
+  Array.isArray(value) &&
+  value.every(item => typeof item === 'string' && item.length > 0)
+    ? [...(value as string[])]
+    : undefined;
+
+// `{ label, value }` and nothing else from the option.
+const bindingOption: Check<BindingOption> = value =>
+  isObject(value) &&
+  typeof value.label === 'string' &&
+  typeof value.value === 'string'
+    ? { label: value.label, value: value.value }
+    : undefined;
 
 // `widget.type` is any string, not an enum: the library implements no
-// widgets, so every value belongs to a custom panel (#236). `.passthrough()`
-// keeps that control's own config, such as `{ type: 'slider', snapTo: [...] }`.
-const bindingWidgetSchema = z
-  .object({
-    type: z.string().min(1),
-    step: z.number().optional(),
-    unit: z.string().optional(),
-  })
-  .passthrough();
+// widgets, so every value belongs to a custom panel (#236). The rest of the
+// object is kept, as that control's own config, such as
+// `{ type: 'slider', snapTo: [...] }`.
+const bindingWidget: Check<BindingWidget> = value => {
+  if (
+    !isObject(value) ||
+    typeof value.type !== 'string' ||
+    value.type.length === 0
+  ) {
+    return undefined;
+  }
 
-// Parses one key on its own. A malformed value becomes absent instead of
-// failing the whole binding, so a typo in `min` loses only `min` (#234).
-const pick = <T>(schema: z.ZodType<T>, value: unknown): T | undefined => {
-  const parsed = schema.safeParse(value);
+  if (value.step !== undefined && number(value.step) === undefined) {
+    return undefined;
+  }
 
-  return parsed.success ? parsed.data : undefined;
+  if (value.unit !== undefined && typeof value.unit !== 'string') {
+    return undefined;
+  }
+
+  return { ...value } as BindingWidget;
 };
 
 // Turns the string form (`widget: 'slider'`) into `{ type }`, so consumers
@@ -54,7 +105,7 @@ const sanitizeWidget = (value: unknown): BindingWidget | undefined => {
     return value ? { type: value } : undefined;
   }
 
-  return pick(bindingWidgetSchema, value);
+  return bindingWidget(value);
 };
 
 // Drops only the malformed options and keeps the valid ones.
@@ -64,7 +115,7 @@ const sanitizeOptions = (value: unknown): BindingOption[] | undefined => {
   }
 
   const options = value.flatMap(option => {
-    const parsed = pick(bindingOptionSchema, option);
+    const parsed = bindingOption(option);
 
     return parsed ? [parsed] : [];
   });
@@ -108,25 +159,25 @@ const sanitizeField = (raw: Record<string, unknown>): BindingRenderLeaf => {
     ([key]) => !KNOWN_BINDING_KEYS.has(key),
   );
   const field: BindingRenderLeaf = {
-    label: pick(z.string(), raw.label),
-    property: pick(z.string(), raw.property),
-    type: pick(bindingTypeSchema, raw.type),
+    label: string(raw.label),
+    property: string(raw.property),
+    type: bindingType(raw.type),
     widget: sanitizeWidget(raw.widget),
     options: sanitizeOptions(raw.options),
     render: sanitizeRenderMap(raw.render),
-    min: pick(z.number(), raw.min),
-    max: pick(z.number(), raw.max),
-    pattern: pick(z.string(), raw.pattern),
-    patternMessage: pick(z.string(), raw.patternMessage),
-    required: pick(z.boolean(), raw.required),
-    minLength: pick(countSchema, raw.minLength),
-    maxLength: pick(countSchema, raw.maxLength),
-    step: pick(z.number().positive(), raw.step),
-    minItems: pick(countSchema, raw.minItems),
-    maxItems: pick(countSchema, raw.maxItems),
-    minDate: pick(dateSchema, raw.minDate),
-    maxDate: pick(dateSchema, raw.maxDate),
-    protocols: pick(z.array(z.string().min(1)), raw.protocols),
+    min: number(raw.min),
+    max: number(raw.max),
+    pattern: string(raw.pattern),
+    patternMessage: string(raw.patternMessage),
+    required: boolean(raw.required),
+    minLength: count(raw.minLength),
+    maxLength: count(raw.maxLength),
+    step: positiveNumber(raw.step),
+    minItems: count(raw.minItems),
+    maxItems: count(raw.maxItems),
+    minDate: date(raw.minDate),
+    maxDate: date(raw.maxDate),
+    protocols: protocols(raw.protocols),
     meta: metaEntries.length > 0 ? Object.fromEntries(metaEntries) : undefined,
   };
 
