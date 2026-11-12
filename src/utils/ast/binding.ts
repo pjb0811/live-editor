@@ -479,8 +479,8 @@ export const getCurrentValue = (
 };
 
 // Types whose value stays a string, even when the text looks like a number
-// or an object. `jsx` and `richtext` hold source code, which `update` writes
-// back as an expression.
+// or an object. `jsx`, `richtext` and `function` hold source code, which
+// `update` writes back as an expression.
 export const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
   'string',
   'url',
@@ -492,6 +492,7 @@ export const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
   'color',
   'jsx',
   'richtext',
+  'function',
 ]);
 
 // The value as its JS type (number, boolean, object, array or string), for

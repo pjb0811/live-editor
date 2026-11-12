@@ -44,6 +44,7 @@ describe('getFieldKind from the dnd entry', () => {
     ['number', { type: 'number' as const, value: 1 }],
     ['number', { value: 1 }],
     ['text', {}],
+    ['function', { type: 'function' as const, value: '() => {}' }],
   ])('%s for %o', (kind, override) => {
     expect(kindOf(override)).toBe(kind);
   });
@@ -63,6 +64,19 @@ describe('getFieldKind from the dnd entry', () => {
     expect(
       kindOf({ options: [{ label: 'A', value: 'a' }], type: 'color' }),
     ).toBe('select');
+  });
+
+  // A select only while it can show the current value (#741).
+  it('gives a function binding with options a select for a listed or empty value', () => {
+    const options = [{ label: 'Open', value: 'actions.open' }];
+    const fn = (value: string) => kindOf({ type: 'function', options, value });
+
+    expect(fn('actions.open')).toBe('select');
+    expect(fn('')).toBe('select');
+    expect(fn('() => go()')).toBe('function');
+    expect(
+      kindOf({ type: 'function', options, value: '', canEditValue: false }),
+    ).toBe('readonly');
   });
 
   // A `children` binding whose value isn't extracted nodes (a plain text

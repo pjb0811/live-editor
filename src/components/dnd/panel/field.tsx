@@ -79,11 +79,11 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  if (kind === 'html' || kind === 'jsx') {
+  if (kind === 'html' || kind === 'jsx' || kind === 'function') {
     return (
       <JSXEditorField
         value={rawValue}
-        isHTML={kind === 'html'}
+        raw={kind !== 'jsx'}
         onSave={commitIfChanged}
       />
     );
@@ -186,6 +186,10 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
         className={styles.control}
         onChange={e => commitIfChanged(e.target.value)}
       >
+        {/* No handler set: choosing this removes the attribute (#741). */}
+        {binding.type === 'function' && rawValue === '' && (
+          <option value="">{messages.panel.noFunction}</option>
+        )}
         {(binding.options ?? []).map(option => (
           <option key={option.value} value={option.value}>
             {option.label}

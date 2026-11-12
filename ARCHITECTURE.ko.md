@@ -198,7 +198,7 @@ extractSections              → Section[] { id, name, code }
 1. 섹션을 파싱하고 `data-id`가 맞는 요소를 찾습니다.
 2. `findBinding`: 그 요소의 바인딩을 `extract`와 같은 세 출처에서 해석하고, `property`(없으면 `label`)가 맞는 것을 찾습니다.
 3. `checkEdit`: 편집기가 관리하는 속성이거나 필수 속성을 지우려는 편집을 거절합니다.
-4. `editProperty`: 그 property의 편집기(`edit-source.ts`)를 실행합니다: `innerText`, `innerHTML`(또는 richtext), `children`, 또는 속성(수정, 추가, 삭제).
+4. `editProperty`: 그 property의 편집기(`edit-source.ts`)를 실행합니다: `innerText`, `innerHTML`(또는 richtext), `children`, 또는 속성(수정, 추가, 삭제). 함수 바인딩(`type: 'function'`, 또는 타입 없이 함수 식을 담은 속성)은 함수 식이나 참조만 받고, `function-source.ts`가 판별합니다.
 5. 각 편집기는 바뀐 트리가 아니라 **바꿀 소스 구간**을 돌려줍니다. `applyEdits`(`utils/ast/patch.ts`)가 그 구간만 원본 텍스트에 씁니다.
 
 거절된 편집은 `reason`이 있는 `UpdateFailure`를 돌려줍니다. `describeUpdateFailure`가 이것을 편집 에러의 제목과 설명으로 바꿉니다.
@@ -246,14 +246,14 @@ Dnd (dnd.tsx)
 
 `utils/ast/`는 `@babel/standalone`으로 JSX 소스를 읽고 편집합니다. 파일은 파이프라인 순서를 따릅니다.
 
-| 단계 | 파일                                                             | 하는 일                                                                                                                      |
-| ---- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 공용 | `types.ts`, `helpers.ts`, `jsx-name.ts`                          | 타입; `wrap`/`unwrap`(JSX 조각을 프로그램으로 파싱하고 되돌림), `generateCode`; 작성된 그대로의 태그 이름                    |
-| 문서 | `document.ts`, `tree.ts`                                         | 문서 파싱(캐시), 컨테이너와 섹션 찾기, 섹션 목록을 다시 끼워 넣기, 섹션 미리보기 만들기; `data-id` 채우기와 교체             |
-| 읽기 | `extract.ts`, `binding.ts`, `value.ts`, `editable-value.ts`      | JSX → `DataAttrNode[]`; 바인딩 해석과 파싱; 코드를 실행하지 않고 리터럴 값 읽기; 객체·배열 값의 편집 가능한 리프 나열과 교체 |
-| 쓰기 | `update.ts`, `edit-source.ts`, `value-expression.ts`, `patch.ts` | 요소와 바인딩 찾기, 편집 확인, 소스 구간 만들기(값에서 표현식 만들기 포함), 적용하기                                         |
-| 구조 | `items.ts`, `array-source.ts`, `children.ts`                     | 나머지를 바이트 단위로 그대로 두고 배열 리터럴과 JSX 자식 편집                                                               |
-| 검사 | `validate.ts`                                                    | `validateBindingValue`: required, min/max, pattern, url, date                                                                |
+| 단계 | 파일                                                                                   | 하는 일                                                                                                                      |
+| ---- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 공용 | `types.ts`, `helpers.ts`, `jsx-name.ts`                                                | 타입; `wrap`/`unwrap`(JSX 조각을 프로그램으로 파싱하고 되돌림), `generateCode`; 작성된 그대로의 태그 이름                    |
+| 문서 | `document.ts`, `tree.ts`                                                               | 문서 파싱(캐시), 컨테이너와 섹션 찾기, 섹션 목록을 다시 끼워 넣기, 섹션 미리보기 만들기; `data-id` 채우기와 교체             |
+| 읽기 | `extract.ts`, `binding.ts`, `value.ts`, `editable-value.ts`                            | JSX → `DataAttrNode[]`; 바인딩 해석과 파싱; 코드를 실행하지 않고 리터럴 값 읽기; 객체·배열 값의 편집 가능한 리프 나열과 교체 |
+| 쓰기 | `update.ts`, `edit-source.ts`, `value-expression.ts`, `function-source.ts`, `patch.ts` | 요소와 바인딩 찾기, 편집 확인, 소스 구간 만들기(값에서 표현식 만들기 포함), 적용하기                                         |
+| 구조 | `items.ts`, `array-source.ts`, `children.ts`                                           | 나머지를 바이트 단위로 그대로 두고 배열 리터럴과 JSX 자식 편집                                                               |
+| 검사 | `validate.ts`                                                                          | `validateBindingValue`: required, min/max, pattern, url, date                                                                |
 
 이 계층의 모든 변경이 따르는 규칙입니다([AST 스킬](./.claude/skills/ast/SKILL.md)에도 있습니다).
 

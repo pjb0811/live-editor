@@ -20,8 +20,10 @@ import {
   editJsxAttribute,
   editRichtext,
   findAttribute,
+  isFunctionBinding,
   removeAttribute,
 } from './edit-source';
+import { isFunctionSource } from './function-source';
 import { generateCode, unwrap, wrap } from './helpers';
 import { getJSXTagName } from './jsx-name';
 import { type SourceEdit, applyEdits } from './patch';
@@ -56,6 +58,9 @@ export type UpdateFailure =
   // nowhere between its tags to put them (#552).
   | { reason: 'self-closing'; dataId: string; property: string }
   | { reason: 'unsupported-syntax'; dataId: string; property: string }
+  // A function binding given something that isn't a function expression or
+  // a reference to one, such as a call or text that doesn't parse (#741).
+  | { reason: 'invalid-function'; dataId: string; property: string }
   | { reason: 'parse-error'; error: unknown };
 
 export interface UpdateResult {
@@ -197,6 +202,47 @@ const toElementEdit = (
   onNull: () => UpdateFailure,
 ): ElementEdit => (result ? { edits: result } : { failure: onNull() });
 
+// A function binding's edit (#741). The value is source text, written as
+// given once it is a function expression or a reference to one. Empty text
+// removes the attribute, since `onClick={}` isn't valid JSX.
+const editFunctionProperty = (
+  source: string,
+  opening: t.JSXOpeningElement,
+  attribute: t.JSXAttribute | undefined,
+  binding: BindingItem,
+  { dataId, value }: Pick<UpdateRequest, 'dataId' | 'value'>,
+): ElementEdit => {
+  const prop = binding.property;
+  const text = typeof value === 'string' ? value.trim() : value;
+
+  if (text === undefined || text === '') {
+    if (binding.required) {
+      return {
+        failure: { reason: 'required-property', dataId, property: prop },
+      };
+    }
+
+    return toElementEdit(
+      attribute ? removeAttribute(source, attribute) : [],
+      () => ({
+        reason: 'parse-error',
+        error: new Error(`could not remove "${prop}"`),
+      }),
+    );
+  }
+
+  if (typeof text !== 'string' || !isFunctionSource(text)) {
+    return { failure: { reason: 'invalid-function', dataId, property: prop } };
+  }
+
+  return toElementEdit(
+    attribute
+      ? editJsxAttribute(opening, prop, text)
+      : addAttribute(source, opening, prop, text, 'function'),
+    () => ({ reason: 'attribute-not-found', dataId, property: prop }),
+  );
+};
+
 // Step 3: the spans that set `binding`'s property on `element`. `undefined`
 // asks for the property to go: an attribute is removed, content is emptied.
 const editProperty = (
@@ -266,6 +312,13 @@ const editProperty = (
 
     default: {
       const attribute = findAttribute(opening, prop);
+
+      if (isFunctionBinding(binding.type, attribute)) {
+        return editFunctionProperty(source, opening, attribute, binding, {
+          dataId,
+          value,
+        });
+      }
 
       if (unset) {
         // Already absent: nothing to remove, and nothing went wrong.
