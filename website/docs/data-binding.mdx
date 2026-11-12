@@ -365,6 +365,9 @@ handler. The value is source text, read and written without being run:
 - A referenced name must be in scope when the section runs: declared in the
   document, or passed through `Live.Dnd`'s `modules`. The editor doesn't check
   that it exists.
+- A handler doesn't run from a click on the canvas, and state it changes in
+  `App` is per section there. To change what another section shows, see
+  [State across sections](./how-it-works.mdx#state-across-sections).
 - Clearing the value removes the attribute, since `onClick={}` isn't valid
   JSX. A `required` binding can't be cleared.
 - With `options`, the select shows while the value is one of them or empty.

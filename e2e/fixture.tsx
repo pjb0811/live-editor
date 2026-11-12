@@ -1,4 +1,4 @@
-import { StrictMode, useState } from 'react';
+import { StrictMode, createContext, useContext, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { EditorView } from '@uiw/react-codemirror';
@@ -563,6 +563,94 @@ export const SourceFieldFixture = ({ initial = sourceFieldCode }) => {
   );
 };
 
+// #743: which state a handler in one canvas section can change in another.
+// A store passed in `modules` is shared; `App` state and state created inside
+// `provider` are per section.
+const storeListeners = new Set<() => void>();
+let storeValue = 0;
+const crossSectionStore = {
+  get: () => storeValue,
+  increment: () => {
+    storeValue += 1;
+    storeListeners.forEach(listener => listener());
+  },
+  subscribe: (listener: () => void) => {
+    storeListeners.add(listener);
+
+    return () => storeListeners.delete(listener);
+  },
+};
+
+const ProviderCount = createContext({ count: 0, increment: () => {} });
+
+const CountingProvider = ({ children }: { children: React.ReactNode }) => {
+  const [count, setCount] = useState(0);
+
+  return (
+    <ProviderCount.Provider
+      value={{ count, increment: () => setCount(value => value + 1) }}
+    >
+      {children}
+    </ProviderCount.Provider>
+  );
+};
+
+const crossSectionModules = {
+  'app-store': crossSectionStore,
+  'provider-count': { useProviderCount: () => useContext(ProviderCount) },
+};
+
+const withCountingProvider = (children: React.ReactNode) => (
+  <CountingProvider>{children}</CountingProvider>
+);
+
+const crossSectionCode = `import { useState, useSyncExternalStore } from 'react';
+import store from 'app-store';
+import { useProviderCount } from 'provider-count';
+
+const Counts = ({ id, app }) => {
+  const shared = useSyncExternalStore(store.subscribe, store.get);
+  const provided = useProviderCount();
+
+  return <p data-testid={id}>{'app=' + app + ' store=' + shared + ' provider=' + provided.count}</p>;
+};
+
+const Increment = ({ onApp }) => {
+  const provided = useProviderCount();
+
+  return <button data-testid="increment" onClick={() => { onApp(); store.increment(); provided.increment(); }}>Increment</button>;
+};
+
+const App = () => {
+  const [app, setApp] = useState(0);
+
+  return (
+    <main id="app-container">
+      <section data-id="s1" data-name="One">
+        <Increment onApp={() => setApp(value => value + 1)} />
+        <Counts id="counts-1" app={app} />
+      </section>
+      <section data-id="s2" data-name="Two">
+        <Counts id="counts-2" app={app} />
+      </section>
+    </main>
+  );
+};
+
+export default App;`;
+
+const CrossSectionFixture = () => (
+  <Live>
+    <div style={{ height: 600 }}>
+      <Live.Dnd
+        value={crossSectionCode}
+        modules={crossSectionModules}
+        provider={withCountingProvider}
+      />
+    </div>
+  </Live>
+);
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
@@ -577,6 +665,7 @@ const fixtures = {
   'field-error': <FieldErrorFixture />,
   'source-field': <SourceFieldFixture />,
   'function-field': <SourceFieldFixture initial={functionFieldCode} />,
+  'cross-section': <CrossSectionFixture />,
 } as const;
 
 createRoot(document.getElementById('root')!).render(

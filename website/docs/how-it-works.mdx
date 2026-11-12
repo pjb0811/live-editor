@@ -77,6 +77,18 @@ document work in every section, a section that didn't change isn't rendered
 again, and a section that fails shows its error in its own slot without
 affecting the others. See [Sections that fail](./drag-and-drop.mdx#sections-that-fail).
 
+Two things follow from that:
+
+- **Each section runs the document on its own.** It has its own `App`
+  instance, and the document's top level runs once per section. So state kept
+  in `App` or in a top-level variable is separate in each section on the
+  canvas, while `Live.Preview`, which renders the whole document once, shares
+  it. See [State across sections](#state-across-sections).
+- **The canvas doesn't run pointer interactions.** Each section is covered,
+  so a click or drag selects and moves the section instead of reaching its
+  content. An `onClick` in a section doesn't run from a click on the canvas;
+  try handlers in `Live.Preview`.
+
 ## Elements, ids and bindings
 
 Inside a section, the panel edits **elements** through their **bindings**.
@@ -137,6 +149,66 @@ like any other script. Only run code you trust.
 Compiled code can import `react` and whatever you pass in `modules`.
 `uiKitModules` from `@jbpark/live-editor/ui-kit` adds `ui-kit` and
 `ui-kit/utils`.
+
+## State across sections
+
+A handler in one section can change what another section shows, as long as
+the state lives somewhere every section reads. Where that is depends on what
+renders the document:
+
+| State lives in                                                 | `Live.Preview` | `Live.Dnd` canvas    |
+| -------------------------------------------------------------- | -------------- | -------------------- |
+| `useState` in the document's `App`                             | Shared         | One copy per section |
+| A top-level variable in the document                           | Shared[^1]     | One copy per section |
+| A store you pass in `modules`                                  | Shared         | Shared               |
+| Your app's state, through a context hook you pass in `modules` | Shared         | Shared               |
+| Your app's state, through `props`                              | Shared         | Shared               |
+| State created inside `provider`                                | Shared         | One copy per section |
+
+[^1]:
+    Changing a variable doesn't re-render anything, and it's reset whenever
+    the document is compiled again.
+
+`provider` is called once per section, so a component it returns that holds
+its own state is mounted once per section. Keep the state in your app, above
+`Live`, and have the provider only pass it down.
+
+For state every section shares, create a store once in your app, pass it in
+`modules`, and refer to what each handler changes by a key rather than by
+where it sits, so the link survives moving a section:
+
+```tsx
+// Your app: one store, created once.
+const store = createKeyedStore(); // get(key), set(key, value), subscribe(listener)
+const modules = { 'app-store': store };
+
+<Live.Dnd value={value} onChange={setValue} modules={modules} />;
+```
+
+```tsx
+// The document
+import { useSyncExternalStore } from 'react';
+
+import store from 'app-store';
+
+const Tabs = () => {
+  const tab = useSyncExternalStore(store.subscribe, () =>
+    store.get('hero-tab'),
+  );
+  // ...
+};
+
+// In another section
+<button onClick={() => store.set('hero-tab', 2)}>Show pricing</button>;
+```
+
+If the document only ever runs in `Live.Preview`, `useState` in `App` is
+enough.
+
+Values inside `modules` must stay the same objects between renders. The
+document is compiled again whenever one of them changes, which resets its
+top-level variables; see
+[Keeping edits fast](./drag-and-drop.mdx#keeping-edits-fast).
 
 ## One word, several meanings
 

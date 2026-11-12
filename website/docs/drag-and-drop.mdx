@@ -358,5 +358,13 @@ A provider that depends on state still works; pass it through `useCallback`
 with that state as a dependency, and sections re-render when the state
 changes.
 
-`frame` and `modules` don't need this. They are compared by value, so writing
-them inline is fine.
+`frame` and `modules` are compared by value, so writing them inline is fine.
+For `modules` that means its entries, each by reference: an entry that is a
+new object or function on every render, such as
+`modules={{ theme: { useTheme } }}`, compiles every section again on every
+render, which also resets the document's top-level variables. Define such
+values outside the component.
+
+A `provider` that holds its own state gets one copy of it per section, since
+it's called once per section. See
+[State across sections](./how-it-works.mdx#state-across-sections).
