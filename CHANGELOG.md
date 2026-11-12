@@ -1,5 +1,89 @@
 # Changelog
 
+## 6.1.1
+
+### Patch Changes
+
+- 78391a5: Show Babel's message when preview code doesn't compile
+
+  When preview code didn't compile, `Live.Preview` and each canvas section showed the browser's `new Function` syntax error, such as `Unexpected token '<'`, instead of Babel's, and Babel's error was logged with `console.error` on every failed compile. The error now is Babel's message with its line and column and a code frame, for example `Unterminated JSX contents. (1:23)`, and a failed compile no longer logs by itself.
+
+- 78391a5: Stop lowering preview code to ES5
+
+  `compile()` ran Babel's `env` preset without targets, which rewrote arrow functions, classes, destructuring and `async` functions into ES5 for no browser that React 19 runs in. The preset is gone, so preview code keeps that syntax as written, and compiling the default palette document (9 sections, 30.8 KB) takes about 63 ms instead of 98 ms in Node. A host that inspects the compiled output will see it change shape; no public API changes.
+
+- 78391a5: Compile TypeScript that a heuristic used to miss
+
+  `compile()` decided between Babel's TypeScript and plain presets with a set of regular expressions. Common TypeScript that matched none of them, such as `document.body!`, `new Map<string, number>()`, `satisfies` or `useState<string | null>(null)`, was compiled as JavaScript and failed. Every document now goes through the TypeScript preset, which accepts plain JavaScript too. The built-in editor's Cmd/Ctrl+S formatting uses Prettier's `babel-ts` parser for the same reason.
+
+- 6e515cb: Pass `Live.Dnd`'s `props` to the sections' component
+
+  The docs describe `Live.Dnd`'s `props` as props for the sections, but a section's component received only `container` and a leftover `headers` prop. The `props` were spread onto the internal section renderer instead, so a key named like one of its own props (`preview`, `frame`, `modules`, `provider`, `sectionId`) changed how the section was compiled or framed. `preview` replaced the section's content.
+
+  A section's component now receives every key of `props`, plus `container`, as `Live.Preview`'s component does, and so does the copy shown while a section is dragged. An inline `props` object whose entries are unchanged still doesn't re-render the sections.
+
+- ebefecf: Drop the `zod` dependency
+
+  `zod` was used by one file, for the checks that read a `data-binding` declaration's fields. Those are now plain checks that accept and drop the same values, so `zod` is no longer installed with the package. A consumer bundle of `@jbpark/live-editor/utils/ast` shrinks from 194.3 KB to 177.7 KB gzip.
+
+- 2b3b055: Call `frame.onLoaded` once per iframe document
+
+  An `onLoaded` passed inline, or an inline `frame.scripts` array, made the iframe set its document up again on every render of the frame: it re-applied the host styles and called `onLoaded` again. An `onLoaded` that sets state could loop. `onLoaded` now runs once per iframe document: after the initial load, and again only when moving the iframe reloads it. A script added to `scripts` later is still injected.
+
+- 84fa11c: Stop rewriting every copied style on any host `<head>` change with `frame.syncStyle`
+
+  With `syncStyle`, any change to the host's `<head>` set every attribute and the text of every copied style in every frame, including the ones that hadn't changed. Setting a `<style>`'s text makes the browser parse it again and build a new stylesheet, and the viewport-unit conversion ran again over the full CSS text each time. A copy is now written only where it differs from its source, and the conversion runs again only when that source's text changes. In Chromium, adding an unrelated `<style>` to a page with 9 framed canvas sections rebuilt all 126 copied stylesheets before, and none after.
+
+- a03c34c: Read and write negative numbers in bindings and `items` values
+
+  A negative number typed into a number field of the Items editor threw `NumericLiterals must be non-negative finite numbers` and the edit was lost without a message. An attribute such as `count={-5}` was also read as the string `"-5"`, so it got a text control, and an edit rewrote it as the string attribute `count="-7"`.
+
+  Negative numbers are now written as `-n`, `count={-5}` reads as the number `-5`, and `parseValue('-5')` returns `-5`. Text that isn't a number in a number item, such as `abc`, is refused with the usual items error instead of throwing.
+
+- d7c215d: Stop listing JSX inside an `items` value twice when its element sits under a `children` binding
+
+  `extract()` leaves the data-bound JSX inside an `items` value out of its top-level results, since the Items editor reads those elements itself. That held only when the element with the `items` binding was itself a top-level result. Under an element with a `children` binding, the JSX inside its `items` was listed at the top level too, so the panel showed the same element twice. It now appears once, in the Items editor.
+
+- a405c1e: Keep an object binding's source as written when the panel edits one key
+
+  Editing one key of an object binding, such as `color` in `style={{ color: 'red', fontSize: 12 }}`, rewrote the whole object: keys were quoted and the value was printed over several lines. The built-in panel now replaces only that key's value in the source, so the edit gives `style={{ color: 'blue', fontSize: 12 }}`. A key of a nested object is edited the same way. When the source can't be edited in place, the panel commits the whole object as before. A custom panel that renders the built-in `Field` for an object binding now receives the edited source string in its `onChange`, which `update()` and the binding's own `onChange` accept as before.
+
+- aed97d9: Save the panel's source editor on blur, and refuse markup that would stop the section parsing
+
+  The built-in panel's editor for an `innerHTML` or `type: 'jsx'` binding saved only on Cmd/Ctrl+S, with nothing on screen saying so. It now also saves when focus leaves it, like the other fields. Cmd/Ctrl+S still saves, and still formats a `jsx` value.
+
+  Its value also went into the document unchecked. A value such as `a > b`, `<b>unclosed` or an emptied `jsx` field left the document unparseable, and `Live.Dnd` then refused every later edit. A panel edit whose result doesn't parse is now refused: the document stays as it was, and the error goes to `onEditError` (or the toast) as an `update` error with a `parse-error` failure. `update()` itself is unchanged.
+
+- 94b20d3: Apply the div props that `Live.Preview`, `Live.Error` and `Error.Runtime` accept
+
+  Their props types extend the `div` props, so TypeScript accepted `id`, `style`, `data-*`, `aria-*`, event handlers and `ref`, but `Live.Preview` applied only `className`, `Live.Error` only `className` and `style`, and `Error.Runtime` none of them. Each now applies them to its outer `div`, the element that already gets `className`, as `Live.Dnd` does. On `Live.Preview`, a host `style` is merged over the built-in one, and a host `ref` is merged with the internal one.
+
+  - `children` and `dangerouslySetInnerHTML` are no longer in these types. They were never applied, since each component renders its own content, so passing one is now a type error.
+  - `Live.Preview`'s `container` prop is deprecated. It has no effect and will be removed in the next major version.
+
+- 953d0ab: Recover when an edit moves a hook from one component to another
+
+  A preview keeps its component mounted across a recompile while the list of hook calls in the source stays the same. The list is read from the whole document, so moving a hook from one component into another kept it the same while the root component's own hook count changed. React then threw `Rendered more hooks than during the previous render`, and `Live.Preview` or the canvas section showed a rendering error until "Try Again" was pressed. Now, when a new compile throws on its first render, the preview remounts once before showing an error. An error from a compile that has already rendered is shown as before.
+
+- 893f2b0: Stop an unrelated page error from unmounting or hiding `Live.Preview`
+
+  `Live.Preview` listens for `error` and `unhandledrejection` on `window`, so any error on the page reached it, including errors from the host app and the browser's benign `ResizeObserver loop` notice. Such an error replaced the previewed component with a "Runtime Error" box, which unmounted it and lost its state. With `showError` and a `code` prop, the preview could stay hidden for good: the visible box had no button, and fixing the code didn't clear it.
+
+  - The error box now shows next to the preview instead of replacing it, so the previewed component keeps its state.
+  - The `ResizeObserver loop completed with undelivered notifications` and `ResizeObserver loop limit exceeded` notices are ignored.
+  - The listeners no longer call `preventDefault()`, so the browser reports the error in the console again, with its stack.
+  - With `showError`, the error box has a "Try Again" button, and the error clears when the code changes.
+
+- c5a816e: Stop caching a failed `frame.scripts` fetch as the script
+
+  A script in `frame.scripts` was fetched and turned into a blob URL without checking the response status. A 404 or 500 body, usually an HTML error page, was cached as the script for the rest of the session and injected into every frame, where it failed as a syntax error inside the frame. A response that isn't ok now rejects with the status and the URL, caches nothing, and a later load fetches the script again.
+
+- b3be49a: Render `Live.Dnd` and a framed `Live.Preview` on the server without throwing
+
+  Server rendering, including Next.js pre-rendering a `'use client'` component, threw `ReferenceError: document is not defined` for `Live.Dnd` and for `Live.Preview` with a `frame`. Both now render on the server and show their previews once the page hydrates, with no hydration mismatch. They no longer compile or run the previewed code on the server, since its output can't reach the server HTML. A `Live.Preview` without `frame` renders on the server as before.
+
+  The docs and READMEs have a new "Next.js and server rendering" section.
+
 ## 6.1.0
 
 ### Minor Changes
