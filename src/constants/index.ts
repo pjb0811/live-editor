@@ -34,21 +34,7 @@ export const RESERVED_BINDING_PROPERTIES: readonly string[] = [
 export const REGEX = {
   NUMBER: /^-?\d+(\.\d+)?$/,
   BOOLEAN_OR_NULL: /^(true|false|null|undefined)$/,
-  MODULE_IMPORT_EXPORT_LINE:
-    /^\s*(?:import|export)\b[^\n]*\bfrom\s+['"][^'"]*['"];?\s*$/gm,
 } as const;
-
-export const TS_PATTERNS = [
-  /interface\s+\w+/,
-  /type\s+\w+\s*=/,
-  /:\s*\w+(\[\])?(\s*\||\s*&|\s*=|\s*;|\s*,|\s*\))/,
-  /as\s+\w+/,
-  /<[A-Z]\w*>/,
-  /enum\s+\w+/,
-  /public\s+|private\s+|protected\s+/,
-  /readonly\s+/,
-  /\?\s*:/,
-] as const;
 
 export const BINDING_PROP = {
   CHILDREN: 'children',

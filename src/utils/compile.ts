@@ -6,7 +6,6 @@ import type { Module } from '~/types';
 
 import { CONFIG } from '../constants';
 import { createBoundedCache } from './cache';
-import { detectTypeScript } from './detect-typescript';
 import { registerEditorCache } from './editor-caches';
 
 interface CompilationKey {
@@ -74,40 +73,55 @@ export const clearCompilationCache = () => {
 // with `React` in scope and has no `react/jsx-runtime` to import.
 const REACT_PRESET: [string, object] = ['react', { runtime: 'classic' }];
 
+const FILENAME = 'preview.tsx';
+
 // Transforms JSX and TypeScript with `@babel/standalone`'s presets, without
 // the `typescript` package (#192). Babel works per file without types, so a
 // `const enum` becomes a real enum and legacy decorators aren't supported.
-// On an error, the input comes back unchanged.
-const transformCode = (code: string, isTypeScript = false): string => {
-  try {
-    const result = Babel.transform(code, {
-      filename: isTypeScript ? 'preview.tsx' : 'preview.jsx',
-      presets: isTypeScript
-        ? ['typescript', 'env', REACT_PRESET]
-        : ['env', REACT_PRESET],
-      sourceType: 'module',
-      plugins: [Babel.availablePlugins['transform-modules-commonjs']],
-    })?.code;
+//
+// Every document goes through the TypeScript preset: it accepts plain
+// JavaScript too, and guessing which one a document is let common TypeScript
+// through as JavaScript (#713). There is no `env` preset: the browsers React
+// 19 runs in support the syntax as written, and lowering it to ES5 slowed
+// every compile (#717). Only the module transform is needed, for `require`
+// and `exports`.
+const transformCode = (code: string): string =>
+  Babel.transform(code, {
+    filename: FILENAME,
+    presets: ['typescript', REACT_PRESET],
+    sourceType: 'module',
+    plugins: [Babel.availablePlugins['transform-modules-commonjs']],
+  })?.code || '';
 
-    return result || '';
-  } catch (e) {
-    console.error('❌ Babel transformation error:', e);
-    return code;
-  }
-};
+// Babel's message names the problem and its position, with a code frame
+// under it. The filename it starts with is ours, not the author's (#720).
+const describeTransformError = (e: unknown): string =>
+  (e instanceof Error ? e.message : String(e)).replace(
+    /^\/?preview\.tsx: /,
+    '',
+  );
 
 const compileModule = (
   code: string,
   modules: Record<string, unknown>,
 ): Module => {
-  const isTypeScript = detectTypeScript(code);
-
   type RenderFunction = (
     exports: Module['exports'],
     require: (name: string) => unknown,
     module: Module,
     React: typeof import('react'),
   ) => void;
+
+  let transformed: string;
+
+  // A failed transform reports Babel's error. Handing the source to
+  // `new Function` instead reported that one, which doesn't say what's
+  // wrong (#720).
+  try {
+    transformed = transformCode(code);
+  } catch (e) {
+    return { exports: {}, error: describeTransformError(e) };
+  }
 
   let render: RenderFunction;
 
@@ -119,7 +133,7 @@ const compileModule = (
       'require',
       'module',
       'React',
-      transformCode(code, isTypeScript),
+      transformed,
     ) as RenderFunction;
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Syntax error';

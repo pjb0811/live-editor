@@ -1,7 +1,5 @@
 import { useCallback, useMemo } from 'react';
 
-import { detectTypeScript } from '~/utils/detect-typescript';
-
 // Prettier is an optional peer dependency (#282), loaded on first use.
 // Without it, code comes back unformatted.
 const loadPrettier = async () => {
@@ -48,7 +46,6 @@ export const useFormatCode = ({
 
   return useCallback(
     async (code: string) => {
-      const isTypeScript = detectTypeScript(code);
       const source = fragment ? `<>${code}</>` : code;
 
       // Only a missing prettier is swallowed here; a genuine format error
@@ -62,7 +59,8 @@ export const useFormatCode = ({
       }
 
       const formatted = await prettier.format(source, {
-        parser: isTypeScript ? 'typescript' : 'babel',
+        // Parses JavaScript and TypeScript alike, as `compile()` does (#713).
+        parser: 'babel-ts',
         plugins: prettier.plugins,
         ...prettierConfig,
       });
