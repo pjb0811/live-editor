@@ -158,3 +158,37 @@ test('the source editor saves on blur and refuses markup that does not parse', a
 
   await expect(source).toContainText('>changed</p>');
 });
+
+test('the function editor writes a handler and refuses a call (#741)', async ({
+  page,
+}) => {
+  await page.goto('/e2e/fixture.html?scenario=function-field');
+
+  const source = page.getByTestId('source');
+  const handler = page.locator('[data-node-id="btn"] .cm-content');
+  const text = page.locator('[data-node-id="txt"] textarea');
+
+  await page
+    .locator('section[data-id="s1"]')
+    .first()
+    .click({ position: { x: 5, y: 5 } });
+  await expect(handler).toBeVisible();
+
+  await handler.click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.insertText('() => console.log("new")');
+  await text.click();
+
+  await expect(source).toContainText('onClick={() => console.log("new")}>Go');
+
+  await handler.click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.insertText("alert('boom')");
+  await text.click();
+
+  await expect(
+    page.getByText('Cannot edit "Click" in the panel'),
+  ).toBeVisible();
+  await expect(source).toContainText('onClick={() => console.log("new")}>Go');
+  await expect(source).not.toContainText('boom');
+});

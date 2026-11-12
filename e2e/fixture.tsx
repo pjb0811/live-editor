@@ -538,8 +538,20 @@ const sourceFieldCode = `const App = () => (
 
 export default App;`;
 
-export const SourceFieldFixture = () => {
-  const [code, setCode] = useState(sourceFieldCode);
+// A handler edited through a `type: 'function'` binding (#741).
+const functionFieldCode = `const App = () => (
+  <main id="app-container">
+    <section data-id="s1" data-name="One">
+      <button data-id="btn" data-binding={[{ label: 'Click', property: 'onClick', type: 'function' }]} onClick={() => console.log('old')}>Go</button>
+      <p data-id="txt" data-binding={[{ label: 'Text', property: 'innerText' }]}>plain</p>
+    </section>
+  </main>
+);
+
+export default App;`;
+
+export const SourceFieldFixture = ({ initial = sourceFieldCode }) => {
+  const [code, setCode] = useState(initial);
 
   return (
     <Live>
@@ -652,6 +664,7 @@ const fixtures = {
   history: <HistoryFixture />,
   'field-error': <FieldErrorFixture />,
   'source-field': <SourceFieldFixture />,
+  'function-field': <SourceFieldFixture initial={functionFieldCode} />,
   'cross-section': <CrossSectionFixture />,
 } as const;
 

@@ -52,6 +52,8 @@ export interface LiveMessages {
     telPlaceholder: string;
     numberPlaceholder: string;
     textPlaceholder: string;
+    // The empty choice of a function select: no handler set (#741).
+    noFunction: string;
   };
   // The built-in editor for an array value.
   items: {
@@ -113,6 +115,7 @@ export interface LiveMessages {
     noBinding: string;
     elementNotFound: string;
     unsupportedSyntax: (property: string) => string;
+    invalidFunction: (property: string) => string;
     selfClosing: (property: string) => string;
     checkConsole: string;
     syntaxError: string;
@@ -203,6 +206,7 @@ export const defaultMessages: LiveMessages = {
     telPlaceholder: '+1 555 0100',
     numberPlaceholder: 'Enter a numeric value',
     textPlaceholder: 'Enter a value',
+    noFunction: 'None',
   },
   items: {
     heading: count => `Items (${count})`,
@@ -263,6 +267,8 @@ export const defaultMessages: LiveMessages = {
     elementNotFound: 'The target element could not be found in this section.',
     unsupportedSyntax: property =>
       `The "${property}" expression was preserved. Change it in the code editor instead.`,
+    invalidFunction: property =>
+      `"${property}" must be a function or a reference to one, such as () => {} or handlers.open.`,
     selfClosing: property =>
       `This element is self-closing, so it has no content for "${property}". Give it a closing tag in the code editor.`,
     checkConsole: 'Check the console for details.',

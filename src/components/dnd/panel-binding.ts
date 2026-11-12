@@ -4,6 +4,7 @@ import {
   getStructuredValue,
   readNodeBindings,
 } from '~/utils/ast/binding';
+import { isFunctionExpressionSource } from '~/utils/ast/function-source';
 import {
   type BindingItem,
   type BindingOption,
@@ -127,6 +128,24 @@ export interface PanelBindingSource {
 const readAttribute = (node: DataAttrNode, name: string) =>
   node.dataAttributes.find(attribute => attribute.name === name)?.value;
 
+// A binding with no `type` on an attribute that holds a function
+// expression is a function binding, as `update()` treats it (#741).
+const isDetectedFunction = (node: DataAttrNode, binding: BindingItem) => {
+  if (binding.type !== undefined) {
+    return false;
+  }
+
+  const attribute = node.attributes.find(
+    candidate => candidate.name === binding.property,
+  );
+
+  return (
+    attribute !== undefined &&
+    attribute.isStringLiteral !== true &&
+    isFunctionExpressionSource(attribute.value ?? '')
+  );
+};
+
 const canEditBindingValue = (node: DataAttrNode, binding: BindingItem) => {
   // The editor owns these attributes; `update()` refuses them too (#429).
   if (RESERVED_BINDING_PROPERTIES.includes(binding.property)) {
@@ -141,7 +160,9 @@ const canEditBindingValue = (node: DataAttrNode, binding: BindingItem) => {
     binding.property === 'data' ||
     binding.type === 'array' ||
     binding.type === 'jsx' ||
-    binding.type === 'richtext'
+    binding.type === 'richtext' ||
+    binding.type === 'function' ||
+    isDetectedFunction(node, binding)
   ) {
     return true;
   }
@@ -226,6 +247,7 @@ const toPanelBindingData = (
   binding: BindingItem,
 ): PanelBindingData => ({
   ...toBindingFields(binding),
+  ...(isDetectedFunction(node, binding) && { type: 'function' as const }),
   id,
   value: getStructuredValue(node, binding.property, binding.type),
   rawValue: getCurrentValue(node, binding.property),

@@ -173,6 +173,30 @@ describe('uiKitFields', () => {
     expect(select.hasAttribute('aria-labelledby')).toBe(false);
   });
 
+  // As the built-in select does (#741).
+  it('offers an empty choice in a function select with no handler set', () => {
+    render(
+      withUiKit(
+        <Field
+          binding={binding({
+            label: 'Click',
+            property: 'onClick',
+            type: 'function',
+            value: '',
+            rawValue: '',
+            options: [{ label: 'Open', value: 'actions.open' }],
+          })}
+        />,
+      ),
+    );
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Click' }));
+
+    expect(
+      screen.getAllByRole('option').map(option => option.textContent),
+    ).toEqual(['None', 'Open']);
+  });
+
   it('names the color picker by the field label', () => {
     render(
       withUiKit(

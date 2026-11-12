@@ -315,19 +315,71 @@ that use them, and keep a key's name once documents refer to it.
 | `tel`      | Phone input                                                              | `required`, `pattern`, `minLength`, `maxLength` (no built-in format, since phone formats differ by country) |
 | `richtext` | Text area with the HTML source                                           | —                                                                                                           |
 | `jsx`      | Code editor                                                              | —                                                                                                           |
+| `function` | Code editor, or a select with `options`                                  | a function expression or a reference to one. See [Function props](#function-props)                          |
 | `object`   | One nested field per key                                                 | per nested field                                                                                            |
 | `array`    | Item list                                                                | `minItems`, `maxItems`, and per nested field                                                                |
 
 Without a `type`, the built-in panel picks a control from the current value (a
 checkbox for `true`, a number input for `42`, and so on). A property whose name
-contains `color` also gets a color input. `options` replaces the text, number,
-color, date, time, URL, email and phone controls with a select.
+contains `color` also gets a color input. An attribute that holds an arrow
+function or a `function` expression is edited as `type: 'function'`. `options`
+replaces the text, number, color, date, time, URL, email and phone controls
+with a select.
 
 The built-in controls are native inputs, selects and text areas. For a date
 picker, a time picker, a color picker and a rich text editor from
 `@jbpark/ui-kit`, pass
 [`uiKitFields`](./custom-palette-panel.mdx#ui-kit-controls-uikitfields) as
 `renderField`.
+
+### Function props
+
+`type: 'function'` edits a prop that takes a function, such as an event
+handler. The value is source text, read and written without being run:
+
+```tsx
+// A code editor for the handler's source
+<button
+  data-binding={[{ label: 'On click', property: 'onClick', type: 'function' }]}
+  onClick={() => console.log('clicked')}
+/>
+
+// A select of handlers the host provides
+<button
+  data-binding={[{
+    label: 'On click',
+    property: 'onClick',
+    type: 'function',
+    options: [
+      { label: 'Open modal', value: 'actions.openModal' },
+      { label: 'Track click', value: 'actions.track' },
+    ],
+  }]}
+  onClick={actions.openModal}
+/>
+```
+
+- An edit takes an arrow function, a `function` expression, or a reference
+  such as `handleClick` or `actions.openModal`. Anything else is refused,
+  including a call such as `alert('hi')`, which would run on every render.
+- A referenced name must be in scope when the section runs: declared in the
+  document, or passed through `Live.Dnd`'s `modules`. The editor doesn't check
+  that it exists.
+- A handler doesn't run from a click on the canvas, and state it changes in
+  `App` is per section there. To change what another section shows, see
+  [State across sections](./how-it-works.mdx#state-across-sections).
+- Clearing the value removes the attribute, since `onClick={}` isn't valid
+  JSX. A `required` binding can't be cleared.
+- With `options`, the select shows while the value is one of them or empty.
+  A handler written in the code editor that isn't one of them gets the code
+  editor instead, so it isn't replaced by the first option.
+- Without a `type`, an attribute that holds an arrow function or a `function`
+  expression is treated the same way. A bare reference such as
+  `onClick={handleClick}` needs `type: 'function'`, since nothing says what it
+  refers to (`className={styles.root}` looks the same).
+- A function inside an array item or object, such as
+  `items={[{ onClick: () => {} }]}`, is preserved and edited in the code
+  editor.
 
 ## Constraints
 

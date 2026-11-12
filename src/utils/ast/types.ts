@@ -39,6 +39,9 @@ export const BINDING_TYPES = [
   'color',
   'jsx',
   'richtext',
+  // Source text for a function prop, such as an event handler: a function
+  // expression or a reference to one (#741).
+  'function',
   'date',
   'url',
   'email',

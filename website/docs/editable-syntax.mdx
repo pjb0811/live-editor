@@ -27,6 +27,7 @@ attribute.
 | Sparse array (holes) | Visible expressions only; holes remain in source | Supported visible values only | No | No | No | Code editor; structural controls are disabled |
 | Array spread (`...items`) | Static siblings are visible; spread remains in source | Supported static siblings only | No | No | No | Code editor; structural controls are disabled |
 | Parenthesized top-level array item | Yes | Supported inner values only | No | No | No | Code editor |
+| Function expression (`() => {}`, `function () {}`) or, with `type: 'function'`, a reference (`handleClick`, `actions.open`) as an attribute value | Yes, as source | Yes, as source; a call is refused | — | — | — | — |
 | Variable or function call used instead of an array literal | No list model | No | No | No | No | Code editor |
 | Variable, call, spread, hole, or computed property inside a partially modeled object | Raw source only | No; rebuilding could drop syntax | — | — | — | The value control is replaced with code-editor guidance |
 | Dynamic or ambiguous `key` / `data-id` | Yes | Other supported values remain editable | Yes | No | Yes | Make the identity static before copying |
