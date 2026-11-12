@@ -1,8 +1,25 @@
 // @vitest-environment jsdom
-import { cleanup, render, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { useState } from 'react';
+
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import IFrame from './iframe';
+
+// Hands each script straight to the iframe as `blob:<src>`, without fetching.
+vi.mock('~/utils/scripts', () => ({
+  withScriptBlobs: async (
+    srcs: string[],
+    inject: (blobUrls: string[]) => void,
+  ) => inject(srcs.map(src => `blob:${src}`)),
+}));
 
 afterEach(() => {
   cleanup();
@@ -92,5 +109,125 @@ describe('IFrame syncStyle and the host theme', () => {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     expect(frameRoot(container).hasAttribute('data-theme')).toBe(false);
+  });
+});
+
+// `onLoaded` runs once per document, and an inline callback or `scripts`
+// array doesn't set the document up again on every render (#715).
+describe('IFrame onLoaded and scripts', () => {
+  const frameDocument = (container: HTMLElement) =>
+    container.querySelector('iframe')!.contentDocument!;
+
+  const injected = (container: HTMLElement) =>
+    [...frameDocument(container).head.querySelectorAll('script')].map(script =>
+      script.getAttribute('src'),
+    );
+
+  // Re-renders the frame on each click, with whatever props `frame` gives.
+  const Host = ({ frame }: { frame: () => React.ReactElement }) => {
+    const [count, setCount] = useState(0);
+
+    return (
+      <>
+        <button type="button" onClick={() => setCount(count + 1)}>
+          render {count}
+        </button>
+        {frame()}
+      </>
+    );
+  };
+
+  const renderFiveTimes = async () => {
+    for (let i = 0; i < 5; i += 1) {
+      fireEvent.click(screen.getByRole('button'));
+    }
+
+    await act(() => new Promise(resolve => setTimeout(resolve, 20)));
+  };
+
+  it('calls an inline onLoaded once, however often the host renders', async () => {
+    const onLoaded = vi.fn();
+
+    render(
+      <Host
+        frame={() => (
+          <IFrame onLoaded={() => onLoaded()}>{() => <p>x</p>}</IFrame>
+        )}
+      />,
+    );
+    await waitFor(() => expect(onLoaded).toHaveBeenCalledOnce());
+    await renderFiveTimes();
+
+    expect(onLoaded).toHaveBeenCalledOnce();
+  });
+
+  it('calls onLoaded once with an inline scripts array', async () => {
+    const onLoaded = vi.fn();
+
+    render(
+      <Host
+        frame={() => (
+          <IFrame scripts={[]} onLoaded={onLoaded}>
+            {() => <p>x</p>}
+          </IFrame>
+        )}
+      />,
+    );
+    await waitFor(() => expect(onLoaded).toHaveBeenCalledOnce());
+    await renderFiveTimes();
+
+    expect(onLoaded).toHaveBeenCalledOnce();
+  });
+
+  // Moving the iframe, as reordering canvas sections does, gives it a new
+  // document (#507).
+  it('calls onLoaded again for a new document, and injects the scripts into it', async () => {
+    const onLoaded = vi.fn();
+    const { container } = render(
+      <div>
+        <IFrame scripts={['a.js']} onLoaded={onLoaded}>
+          {() => <p>x</p>}
+        </IFrame>
+      </div>,
+    );
+
+    await waitFor(() => expect(onLoaded).toHaveBeenCalledOnce());
+
+    const before = frameDocument(container);
+    const elsewhere = document.createElement('div');
+
+    document.body.appendChild(elsewhere);
+    elsewhere.appendChild(container.querySelector('iframe')!);
+
+    await waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(2));
+    expect(frameDocument(elsewhere)).not.toBe(before);
+    expect(injected(elsewhere)).toEqual(['blob:a.js']);
+
+    elsewhere.remove();
+  });
+
+  it('injects a script added to scripts later, once', async () => {
+    const Scripts = () => {
+      const [scripts, setScripts] = useState(['a.js']);
+
+      return (
+        <>
+          <button type="button" onClick={() => setScripts(['a.js', 'b.js'])}>
+            add
+          </button>
+          <IFrame scripts={[...scripts]}>{() => <p>x</p>}</IFrame>
+        </>
+      );
+    };
+    const { container } = render(<Scripts />);
+
+    await waitFor(() => expect(injected(container)).toEqual(['blob:a.js']));
+
+    fireEvent.click(screen.getByRole('button', { name: 'add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'add' }));
+
+    await waitFor(() =>
+      expect(injected(container)).toEqual(['blob:a.js', 'blob:b.js']),
+    );
   });
 });
