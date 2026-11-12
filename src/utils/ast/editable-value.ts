@@ -17,7 +17,9 @@ export interface EditableValueEntry {
 
 const MAX_FLATTEN_DEPTH = 20;
 
-const isEditablePrimitive = (value: unknown): value is EditablePrimitive =>
+export const isEditablePrimitive = (
+  value: unknown,
+): value is EditablePrimitive =>
   typeof value === 'string' ||
   typeof value === 'number' ||
   typeof value === 'boolean';
@@ -231,4 +233,55 @@ export const setEditableValue = (
   }
 
   return `${value.slice(0, leaf.start)}${leafSource(value, leaf, next)}${value.slice(leaf.end)}`;
+};
+
+// The object or array literal at `path` in `value`, or `null` when the path
+// doesn't lead to one or `value` doesn't parse.
+const findStructuredNode = (
+  value: string,
+  path: EditablePathSegment[],
+): t.ObjectExpression | t.ArrayExpression | null => {
+  let node: t.Node | null;
+
+  try {
+    node = findEditableLeaf(
+      parseExpression(value, { plugins: ['jsx', 'typescript'] }),
+      path,
+    );
+  } catch {
+    return null;
+  }
+
+  return node &&
+    (t.isObjectExpression(node) || t.isArrayExpression(node)) &&
+    node.start != null &&
+    node.end != null
+    ? node
+    : null;
+};
+
+// The source of the object or array at `path`, as written, so an editor for
+// that nested value works on its source rather than on a reprint (#722).
+export const getEditableSource = (
+  value: string,
+  path: EditablePathSegment[],
+): string | null => {
+  const node = findStructuredNode(value, path);
+
+  return node ? value.slice(node.start!, node.end!) : null;
+};
+
+// Replaces the object or array at `path` with `source` and keeps the rest of
+// `value` as written: what a nested editor's edit becomes in the value that
+// holds it (#722). `null` when the path doesn't lead to one.
+export const setEditableSource = (
+  value: string,
+  path: EditablePathSegment[],
+  source: string,
+): string | null => {
+  const node = findStructuredNode(value, path);
+
+  return node
+    ? `${value.slice(0, node.start!)}${source}${value.slice(node.end!)}`
+    : null;
 };

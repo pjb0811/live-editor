@@ -1,4 +1,10 @@
 import { useLiveMessages } from '~/components/context/messages';
+import {
+  getEditableSource,
+  isEditablePrimitive,
+  setEditableSource,
+  setEditableValue,
+} from '~/utils/ast/editable-value';
 import { type DataAttrNode } from '~/utils/ast/types';
 import { parseValue } from '~/utils/ast/value';
 import { cn } from '~/utils/cn';
@@ -96,6 +102,34 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   if (kind === 'object') {
     const objectValue = value as Record<string, unknown>;
 
+    // Commits an edit to one key as the object's source with only that key's
+    // value replaced, so the rest stays as written (#722). A nested object or
+    // array editor commits its own source, which goes in that key's place.
+    // When the source can't be edited in place, the whole object is
+    // committed as a value, and reprinted.
+    const commitKey = (key: string, next: unknown) => {
+      const current = objectValue[key];
+
+      if (Object.is(next, current)) {
+        return;
+      }
+
+      const edited =
+        isEditablePrimitive(next) && isEditablePrimitive(current)
+          ? setEditableValue(rawValue, [key], next)
+          : typeof next === 'string' &&
+              typeof current === 'object' &&
+              current !== null
+            ? setEditableSource(rawValue, [key], next)
+            : null;
+
+      onChange(
+        edited !== null && edited !== rawValue
+          ? edited
+          : { ...objectValue, [key]: next },
+      );
+    };
+
     return (
       <div className={styles.object}>
         {Object.entries(objectValue).map(([key, val]) => {
@@ -115,11 +149,10 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
                     value: val,
                     rawValue:
                       typeof val === 'object' && val !== null
-                        ? JSON.stringify(val)
+                        ? (getEditableSource(rawValue, [key]) ??
+                          JSON.stringify(val))
                         : String(val),
-                    onChange: next => {
-                      onChange({ ...objectValue, [key]: next });
-                    },
+                    onChange: next => commitKey(key, next),
                   }}
                   onNodeChange={onNodeChange}
                 />
