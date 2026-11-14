@@ -95,3 +95,70 @@ depends on whether you pass `value`:
 - **Formatting (Cmd/Ctrl+S) applies at once.** It calls `onChange` with the
   formatted code and updates the shared code without waiting for `debounce`.
 - **Separate `<Live>` providers are independent.** Each holds its own code.
+
+## Undo and redo
+
+`useLiveHistory` holds the document with its undo history. Pass its `value`
+and `onChange` to every surface:
+
+```tsx
+import Live, { useLiveHistory } from '@jbpark/live-editor';
+
+const Editor = () => {
+  const doc = useLiveHistory(initialCode);
+
+  return (
+    <Live>
+      <button disabled={!doc.canUndo} onClick={doc.undo}>
+        Undo
+      </button>
+      <button disabled={!doc.canRedo} onClick={doc.redo}>
+        Redo
+      </button>
+      <Live.Dnd value={doc.value} onChange={doc.onChange} />
+      <Live.Editor value={doc.value} onChange={doc.onChange} />
+    </Live>
+  );
+};
+```
+
+Each `onChange` call says where the change came from, as a second argument:
+`{ source: 'dnd' }` from `Live.Dnd` and `{ source: 'editor' }` from
+`Live.Editor`. The hook uses it to decide what one undo step is:
+
+- **A canvas edit is one step**: a panel field, a drop, a move, a copy or a
+  delete. `Live.Dnd` calls `onChange` once per edit.
+- **A burst of typing is one step.** `Live.Editor` changes less than
+  `mergeWindow` milliseconds apart (500 by default) replace the current step,
+  so one undo restores the code from before the burst. A canvas edit, an undo
+  or a pause ends the burst.
+- A change equal to the current value adds nothing, and a new step drops the
+  redo history.
+- `limit` (100 by default) caps the number of steps; the oldest go first.
+
+| Returns | Description |
+| --- | --- |
+| `value` | The current document. |
+| `onChange` | `(value, change?) => void`, for `Live.Dnd` and `Live.Editor`. Without `change`, one step. |
+| `set` | `(value) => void`: a change of your own, such as applying a template. One step. |
+| `reset` | `(value) => void`: replaces the document and clears the history, such as when opening another document. |
+| `undo` / `redo` | Move through the history. |
+| `canUndo` / `canRedo` | Whether there's anything to move to. |
+
+**Keyboard.** Cmd/Ctrl+Z undoes, and Cmd/Ctrl+Shift+Z and Ctrl+Y redo,
+anywhere on the page except in an input, a text area, a select, a
+`contenteditable` element or the code editor, which keep their own text undo.
+Pass `shortcuts: false` to bind nothing and call `undo` and `redo` yourself.
+A key pressed inside an `iframe` frame doesn't reach the page, so it isn't
+seen.
+
+**What undo covers.** The history holds what was committed. Text typed into a
+panel field and not committed yet (it commits when the field loses focus) isn't
+in it, and the field shows the restored value after an undo. A selected section
+stays selected when it's still in the restored document. Undo also works while
+the document doesn't parse: it's how to get back to one that does.
+
+The second argument is there without the hook too, for a history of your own:
+`onChange={(value, { source }) => ...}`. A one-argument `onChange`, such as
+`setValue`, works as before.
+

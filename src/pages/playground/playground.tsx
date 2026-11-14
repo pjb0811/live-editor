@@ -1,12 +1,7 @@
 import { useState } from 'react';
 
 import { Button, Space, Toast } from '@jbpark/ui-kit';
-import {
-  useDebounce,
-  useHistoryState,
-  useKeyPress,
-  useLocalStorage,
-} from '@jbpark/use-hooks';
+import { useLocalStorage } from '@jbpark/use-hooks';
 import { Redo2, Save, Undo2 } from 'lucide-react';
 
 import {
@@ -16,7 +11,7 @@ import {
   uiKitPaletteSections,
 } from '~/components/ui-kit';
 import { STORAGE_KEY } from '~/constants';
-import Live from '~/index';
+import Live, { useLiveHistory } from '~/index';
 
 import { EditorView, ModeSwitch, type ViewMode } from '../shared/editor-view';
 import { IFRAME_FRAME } from '../shared/frames';
@@ -36,47 +31,13 @@ const Playground = () => {
     createUiKitDocument(),
   );
 
-  const [value, setValue] = useState(savedValue);
-  const {
-    value: historyValue,
-    setValue: commitHistory,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-  } = useHistoryState(value);
+  // Undo and redo across both editors, with Cmd/Ctrl+Z bound outside text
+  // fields and the code editor (#749).
+  const { value, onChange, undo, redo, canUndo, canRedo } =
+    useLiveHistory(savedValue);
   const [type, setType] = useState<ViewMode>('dnd');
   const [diffModalOpen, setDiffModalOpen] = useState(false);
   const hasUnsavedChanges = value !== savedValue;
-
-  // Commit to undo/redo history only after edits settle, so rapid typing in
-  // the raw editor doesn't create a history entry per keystroke.
-  useDebounce(
-    () => {
-      commitHistory(value);
-    },
-    { delay: 500 },
-    [value],
-  );
-
-  // Reflect undo/redo (or the debounced commit above catching up) back into
-  // the editable value. Adjusted directly in render (React's "adjust state
-  // during render" pattern) instead of an effect, so it lands in the same
-  // render `historyValue` changes rather than the render after.
-  const [prevHistoryValue, setPrevHistoryValue] = useState(historyValue);
-
-  if (historyValue !== prevHistoryValue) {
-    setPrevHistoryValue(historyValue);
-    setValue(historyValue);
-  }
-
-  // Let CodeMirror's own text-level undo/redo handle keystrokes inside the
-  // raw editor instead of triggering the history-level undo/redo here.
-  useKeyPress('mod+z', undo, { ignore: '.cm-editor', preventDefault: true });
-  useKeyPress('mod+shift+z', redo, {
-    ignore: '.cm-editor',
-    preventDefault: true,
-  });
 
   return (
     <div className="flex h-full flex-col">
@@ -110,7 +71,7 @@ const Playground = () => {
       <div className="min-h-0 flex-1 p-2">
         <Live>
           {type === 'editor' ? (
-            <EditorView value={value} onChange={setValue} />
+            <EditorView value={value} onChange={onChange} />
           ) : (
             <Live.Dnd
               modules={uiKitModules}
@@ -118,7 +79,7 @@ const Playground = () => {
               renderField={uiKitFields}
               items={PALETTE}
               value={value}
-              onChange={setValue}
+              onChange={onChange}
             />
           )}
         </Live>

@@ -17,6 +17,10 @@ import {
 } from '~/utils/sections';
 
 import { usePreview } from '../../context/states';
+import type { LiveChange } from '../../context/use-live-history';
+
+// Every commit is one complete edit (#749).
+const DND_CHANGE: LiveChange = { source: 'dnd' };
 
 interface SectionDocument {
   sections: Section[];
@@ -76,7 +80,7 @@ const createLastParsed = () => {
 // `commit` (#245).
 export const useSectionDocument = (
   value: string,
-  onChange?: (value: string) => void,
+  onChange?: (value: string, change: LiveChange) => void,
   {
     containerId,
     sectionNameFallback,
@@ -181,7 +185,7 @@ export const useSectionDocument = (
       );
 
       pending.write(nextCode);
-      onChange?.(nextCode);
+      onChange?.(nextCode, DND_CHANGE);
       setCode(nextCode);
 
       return readSections(nextCode);

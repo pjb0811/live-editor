@@ -5,6 +5,7 @@ import type {
   BindingRegistry,
 } from '~/utils/ast/types';
 
+import type { LiveChange } from '../context/use-live-history';
 import type { FrameProps } from '../frame';
 import type { DndRenderSectionFallback } from './canvas/section-fallback-context';
 import type { DndEditError, DndRenderField, DndUpload } from './edit-options';
@@ -106,7 +107,9 @@ export interface Props extends Omit<
   frame?: FrameProps;
   dynamicTailwind?: boolean;
   provider?: (children: React.ReactNode) => React.ReactNode;
-  onChange?: (value: string) => void;
+  // Called with the new document after each edit, once per edit, with
+  // `{ source: 'dnd' }` (#749).
+  onChange?: (value: string, change: LiveChange) => void;
   // Replaces the built-in control for any field, wherever it renders — the
   // built-in panel, `Live.Dnd.Field` in a custom panel, nested object keys
   // and array item properties. Return `undefined` to keep the built-in one.

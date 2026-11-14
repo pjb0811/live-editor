@@ -189,8 +189,8 @@ importers:
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.8)
       '@jbpark/use-hooks':
-        specifier: ^4.7.0
-        version: 4.7.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^4.8.0
+        version: 4.8.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@uiw/codemirror-theme-vscode':
         specifier: ^4.25.11
         version: 4.25.12(@codemirror/language@6.12.4)(@codemirror/state@6.7.1)(@codemirror/view@6.43.8)
@@ -965,8 +965,8 @@ packages:
       codemirror:
         optional: true
 
-  '@jbpark/use-hooks@4.7.0':
-    resolution: {integrity: sha512-lxE2ZBxlAgK2OA8jPpe9yQYi/vha56yENSKrhjwGskRgAggmtE9CJHCW1xUuMXZesKcd0nBtYwqW35cU9JlatQ==}
+  '@jbpark/use-hooks@4.8.0':
+    resolution: {integrity: sha512-BCCEl+sNyfolnVsRI281DC2Qnl5+gvBfNhcCn5IoSTrnPVE3CZSugnxtWExVGtqs1wSgeZrIt7G3UowoKlUYxA==}
     peerDependencies:
       react: ^19.1.1
       react-dom: ^19.1.1
@@ -4072,7 +4072,7 @@ snapshots:
     dependencies:
       '@base-ui/react': 1.9.0(@date-fns/tz@1.5.0)(@types/react@19.2.18)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@gsap/react': 2.1.2(gsap@3.15.0)(react@19.2.8)
-      '@jbpark/use-hooks': 4.7.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@jbpark/use-hooks': 4.8.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@tiptap/core': 3.31.4(@tiptap/pm@3.31.4)
       '@tiptap/extension-placeholder': 3.31.4(@tiptap/extensions@3.31.4(@tiptap/core@3.31.4(@tiptap/pm@3.31.4))(@tiptap/pm@3.31.4))
       '@tiptap/extension-text-style': 3.31.4(@tiptap/core@3.31.4(@tiptap/pm@3.31.4))
@@ -4105,7 +4105,7 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  '@jbpark/use-hooks@4.7.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@jbpark/use-hooks@4.8.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)

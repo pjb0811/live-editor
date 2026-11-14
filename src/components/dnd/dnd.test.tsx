@@ -163,6 +163,8 @@ describe('useDndPanel() data', () => {
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange.mock.calls[0]![0]).toContain('CHANGED');
+    // One complete canvas edit, for a host's history (#749).
+    expect(onChange.mock.calls[0]![1]).toEqual({ source: 'dnd' });
   });
 });
 

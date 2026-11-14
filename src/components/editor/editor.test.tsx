@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Context from '../context';
 import Editor from './editor';
@@ -38,5 +38,34 @@ describe('Editor code fallback', () => {
     renderValue({ defaultValue: '' });
 
     expect(screen.getByTestId('value').textContent).toBe('');
+  });
+});
+
+// Each change says it's typing, for a host's history (#749).
+describe('Editor onChange', () => {
+  it('passes { source: "editor" } with every change', () => {
+    const onChange = vi.fn();
+
+    render(
+      <Context>
+        <Editor
+          value="a"
+          onChange={onChange}
+          renderEditor={({ value, onChange: change }) => (
+            <textarea
+              data-testid="text"
+              value={value}
+              onChange={event => change(event.target.value)}
+            />
+          )}
+        />
+      </Context>,
+    );
+
+    fireEvent.change(screen.getByTestId('text'), { target: { value: 'ab' } });
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('ab', {
+      source: 'editor',
+    });
   });
 });

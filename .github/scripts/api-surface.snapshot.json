@@ -24,6 +24,7 @@
         "LiveRenderer",
         "default",
         "defaultMessages",
+        "useLiveHistory",
         "useLiveMessages"
       ],
       "types": [
@@ -48,6 +49,9 @@
         "EditorRenderData",
         "FieldProps",
         "FrameProps",
+        "LiveChange",
+        "LiveHistory",
+        "LiveHistoryOptions",
         "LiveMessages",
         "LiveMessagesInput",
         "PanelBinding",
@@ -57,8 +61,20 @@
       ]
     },
     "./provider": {
-      "values": ["default", "defaultMessages", "useLiveMessages"],
-      "types": ["LiveMessages", "LiveMessagesInput", "Props"]
+      "values": [
+        "default",
+        "defaultMessages",
+        "useLiveHistory",
+        "useLiveMessages"
+      ],
+      "types": [
+        "LiveChange",
+        "LiveHistory",
+        "LiveHistoryOptions",
+        "LiveMessages",
+        "LiveMessagesInput",
+        "Props"
+      ]
     },
     "./dnd": {
       "values": [
