@@ -38,6 +38,7 @@ export const LABELABLE_KINDS: ReadonlySet<FieldKind> = new Set([
   'text',
   'number',
   'url',
+  'image',
   'email',
   'tel',
   'time',

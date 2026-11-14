@@ -11,6 +11,7 @@ import {
   reorderArraySource,
   validArrayIndices,
 } from './array-source';
+import { isFunctionExpressionNode, isFunctionSource } from './function-source';
 import { generateCode } from './helpers';
 import { type SourceEdit, applyEdits } from './patch';
 import type {
@@ -60,6 +61,27 @@ const toTemplateRaw = (value: string): string => {
     .replace(/\r/g, '\\r');
 };
 
+// A function property, as for an attribute (#741): the render leaf declares
+// `type: 'function'`, or declares no type and the value is a function
+// expression (#748).
+const isFunctionProperty = (
+  renderLeaf: BindingRenderLeaf | null,
+  current: t.Expression,
+): boolean =>
+  renderLeaf?.type === 'function' ||
+  (renderLeaf?.type === undefined && isFunctionExpressionNode(current));
+
+// A function's new source: a function expression or a reference, written as
+// given. Anything else, an empty value included, is refused: removing the
+// key would change the item's shape.
+const parseFunctionValue = (value: unknown): t.Expression | undefined => {
+  if (typeof value !== 'string' || !isFunctionSource(value)) {
+    return undefined;
+  }
+
+  return parseExpression(value.trim(), { plugins: ['jsx', 'typescript'] });
+};
+
 // Builds the node a property should hold, from the value the panel produced.
 // Returns `undefined` when the value can't be represented, which callers
 // treat as "leave the source alone".
@@ -77,6 +99,10 @@ const buildPropertyValue = (
       [t.templateElement({ raw: toTemplateRaw(raw), cooked: raw }, true)],
       [],
     );
+  }
+
+  if (isFunctionProperty(renderLeaf, current)) {
+    return parseFunctionValue(value);
   }
 
   // JSX when the render map declares `jsx`, or when the current value is
@@ -151,20 +177,24 @@ export const updateArrayItemProperty = (
   }
 
   const declaredType = extractObjectProperties(element)[key]?.type ?? 'string';
+  const renderLeaf = resolveRenderLeaf(render, key);
+  const current = target.value as t.Expression;
   const nextValue = buildPropertyValue(
     value,
     declaredType,
-    resolveRenderLeaf(render, key),
-    target.value as t.Expression,
+    renderLeaf,
+    current,
   );
 
   if (!nextValue) {
     return null;
   }
 
+  // Source text is written as given; a reprint would reformat it.
   let serialized =
     typeof value === 'string' &&
-    (declaredType === 'array' ||
+    (isFunctionProperty(renderLeaf, current) ||
+      declaredType === 'array' ||
       declaredType === 'object' ||
       t.isJSXElement(nextValue) ||
       t.isJSXFragment(nextValue))
@@ -195,6 +225,20 @@ export const updateArrayItemValue = (
 
   if (!elements || !t.isExpression(element)) {
     return null;
+  }
+
+  // An item that is a function expression takes new source as given, like
+  // a function property (#748).
+  if (isFunctionExpressionNode(element)) {
+    return parseFunctionValue(value)
+      ? applyEdits(code, [
+          {
+            start: element.start!,
+            end: element.end!,
+            content: (value as string).trim(),
+          },
+        ])
+      : null;
   }
 
   const nextValue = createNodeFromValue(

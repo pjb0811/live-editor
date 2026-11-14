@@ -146,7 +146,25 @@ const isDetectedFunction = (node: DataAttrNode, binding: BindingItem) => {
   );
 };
 
-const canEditBindingValue = (node: DataAttrNode, binding: BindingItem) => {
+const isPlainObject = (value: unknown): boolean =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// True when the binding gets the array editor: `type: 'array'`, or an
+// `items` or `data` prop unless `type: 'object'` or an object value says it
+// holds an object (#746).
+export const isArrayBinding = (
+  binding: Pick<PanelBinding, 'property' | 'type' | 'value'>,
+): boolean =>
+  binding.type === 'array' ||
+  ((binding.property === 'items' || binding.property === 'data') &&
+    binding.type !== 'object' &&
+    !isPlainObject(binding.value));
+
+const canEditBindingValue = (
+  node: DataAttrNode,
+  binding: BindingItem,
+  value: unknown,
+) => {
   // The editor owns these attributes; `update()` refuses them too (#429).
   if (RESERVED_BINDING_PROPERTIES.includes(binding.property)) {
     return false;
@@ -156,9 +174,7 @@ const canEditBindingValue = (node: DataAttrNode, binding: BindingItem) => {
     binding.property === 'children' ||
     binding.property === 'innerText' ||
     binding.property === 'innerHTML' ||
-    binding.property === 'items' ||
-    binding.property === 'data' ||
-    binding.type === 'array' ||
+    isArrayBinding({ ...binding, value }) ||
     binding.type === 'jsx' ||
     binding.type === 'richtext' ||
     binding.type === 'function' ||
@@ -245,19 +261,23 @@ const toPanelBindingData = (
   node: DataAttrNode,
   id: string,
   binding: BindingItem,
-): PanelBindingData => ({
-  ...toBindingFields(binding),
-  ...(isDetectedFunction(node, binding) && { type: 'function' as const }),
-  id,
-  value: getStructuredValue(node, binding.property, binding.type),
-  rawValue: getCurrentValue(node, binding.property),
-  ...(!canEditBindingValue(node, binding) && { canEditValue: false }),
-  ...(isAttributeAbsent(node, binding) && { present: false }),
-  element: {
-    tagName: node.tagName || 'element',
-    text: node.textContent.replace(/\s+/g, ' ').trim(),
-  },
-});
+): PanelBindingData => {
+  const value = getStructuredValue(node, binding.property, binding.type);
+
+  return {
+    ...toBindingFields(binding),
+    ...(isDetectedFunction(node, binding) && { type: 'function' as const }),
+    id,
+    value,
+    rawValue: getCurrentValue(node, binding.property),
+    ...(!canEditBindingValue(node, binding, value) && { canEditValue: false }),
+    ...(isAttributeAbsent(node, binding) && { present: false }),
+    element: {
+      tagName: node.tagName || 'element',
+      text: node.textContent.replace(/\s+/g, ' ').trim(),
+    },
+  };
+};
 
 // An extracted element's panel bindings, without `onChange`. `null` when it
 // isn't editable: no `data-id`, or no bindings. Uses the bindings `extract()`

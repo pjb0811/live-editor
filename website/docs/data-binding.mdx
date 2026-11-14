@@ -83,7 +83,7 @@ entry still works.
 | `innerText`      | The element's text content.                                                                            |
 | `innerHTML`      | The element's HTML content. Used by `type: 'richtext'`.                                                |
 | `children`       | The element's JSX children, as a reorderable list.                                                     |
-| `items` / `data` | An array prop, as a list of items you can add, move, duplicate and delete.                             |
+| `items` / `data` | An array prop, as a list of items you can add, move, duplicate and delete. With `type: 'object'`, or an object value, an object prop with one field per key instead. |
 | any other name   | That JSX attribute, e.g. `size`, `href`, `style`. It doesn't have to be on the element yet: see below. |
 
 `innerText` and plain `innerHTML` go between the element's tags, so they need
@@ -311,6 +311,7 @@ that use them, and keep a key's name once documents refer to it.
 | `time`     | Time input (value stored as `HH:mm`, 24-hour)                            | `required`, a valid `HH:mm`                                                                                 |
 | `datetime` | Date and time input (value stored as `YYYY-MM-DDTHH:mm`, local, no zone) | `required`, a real day and time, `minDate`, `maxDate`                                                       |
 | `url`      | URL input                                                                | `required`, `pattern`, valid URL, `protocols`                                                               |
+| `image`    | URL input with a thumbnail, and a file picker with `onUpload`. See [Images](#images) | `required`, `pattern`, `minLength`, `maxLength`, `protocols` on an absolute URL |
 | `email`    | Email input                                                              | `required`, `pattern`, a `name@domain.tld` shape, `minLength`, `maxLength`                                  |
 | `tel`      | Phone input                                                              | `required`, `pattern`, `minLength`, `maxLength` (no built-in format, since phone formats differ by country) |
 | `richtext` | Text area with the HTML source                                           | —                                                                                                           |
@@ -331,6 +332,56 @@ picker, a time picker, a color picker and a rich text editor from
 `@jbpark/ui-kit`, pass
 [`uiKitFields`](./custom-palette-panel.mdx#ui-kit-controls-uikitfields) as
 `renderField`.
+
+### Images
+
+`type: 'image'` is for an image's URL, such as an `<img>`'s `src`. The panel
+shows a URL input that commits when it loses focus, and above it a thumbnail
+of the value as written. The thumbnail is hidden while the value is empty or
+the image doesn't load. Unlike `url`, any image source passes: a relative path
+such as `/images/hero.png`, an absolute URL, or a `data:` URL. `protocols`
+applies to an absolute URL only.
+
+To let users pick a file, pass `onUpload` to `Live.Dnd`. It gets the file and
+the field that asked, and resolves to the URL to write:
+
+```tsx
+<img
+  data-id="hero"
+  data-binding={[{ label: 'Image', property: 'src', type: 'image' }]}
+  src="/images/hero.png"
+/>
+
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  onUpload={async (file, { binding }) => {
+    const { url } = await api.upload(file);
+
+    return url;
+  }}
+/>
+```
+
+- The field gets a "Choose image" button that opens a file picker for
+  `image/*`. It's disabled and marked busy until the upload settles.
+- The resolved URL is validated and written like a typed one.
+- A rejection is reported through
+  [`onEditError`](./custom-palette-panel.mdx#handling-edit-errors-onediterror)
+  as an `upload` error, with the rejection as `error`. The value stays as it
+  was.
+- A result is dropped if another upload started in the field since, the
+  field now edits another binding, or it's gone. A slow upload never writes
+  into a different section.
+- To check a file's type or size, read `file.type` and `file.size` in
+  `onUpload` and reject.
+- An array item's property takes the same control through its `render` leaf:
+  `render: { src: { type: 'image' } }`.
+
+With `options`, an image binding gets a select of the listed images instead.
+Without `type: 'image'`, a `src` attribute is a plain text field: the property
+name isn't used to guess, since `<script>`, `<iframe>` and `<video>` have a
+`src` too.
 
 ### Function props
 
@@ -377,9 +428,15 @@ handler. The value is source text, read and written without being run:
   expression is treated the same way. A bare reference such as
   `onClick={handleClick}` needs `type: 'function'`, since nothing says what it
   refers to (`className={styles.root}` looks the same).
-- A function inside an array item or object, such as
-  `items={[{ onClick: () => {} }]}`, is preserved and edited in the code
-  editor.
+- An array item's property works the same way in the Items editor: declare
+  it in `render` (`render: { onClick: { type: 'function' } }`), or leave it
+  untyped when it holds a function expression. Clearing it is refused there,
+  since removing a key would change the item's shape. An item that is itself
+  a function expression, as in `actions={[() => open()]}`, is edited the same
+  way.
+- A function inside an object-valued prop, such as
+  `config={{ onClick: () => {} }}`, is preserved, and the whole object is
+  edited in the code editor.
 
 ## Constraints
 

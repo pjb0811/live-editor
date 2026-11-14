@@ -45,6 +45,9 @@ export const KO_MESSAGES: LiveMessages = {
     numberPlaceholder: '숫자를 입력하세요',
     textPlaceholder: '값을 입력하세요',
     noFunction: '없음',
+    imagePlaceholder: 'https://example.com/image.png',
+    chooseImage: '이미지 선택',
+    uploadingImage: '업로드 중…',
   },
   items: {
     heading: count => `항목 (${count})`,
@@ -121,6 +124,7 @@ export const KO_MESSAGES: LiveMessages = {
     itemUpdateFailed: '이 항목을 수정하지 못했습니다',
     itemUpdateFailedDetail:
       '원본은 그대로 두었습니다. 구조 편집은 spread가 없는 배열에서만 됩니다. 지원하지 않는 문법은 코드 편집기를 쓰세요.',
+    uploadFailed: label => `"${label}" 이미지를 업로드하지 못했습니다`,
   },
   announcements: {
     instructions:

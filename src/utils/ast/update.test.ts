@@ -522,6 +522,19 @@ describe('update', () => {
       expect(result.code).toBe(code.replace('title="old"', 'title="new"'));
     });
 
+    // What the object editor commits for one key of an object-typed `data`
+    // binding (#746).
+    it('replaces an object-typed data attribute with the committed source', () => {
+      const code = `<Cta data-id="d" data-binding={[{ label: 'Data', property: 'data', type: 'object' }]} data={{ a: 1, b: 2 }} />`;
+
+      const result = update(code, 'd', 'Data', '{ a: 3, b: 2 }', 'data');
+
+      expect(result.success).toBe(true);
+      expect(result.code).toBe(
+        code.replace('data={{ a: 1, b: 2 }}', 'data={{ a: 3, b: 2 }}'),
+      );
+    });
+
     it('re-indents a generated multi-line fragment to the column it lands on', () => {
       const code = `<section>
     <div

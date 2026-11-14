@@ -260,6 +260,79 @@ describe('updateArrayItemProperty', () => {
   });
 });
 
+// A function property's value is source text, written as given (#748).
+describe('updateArrayItemProperty on a function property', () => {
+  const FUNCTION_LEAF: BindingRenderMap = { onClick: { type: 'function' } };
+  const BODY = `{
+    // keep this comment
+    go(2);
+  }`;
+  const MENU = `[
+  { label: 'A', onClick: () => go(1) },
+  { label: 'B', onClick: handlers.b },
+]`;
+
+  // Declared through the leaf, or detected from a function expression.
+  describe.each([
+    ['declared', FUNCTION_LEAF],
+    ['detected', undefined],
+  ])('%s', (_, render) => {
+    it.each(['() => go(2)', 'handleClick', 'actions.open', `() => ${BODY}`])(
+      'writes %s as given and leaves the rest byte-identical',
+      value => {
+        expect(updateArrayItemProperty(MENU, 0, 'onClick', value, render)).toBe(
+          MENU.replace('() => go(1)', value),
+        );
+      },
+    );
+
+    it('trims the text', () => {
+      expect(
+        updateArrayItemProperty(MENU, 0, 'onClick', '  handleClick \n', render),
+      ).toBe(MENU.replace('() => go(1)', 'handleClick'));
+    });
+
+    it.each([["alert('x')"], ['() => {'], [''], ['  '], [42], [undefined]])(
+      'refuses %o',
+      value => {
+        expect(
+          updateArrayItemProperty(MENU, 0, 'onClick', value, render),
+        ).toBeNull();
+      },
+    );
+  });
+
+  it('edits a declared reference', () => {
+    expect(
+      updateArrayItemProperty(MENU, 1, 'onClick', 'handlers.c', FUNCTION_LEAF),
+    ).toBe(MENU.replace('handlers.b', 'handlers.c'));
+  });
+
+  it('leaves an untyped reference read-only', () => {
+    expect(
+      updateArrayItemProperty(MENU, 1, 'onClick', 'handlers.c'),
+    ).toBeNull();
+  });
+
+  it('expands a declared shorthand property', () => {
+    expect(
+      updateArrayItemProperty(
+        `[{ label: 'A', onClick }]`,
+        0,
+        'onClick',
+        'handleClick',
+        FUNCTION_LEAF,
+      ),
+    ).toBe(`[{ label: 'A', onClick: handleClick }]`);
+  });
+
+  it('keeps the other properties editable as before', () => {
+    expect(updateArrayItemProperty(MENU, 0, 'label', 'Z')).toBe(
+      MENU.replace("label: 'A'", 'label: "Z"'),
+    );
+  });
+});
+
 describe('updateArrayItemValue', () => {
   it('replaces a primitive, keeping its type', () => {
     expect(updateArrayItemValue(PRIMITIVES, 1, 'z')).toBe(`['a', "z", 'c']`);
@@ -268,6 +341,22 @@ describe('updateArrayItemValue', () => {
 
   it('returns null for an index that does not exist', () => {
     expect(updateArrayItemValue(PRIMITIVES, 9, 'z')).toBeNull();
+  });
+
+  // An item that is a function expression (#748).
+  it('replaces a function item with new function source, as given', () => {
+    const code = `[() => a(), function () { b(); }, handlers.c]`;
+
+    expect(updateArrayItemValue(code, 0, ' () => z() ')).toBe(
+      `[() => z(), function () { b(); }, handlers.c]`,
+    );
+    expect(updateArrayItemValue(code, 1, 'handlers.d')).toBe(
+      `[() => a(), handlers.d, handlers.c]`,
+    );
+    expect(updateArrayItemValue(code, 0, "alert('x')")).toBeNull();
+    expect(updateArrayItemValue(code, 0, '')).toBeNull();
+    // A reference item isn't detected as a function.
+    expect(updateArrayItemValue(code, 2, 'handlers.d')).toBeNull();
   });
 
   // Babel rejects a negative `numericLiteral` (#712).

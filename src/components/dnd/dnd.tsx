@@ -1,4 +1,4 @@
-import { Children, useEffect, useId, useMemo, useState } from 'react';
+import { Children, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import {
   DndContext,
@@ -12,7 +12,11 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { useResponsiveSize, useStableValue } from '@jbpark/use-hooks';
+import {
+  useLatest,
+  useResponsiveSize,
+  useStableValue,
+} from '@jbpark/use-hooks';
 
 import { PALETTE_SECTIONS } from '~/constants';
 import type { Section } from '~/types';
@@ -48,7 +52,7 @@ import { useDndKeyboard } from './state/use-dnd-keyboard';
 import { useInspectorState } from './state/use-inspector-state';
 import { useSectionDocument } from './state/use-section-document';
 import { useSectionEditing } from './state/use-section-editing';
-import type { DndPalette, DndPanel, Props } from './types';
+import type { DndPalette, DndPanel, DndSections, Props } from './types';
 
 const conditionalModifiers: Modifier = args => {
   const { active } = args;
@@ -114,10 +118,20 @@ const Dnd = ({
   bindings: bindingRegistry,
   bindingKeys,
   onNodePick,
+  onSelectionChange,
+  canvasWidth: _canvasWidth,
+  onUpload,
   children,
   ...restProps
 }: Props) => {
   const modules = useStableValue(_modules);
+  // Anything but a positive number fills the canvas.
+  const canvasWidth =
+    typeof _canvasWidth === 'number' &&
+    Number.isFinite(_canvasWidth) &&
+    _canvasWidth > 0
+      ? _canvasWidth
+      : undefined;
   const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false);
 
   const { breakpoint } = useResponsiveSize();
@@ -162,6 +176,7 @@ const Dnd = ({
     copy: onCopy,
     move: moveSection,
     reorder,
+    moveTo,
     patch,
     getCommittedSection,
     problem,
@@ -263,6 +278,23 @@ const Dnd = ({
     reportLatest,
   });
 
+  // The selection as the document has it: a selected id whose section is
+  // gone counts as nothing selected.
+  const effectiveSelectedId = selectedSection?.id ?? null;
+  const onSelectionChangeRef = useLatest(onSelectionChange);
+  const reportedSelectionRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (reportedSelectionRef.current === effectiveSelectedId) {
+      return;
+    }
+
+    reportedSelectionRef.current = effectiveSelectedId;
+    onSelectionChangeRef.current?.(selectedSection ?? null);
+    // Reported per id: an edit inside the selected section isn't a change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveSelectedId]);
+
   useEffect(() => {
     if (frame?.scripts?.length) {
       preloadScripts(frame.scripts);
@@ -295,6 +327,27 @@ const Dnd = ({
     bindingOptions,
   };
 
+  const sectionsApi: DndSections = {
+    sections,
+    selectedId: effectiveSelectedId,
+    select: id => {
+      if (id === null) {
+        clearSelection();
+
+        return;
+      }
+
+      if (sections.some(section => section.id === id)) {
+        selectOnly(id);
+      }
+    },
+    move: moveSection,
+    moveTo,
+    duplicate: onCopy,
+    remove: id => requestDelete(id),
+    readOnly: stale,
+  };
+
   const sectionHandlers: SectionHandlers = {
     inspecting,
     onInspectMove,
@@ -316,7 +369,10 @@ const Dnd = ({
           {messages.canvas.stale}
         </div>
       )}
-      <Droppable className={cn(!sections.length && canvasStyles.fill)}>
+      <Droppable
+        className={cn(!sections.length && canvasStyles.fill)}
+        width={canvasWidth}
+      >
         {!sections.length ? (
           <div className={canvasStyles.empty}>
             <CanvasNotice {...emptyCanvasNotice(messages, problem, isMobile)} />
@@ -381,12 +437,13 @@ const Dnd = ({
           {/* Not memoized: `palette`, `panel` and `canvas` are new every
               render anyway. */}
           <DndEditOptionsContext.Provider
-            value={{ renderField, reportError, bindingOptions }}
+            value={{ renderField, reportError, bindingOptions, onUpload }}
           >
             <DndRegionContext.Provider
               value={{
                 palette,
                 panel,
+                sections: sectionsApi,
                 canvas,
                 isMobile,
                 selectedId,
@@ -394,6 +451,7 @@ const Dnd = ({
                 paletteOpen: mobilePaletteOpen,
                 setPaletteOpen: setMobilePaletteOpen,
                 documentError: problem?.reason ?? null,
+                canvasWidth,
               }}
             >
               {/* The built-in layout when `children` renders nothing, such

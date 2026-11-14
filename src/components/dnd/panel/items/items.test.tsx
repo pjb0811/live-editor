@@ -235,6 +235,59 @@ describe('Items', () => {
   });
 });
 
+// A function property of an item gets the code editor, and its text
+// commits as source (#748).
+describe('Items function properties', () => {
+  const menu = `[{ label: 'A', onClick: () => go(1) }]`;
+
+  it('edits the function in a code editor and commits its text', async () => {
+    const onChange = vi.fn();
+    const { container } = render(<Items value={menu} onChange={onChange} />);
+    const editor = [...container.querySelectorAll<HTMLElement>('.cm-editor')]
+      .map(element => EditorView.findFromDOM(element)!)
+      .find(view => view.state.doc.toString() === '() => go(1)')!;
+
+    expect(editor).toBeDefined();
+
+    act(() => {
+      editor.dispatch({
+        changes: {
+          from: 0,
+          to: editor.state.doc.length,
+          insert: '() => go(2)',
+        },
+      });
+    });
+    fireEvent.blur(editor.contentDOM);
+    await act(() => new Promise(resolve => setTimeout(resolve, 0)));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      menu.replace('go(1)', 'go(2)'),
+    );
+  });
+
+  it('offers the options as a select when the value is listed', () => {
+    const { container } = render(
+      <Items
+        value={`[{ label: 'A', onClick: handlers.a }]`}
+        render={{
+          onClick: {
+            type: 'function',
+            options: [
+              { label: 'Open', value: 'handlers.a' },
+              { label: 'Close', value: 'handlers.b' },
+            ],
+          },
+        }}
+      />,
+    );
+
+    const select = container.querySelector('select')!;
+
+    expect(select.value).toBe('handlers.a');
+  });
+});
+
 // #383: a render-map leaf's label and constraints used to be dropped on the
 // way to the nested editor, so a nested field was never validated.
 describe('Items render-map leaves', () => {

@@ -25,6 +25,18 @@
     }
   }
 
+  /* An image field's thumbnail: the whole image, letterboxed. */
+  .imagePreview {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    height: 8rem;
+    border: 1px solid var(--live-editor-color-border);
+    border-radius: var(--live-editor-radius);
+    background: var(--live-editor-color-surface-muted);
+    object-fit: contain;
+  }
+
   .mono {
     font-family: var(--live-editor-font-mono);
     font-size: var(--live-editor-font-size-xs);

@@ -3,9 +3,14 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { showErrorToast } from '~/components/chrome/toast';
-import type { BindingRegistry, DataAttrNode } from '~/utils/ast';
+import type {
+  BindingRegistry,
+  BindingRenderMap,
+  DataAttrNode,
+} from '~/utils/ast';
 
 import { DndEditOptionsContext } from '../../edit-options';
+import { getFieldKind } from '../fields/field-kind';
 import { type DndItemsItem, useDndItems } from './use-dnd-items';
 
 vi.mock('~/components/chrome/toast', () => ({ showErrorToast: vi.fn() }));
@@ -529,6 +534,130 @@ describe('useDndItems expansion', () => {
     act(() => result.current.expansion.setExpanded(ids));
 
     expect(result.current.expansion.expandedIds).toEqual(ids);
+  });
+});
+
+// Function properties of an item, as source text (#748).
+describe('useDndItems function properties', () => {
+  const menu = `[
+  { label: 'A', onClick: () => go(1), onHover: handlers.b },
+]`;
+
+  const property = (render: BindingRenderMap | undefined, key: string) => {
+    const { result } = renderHook(() => useDndItems(menu, { render }));
+
+    return result.current.items[0]!.properties.find(
+      candidate => candidate.property === key,
+    )!;
+  };
+
+  it.each([
+    [
+      'a declared expression',
+      { onClick: { type: 'function' as const } },
+      'onClick',
+      '() => go(1)',
+      true,
+    ],
+    [
+      'a declared reference',
+      { onHover: { type: 'function' as const } },
+      'onHover',
+      'handlers.b',
+      true,
+    ],
+    ['an undeclared expression', undefined, 'onClick', '() => go(1)', true],
+    ['an undeclared reference', undefined, 'onHover', 'handlers.b', false],
+  ])('reads %s', (_, render, key, source, isFunction) => {
+    const binding = property(render, key);
+
+    expect(getFieldKind(binding)).toBe(isFunction ? 'function' : 'readonly');
+    expect(binding.type).toBe(isFunction ? 'function' : undefined);
+    expect(binding.canEditValue).toBe(isFunction);
+    expect(binding.rawValue).toBe(source);
+
+    if (isFunction) {
+      expect(binding.value).toBe(source);
+    }
+  });
+
+  it('selects from options when the value is listed', () => {
+    const binding = property(
+      {
+        onHover: {
+          type: 'function',
+          options: [{ label: 'B', value: 'handlers.b' }],
+        },
+      },
+      'onHover',
+    );
+
+    expect(getFieldKind(binding)).toBe('select');
+  });
+
+  it('reads a function item of a primitive array as a function', () => {
+    const { result } = renderHook(() => useDndItems(`[() => a(), handlers.b]`));
+    const [first, second] = result.current.items.map(item => item.value!);
+
+    expect(getFieldKind(first!)).toBe('function');
+    expect(first!.value).toBe('() => a()');
+    expect(getFieldKind(second!)).toBe('readonly');
+  });
+
+  it('commits new source and reports a refused one as a function error', () => {
+    const onChange = vi.fn();
+    const reportError = vi.fn();
+    const { result } = renderHook(() => useDndItems(menu, { onChange }), {
+      wrapper: ({ children }) => (
+        <DndEditOptionsContext.Provider value={{ reportError }}>
+          {children}
+        </DndEditOptionsContext.Provider>
+      ),
+    });
+    const onClick = () =>
+      result.current.items[0]!.properties.find(
+        candidate => candidate.property === 'onClick',
+      )!;
+
+    act(() => onClick().onChange("alert('x')"));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(reportError).toHaveBeenCalledExactlyOnceWith({
+      type: 'items',
+      title: 'Failed to update this item',
+      description:
+        '"onClick" must be a function or a reference to one, such as () => {} or handlers.open.',
+    });
+
+    act(() => onClick().onChange('() => go(2)'));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      menu.replace('() => go(1)', '() => go(2)'),
+    );
+  });
+});
+
+// An image field inside an item, through a `render` leaf (#752).
+describe('useDndItems image properties', () => {
+  it('gets the image control and writes the URL', () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() =>
+      useDndItems(`[{ title: 'A', src: '/a.png' }]`, {
+        render: { src: { type: 'image' } },
+        onChange,
+      }),
+    );
+    const src = result.current.items[0]!.properties.find(
+      candidate => candidate.property === 'src',
+    )!;
+
+    expect(getFieldKind(src)).toBe('image');
+
+    act(() => src.onChange('/b.png'));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      `[{ title: 'A', src: "/b.png" }]`,
+    );
   });
 });
 

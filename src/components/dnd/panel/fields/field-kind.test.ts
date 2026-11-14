@@ -25,6 +25,10 @@ describe('getFieldKind from the dnd entry', () => {
     ['items', { property: 'items', value: [] }],
     ['items', { property: 'data', value: [] }],
     ['items', { type: 'array' as const, value: [] }],
+    ['items', { property: 'data', value: '[...rows]' }],
+    ['object', { property: 'data', type: 'object' as const, value: { a: 1 } }],
+    ['object', { property: 'items', type: 'object' as const, value: { a: 1 } }],
+    ['object', { property: 'data', value: { a: 1 } }],
     ['richtext', { type: 'richtext' as const }],
     ['html', { property: 'innerHTML' }],
     ['jsx', { type: 'jsx' as const }],
@@ -45,6 +49,15 @@ describe('getFieldKind from the dnd entry', () => {
     ['number', { value: 1 }],
     ['text', {}],
     ['function', { type: 'function' as const, value: '() => {}' }],
+    ['image', { type: 'image' as const, value: '/a.png' }],
+    [
+      'select',
+      {
+        type: 'image' as const,
+        value: '/a.png',
+        options: [{ label: 'A', value: '/a.png' }],
+      },
+    ],
   ])('%s for %o', (kind, override) => {
     expect(kindOf(override)).toBe(kind);
   });

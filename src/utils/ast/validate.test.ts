@@ -388,6 +388,46 @@ describe('validateBindingValue constraints (#629)', () => {
   });
 });
 
+// `type: 'image'` (#752): any image source, with `protocols` checked only
+// on an absolute URL.
+describe('validateBindingValue for an image', () => {
+  const image = (overrides: Partial<BindingItem> = {}) =>
+    makeBinding({ type: 'image', ...overrides });
+
+  it.each([
+    '/a.png',
+    './a.png',
+    'a.png',
+    'https://x/a.png',
+    'data:image/png;base64,iVBORw0KGgo=',
+  ])('passes %s', value => {
+    expect(validateBindingValue(image(), value).valid).toBe(true);
+  });
+
+  it('applies required and pattern', () => {
+    expect(validateBindingValue(image({ required: true }), '').valid).toBe(
+      false,
+    );
+    expect(
+      validateBindingValue(image({ pattern: '\\.png$' }), '/a.jpg').valid,
+    ).toBe(false);
+    expect(
+      validateBindingValue(image({ pattern: '\\.png$' }), '/a.png').valid,
+    ).toBe(true);
+  });
+
+  it('checks protocols on an absolute URL only', () => {
+    const binding = image({ protocols: ['https:'] });
+
+    expect(validateBindingValue(binding, 'http://x/a.png')).toEqual({
+      valid: false,
+      message: 'Must use https:.',
+    });
+    expect(validateBindingValue(binding, 'https://x/a.png').valid).toBe(true);
+    expect(validateBindingValue(binding, '/a.png').valid).toBe(true);
+  });
+});
+
 // Translated messages for a host's own language (#524).
 describe('validateBindingValue messages', () => {
   const binding = makeBinding({ required: true, max: 40 });

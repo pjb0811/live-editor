@@ -563,6 +563,52 @@ export const SourceFieldFixture = ({ initial = sourceFieldCode }) => {
   );
 };
 
+// An image field with an upload that reads the file as a `data:` URL
+// (#752).
+const imageFieldCode = `const App = () => (
+  <main id="app-container">
+    <section data-id="s1" data-name="One">
+      <img data-id="hero" data-binding={[{ label: 'Image', property: 'src', type: 'image' }]} src="/missing.png" alt="" />
+    </section>
+  </main>
+);
+
+export default App;`;
+
+const readAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+const ImageFieldFixture = () => {
+  const [code, setCode] = useState(imageFieldCode);
+  const [rejects, setRejects] = useState(false);
+
+  return (
+    <Live>
+      <button onClick={() => setRejects(true)}>Reject uploads</button>
+      <div style={{ height: 600 }}>
+        <Live.Dnd
+          value={code}
+          onChange={setCode}
+          onUpload={async file => {
+            if (rejects) {
+              throw new Error('Upload refused');
+            }
+
+            return readAsDataUrl(file);
+          }}
+        />
+      </div>
+      <output data-testid="source">{code}</output>
+    </Live>
+  );
+};
+
 // `useLiveHistory` across the canvas and the code editor (#749).
 const liveHistoryCode = `const App = () => (
   <main id="app-container">
@@ -687,6 +733,44 @@ const CrossSectionFixture = () => (
   </Live>
 );
 
+// `canvasWidth` (#751): buttons switch the width; `?mode=` picks the frame.
+// The paragraph wraps, so a section's height depends on its width.
+const canvasWidthSection = (id: string, name: string) => `
+    <section data-id="${id}" data-name="${name}">
+      <h2 data-id="${id}-title" data-binding={[{ label: 'Title', property: 'innerText' }]}>${name}</h2>
+      <p>${'Wrapping text that gets taller as the column narrows. '.repeat(12)}</p>
+    </section>`;
+
+const canvasWidthCode = `const App = () => (
+  <main id="app-container">${canvasWidthSection('w-first', 'First')}${canvasWidthSection('w-second', 'Second')}
+  </main>
+);
+
+export default App;`;
+
+const CanvasWidthFixture = () => {
+  const [code, setCode] = useState(canvasWidthCode);
+  const [width, setWidth] = useState<number | undefined>(undefined);
+  const mode = new URLSearchParams(window.location.search).get('mode');
+
+  return (
+    <Live>
+      <button onClick={() => setWidth(390)}>Width 390</button>
+      <button onClick={() => setWidth(320)}>Width 320</button>
+      <button onClick={() => setWidth(2000)}>Width 2000</button>
+      <button onClick={() => setWidth(undefined)}>Full width</button>
+      <div style={{ height: 700 }}>
+        <Live.Dnd
+          value={code}
+          onChange={setCode}
+          frame={mode === 'shadow' ? { mode: 'shadow' } : { mode: 'iframe' }}
+          canvasWidth={width}
+        />
+      </div>
+    </Live>
+  );
+};
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
@@ -701,7 +785,9 @@ const fixtures = {
   'field-error': <FieldErrorFixture />,
   'source-field': <SourceFieldFixture />,
   'function-field': <SourceFieldFixture initial={functionFieldCode} />,
+  'image-field': <ImageFieldFixture />,
   'cross-section': <CrossSectionFixture />,
+  'canvas-width': <CanvasWidthFixture />,
   'live-history': <LiveHistoryFixture />,
 } as const;
 

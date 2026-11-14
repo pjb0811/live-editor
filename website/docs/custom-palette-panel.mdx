@@ -11,7 +11,8 @@ import DemoFrame from '@site/src/components/demo-frame';
 `Live.Dnd` ships a complete editor — three resizable panes on desktop, a stacked
 canvas with Drawers on mobile — and renders it whenever you don't say
 otherwise. Everything behind that layout is also reachable as plain data
-through three hooks (`useDndPalette()`, `useDndPanel()`, `useDndLayout()`), so
+through hooks (`useDndPalette()`, `useDndPanel()`, `useDndLayout()`,
+`useDndSections()`), so
 replacing the palette, the property panel, or the arrangement of the whole
 thing is a matter of writing an ordinary component and rendering it inside
 `Live.Dnd`. Drag-and-drop and field editing keep working exactly as before.
@@ -110,6 +111,11 @@ source doesn't parse and the canvas shows the last version that did,
 otherwise. A custom layout can use it to show its own notice. See
 [Document structure](./drag-and-drop.mdx#document-structure).
 
+It also returns `canvasWidth`, the `Live.Dnd` prop of that name, or
+`undefined` when the sections fill the canvas, for a width control of your own.
+`Live.Dnd.Canvas` applies the width itself. See
+[Previewing at a width](./drag-and-drop.mdx#previewing-at-a-width).
+
 ### Keeping the built-in layout and swapping one region
 
 Replacing the palette or the panel usually doesn't mean you want a different
@@ -126,6 +132,66 @@ That keeps the desktop panes, the mobile FAB, and both Drawers — your
 `panel` is placed in the right-hand pane on desktop and in the properties
 Drawer on mobile. A slot goes in raw, so it owns its own container (the
 built-in regions bring theirs); `palette` works the same way.
+
+## Sections outline: `useDndSections`
+
+`useDndPanel()` reaches the selected section only. `useDndSections()` lists
+every section and acts on any of them, selected or not, so a layers list, an
+outline, a "jump to section" menu or a right-click menu of your own can do what
+the section toolbar does:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `sections` | `Section[]` | In document order, with the ids and names the canvas uses. |
+| `selectedId` | `string \| null` | The selected section, or `null`. Also `null` once the selected section has left the document. |
+| `select` | `(id: string \| null) => void` | Selects a section without toggling and scrolls it into view. `null` clears the selection; an unknown id does nothing. Keyboard focus stays where it is, so your list keeps it. |
+| `move` | `(id: string, direction: 'up' \| 'down') => void` | One place up or down. Nothing happens at either end. |
+| `moveTo` | `(id: string, index: number) => void` | To a position in `sections`, clamped to the list, for a sortable list of your own. |
+| `duplicate` | `(id: string) => void` | Copies the section below itself and selects the copy. |
+| `remove` | `(id: string) => void` | Deletes the section, asking [`onBeforeDelete`](./drag-and-drop.mdx#confirming-a-delete) first. |
+| `readOnly` | `boolean` | `true` while the document doesn't parse: `sections` is the last version that did, and every change is refused and reported through `onEditError`. |
+
+```tsx
+import { useDndSections } from '@jbpark/live-editor/dnd';
+
+const Outline = () => {
+  const { sections, selectedId, select, move, readOnly } = useDndSections();
+
+  return (
+    <ol>
+      {sections.map(section => (
+        <li key={section.id}>
+          <button
+            aria-current={section.id === selectedId}
+            onClick={() => select(section.id)}
+          >
+            {section.name}
+          </button>
+          <button disabled={readOnly} onClick={() => move(section.id, 'up')}>
+            Up
+          </button>
+        </li>
+      ))}
+    </ol>
+  );
+};
+```
+
+To react to the selection outside `Live.Dnd`, pass `onSelectionChange`. It
+gets the selected section, or `null`, whenever the selection changes: a click,
+the keyboard, `select()`, or the selected section leaving the document through
+a delete or an undo. It isn't called for the initial empty selection, nor when
+only the function you pass changes.
+
+```tsx
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  onSelectionChange={section => setTitle(section?.name ?? 'Nothing selected')}
+/>
+```
+
+Adding a section stays on `useDndPalette().onAdd`.
 
 ## Custom palette
 
@@ -453,7 +519,7 @@ on it can't drift from the built-in panel:
 | Kind         | Built-in control                                       | Chosen when (first match wins)                            |
 | ------------ | ------------------------------------------------------ | --------------------------------------------------------- |
 | `'readonly'` | Preserved source with a note to use the code editor    | `canEditValue` is `false`                                 |
-| `'items'`    | Items editor (`useDndItems` for your own markup)       | `property` is `items` or `data`, or `type` is `array`     |
+| `'items'`    | Items editor (`useDndItems` for your own markup)       | `type` is `array`, or `property` is `items` or `data` unless `type` is `object` or `value` is a plain object |
 | `'richtext'` | Text area with the HTML source                         | `type` is `richtext`                                      |
 | `'html'`     | Code editor, HTML mode                                 | `property` is `innerHTML`                                 |
 | `'jsx'`      | Code editor                                            | `type` is `jsx`                                           |
@@ -462,6 +528,7 @@ on it can't drift from the built-in panel:
 | `'object'`   | One nested field per key                               | `value` is a plain object                                 |
 | `'boolean'`  | Checkbox                                               | `type` is `boolean`, or `value` is a boolean              |
 | `'select'`   | Select                                                 | `options` is set; for `function`, also `value` is listed or `''` |
+| `'image'`    | URL input, thumbnail, and a file picker with `onUpload` | `type` is `image`                                         |
 | `'color'`    | Color input                                            | `type` is `color`, or `property` contains `color`         |
 | `'date'`     | Date input                                             | `type` is `date`                                          |
 | `'time'`     | Time input                                             | `type` is `time`                                          |
@@ -665,6 +732,7 @@ failed:
 | `'update'` | A field edit was rejected, usually because the element's `data-binding` names a `property` or `label` its markup doesn't have, or because text was written to a self-closing element (`self-closing`). | `id`, `label`, `property`, `failure` (with `failure.reason`) |
 | `'parse'`  | The selected section, or an `items` value inside it, doesn't parse.                                                                                                                                    | `target` (`'section'` or `'items'`), `error`                 |
 | `'items'`  | An array edit would have lost source (a spread, a hole), so it was refused.                                                                                                                            | —                                                            |
+| `'upload'` | `onUpload` rejected for an image field. The value is unchanged. See [Images](./data-binding.mdx#images). | `id`, `label`, `property`, `error` |
 
 ### Your own markup for an array binding: `useDndItems`
 
@@ -991,9 +1059,9 @@ it immediately, because its own array edit has already succeeded by then.
 | `present`                 | `boolean?`                           | `false` when the binding names an attribute the element doesn't carry. `onChange(undefined)` removes an attribute and `onChange(value)` adds it back, so this is what an on/off control reads. `undefined` means the attribute is there, or the binding is content (`innerText`, `innerHTML`, `children`). See [Optional attributes](./data-binding.mdx#optional-attributes).                           |
 | `onChange`                | `(value: unknown) => void`           | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). Pass the value as its real type — it's serialized once, at the AST boundary, where the declared `type` is known, so no string quoting on your side.                                                                                                                                                      |
 
-`BindingType` is a closed union of 15 data kinds: `array`, `object`,
+`BindingType` is a closed union of 16 data kinds: `array`, `object`,
 `string`, `number`, `boolean`, `color`, `jsx`, `richtext`, `function`, `date`,
-`time`, `datetime`, `url`, `email`, `tel`. A binding with no `type` on an
+`time`, `datetime`, `url`, `email`, `tel`, `image`. A binding with no `type` on an
 attribute that holds a function expression arrives as `type: 'function'`.
 Switching on it alone is enough for the scalar types; for `object`/`array`
 values, see `flattenEditableValue` below rather than treating them as plain
