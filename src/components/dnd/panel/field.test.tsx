@@ -442,6 +442,29 @@ describe('Field object values', () => {
       );
     });
 
+    // `data` defaults to the array editor; `type: 'object'` opts out (#746).
+    it('edits one key of an object-typed data binding', () => {
+      const onChange = vi.fn();
+      const rawValue = "{ title: 'old', size: 2 }";
+      const { container } = render(
+        <Field
+          binding={binding({
+            property: 'data',
+            type: 'object',
+            value: evaluateLiteral(parseExpression(rawValue)),
+            rawValue,
+            onChange,
+          })}
+        />,
+      );
+
+      commitText(container, 'old', 'new');
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(
+        "{ title: 'new', size: 2 }",
+      );
+    });
+
     it('edits a key of a nested object in place', () => {
       const onChange = vi.fn();
       const { container } = render(

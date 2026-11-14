@@ -174,6 +174,25 @@ describe('resolvePanelBindings', () => {
     ]);
   });
 
+  // `data` and `items` default to the array editor, which takes any source;
+  // an object goes through the usual lossless check (#746).
+  it.each([
+    ['an object literal', 'data={{ a: 1 }}', undefined],
+    ['a reference in an object', 'data={{ a: value }}', false],
+  ])(
+    'checks %s on an object-typed data binding',
+    (_, attribute, canEditValue) => {
+      const [binding] = resolvePanelBindings(
+        nodeOf(
+          `<Cta data-id="d" data-binding={[{ label: 'Data', property: 'data', type: 'object' }]} ${attribute} />`,
+          'd',
+        ),
+      )!.bindings;
+
+      expect(binding!.canEditValue).toBe(canEditValue);
+    },
+  );
+
   it('reuses bindings already parsed by extract instead of the attribute text', () => {
     const node = nodeOf(element, 't1');
     const reused: DataAttrNode = {
