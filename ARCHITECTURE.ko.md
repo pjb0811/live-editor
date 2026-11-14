@@ -228,6 +228,7 @@ Dnd (dnd.tsx)
 │
 ├─ palette = { items, onAdd }                     ┐
 ├─ panel   = { item, bindings, onNodeChange, ... }├─ DndRegionContext → useDndPalette / useDndPanel / useDndLayout
+├─ sections = { sections, select, move, ... }     │    / useDndSections
 ├─ canvas  = <Droppable> + <Sortable> + <Renderer>┘
 │
 ├─ DndEditOptionsContext   renderField, reportError, bindingOptions (Field, useDndItems가 읽음)

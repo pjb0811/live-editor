@@ -34,6 +34,8 @@ interface SectionDocument {
   copy: (id: string) => void;
   move: (id: string | null, direction: 'up' | 'down') => void;
   reorder: (activeId: string, overId: string) => void;
+  // Moves `id` to `index` in `sections`, clamped to the list (#750).
+  moveTo: (id: string, index: number) => void;
   patch: (next: Partial<Section> & { id: string }) => void;
   // The section as the latest commit left it, or `undefined` when nothing
   // has been committed since this render (or that commit removed it). Lets
@@ -323,6 +325,28 @@ export const useSectionDocument = (
     [commit, mutate],
   );
 
+  const moveTo = useCallback(
+    (id: string, index: number) =>
+      mutate(current => {
+        const prevIndex = current.findIndex(s => s.id === id);
+        const nextIndex = Math.min(
+          Math.max(Math.trunc(index), 0),
+          current.length - 1,
+        );
+
+        if (
+          prevIndex < 0 ||
+          Number.isNaN(nextIndex) ||
+          prevIndex === nextIndex
+        ) {
+          return;
+        }
+
+        commit(arrayMove(current, prevIndex, nextIndex));
+      }),
+    [commit, mutate],
+  );
+
   const patch = useCallback(
     (next: Partial<Section> & { id: string }) =>
       mutate(current => {
@@ -345,6 +369,7 @@ export const useSectionDocument = (
     copy,
     move,
     reorder,
+    moveTo,
     patch,
     getCommittedSection,
     problem,

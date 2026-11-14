@@ -7,7 +7,12 @@ import { DEFAULT_TEMPLATE, PALETTE_SECTIONS } from '~/constants';
 import { PreviewContext } from '../context/states';
 import Dnd from './dnd';
 import Layout, { Canvas, Palette, Panel } from './layout';
-import { useDndLayout, useDndPalette, useDndPanel } from './layout-context';
+import {
+  useDndLayout,
+  useDndPalette,
+  useDndPanel,
+  useDndSections,
+} from './layout-context';
 
 // Same reason as dnd.test.tsx: each section compiles into an iframe, none of
 // which jsdom needs to do for us to see where the regions landed.
@@ -246,6 +251,7 @@ describe('rendering outside Dnd', () => {
     ['useDndPalette()', useDndPalette],
     ['useDndPanel()', useDndPanel],
     ['useDndLayout()', useDndLayout],
+    ['useDndSections()', useDndSections],
   ])('names the offending hook: %s', (subject, hook) => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
