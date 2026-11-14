@@ -114,10 +114,18 @@ const Dnd = ({
   bindings: bindingRegistry,
   bindingKeys,
   onNodePick,
+  canvasWidth: _canvasWidth,
   children,
   ...restProps
 }: Props) => {
   const modules = useStableValue(_modules);
+  // Anything but a positive number fills the canvas.
+  const canvasWidth =
+    typeof _canvasWidth === 'number' &&
+    Number.isFinite(_canvasWidth) &&
+    _canvasWidth > 0
+      ? _canvasWidth
+      : undefined;
   const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false);
 
   const { breakpoint } = useResponsiveSize();
@@ -316,7 +324,10 @@ const Dnd = ({
           {messages.canvas.stale}
         </div>
       )}
-      <Droppable className={cn(!sections.length && canvasStyles.fill)}>
+      <Droppable
+        className={cn(!sections.length && canvasStyles.fill)}
+        width={canvasWidth}
+      >
         {!sections.length ? (
           <div className={canvasStyles.empty}>
             <CanvasNotice {...emptyCanvasNotice(messages, problem, isMobile)} />
@@ -394,6 +405,7 @@ const Dnd = ({
                 paletteOpen: mobilePaletteOpen,
                 setPaletteOpen: setMobilePaletteOpen,
                 documentError: problem?.reason ?? null,
+                canvasWidth,
               }}
             >
               {/* The built-in layout when `children` renders nothing, such

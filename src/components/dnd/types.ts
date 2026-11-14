@@ -131,6 +131,11 @@ export interface Props extends Omit<
   // element's `data-id`, the key its fields carry in `useDndPanel()`, and its
   // section's id. The section is selected as well (#432).
   onNodePick?: (pick: DndNodePick) => void;
+  // The width sections render at, in CSS pixels, centered in the canvas,
+  // which scrolls sideways when it's narrower. Unset fills the canvas. An
+  // `iframe` frame's media queries and viewport units follow it; `shadow` and
+  // in-place sections still match the browser window (#751).
+  canvasWidth?: number;
   // The single customization slot. Omit it for the built-in editor. Supply
   // it and you own the arrangement: compose `Live.Dnd.Palette` /
   // `Live.Dnd.Canvas` / `Live.Dnd.Panel` (each the built-in region, in the

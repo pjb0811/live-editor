@@ -6,6 +6,14 @@
     border: 2px dashed var(--live-editor-color-border-subtle);
   }
 
+  /* `canvasWidth`: the sections get exactly that width, so the padding and
+     border above are added to it. Wider than the canvas, it starts at the
+     left edge and the canvas scrolls sideways. */
+  .dropAreaSized {
+    width: calc(var(--live-editor-canvas-width) + 2 * (0.25rem + 2px));
+    margin-inline: auto;
+  }
+
   .fill {
     height: 100%;
   }
