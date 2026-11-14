@@ -514,7 +514,7 @@ on it can't drift from the built-in panel:
 | Kind         | Built-in control                                       | Chosen when (first match wins)                            |
 | ------------ | ------------------------------------------------------ | --------------------------------------------------------- |
 | `'readonly'` | Preserved source with a note to use the code editor    | `canEditValue` is `false`                                 |
-| `'items'`    | Items editor (`useDndItems` for your own markup)       | `property` is `items` or `data`, or `type` is `array`     |
+| `'items'`    | Items editor (`useDndItems` for your own markup)       | `type` is `array`, or `property` is `items` or `data` unless `type` is `object` or `value` is a plain object |
 | `'richtext'` | Text area with the HTML source                         | `type` is `richtext`                                      |
 | `'html'`     | Code editor, HTML mode                                 | `property` is `innerHTML`                                 |
 | `'jsx'`      | Code editor                                            | `type` is `jsx`                                           |
