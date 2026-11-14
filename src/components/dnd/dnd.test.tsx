@@ -1954,6 +1954,23 @@ describe('element picker', () => {
     expect(sortable.getAttribute('aria-disabled')).toBe('false');
   });
 
+  // The preview is inert, so the keyboard stays out of it, except while
+  // picking, whose hit test can't see inert elements (#747).
+  it('makes the preview inert except while picking', () => {
+    const { sortable, state } = renderWithPicker();
+    const content = () =>
+      sortable.querySelector('[data-testid="renderer"]')!.parentElement!;
+
+    expect(sortable.getAttribute('aria-label')).toBe(stats.name);
+    expect(content().hasAttribute('inert')).toBe(true);
+
+    act(() => state.inspector!.activate());
+    expect(content().hasAttribute('inert')).toBe(false);
+
+    act(() => state.inspector!.deactivate());
+    expect(content().hasAttribute('inert')).toBe(true);
+  });
+
   it('outlines the element under the pointer', () => {
     const { overlay, state } = renderWithPicker();
 
