@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { DndEditOptionsContext } from '../edit-options';
 import { type DndInspector, DndInspectorContext } from '../inspector';
 import type { PanelBinding } from '../panel-binding';
 import Panel from './panel';
@@ -103,5 +104,150 @@ describe('Panel element groups', () => {
       fireEvent.focusOut(field, { relatedTarget: document.body });
     });
     expect(highlight).toHaveBeenLastCalledWith(null);
+  });
+});
+
+// The `meta` keys the built-in panel reads (#753).
+describe('Panel meta keys', () => {
+  const field = (override: Partial<PanelBinding>): PanelBinding => ({
+    id: 'a',
+    label: 'Text',
+    property: 'title',
+    value: 'x',
+    rawValue: 'x',
+    element: { tagName: 'a', text: '' },
+    onChange: vi.fn(),
+    ...override,
+  });
+
+  it('shows a description under the label and describes the control with it', () => {
+    renderPanel([
+      field({
+        label: 'URL',
+        property: 'href',
+        type: 'url',
+        protocols: ['https:'],
+        meta: { description: 'Opens in the same tab.' },
+      }),
+    ]);
+
+    const description = screen.getByText('Opens in the same tab.');
+    const input = screen.getByRole('textbox');
+
+    expect(input.getAttribute('aria-describedby')).toBe(description.id);
+
+    fireEvent.change(input, { target: { value: 'http://a.b' } });
+    fireEvent.blur(input);
+
+    const error = screen.getByRole('alert');
+
+    expect(input.getAttribute('aria-describedby')).toBe(
+      `${description.id} ${error.id}`,
+    );
+  });
+
+  // The docs' example.
+  const linkFields = (mode: string, present = true) => [
+    field({
+      label: 'Link',
+      property: 'mode',
+      value: mode,
+      rawValue: mode,
+      options: [
+        { label: 'None', value: 'none' },
+        { label: 'URL', value: 'url' },
+      ],
+      ...(!present && { present: false }),
+    }),
+    field({
+      label: 'URL',
+      property: 'href',
+      type: 'url',
+      meta: {
+        visible: { property: 'mode', in: ['url'], default: 'none' },
+      },
+    }),
+  ];
+
+  const labels = () =>
+    [...document.querySelectorAll('label')].map(label =>
+      label.textContent?.replace(/\(.*\)/, ''),
+    );
+
+  it('shows a field only while its visible rule matches', () => {
+    const { rerender } = renderPanel(linkFields('none'));
+
+    expect(labels()).toEqual(['Link']);
+
+    rerender(<Panel item={item} bindings={linkFields('url')} />);
+    expect(labels()).toEqual(['Link', 'URL']);
+
+    // `default` while the attribute is absent.
+    rerender(<Panel item={item} bindings={linkFields('url', false)} />);
+    expect(labels()).toEqual(['Link']);
+  });
+
+  it('gives an element whose fields are all hidden no card', () => {
+    renderPanel([
+      binding('t1', 'h2', 'One'),
+      { ...binding('t2', 'h2', 'Two'), meta: { visible: false } },
+    ]);
+
+    expect(screen.getAllByRole('group')).toHaveLength(1);
+    // A single card left, so no element headers.
+    expect(screen.queryByText('Two')).toBeNull();
+  });
+
+  it('passes renderField the visible fields, inside their group', () => {
+    const renderField = vi.fn(({ binding }: { binding: PanelBinding }) => (
+      <span data-testid={`custom-${binding.property}`} />
+    ));
+    const { container } = render(
+      <DndEditOptionsContext.Provider
+        value={{ reportError: vi.fn(), renderField }}
+      >
+        <Panel
+          item={item}
+          bindings={[
+            field({ label: 'B', property: 'b', meta: { group: 'Link' } }),
+            field({ label: 'H', property: 'h', meta: { visible: false } }),
+          ]}
+        />
+      </DndEditOptionsContext.Provider>,
+    );
+
+    expect(
+      renderField.mock.calls.map(([props]) => props.binding.property),
+    ).toEqual(['b']);
+    expect(
+      container.querySelector('fieldset [data-testid="custom-b"]'),
+    ).not.toBeNull();
+  });
+
+  it('boxes the fields of a group where its first field was', () => {
+    const { container } = renderPanel([
+      field({ label: 'A', property: 'a' }),
+      field({ label: 'B', property: 'b', meta: { group: 'Link' } }),
+      field({ label: 'C', property: 'c' }),
+      field({ label: 'D', property: 'd', meta: { group: 'Link' } }),
+      field({ id: 'b', label: 'E', property: 'e', meta: { group: 'Link' } }),
+    ]);
+
+    const fieldsets = [...container.querySelectorAll('fieldset')];
+
+    // One per element, even with the same name.
+    expect(fieldsets).toHaveLength(2);
+    expect(fieldsets[0]!.querySelector('legend')!.textContent).toBe('Link');
+
+    const order = [...container.querySelectorAll('label, legend')].map(node =>
+      node.textContent?.replace(/\(.*\)/, ''),
+    );
+
+    expect(order).toEqual(['A', 'Link', 'B', 'D', 'C', 'Link', 'E']);
+    expect(
+      [...fieldsets[0]!.querySelectorAll('label')].map(label =>
+        label.textContent?.replace(/\(.*\)/, ''),
+      ),
+    ).toEqual(['B', 'D']);
   });
 });

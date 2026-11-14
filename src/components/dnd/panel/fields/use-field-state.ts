@@ -17,7 +17,8 @@ export const useFieldState = (binding: PanelBinding) => {
   const { value, rawValue, onChange } = binding;
 
   const [validationError, setValidationError] = useState<string | null>(null);
-  const { controlId, labelId, errorId, isLabelled } = useFieldIds();
+  const { controlId, labelId, errorId, descriptionId, isLabelled } =
+    useFieldIds();
 
   // What the user is typing, for the inputs that commit on blur (url,
   // number, text area). Reset during render when `rawValue` changes from
@@ -30,19 +31,27 @@ export const useFieldState = (binding: PanelBinding) => {
     setText(rawValue);
   }
 
+  // The field's description and its error, once there is one (#637,
+  // #753).
+  const describedBy =
+    [descriptionId, validationError ? errorId : undefined]
+      .filter(Boolean)
+      .join(' ') || undefined;
+
   // For the controls that take an id: the id the label points at, a name
-  // of their own outside a `LabeledField`, and the error once there is one.
+  // of their own outside a `LabeledField`, and what describes them.
   const controlProps = {
     id: controlId,
     'aria-label': isLabelled ? undefined : binding.label,
     'aria-invalid': validationError ? true : undefined,
-    'aria-describedby': validationError ? errorId : undefined,
+    'aria-describedby': describedBy,
   };
   // For the controls that take no id: the label they point at inside a
   // `LabeledField`, or a name of their own outside one.
   const labelledByProps = {
     'aria-label': labelId ? undefined : binding.label,
     'aria-labelledby': labelId,
+    'aria-describedby': describedBy,
   };
 
   // Skips a commit that doesn't change anything, comparing a string with
