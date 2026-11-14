@@ -111,6 +111,11 @@ source doesn't parse and the canvas shows the last version that did,
 otherwise. A custom layout can use it to show its own notice. See
 [Document structure](./drag-and-drop.mdx#document-structure).
 
+It also returns `canvasWidth`, the `Live.Dnd` prop of that name, or
+`undefined` when the sections fill the canvas, for a width control of your own.
+`Live.Dnd.Canvas` applies the width itself. See
+[Previewing at a width](./drag-and-drop.mdx#previewing-at-a-width).
+
 ### Keeping the built-in layout and swapping one region
 
 Replacing the palette or the panel usually doesn't mean you want a different

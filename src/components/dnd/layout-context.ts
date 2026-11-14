@@ -20,6 +20,9 @@ export interface DndLayout {
   // did, read-only (#433). `'container-not-found'` when it has no container
   // element, so it has no sections (#449).
   documentError: 'parse-error' | 'container-not-found' | null;
+  // `Live.Dnd`'s `canvasWidth`, or `undefined` when the sections fill the
+  // canvas, for a layout's own width control.
+  canvasWidth?: number;
 }
 
 // Everything `Live.Dnd` passes to its children, read through the
