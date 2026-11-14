@@ -1,6 +1,7 @@
 import { Radio, Splitter } from '@jbpark/ui-kit';
 import { useResponsiveSize } from '@jbpark/use-hooks';
 
+import type { LiveChange } from '~/components/context/use-live-history';
 import type { FrameProps } from '~/components/frame';
 import { uiKitModules } from '~/components/ui-kit';
 import Live from '~/index';
@@ -44,7 +45,7 @@ export const EditorView = ({
   dynamicTailwind,
 }: {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, change: LiveChange) => void;
   frame?: FrameProps;
   dynamicTailwind?: boolean;
 }) => {

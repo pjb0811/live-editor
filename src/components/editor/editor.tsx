@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { useDebouncedCallback } from '@jbpark/use-hooks';
 
 import { useError, usePreview } from '~/components/context/states';
+import type { LiveChange } from '~/components/context/use-live-history';
 
 import Core, { type Props as CoreProps } from './core';
 import { useFormatCode } from './use-format-code';
@@ -15,8 +16,16 @@ export interface EditorRenderData {
   formatCode: (code: string) => Promise<string>;
 }
 
-export interface Props extends Omit<CoreProps, 'value' | 'onSave' | 'onError'> {
+// Typing, possibly one of many changes in a row (#749).
+const EDITOR_CHANGE: LiveChange = { source: 'editor' };
+
+export interface Props extends Omit<
+  CoreProps,
+  'value' | 'onChange' | 'onSave' | 'onError'
+> {
   value?: string;
+  // Called on every edit, with `{ source: 'editor' }` (#749).
+  onChange?: (value: string, change: LiveChange) => void;
   defaultValue?: string;
   debounce?: number;
   // Replaces the built-in CodeMirror editor. `Live.Editor` still sends the
@@ -74,7 +83,7 @@ const Editor = ({
         setDraft(next);
       }
 
-      _onChange?.(next);
+      _onChange?.(next, EDITOR_CHANGE);
     },
     [_onChange, controlled],
   );

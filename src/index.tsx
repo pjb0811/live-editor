@@ -41,10 +41,21 @@ const App = ({ children, messages }: ContextProps) => {
 
 const LiveRenderer = LivePreview;
 
-// The editor's text, for a host that translates it (#524). This is the
-// package entry, which Fast Refresh never reloads.
-// eslint-disable-next-line react-refresh/only-export-components
-export { defaultMessages, useLiveMessages } from './components/context';
+// The editor's text, for a host that translates it (#524), and undo and
+// redo across the editors (#749). This is the package entry, which Fast
+// Refresh never reloads.
+/* eslint-disable react-refresh/only-export-components */
+export {
+  defaultMessages,
+  useLiveHistory,
+  useLiveMessages,
+} from './components/context';
+/* eslint-enable react-refresh/only-export-components */
+export type {
+  LiveChange,
+  LiveHistory,
+  LiveHistoryOptions,
+} from './components/context';
 
 export {
   LivePreview,

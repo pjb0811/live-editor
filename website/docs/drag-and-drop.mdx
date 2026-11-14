@@ -48,6 +48,9 @@ export default function DragAndDrop() {
   applied through the same AST pipeline, so the code stays canonical. Start
   from `createDocument()`, not an empty string: see
   [Document structure](#document-structure).
+- `onChange` is called once per edit, with `{ source: 'dnd' }` as a second
+  argument. For undo and redo, pass `useLiveHistory`'s `value` and `onChange`:
+  see [Undo and redo](./editor-mode.mdx#undo-and-redo).
 - `frame` configures the preview surface (see [Preview Modes](./preview-modes.mdx)).
 - Use `items` to customize the palette's available sections. Mark what the
   panel can edit in each section with `data-binding` — see

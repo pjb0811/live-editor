@@ -6,7 +6,7 @@ import { EditorView } from '@uiw/react-codemirror';
 // The overlay scenario's ui-kit Modal needs ui-kit's styles.
 import '../src/components/ui-kit/style.css';
 
-import Live from '../src';
+import Live, { useLiveHistory } from '../src';
 import { useDndPanel } from '../src/components/dnd';
 import ElementFields from '../src/components/dnd/panel/element-fields';
 import Items from '../src/components/dnd/panel/items/items';
@@ -563,6 +563,42 @@ export const SourceFieldFixture = ({ initial = sourceFieldCode }) => {
   );
 };
 
+// `useLiveHistory` across the canvas and the code editor (#749).
+const liveHistoryCode = `const App = () => (
+  <main id="app-container">
+    <section data-id="h1" data-name="First">
+      <h2 data-id="h1-title" data-binding={[{ label: 'Title', property: 'innerText' }]}>First title</h2>
+    </section>
+    <section data-id="h2" data-name="Second">
+      <h2 data-id="h2-title" data-binding={[{ label: 'Title', property: 'innerText' }]}>Second title</h2>
+    </section>
+  </main>
+);
+
+export default App;`;
+
+const LiveHistoryFixture = () => {
+  const doc = useLiveHistory(liveHistoryCode);
+
+  return (
+    <Live>
+      <button disabled={!doc.canUndo} onClick={doc.undo}>
+        Undo
+      </button>
+      <button disabled={!doc.canRedo} onClick={doc.redo}>
+        Redo
+      </button>
+      <div style={{ height: 420 }}>
+        <Live.Dnd value={doc.value} onChange={doc.onChange} />
+      </div>
+      <div style={{ height: 200 }}>
+        <Live.Editor value={doc.value} onChange={doc.onChange} debounce={0} />
+      </div>
+      <output data-testid="source">{doc.value}</output>
+    </Live>
+  );
+};
+
 // #743: which state a handler in one canvas section can change in another.
 // A store passed in `modules` is shared; `App` state and state created inside
 // `provider` are per section.
@@ -666,6 +702,7 @@ const fixtures = {
   'source-field': <SourceFieldFixture />,
   'function-field': <SourceFieldFixture initial={functionFieldCode} />,
   'cross-section': <CrossSectionFixture />,
+  'live-history': <LiveHistoryFixture />,
 } as const;
 
 createRoot(document.getElementById('root')!).render(
