@@ -3,7 +3,7 @@ import type {
   DndSectionFallbackArgs,
 } from './canvas/section-fallback-context';
 import DndImpl from './dnd';
-import type { DndEditError, DndRenderField } from './edit-options';
+import type { DndEditError, DndRenderField, DndUpload } from './edit-options';
 import {
   type DndInspector,
   type DndNodePick,
@@ -132,6 +132,7 @@ export type {
   FieldProps,
   DndEditError,
   DndRenderField,
+  DndUpload,
   DndRenderSectionFallback,
   DndSectionFallbackArgs,
   DndItems,

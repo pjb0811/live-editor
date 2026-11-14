@@ -4,6 +4,7 @@ import { showErrorToast } from '~/components/chrome/toast';
 import type { BindingOptions } from '~/utils/ast/types';
 import type { UpdateFailure } from '~/utils/ast/update';
 
+import type { PanelBinding } from './panel-binding';
 import type { FieldProps } from './panel/types';
 
 // An edit the editor didn't apply. `title` and `description` are what the
@@ -57,7 +58,27 @@ export type DndEditError =
       type: 'items';
       title: string;
       description?: string;
+    }
+  | {
+      // `onUpload` rejected for an image field. Its value is unchanged
+      // (#752).
+      type: 'upload';
+      id: string;
+      label: string;
+      property: string;
+      error: unknown;
+      title: string;
+      description?: string;
     };
+
+// Uploads a file chosen in an image field and resolves to the URL to write,
+// or rejects to keep the value. `binding` says which field asked (#752).
+export type DndUpload = (
+  file: File,
+  context: {
+    binding: Pick<PanelBinding, 'id' | 'label' | 'property' | 'type'>;
+  },
+) => Promise<string>;
 
 // Called before the built-in control for every field — top-level, nested
 // object keys and array item properties alike. Return a node to render it
@@ -77,6 +98,8 @@ interface DndEditOptions {
   // elements out of a value of their own, such as `useDndItems` (#509,
   // #513).
   bindingOptions?: BindingOptions;
+  // `Live.Dnd`'s `onUpload`. Without it, an image field has no file picker.
+  onUpload?: DndUpload;
 }
 
 export const toastEditError = (error: DndEditError) => {

@@ -17,6 +17,7 @@ import Children from './children/children';
 import ColorField from './fields/color-field';
 import FieldError from './fields/field-error';
 import { getFieldKind } from './fields/field-kind';
+import ImageField from './fields/image-field';
 import JSXEditorField from './fields/jsx-editor-field';
 import LabeledField from './fields/labeled-field';
 import { useFieldState } from './fields/use-field-state';
@@ -29,6 +30,7 @@ import type { FieldProps } from './types';
 const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   const messages = useLiveMessages();
   const { id, value, rawValue, onChange } = binding;
+  const fieldState = useFieldState(binding);
   const {
     text,
     setText,
@@ -37,7 +39,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     controlProps,
     commitIfChanged,
     validateAndCommit,
-  } = useFieldState(binding);
+  } = fieldState;
 
   const kind = getFieldKind(binding);
 
@@ -197,6 +199,10 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
         ))}
       </select>
     );
+  }
+
+  if (kind === 'image') {
+    return <ImageField binding={binding} state={fieldState} />;
   }
 
   if (kind === 'color') {

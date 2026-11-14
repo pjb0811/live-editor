@@ -69,14 +69,17 @@ describe('parseBinding', () => {
     expect(result[0]).not.toHaveProperty('type');
   });
 
-  it.each(['date', 'url'])('accepts %s as a valid type value', typeValue => {
-    const result = parseBinding(
-      `[{label: 'X', property: 'y', type: '${typeValue}'}]`,
-    );
+  it.each(['date', 'url', 'image'])(
+    'accepts %s as a valid type value',
+    typeValue => {
+      const result = parseBinding(
+        `[{label: 'X', property: 'y', type: '${typeValue}'}]`,
+      );
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toHaveProperty('type', typeValue);
-  });
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveProperty('type', typeValue);
+    },
+  );
 
   // `icon-picker`/`asset-picker` named a control, not a data kind, and the
   // library no longer ships either control. An authored alias is just an
@@ -577,6 +580,14 @@ describe('getStructuredValue', () => {
     expect(getStructuredValue(node, 'label')).toBe(42);
     // Declared `string`: stays the literal text.
     expect(getStructuredValue(node, 'label', 'string')).toBe('42');
+  });
+
+  it('keeps an image binding as text, even when it looks like a number (#752)', () => {
+    const node = makeNode({
+      attributes: [{ name: 'src', value: '123', isStringLiteral: false }],
+    });
+
+    expect(getStructuredValue(node, 'src', 'image')).toBe('123');
   });
 
   it('keeps a function binding as its source text (#741)', () => {

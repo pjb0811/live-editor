@@ -6,6 +6,7 @@ import { showErrorToast } from '~/components/chrome/toast';
 import type { BindingRegistry, DataAttrNode } from '~/utils/ast';
 
 import { DndEditOptionsContext } from '../../edit-options';
+import { getFieldKind } from '../fields/field-kind';
 import { type DndItemsItem, useDndItems } from './use-dnd-items';
 
 vi.mock('~/components/chrome/toast', () => ({ showErrorToast: vi.fn() }));
@@ -533,6 +534,30 @@ describe('useDndItems expansion', () => {
 });
 
 // A binding's `minItems` and `maxItems` (#629).
+// An image field inside an item, through a `render` leaf (#752).
+describe('useDndItems image properties', () => {
+  it('gets the image control and writes the URL', () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() =>
+      useDndItems(`[{ title: 'A', src: '/a.png' }]`, {
+        render: { src: { type: 'image' } },
+        onChange,
+      }),
+    );
+    const src = result.current.items[0]!.properties.find(
+      candidate => candidate.property === 'src',
+    )!;
+
+    expect(getFieldKind(src)).toBe('image');
+
+    act(() => src.onChange('/b.png'));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      `[{ title: 'A', src: "/b.png" }]`,
+    );
+  });
+});
+
 describe('useDndItems item limits', () => {
   const setup = (options: { minItems?: number; maxItems?: number }) => {
     const onChange = vi.fn();

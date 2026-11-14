@@ -19,6 +19,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { update } from '~/utils/ast/update';
 import { evaluateLiteral } from '~/utils/ast/value';
 
+import { type DndEditError, DndEditOptionsContext } from '../edit-options';
 import type { PanelBinding } from '../panel-binding';
 import Field from './field';
 
@@ -587,4 +588,222 @@ describe('Field time and datetime', () => {
       expect(onChange).toHaveBeenCalledWith(written);
     },
   );
+});
+
+// `type: 'image'` (#752): a URL input, a thumbnail of the committed value,
+// and a file picker that goes through `onUpload`.
+describe('Field image', () => {
+  const image = (override: Partial<PanelBinding> = {}) =>
+    binding({
+      label: 'Image',
+      property: 'src',
+      type: 'image',
+      value: '/a.png',
+      rawValue: '/a.png',
+      ...override,
+    });
+
+  const deferred = () => {
+    let resolve!: (url: string) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<string>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+
+    return { promise, resolve, reject };
+  };
+
+  const withUpload = (
+    ui: React.ReactElement,
+    onUpload?: (file: File) => Promise<string>,
+    reportError: (error: DndEditError) => void = vi.fn(),
+  ) => (
+    <DndEditOptionsContext.Provider value={{ reportError, onUpload }}>
+      {ui}
+    </DndEditOptionsContext.Provider>
+  );
+
+  const file = new File(['x'], 'photo.png', { type: 'image/png' });
+
+  const chooseFile = (container: HTMLElement) =>
+    fireEvent.change(container.querySelector('input[type="file"]')!, {
+      target: { files: [file] },
+    });
+
+  const chooseButton = () => screen.getByRole('button');
+
+  it('shows the committed value, not the typed text, and hides it on error', () => {
+    const { container } = render(<Field binding={image()} />);
+    const thumbnail = () => container.querySelector('img');
+    const input = container.querySelector<HTMLInputElement>('input')!;
+
+    expect(thumbnail()!.getAttribute('src')).toBe('/a.png');
+    expect(thumbnail()!.getAttribute('alt')).toBe('');
+
+    fireEvent.change(input, { target: { value: '/half' } });
+    expect(thumbnail()!.getAttribute('src')).toBe('/a.png');
+
+    fireEvent.error(thumbnail()!);
+    expect(thumbnail()).toBeNull();
+  });
+
+  it('shows no thumbnail for an empty value', () => {
+    const { container } = render(
+      <Field binding={image({ value: '', rawValue: '' })} />,
+    );
+
+    expect(container.querySelector('img')).toBeNull();
+  });
+
+  it('commits a relative path typed into the input', () => {
+    const onChange = vi.fn();
+    const { container } = render(<Field binding={image({ onChange })} />);
+    const input = container.querySelector<HTMLInputElement>('input')!;
+
+    fireEvent.change(input, { target: { value: ' ./b.png ' } });
+    fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('./b.png');
+  });
+
+  it('offers no file picker without onUpload', () => {
+    const { container } = render(withUpload(<Field binding={image()} />));
+
+    expect(container.querySelector('input[type="file"]')).toBeNull();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('uploads the chosen file and commits the URL', async () => {
+    const onChange = vi.fn();
+    const upload = deferred();
+    const onUpload = vi.fn(() => upload.promise);
+    const { container } = render(
+      withUpload(<Field binding={image({ onChange })} />, onUpload),
+    );
+
+    expect(
+      container.querySelector('input[type="file"]')!.getAttribute('accept'),
+    ).toBe('image/*');
+
+    chooseFile(container);
+
+    expect(onUpload).toHaveBeenCalledExactlyOnceWith(file, {
+      binding: { id: 'el', label: 'Image', property: 'src', type: 'image' },
+    });
+    expect(chooseButton().getAttribute('aria-busy')).toBe('true');
+    expect((chooseButton() as HTMLButtonElement).disabled).toBe(true);
+
+    await act(async () => upload.resolve('https://cdn/x.png'));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('https://cdn/x.png');
+    expect(chooseButton().getAttribute('aria-busy')).toBeNull();
+    expect((chooseButton() as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('reports a rejected upload and keeps the value', async () => {
+    const onChange = vi.fn();
+    const reportError = vi.fn();
+    const upload = deferred();
+    const error = new Error('Too large');
+    const { container } = render(
+      withUpload(
+        <Field binding={image({ onChange })} />,
+        () => upload.promise,
+        reportError,
+      ),
+    );
+
+    chooseFile(container);
+    await act(async () => upload.reject(error));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(reportError).toHaveBeenCalledExactlyOnceWith({
+      type: 'upload',
+      id: 'el',
+      label: 'Image',
+      property: 'src',
+      error,
+      title: 'Failed to upload an image for "Image"',
+      description: 'Too large',
+    });
+  });
+
+  it('validates the uploaded URL like a typed one', async () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      withUpload(
+        <Field binding={image({ onChange, protocols: ['https:'] })} />,
+        async () => 'http://cdn/x.png',
+      ),
+    );
+
+    chooseFile(container);
+    await act(async () => {});
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(container.textContent).toContain('Must use https:.');
+  });
+
+  it('drops a result that arrives after the binding changed', async () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const upload = deferred();
+    const onUpload = () => upload.promise;
+    const { container, rerender } = render(
+      withUpload(<Field binding={image({ onChange: first })} />, onUpload),
+    );
+
+    chooseFile(container);
+    rerender(
+      withUpload(
+        <Field binding={image({ id: 'other', onChange: second })} />,
+        onUpload,
+      ),
+    );
+    await act(async () => upload.resolve('https://cdn/x.png'));
+
+    expect(first).not.toHaveBeenCalled();
+    expect(second).not.toHaveBeenCalled();
+  });
+
+  it('keeps only the latest of two uploads', async () => {
+    const onChange = vi.fn();
+    const older = deferred();
+    const newer = deferred();
+    const onUpload = vi
+      .fn<() => Promise<string>>()
+      .mockReturnValueOnce(older.promise)
+      .mockReturnValueOnce(newer.promise);
+    const { container } = render(
+      withUpload(<Field binding={image({ onChange })} />, onUpload),
+    );
+
+    chooseFile(container);
+    chooseFile(container);
+    await act(async () => newer.resolve('https://cdn/new.png'));
+    await act(async () => older.resolve('https://cdn/old.png'));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('https://cdn/new.png');
+  });
+
+  it('drops a result that arrives after the field unmounted', async () => {
+    const onChange = vi.fn();
+    const reportError = vi.fn();
+    const upload = deferred();
+    const { container, unmount } = render(
+      withUpload(
+        <Field binding={image({ onChange })} />,
+        () => upload.promise,
+        reportError,
+      ),
+    );
+
+    chooseFile(container);
+    unmount();
+    await act(async () => upload.reject(new Error('late')));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(reportError).not.toHaveBeenCalled();
+  });
 });

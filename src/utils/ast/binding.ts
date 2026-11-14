@@ -489,6 +489,7 @@ export const STRING_VALUED_TYPES: ReadonlySet<BindingType> = new Set([
   'date',
   'time',
   'datetime',
+  'image',
   'color',
   'jsx',
   'richtext',

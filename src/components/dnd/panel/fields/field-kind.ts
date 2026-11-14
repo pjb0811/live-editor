@@ -24,6 +24,9 @@ export type FieldKind =
   | 'object'
   | 'boolean'
   | 'select'
+  // An image's URL (`type: 'image'`): a URL input with a thumbnail, and a
+  // file picker when `Live.Dnd` has `onUpload` (#752).
+  | 'image'
   | 'color'
   | 'date'
   | 'time'
@@ -92,6 +95,10 @@ export const getFieldKind = (binding: FieldKindBinding): FieldKind => {
 
   if (binding.options && Array.isArray(binding.options)) {
     return 'select';
+  }
+
+  if (type === 'image') {
+    return 'image';
   }
 
   if (type === 'color' || isColorProperty(property)) {
