@@ -537,7 +537,6 @@ describe('useDndItems expansion', () => {
   });
 });
 
-// A binding's `minItems` and `maxItems` (#629).
 // Function properties of an item, as source text (#748).
 describe('useDndItems function properties', () => {
   const menu = `[
@@ -638,6 +637,7 @@ describe('useDndItems function properties', () => {
   });
 });
 
+// A binding's `minItems` and `maxItems` (#629).
 describe('useDndItems item limits', () => {
   const setup = (options: { minItems?: number; maxItems?: number }) => {
     const onChange = vi.fn();
