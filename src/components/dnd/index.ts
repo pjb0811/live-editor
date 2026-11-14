@@ -22,6 +22,7 @@ import {
   useDndLayout,
   useDndPalette,
   useDndPanel,
+  useDndSections,
 } from './layout-context';
 import DraggableItem, {
   type DraggableItemDragState,
@@ -49,7 +50,7 @@ import {
   useDndItems,
 } from './panel/items/use-dnd-items';
 import type { FieldProps } from './panel/types';
-import type { DndPalette, DndPanel, Props } from './types';
+import type { DndPalette, DndPanel, DndSections, Props } from './types';
 
 type DndComponent = typeof DndImpl & {
   // Makes a palette item draggable and hands back `ref`, `dragProps` and
@@ -91,6 +92,10 @@ export { Palette, Canvas, Panel, Layout };
 // commits, and the layout state the mobile Drawers run on, which a custom
 // layout replaces.
 export { useDndPalette, useDndPanel, useDndLayout };
+// The document's sections and what can be done to any of them, selected or
+// not: select, move, duplicate and delete, for an outline, a layers list or
+// a menu of your own (#750).
+export { useDndSections };
 // The element picker: turn it on, and clicking an element in the canvas
 // preview selects its section and reports the element's `data-id` (#432).
 export { useDndInspector };
@@ -121,6 +126,7 @@ export type {
   Props,
   DndPalette,
   DndPanel,
+  DndSections,
   DndLayout,
   DndInspector,
   DndNodePick,

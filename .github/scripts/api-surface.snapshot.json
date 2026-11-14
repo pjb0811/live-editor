@@ -43,6 +43,7 @@
         "DndRenderField",
         "DndRenderSectionFallback",
         "DndSectionFallbackArgs",
+        "DndSections",
         "EditorRenderData",
         "FieldProps",
         "FrameProps",
@@ -76,6 +77,7 @@
         "useDndLayout",
         "useDndPalette",
         "useDndPanel",
+        "useDndSections",
         "withPanelCommit"
       ],
       "types": [
@@ -99,6 +101,7 @@
         "DndRenderField",
         "DndRenderSectionFallback",
         "DndSectionFallbackArgs",
+        "DndSections",
         "DraggableItemDragState",
         "DraggableItemProps",
         "FieldKind",
