@@ -1,6 +1,7 @@
 import { parseExpression } from '@babel/parser';
 import * as t from '@babel/types';
 
+import type { BindingType } from './types';
 import { unwrapExpression } from './value';
 
 // Reads a `type: 'function'` value, which is source text: what it is, never
@@ -63,3 +64,14 @@ export const isFunctionSource = (source: string): boolean => {
     isReference(unwrapExpression(expression))
   );
 };
+
+// Whether a binding edits a function's source: it declares
+// `type: 'function'`, or it declares no type and its value is a function
+// expression. A bare reference needs the declaration, since nothing else
+// says it's a function (#741, #748).
+export const isFunctionBindingSource = (
+  type: BindingType | undefined,
+  source: string,
+): boolean =>
+  type === 'function' ||
+  (type === undefined && isFunctionExpressionSource(source));
