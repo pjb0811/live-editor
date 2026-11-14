@@ -88,7 +88,13 @@ drawer, which has the same buttons.
 
 ## Keyboard
 
-Palette cards and canvas sections can be reached with Tab.
+Palette cards and canvas sections can be reached with Tab. A section's
+content can't: it's `inert` on the canvas, so Tab goes from one section to the
+next, and the content's own buttons, links and inputs never take focus or run
+from the keyboard, as they don't from a click. A screen reader hears the
+section's name. Its content is edited in the panel, and runs in
+`Live.Preview`. While the element picker is on, the content isn't `inert`,
+since the picker finds elements under the pointer.
 
 | Key | On a palette card | On a canvas section |
 | --- | --- | --- |
