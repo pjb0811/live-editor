@@ -83,7 +83,7 @@ entry still works.
 | `innerText`      | The element's text content.                                                                            |
 | `innerHTML`      | The element's HTML content. Used by `type: 'richtext'`.                                                |
 | `children`       | The element's JSX children, as a reorderable list.                                                     |
-| `items` / `data` | An array prop, as a list of items you can add, move, duplicate and delete.                             |
+| `items` / `data` | An array prop, as a list of items you can add, move, duplicate and delete. With `type: 'object'`, or an object value, an object prop with one field per key instead. |
 | any other name   | That JSX attribute, e.g. `size`, `href`, `style`. It doesn't have to be on the element yet: see below. |
 
 `innerText` and plain `innerHTML` go between the element's tags, so they need
@@ -428,9 +428,15 @@ handler. The value is source text, read and written without being run:
   expression is treated the same way. A bare reference such as
   `onClick={handleClick}` needs `type: 'function'`, since nothing says what it
   refers to (`className={styles.root}` looks the same).
-- A function inside an array item or object, such as
-  `items={[{ onClick: () => {} }]}`, is preserved and edited in the code
-  editor.
+- An array item's property works the same way in the Items editor: declare
+  it in `render` (`render: { onClick: { type: 'function' } }`), or leave it
+  untyped when it holds a function expression. Clearing it is refused there,
+  since removing a key would change the item's shape. An item that is itself
+  a function expression, as in `actions={[() => open()]}`, is edited the same
+  way.
+- A function inside an object-valued prop, such as
+  `config={{ onClick: () => {} }}`, is preserved, and the whole object is
+  edited in the code editor.
 
 ## Constraints
 

@@ -231,6 +231,59 @@ What can be picked:
 - Fields inside a collapsed array item aren't shown, so the panel can't bring
   them into view until the item is expanded.
 
+## Previewing at a width
+
+`canvasWidth` sets the width sections render at, in CSS pixels. The column is
+centered in the canvas, which scrolls sideways when it's narrower. Unset, the
+sections fill the canvas. The control is yours to draw:
+
+```tsx
+const WIDTHS = [
+  { label: 'Phone', width: 390 },
+  { label: 'Tablet', width: 768 },
+  { label: 'Full', width: undefined },
+];
+
+const Editor = () => {
+  const [value, setValue] = useState(initialCode);
+  const [width, setWidth] = useState<number | undefined>();
+
+  return (
+    <>
+      {WIDTHS.map(option => (
+        <button
+          key={option.label}
+          aria-pressed={width === option.width}
+          onClick={() => setWidth(option.width)}
+        >
+          {option.label}
+        </button>
+      ))}
+      <Live.Dnd
+        value={value}
+        onChange={setValue}
+        frame={{ mode: 'iframe' }}
+        canvasWidth={width}
+      />
+    </>
+  );
+};
+```
+
+The number is the sections' own width: `canvasWidth={390}` makes each section,
+and its iframe, 390px wide. What follows it depends on the frame mode:
+
+| `frame.mode` | Section width | Media queries (`sm:`, `md:`) |
+| --- | --- | --- |
+| `iframe` | `canvasWidth` | Follow `canvasWidth`. Viewport units and auto height follow it too. |
+| `shadow` | `canvasWidth` | Follow the browser window. |
+| none (in place) | `canvasWidth` | Follow the browser window. |
+
+So a responsive preview needs `frame={{ mode: 'iframe' }}`. See
+[Preview Modes](./preview-modes.mdx) for why. A custom layout reads the current
+value from `useDndLayout().canvasWidth`, and `Live.Dnd.Canvas` applies it as
+the built-in layout does.
+
 ## Document structure
 
 `Live.Dnd` edits one component's source. Its sections are the `<section>`

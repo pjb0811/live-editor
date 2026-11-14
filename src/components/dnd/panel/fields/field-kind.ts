@@ -1,6 +1,6 @@
 import { BINDING_PROP } from '~/constants';
 
-import type { PanelBinding } from '../../panel-binding';
+import { type PanelBinding, isArrayBinding } from '../../panel-binding';
 
 // Which built-in control `Field` renders for a binding. Exported so a
 // custom panel can ask the same question, most often whether a binding
@@ -8,8 +8,9 @@ import type { PanelBinding } from '../../panel-binding';
 export type FieldKind =
   // `canEditValue: false` — shown as preserved source, not editable.
   | 'readonly'
-  // An array literal (`items`/`data` or `type: 'array'`) — the Items editor,
-  // or `useDndItems` for your own markup.
+  // An array literal (`type: 'array'`, or `items`/`data` unless typed or
+  // valued as an object) — the Items editor, or `useDndItems` for your own
+  // markup.
   | 'items'
   // Element children given as extracted nodes — the Children editor, or
   // `useDndChildren` for your own markup.
@@ -65,7 +66,7 @@ export const getFieldKind = (binding: FieldKindBinding): FieldKind => {
     return isListed ? 'select' : 'function';
   }
 
-  if (property === 'items' || property === 'data' || type === 'array') {
+  if (isArrayBinding(binding)) {
     return 'items';
   }
 

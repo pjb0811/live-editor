@@ -11,6 +11,10 @@ import { nanoid } from 'nanoid';
 import { useLiveMessages } from '~/components/context/messages';
 import { canStructurallyEditArray } from '~/utils/ast/array-source';
 import {
+  isFunctionBindingSource,
+  isFunctionExpressionSource,
+} from '~/utils/ast/function-source';
+import {
   appendArrayItem,
   duplicateArrayItems,
   moveArrayItem,
@@ -24,7 +28,11 @@ import { parseArrayExpression } from '~/utils/ast/value';
 import { moveSelectedIndices } from '~/utils/selection';
 
 import { useDndEditOptions } from '../../edit-options';
-import { type PanelBinding, type PanelNodeChange } from '../../panel-binding';
+import {
+  type PanelBinding,
+  type PanelNodeChange,
+  resolveRenderEntry,
+} from '../../panel-binding';
 import {
   selectionAfter,
   useStructuralSelection,
@@ -265,20 +273,22 @@ export const useDndItems = (
     return index >= 0 ? snapshot.items[index] : null;
   };
 
-  // `null` means the edit failed. Otherwise the selection becomes
-  // `nextSelection` now, and again when this source comes back as `value`;
-  // any other new `value` clears it (`useStructuralSelection`).
+  // `null` means the edit failed, reported with `failure` or the generic
+  // detail. Otherwise the selection becomes `nextSelection` now, and again
+  // when this source comes back as `value`; any other new `value` clears it
+  // (`useStructuralSelection`).
   const commit = (
     snapshot: Snapshot,
     next: string | null,
     nextIds: string[] | undefined,
     nextSelection: Set<number>,
+    failure?: string,
   ) => {
     if (next === null) {
       reportError({
         type: 'items',
         title: messages.editErrors.itemUpdateFailed,
-        description: messages.editErrors.itemUpdateFailedDetail,
+        description: failure ?? messages.editErrors.itemUpdateFailedDetail,
       });
 
       return false;
@@ -349,18 +359,35 @@ export const useDndItems = (
       return;
     }
 
+    const position = item?.elementIndex ?? elementIndex;
+    const property = snapshot.items.find(
+      candidate => candidate.elementIndex === position,
+    );
+    const astNode =
+      property && 'editableProperties' in property
+        ? property.editableProperties[propertyKey]?.astNode
+        : undefined;
+    // A function property refuses anything but a function, and says so.
+    const isFunction =
+      astNode !== undefined &&
+      isFunctionBindingSource(
+        resolveRenderEntry(render, propertyKey).type,
+        snapshot.value.slice(astNode.start!, astNode.end!),
+      );
+
     // A value edit moves nothing, so the selection stands.
     commit(
       snapshot,
       updateArrayItemProperty(
         snapshot.value,
-        item?.elementIndex ?? elementIndex,
+        position,
         propertyKey,
         next,
         render,
       ),
       undefined,
       new Set(snapshot.selected),
+      isFunction ? messages.editErrors.invalidFunction(propertyKey) : undefined,
     );
   };
 
@@ -372,15 +399,23 @@ export const useDndItems = (
       return;
     }
 
+    const position = item?.elementIndex ?? elementIndex;
+    const shown = snapshot.items.find(
+      candidate => candidate.elementIndex === position,
+    );
+    const isFunction =
+      shown !== undefined &&
+      'source' in shown &&
+      isFunctionExpressionSource(shown.source);
+
     commit(
       snapshot,
-      updateArrayItemValue(
-        snapshot.value,
-        item?.elementIndex ?? elementIndex,
-        next,
-      ),
+      updateArrayItemValue(snapshot.value, position, next),
       undefined,
       new Set(snapshot.selected),
+      isFunction
+        ? messages.editErrors.invalidFunction(`item-${shown.index}`)
+        : undefined,
     );
   };
 

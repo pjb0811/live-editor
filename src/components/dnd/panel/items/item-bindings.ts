@@ -1,3 +1,7 @@
+import {
+  isFunctionBindingSource,
+  isFunctionExpressionSource,
+} from '~/utils/ast/function-source';
 import { type BindingRenderMap } from '~/utils/ast/types';
 import { canLosslesslyEvaluateSource, parseValue } from '~/utils/ast/value';
 
@@ -45,6 +49,9 @@ export const toItemBindings = (
   }: ItemBindingOptions,
 ): DndItemsItem => {
   if (isPrimitiveItem(item)) {
+    // An item that is a function expression is edited as its source (#748).
+    const isFunction = isFunctionExpressionSource(item.source);
+
     return {
       id,
       index: item.index,
@@ -55,10 +62,11 @@ export const toItemBindings = (
         id: `primitive-${item.id}`,
         label: `item-${item.index}`,
         property: item.type,
-        value: item.value ?? '',
+        ...(isFunction && { type: 'function' as const }),
+        value: isFunction ? item.source : (item.value ?? ''),
         rawValue:
           item.type === 'unknown' ? item.source : String(item.value ?? ''),
-        canEditValue: canLosslesslyEvaluateSource(item.source),
+        canEditValue: isFunction || canLosslesslyEvaluateSource(item.source),
         onChange: onValueChange,
       },
     };
@@ -69,16 +77,22 @@ export const toItemBindings = (
   ).map(([key, prop]) => {
     const binding = resolveRenderEntry(render, key);
     const propertySource = value.slice(prop.astNode.start!, prop.astNode.end!);
+    // Its source, never run, as for an attribute (#741, #748).
+    const isFunction = isFunctionBindingSource(binding.type, propertySource);
 
     return {
       ...toBindingFields(binding),
+      ...(isFunction && { type: 'function' as const }),
       id: `item-${id}-${key}`,
       // Over the leaf's own `meta`, so the property's real type wins over an
       // authored `valueType`.
       meta: { ...binding.meta, valueType: prop.type },
-      value: parseValue(String(prop.value)),
-      rawValue: prop.type === 'unknown' ? propertySource : String(prop.value),
-      canEditValue: canLosslesslyEvaluateSource(propertySource),
+      value: isFunction ? propertySource : parseValue(String(prop.value)),
+      rawValue:
+        isFunction || prop.type === 'unknown'
+          ? propertySource
+          : String(prop.value),
+      canEditValue: isFunction || canLosslesslyEvaluateSource(propertySource),
       onChange: next => onPropertyChange(key, next),
     };
   });

@@ -7,7 +7,12 @@ import { DEFAULT_TEMPLATE, PALETTE_SECTIONS } from '~/constants';
 import { PreviewContext } from '../context/states';
 import Dnd from './dnd';
 import Layout, { Canvas, Palette, Panel } from './layout';
-import { useDndLayout, useDndPalette, useDndPanel } from './layout-context';
+import {
+  useDndLayout,
+  useDndPalette,
+  useDndPanel,
+  useDndSections,
+} from './layout-context';
 
 // Same reason as dnd.test.tsx: each section compiles into an iframe, none of
 // which jsdom needs to do for us to see where the regions landed.
@@ -226,6 +231,54 @@ describe('a layout supplied as children', () => {
   });
 });
 
+// `canvasWidth` (#751): the layout reads it back, the drop area gets it as
+// a custom property, and anything but a positive number fills the canvas.
+describe('canvasWidth', () => {
+  const renderWidth = (canvasWidth: number | undefined) => {
+    const Probe = () => (
+      <div data-testid="probe">{String(useDndLayout().canvasWidth)}</div>
+    );
+
+    return render(
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd value={document_} canvasWidth={canvasWidth}>
+          <Canvas />
+          <Probe />
+        </Dnd>
+      </PreviewContext.Provider>,
+    );
+  };
+
+  it('reaches the layout and the drop area', () => {
+    const { container } = renderWidth(390);
+    const dropArea = container.querySelector<HTMLElement>(
+      '[data-frame-container] > div',
+    )!;
+
+    expect(container.querySelector('[data-testid="probe"]')!.textContent).toBe(
+      '390',
+    );
+    expect(dropArea.style.getPropertyValue('--live-editor-canvas-width')).toBe(
+      '390px',
+    );
+  });
+
+  it.each([undefined, 0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    'fills the canvas for %s',
+    canvasWidth => {
+      const { container } = renderWidth(canvasWidth);
+      const dropArea = container.querySelector<HTMLElement>(
+        '[data-frame-container] > div',
+      )!;
+
+      expect(
+        container.querySelector('[data-testid="probe"]')!.textContent,
+      ).toBe('undefined');
+      expect(dropArea.getAttribute('style')).toBeNull();
+    },
+  );
+});
+
 describe('rendering outside Dnd', () => {
   it.each([
     ['<Live.Dnd.Palette>', () => <Palette />],
@@ -246,6 +299,7 @@ describe('rendering outside Dnd', () => {
     ['useDndPalette()', useDndPalette],
     ['useDndPanel()', useDndPanel],
     ['useDndLayout()', useDndLayout],
+    ['useDndSections()', useDndSections],
   ])('names the offending hook: %s', (subject, hook) => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 
