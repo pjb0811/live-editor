@@ -49,6 +49,11 @@ Narrow the window below 640px and both titles come out the same size. Use
 `iframe` when the preview has to show how a layout responds to its own width,
 as when previewing a mobile layout in a narrow column.
 
+To preview `Live.Preview` at a device width, size its container: an iframe
+preview takes the container's width. `Live.Dnd` takes a `canvasWidth` prop
+for the same thing, see
+[Previewing at a width](./drag-and-drop.mdx#previewing-at-a-width).
+
 ```tsx
 import Live from '@jbpark/live-editor';
 import { uiKitModules } from '@jbpark/live-editor/ui-kit';

@@ -27,6 +27,35 @@ export interface DndPalette {
   onAdd: (item: Section) => void;
 }
 
+// What `useDndSections()` returns: the document's sections and what can be
+// done to any of them, selected or not, for a host's own outline, layers
+// list or menu (#750).
+export interface DndSections {
+  // In document order. While the document doesn't parse, the last version
+  // that did (see `readOnly`).
+  sections: Section[];
+  // The selected section's id, or `null`. Also `null` when the selected
+  // section is no longer in the document.
+  selectedId: string | null;
+  // Selects a section without toggling, and scrolls it into view. `null`
+  // clears the selection; an unknown id does nothing. Keyboard focus stays
+  // where it is.
+  select: (id: string | null) => void;
+  // One place up or down. Nothing happens at either end.
+  move: (id: string, direction: 'up' | 'down') => void;
+  // To a position in `sections`, clamped to the list, for a host's own
+  // sortable list.
+  moveTo: (id: string, index: number) => void;
+  // Copies the section below itself and selects the copy.
+  duplicate: (id: string) => void;
+  // Deletes the section, asking `onBeforeDelete` first like the toolbar.
+  remove: (id: string) => void;
+  // True while the document doesn't parse: `sections` is the last version
+  // that did, and every change is refused (and reported through
+  // `onEditError`) until it parses again.
+  readOnly: boolean;
+}
+
 // What `useDndPanel()` returns: everything the built-in panel uses, so a
 // custom panel works from the same data.
 export interface DndPanel {
@@ -131,6 +160,17 @@ export interface Props extends Omit<
   // element's `data-id`, the key its fields carry in `useDndPanel()`, and its
   // section's id. The section is selected as well (#432).
   onNodePick?: (pick: DndNodePick) => void;
+  // Called when the selected section changes, for any reason: a click, the
+  // keyboard, `useDndSections().select`, or the section leaving the
+  // document. Receives the section, or `null` when nothing is selected. Not
+  // called for the initial empty selection, nor when only this function
+  // changes (#750).
+  onSelectionChange?: (section: Section | null) => void;
+  // The width sections render at, in CSS pixels, centered in the canvas,
+  // which scrolls sideways when it's narrower. Unset fills the canvas. An
+  // `iframe` frame's media queries and viewport units follow it; `shadow` and
+  // in-place sections still match the browser window (#751).
+  canvasWidth?: number;
   // The single customization slot. Omit it for the built-in editor. Supply
   // it and you own the arrangement: compose `Live.Dnd.Palette` /
   // `Live.Dnd.Canvas` / `Live.Dnd.Panel` (each the built-in region, in the

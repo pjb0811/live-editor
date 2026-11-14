@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-import type { DndPalette, DndPanel } from './types';
+import type { DndPalette, DndPanel, DndSections } from './types';
 
 // The state a custom layout needs: where things go, not what they contain.
 export interface DndLayout {
@@ -20,15 +20,19 @@ export interface DndLayout {
   // did, read-only (#433). `'container-not-found'` when it has no container
   // element, so it has no sections (#449).
   documentError: 'parse-error' | 'container-not-found' | null;
+  // `Live.Dnd`'s `canvasWidth`, or `undefined` when the sections fill the
+  // canvas, for a layout's own width control.
+  canvasWidth?: number;
 }
 
-// Everything `Live.Dnd` passes to its children, read through the three
+// Everything `Live.Dnd` passes to its children, read through the
 // hooks below, so each component depends only on the part it uses.
 // `canvas` is a node, not data: `Live.Dnd.Canvas` places it, and nothing
 // else can produce it.
 interface DndRegions extends DndLayout {
   palette: DndPalette;
   panel: DndPanel;
+  sections: DndSections;
   canvas: React.ReactNode;
 }
 
@@ -54,6 +58,10 @@ export const useDndPalette = (): DndPalette =>
 // The selected section, its editable bindings, and the callbacks that
 // commit edits: everything the built-in panel uses.
 export const useDndPanel = (): DndPanel => useDndRegions('useDndPanel()').panel;
+
+// The document's sections and the actions on any of them (#750).
+export const useDndSections = (): DndSections =>
+  useDndRegions('useDndSections()').sections;
 
 // The layout state.
 export const useDndLayout = (): DndLayout => useDndRegions('useDndLayout()');

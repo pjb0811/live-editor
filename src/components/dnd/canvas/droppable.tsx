@@ -7,10 +7,15 @@ import styles from './canvas.module.css';
 
 import { paletteSectionOf } from '../palette/palette-drag';
 
-const Droppable = ({
-  children,
-  className,
-}: React.ComponentPropsWithRef<'div'>) => {
+interface DroppableProps {
+  children?: React.ReactNode;
+  className?: string;
+  // The sections' width in CSS pixels, not counting the drop area's padding
+  // and border. Unset fills the canvas.
+  width?: number;
+}
+
+const Droppable = ({ children, className, width }: DroppableProps) => {
   const { setNodeRef, isOver, active } = useDroppable({
     id: 'sortable-area',
   });
@@ -30,8 +35,16 @@ const Droppable = ({
       className={cn(
         styles.dropArea,
         shouldHighlight && styles.dropAreaOver,
+        width !== undefined && styles.dropAreaSized,
         className,
       )}
+      style={
+        width === undefined
+          ? undefined
+          : ({
+              '--live-editor-canvas-width': `${width}px`,
+            } as React.CSSProperties)
+      }
     >
       {children}
       {isPaletteSectionDragging && (
