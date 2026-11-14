@@ -28,8 +28,9 @@ export const uiKitPaletteSections: Section[] = [
               render: {
                 backgroundColor: { type: 'color', label: 'Background Color' },
               },
-              // Not a library field, so it arrives as meta.group.
-              group: 'layout',
+              // Not a library field, so it arrives as meta.group. The built-in
+              // panel boxes fields of one group under this name (#753).
+              group: 'Layout',
             },
             {
               label: 'Content Spacing',
@@ -41,7 +42,7 @@ export const uiKitPaletteSections: Section[] = [
               // Presentation only: the built-in panel ignores it and shows a
               // number input; a custom panel can switch on widget.type.
               widget: { type: 'slider', step: 4, unit: 'px' },
-              group: 'layout',
+              group: 'Layout',
             },
           ]}
           style={{

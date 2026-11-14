@@ -13,6 +13,7 @@ import styles from './fields/fields.module.css';
 
 import { useDndEditOptions } from '../edit-options';
 import { resolveRenderEntry, toBindingFields } from '../panel-binding';
+import { readDescription } from './binding-meta';
 import Children from './children/children';
 import ColorField from './fields/color-field';
 import FieldError from './fields/field-error';
@@ -143,6 +144,7 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
                 binding={{ ...nested, value: val }}
                 labelClassName={styles.label}
                 label={nested.label}
+                description={readDescription(nested)}
               >
                 <Field
                   binding={{

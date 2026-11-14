@@ -29,7 +29,7 @@ live-editor/
 │  │  │  ├─ canvas/         # 캔버스: droppable, sortable(+section-handlers 컨텍스트), overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight, canvas-notice(빈 캔버스 안내)
 │  │  │  ├─ palette/        # 팔레트: draggable, palette-drag(드래그 데이터)
 │  │  │  ├─ state/          # 상태 훅: use-section-document(섹션 문서), use-dnd-keyboard, use-inspector-state, use-delete-flow, use-section-editing(패널 편집 commit), edit-errors(편집 에러 보고)
-│  │  │  └─ panel/          # 프로퍼티 편집 패널: 루트에 panel·field(값 종류별 분기)·element-fields(요소 카드, element-selection)·row-controls, 기능 하위 폴더 items/(Items 편집기와 use-dnd-items 등), children/(Children 편집기, use-dnd-children), fields/(labeled-field, field-kind, field-ids, use-field-state(값·검증·id 공용 훅), field-error, color-field, control-class, jsx-editor-field), selection/(행 선택 체크박스·전체 선택·bulk bar, use-structural-selection)
+│  │  │  └─ panel/          # 프로퍼티 편집 패널: 루트에 panel·field(값 종류별 분기)·element-fields(요소 카드, element-selection)·binding-meta(`meta`의 description·group·visible 읽기)·row-controls, 기능 하위 폴더 items/(Items 편집기와 use-dnd-items 등), children/(Children 편집기, use-dnd-children), fields/(labeled-field, field-kind, field-ids, use-field-state(값·검증·id 공용 훅), field-error, color-field, control-class, jsx-editor-field), selection/(행 선택 체크박스·전체 선택·bulk bar, use-structural-selection)
 │  │  ├─ editor/            # CodeMirror 코드 에디터 (core.tsx, use-format-code.ts)
 │  │  ├─ error/             # 에러 처리 (boundary.tsx, guard.tsx, runtime.tsx)
 │  │  ├─ frame/            # 미리보기 컨테이너: 루트에 frame.tsx, shadow.tsx, style-sync.ts(shadow와 iframe 공용), viewport-units.ts(iframe과 자동 높이 공용), 기능 하위 폴더 iframe/(iframe.tsx, use-iframe-document, inject-assets, use-host-style-sync), auto-height/(auto-height, use-auto-height, measure, animations)

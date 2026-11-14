@@ -1,5 +1,7 @@
 import { useId } from 'react';
 
+import styles from './fields.module.css';
+
 import { FieldIdsContext, LABELABLE_KINDS } from './field-ids';
 import { type FieldKindBinding, getFieldKind } from './field-kind';
 
@@ -8,6 +10,9 @@ interface Props {
   binding: FieldKindBinding;
   label: React.ReactNode;
   labelClassName?: string;
+  // `meta.description`: a line under the label, which the control names as
+  // its description (#753).
+  description?: string;
   children: React.ReactNode;
 }
 
@@ -17,13 +22,20 @@ interface Props {
 // its own for a control that points back with `aria-labelledby`, such as
 // one from `renderField`. Renders no wrapper, so it fits any layout around
 // it.
-const LabeledField = ({ binding, label, labelClassName, children }: Props) => {
+const LabeledField = ({
+  binding,
+  label,
+  labelClassName,
+  description,
+  children,
+}: Props) => {
   const controlId = useId();
   const labelId = `${controlId}-label`;
+  const descriptionId = description ? `${controlId}-description` : undefined;
   const isLabelable = LABELABLE_KINDS.has(getFieldKind(binding));
 
   return (
-    <FieldIdsContext.Provider value={{ controlId, labelId }}>
+    <FieldIdsContext.Provider value={{ controlId, labelId, descriptionId }}>
       <label
         id={labelId}
         htmlFor={isLabelable ? controlId : undefined}
@@ -31,6 +43,11 @@ const LabeledField = ({ binding, label, labelClassName, children }: Props) => {
       >
         {label}
       </label>
+      {description && (
+        <p id={descriptionId} className={styles.description}>
+          {description}
+        </p>
+      )}
       {children}
     </FieldIdsContext.Provider>
   );

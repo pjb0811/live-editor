@@ -8,6 +8,7 @@ import Dnd, {
   Field,
   type PanelBinding,
   type PanelNodeChange,
+  isBindingVisible,
   useDndInspector,
   useDndLayout,
   useDndPanel,
@@ -16,45 +17,6 @@ import { uiKitFields, uiKitModules } from '~/components/ui-kit';
 import { cn } from '~/utils';
 
 import { META_BINDING_KEYS, META_DOCUMENT, META_EXAMPLE } from './meta-example';
-
-type VisibleRule = {
-  property: string;
-  id?: string;
-  in: unknown[];
-  default?: unknown;
-};
-
-const isVisibleRule = (value: unknown): value is VisibleRule =>
-  typeof value === 'object' &&
-  value !== null &&
-  typeof (value as VisibleRule).property === 'string' &&
-  Array.isArray((value as VisibleRule).in);
-
-// The `visible` check from the docs: `false` hides a field, and a rule shows
-// it only while another binding's value is in a list. Anything else, a
-// malformed rule included, leaves the field visible.
-const isVisible = (binding: PanelBinding, bindings: PanelBinding[]) => {
-  const rule = binding.meta?.visible;
-
-  if (rule === false) {
-    return false;
-  }
-
-  if (!isVisibleRule(rule)) {
-    return true;
-  }
-
-  const source = bindings.find(
-    item =>
-      item.id === (rule.id ?? binding.id) && item.property === rule.property,
-  );
-  const value =
-    source && source.present !== false ? source.value : rule.default;
-
-  return Array.isArray(value)
-    ? value.some(entry => rule.in.includes(entry))
-    : rule.in.includes(value);
-};
 
 const metaString = (binding: PanelBinding, key: string) => {
   const value = binding.meta?.[key];
@@ -170,7 +132,7 @@ const MetaPanel = () => {
 
   // Visibility depends on other bindings' values, so it runs on every
   // render, after an edit as much as on a new selection.
-  const shown = bindings.filter(binding => isVisible(binding, bindings));
+  const shown = bindings.filter(binding => isBindingVisible(binding, bindings));
   const tabs = groupBy(
     shown,
     binding => metaString(binding, 'tab') ?? DEFAULT_TAB,

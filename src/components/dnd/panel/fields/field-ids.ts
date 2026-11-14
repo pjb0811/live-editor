@@ -9,6 +9,8 @@ import type { FieldKind } from './field-kind';
 export const FieldIdsContext = createContext<{
   controlId: string;
   labelId: string;
+  // The field's `meta.description`, when it shows one (#753).
+  descriptionId?: string;
 } | null>(null);
 
 // The ids a control carries: its own, for the label's `htmlFor`, its
@@ -27,6 +29,7 @@ export const useFieldIds = () => {
     controlId,
     labelId: labelledIds?.labelId,
     errorId: `${controlId}-error`,
+    descriptionId: labelledIds?.descriptionId,
     isLabelled: labelledIds !== null,
   };
 };
