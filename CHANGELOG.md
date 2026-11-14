@@ -1,5 +1,19 @@
 # Changelog
 
+## 6.3.0
+
+### Minor Changes
+
+- ae48689: Add `Live.Dnd`'s `canvasWidth` prop, the width in CSS pixels that sections render at, centered in the canvas. With `frame={{ mode: 'iframe' }}`, a section's media queries, viewport units and auto height follow it, so a host can preview a page at a phone or tablet width. `useDndLayout().canvasWidth` returns it.
+- f3c158e: Add `useDndSections()` and `Live.Dnd`'s `onSelectionChange`. The hook lists the document's sections and can select, move, duplicate or delete any of them, selected or not, so a host can build its own outline, layers list or menu. `onSelectionChange` reports the selected section, or `null`, whenever the selection changes.
+- f952fee: Add a `type: 'image'` binding and `Live.Dnd`'s `onUpload`. An image field shows a URL input with a thumbnail of the current value and accepts any image source, relative paths and `data:` URLs included. With `onUpload`, it also gets a file picker whose resolved URL is written like a typed one. A rejected upload is reported through `onEditError` as an `upload` error. `BindingType`, `FieldKind` and `DndEditError` each gain a member, so an exhaustive `switch` over them needs a new case, and `LiveMessages` gains `panel.imagePlaceholder`, `panel.chooseImage`, `panel.uploadingImage` and `editErrors.uploadFailed`.
+- 1f5e019: The Items editor edits functions in array items as source, as `type: 'function'` does for attributes. A property declared `type: 'function'` in `render`, or an untyped one holding a function expression, gets the code editor (or a select with `options`). So does an item that is itself a function expression. A value that isn't a function or a reference to one is refused with the function error.
+- c6900af: Add `useLiveHistory`, undo and redo for a document edited with `Live.Dnd` and `Live.Editor`. Each canvas edit is one step, a burst of typing in the code editor is one step, and Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z and Ctrl+Y work outside text fields and the code editor. `Live.Dnd` and `Live.Editor` now pass a second argument to `onChange`, `{ source: 'dnd' }` or `{ source: 'editor' }`, which a one-argument `onChange` ignores. The `@jbpark/use-hooks` dependency moves to ^4.8.0.
+
+### Patch Changes
+
+- 71aa1fd: A binding on an `items` or `data` prop declared with `type: 'object'`, or holding an object, now gets the object editor (one field per key) instead of the array editor.
+
 ## 6.2.0
 
 ### Minor Changes
