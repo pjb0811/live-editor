@@ -7,7 +7,7 @@ import type {
 
 import type { FrameProps } from '../frame';
 import type { DndRenderSectionFallback } from './canvas/section-fallback-context';
-import type { DndEditError, DndRenderField } from './edit-options';
+import type { DndEditError, DndRenderField, DndUpload } from './edit-options';
 import type { DndNodePick } from './inspector';
 import type {
   PanelBinding,
@@ -171,6 +171,11 @@ export interface Props extends Omit<
   // `iframe` frame's media queries and viewport units follow it; `shadow` and
   // in-place sections still match the browser window (#751).
   canvasWidth?: number;
+  // Uploads a file chosen in a `type: 'image'` field and resolves to its URL,
+  // which is validated and written like a typed one. A rejection is reported
+  // through `onEditError` as an `upload` error and keeps the value. Without
+  // it, image fields take a URL only (#752).
+  onUpload?: DndUpload;
   // The single customization slot. Omit it for the built-in editor. Supply
   // it and you own the arrangement: compose `Live.Dnd.Palette` /
   // `Live.Dnd.Canvas` / `Live.Dnd.Panel` (each the built-in region, in the

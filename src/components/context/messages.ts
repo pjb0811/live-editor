@@ -54,6 +54,10 @@ export interface LiveMessages {
     textPlaceholder: string;
     // The empty choice of a function select: no handler set (#741).
     noFunction: string;
+    // The image field's URL input and file picker (#752).
+    imagePlaceholder: string;
+    chooseImage: string;
+    uploadingImage: string;
   };
   // The built-in editor for an array value.
   items: {
@@ -126,6 +130,8 @@ export interface LiveMessages {
     itemsParseFailed: string;
     itemUpdateFailed: string;
     itemUpdateFailedDetail: string;
+    // `onUpload` rejected (#752).
+    uploadFailed: (label: string) => string;
   };
   // What a screen reader hears during a drag.
   announcements: {
@@ -207,6 +213,9 @@ export const defaultMessages: LiveMessages = {
     numberPlaceholder: 'Enter a numeric value',
     textPlaceholder: 'Enter a value',
     noFunction: 'None',
+    imagePlaceholder: 'https://example.com/image.png',
+    chooseImage: 'Choose image',
+    uploadingImage: 'Uploading…',
   },
   items: {
     heading: count => `Items (${count})`,
@@ -284,6 +293,7 @@ export const defaultMessages: LiveMessages = {
     itemUpdateFailed: 'Failed to update this item',
     itemUpdateFailedDetail:
       'The source was preserved. Structural edits require a dense array without spreads; use the code editor for unsupported syntax.',
+    uploadFailed: label => `Failed to upload an image for "${label}"`,
   },
   announcements: {
     instructions:

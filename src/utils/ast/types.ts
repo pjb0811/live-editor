@@ -48,6 +48,8 @@ export const BINDING_TYPES = [
   'tel',
   'time',
   'datetime',
+  // An image's URL, relative paths and `data:` URLs included (#752).
+  'image',
 ] as const;
 
 export type BindingType = (typeof BINDING_TYPES)[number];

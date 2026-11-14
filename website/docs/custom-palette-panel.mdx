@@ -528,6 +528,7 @@ on it can't drift from the built-in panel:
 | `'object'`   | One nested field per key                               | `value` is a plain object                                 |
 | `'boolean'`  | Checkbox                                               | `type` is `boolean`, or `value` is a boolean              |
 | `'select'`   | Select                                                 | `options` is set; for `function`, also `value` is listed or `''` |
+| `'image'`    | URL input, thumbnail, and a file picker with `onUpload` | `type` is `image`                                         |
 | `'color'`    | Color input                                            | `type` is `color`, or `property` contains `color`         |
 | `'date'`     | Date input                                             | `type` is `date`                                          |
 | `'time'`     | Time input                                             | `type` is `time`                                          |
@@ -731,6 +732,7 @@ failed:
 | `'update'` | A field edit was rejected, usually because the element's `data-binding` names a `property` or `label` its markup doesn't have, or because text was written to a self-closing element (`self-closing`). | `id`, `label`, `property`, `failure` (with `failure.reason`) |
 | `'parse'`  | The selected section, or an `items` value inside it, doesn't parse.                                                                                                                                    | `target` (`'section'` or `'items'`), `error`                 |
 | `'items'`  | An array edit would have lost source (a spread, a hole), so it was refused.                                                                                                                            | —                                                            |
+| `'upload'` | `onUpload` rejected for an image field. The value is unchanged. See [Images](./data-binding.mdx#images). | `id`, `label`, `property`, `error` |
 
 ### Your own markup for an array binding: `useDndItems`
 
@@ -1057,9 +1059,9 @@ it immediately, because its own array edit has already succeeded by then.
 | `present`                 | `boolean?`                           | `false` when the binding names an attribute the element doesn't carry. `onChange(undefined)` removes an attribute and `onChange(value)` adds it back, so this is what an on/off control reads. `undefined` means the attribute is there, or the binding is content (`innerText`, `innerHTML`, `children`). See [Optional attributes](./data-binding.mdx#optional-attributes).                           |
 | `onChange`                | `(value: unknown) => void`           | Commit an edit through the same AST-update pipeline (including the error toast on a bad edit). Pass the value as its real type — it's serialized once, at the AST boundary, where the declared `type` is known, so no string quoting on your side.                                                                                                                                                      |
 
-`BindingType` is a closed union of 15 data kinds: `array`, `object`,
+`BindingType` is a closed union of 16 data kinds: `array`, `object`,
 `string`, `number`, `boolean`, `color`, `jsx`, `richtext`, `function`, `date`,
-`time`, `datetime`, `url`, `email`, `tel`. A binding with no `type` on an
+`time`, `datetime`, `url`, `email`, `tel`, `image`. A binding with no `type` on an
 attribute that holds a function expression arrives as `type: 'function'`.
 Switching on it alone is enough for the scalar types; for `object`/`array`
 values, see `flattenEditableValue` below rather than treating them as plain

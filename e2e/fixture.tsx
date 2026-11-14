@@ -563,6 +563,52 @@ export const SourceFieldFixture = ({ initial = sourceFieldCode }) => {
   );
 };
 
+// An image field with an upload that reads the file as a `data:` URL
+// (#752).
+const imageFieldCode = `const App = () => (
+  <main id="app-container">
+    <section data-id="s1" data-name="One">
+      <img data-id="hero" data-binding={[{ label: 'Image', property: 'src', type: 'image' }]} src="/missing.png" alt="" />
+    </section>
+  </main>
+);
+
+export default App;`;
+
+const readAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+const ImageFieldFixture = () => {
+  const [code, setCode] = useState(imageFieldCode);
+  const [rejects, setRejects] = useState(false);
+
+  return (
+    <Live>
+      <button onClick={() => setRejects(true)}>Reject uploads</button>
+      <div style={{ height: 600 }}>
+        <Live.Dnd
+          value={code}
+          onChange={setCode}
+          onUpload={async file => {
+            if (rejects) {
+              throw new Error('Upload refused');
+            }
+
+            return readAsDataUrl(file);
+          }}
+        />
+      </div>
+      <output data-testid="source">{code}</output>
+    </Live>
+  );
+};
+
 // #743: which state a handler in one canvas section can change in another.
 // A store passed in `modules` is shared; `App` state and state created inside
 // `provider` are per section.
@@ -703,6 +749,7 @@ const fixtures = {
   'field-error': <FieldErrorFixture />,
   'source-field': <SourceFieldFixture />,
   'function-field': <SourceFieldFixture initial={functionFieldCode} />,
+  'image-field': <ImageFieldFixture />,
   'cross-section': <CrossSectionFixture />,
   'canvas-width': <CanvasWidthFixture />,
 } as const;

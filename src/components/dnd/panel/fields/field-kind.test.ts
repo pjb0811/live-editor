@@ -49,6 +49,15 @@ describe('getFieldKind from the dnd entry', () => {
     ['number', { value: 1 }],
     ['text', {}],
     ['function', { type: 'function' as const, value: '() => {}' }],
+    ['image', { type: 'image' as const, value: '/a.png' }],
+    [
+      'select',
+      {
+        type: 'image' as const,
+        value: '/a.png',
+        options: [{ label: 'A', value: '/a.png' }],
+      },
+    ],
   ])('%s for %o', (kind, override) => {
     expect(kindOf(override)).toBe(kind);
   });

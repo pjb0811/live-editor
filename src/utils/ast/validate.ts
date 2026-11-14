@@ -220,6 +220,21 @@ export const validateBindingValue = (
     }
   }
 
+  // An image's URL can be relative, so only an absolute one is checked
+  // against `protocols` (#752).
+  if (
+    typeof value === 'string' &&
+    binding.type === 'image' &&
+    binding.protocols?.length &&
+    URL.canParse(value)
+  ) {
+    const allowed = binding.protocols.map(normalizeProtocol);
+
+    if (!allowed.includes(new URL(value).protocol)) {
+      return invalid(messages.protocol(allowed));
+    }
+  }
+
   if (typeof value === 'string' && binding.type === 'time') {
     if (!TIME.test(value)) {
       return invalid(messages.time);
