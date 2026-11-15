@@ -13,6 +13,8 @@ import { type SectionNavigation, useSectionHandlers } from './section-handlers';
 
 interface Props {
   id: string;
+  // The section's name, as the section's accessible name: its content is
+  // inert, so it can't name it (#747).
   name?: string;
   children: React.ReactNode;
   selected?: boolean;
@@ -36,6 +38,7 @@ const NAVIGATION_KEYS: Record<string, SectionNavigation> = {
 
 const Sortable = ({
   id,
+  name,
   children,
   selected,
   onClick,
@@ -149,6 +152,7 @@ const Sortable = ({
       style={style}
       {...attributes}
       {...listeners}
+      aria-label={name}
       onKeyDown={onKeyDown}
       onClick={onClick}
       className={cn(
@@ -187,7 +191,12 @@ const Sortable = ({
             : undefined
         }
       />
-      {children}
+      {/* The preview, for editing, not for use: `inert` keeps the keyboard
+          out of it, as the shield keeps the pointer out, so Tab goes from
+          section to section and Enter never runs a section's own handler
+          (#747). Off while the element picker is on, whose hit test can't
+          see inert elements. */}
+      <div inert={!inspecting}>{children}</div>
       {selected && (
         <div className={styles.sectionToolbar}>
           {onMoveUp && (

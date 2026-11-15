@@ -710,6 +710,7 @@ const App = () => {
     <main id="app-container">
       <section data-id="s1" data-name="One">
         <Increment onApp={() => setApp(value => value + 1)} />
+        <a href="#navigated" data-testid="link">Link</a>
         <Counts id="counts-1" app={app} />
       </section>
       <section data-id="s2" data-name="Two">
@@ -721,6 +722,11 @@ const App = () => {
 
 export default App;`;
 
+// `?mode=iframe` or `?mode=shadow` picks the frame; in place otherwise.
+const crossSectionMode = new URLSearchParams(window.location.search).get(
+  'mode',
+);
+
 const CrossSectionFixture = () => (
   <Live>
     <div style={{ height: 600 }}>
@@ -728,6 +734,11 @@ const CrossSectionFixture = () => (
         value={crossSectionCode}
         modules={crossSectionModules}
         provider={withCountingProvider}
+        frame={
+          crossSectionMode === 'iframe' || crossSectionMode === 'shadow'
+            ? { mode: crossSectionMode }
+            : undefined
+        }
       />
     </div>
   </Live>

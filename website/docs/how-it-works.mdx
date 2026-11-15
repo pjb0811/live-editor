@@ -84,10 +84,12 @@ Two things follow from that:
   in `App` or in a top-level variable is separate in each section on the
   canvas, while `Live.Preview`, which renders the whole document once, shares
   it. See [State across sections](#state-across-sections).
-- **The canvas doesn't run pointer interactions.** Each section is covered,
-  so a click or drag selects and moves the section instead of reaching its
-  content. An `onClick` in a section doesn't run from a click on the canvas;
-  try handlers in `Live.Preview`.
+- **The canvas doesn't run a section's interactions.** Each section is
+  covered, so a click or drag selects and moves the section instead of
+  reaching its content. Its content is also `inert`, so the keyboard can't
+  focus it either: Tab goes from section to section, and Enter selects the
+  section. An `onClick` in a section doesn't run on the canvas; try handlers
+  in `Live.Preview`.
 
 ## Elements, ids and bindings
 
