@@ -1,8 +1,9 @@
+import type { DndPanelLayout } from '../edit-options';
 import type { PanelBinding } from '../panel-binding';
 
-// The `meta` keys the built-in panel reads, out of the shared set the docs
-// suggest (#753). The library's parsing, validation and `update()` read none
-// of them; only the panel does, as a custom panel may.
+// The `meta` keys the docs suggest for the panel, read only by what a host
+// opts into: `metaPanelLayout` for the built-in panel, or these functions in
+// a custom one (#753, #763). The core reads none of them.
 
 // Shows a field only while another binding's value is one of `in`.
 export interface VisibleRule {
@@ -84,3 +85,12 @@ export const readDescription = (binding: Pick<PanelBinding, 'meta'>) =>
 // `meta.group`: fields of one element with the same name share a box.
 export const readGroup = (binding: Pick<PanelBinding, 'meta'>) =>
   readText(binding, 'group');
+
+// The built-in panel arranged by the `meta` keys the docs suggest:
+// `visible`, `group` and `description`. Pass it as `Live.Dnd`'s
+// `panelLayout`, or spread it and replace one function (#763).
+export const metaPanelLayout: DndPanelLayout = {
+  isVisible: isBindingVisible,
+  groupOf: readGroup,
+  describe: readDescription,
+};

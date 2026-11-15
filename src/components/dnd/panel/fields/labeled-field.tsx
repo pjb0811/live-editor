@@ -10,9 +10,9 @@ interface Props {
   binding: FieldKindBinding;
   label: React.ReactNode;
   labelClassName?: string;
-  // `meta.description`: a line under the label, which the control names as
-  // its description (#753).
-  description?: string;
+  // From `panelLayout.describe`: shown under the label, and named by the
+  // control as its description (#753, #763).
+  description?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -31,7 +31,12 @@ const LabeledField = ({
 }: Props) => {
   const controlId = useId();
   const labelId = `${controlId}-label`;
-  const descriptionId = description ? `${controlId}-description` : undefined;
+  const hasDescription =
+    description !== undefined &&
+    description !== null &&
+    description !== false &&
+    description !== '';
+  const descriptionId = hasDescription ? `${controlId}-description` : undefined;
   const isLabelable = LABELABLE_KINDS.has(getFieldKind(binding));
 
   return (
@@ -43,10 +48,10 @@ const LabeledField = ({
       >
         {label}
       </label>
-      {description && (
-        <p id={descriptionId} className={styles.description}>
+      {hasDescription && (
+        <div id={descriptionId} className={styles.description}>
           {description}
-        </p>
+        </div>
       )}
       {children}
     </FieldIdsContext.Provider>

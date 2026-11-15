@@ -91,8 +91,25 @@ export type DndRenderField = (
   builtin: React.ReactElement,
 ) => React.ReactNode | undefined;
 
+// How the built-in panel arranges its fields, from functions the host passes
+// as `Live.Dnd`'s `panelLayout`. The panel reads no `meta` key itself: these
+// decide what, if anything, a binding's `meta` means (#763).
+// `metaPanelLayout` implements the keys the docs suggest.
+export interface DndPanelLayout {
+  // Whether a field shows. Without it, every field shows. Applied to a
+  // section's top-level fields.
+  isVisible?: (binding: PanelBinding, bindings: PanelBinding[]) => boolean;
+  // Fields of one element with the same result share a box headed by it.
+  // Without it, or for `undefined`, fields aren't boxed.
+  groupOf?: (binding: PanelBinding) => string | undefined;
+  // A description under the field's label, which the control names as its
+  // description. Without it, or for `undefined`, none.
+  describe?: (binding: PanelBinding) => React.ReactNode;
+}
+
 interface DndEditOptions {
   renderField?: DndRenderField;
+  panelLayout?: DndPanelLayout;
   reportError: (error: DndEditError) => void;
   // `Live.Dnd`'s `bindings` and `bindingKeys`, for the editors that read
   // elements out of a value of their own, such as `useDndItems` (#509,

@@ -2,8 +2,8 @@ import { useContext, useEffect, useRef } from 'react';
 
 import styles from './panel.module.css';
 
+import { type DndPanelLayout, useDndEditOptions } from '../edit-options';
 import type { PanelBinding, PanelNodeChange } from '../panel-binding';
-import { readDescription, readGroup } from './binding-meta';
 import { ElementSelectionContext } from './element-selection';
 import Field from './field';
 import LabeledField from './fields/labeled-field';
@@ -17,15 +17,18 @@ interface Props extends Omit<React.ComponentPropsWithoutRef<'div'>, 'id'> {
   onNodeChange?: PanelNodeChange;
 }
 
-// The card's fields in order, with the fields of each `meta.group` gathered
-// where the group's first field was (#753). `group` is `undefined` for a
-// field outside any group.
-const segmentByGroup = (bindings: PanelBinding[]) => {
+// The card's fields in order, with the fields of each group gathered where
+// the group's first field was (#753, #763). `group` is `undefined` for a
+// field outside any group, and for every field without `groupOf`.
+const segmentByGroup = (
+  bindings: PanelBinding[],
+  groupOf: DndPanelLayout['groupOf'],
+) => {
   const segments: { group?: string; bindings: PanelBinding[] }[] = [];
   const byName = new Map<string, PanelBinding[]>();
 
   for (const binding of bindings) {
-    const group = readGroup(binding);
+    const group = groupOf?.(binding);
 
     if (group === undefined) {
       segments.push({ bindings: [binding] });
@@ -69,6 +72,7 @@ const ElementFields = ({
   ...props
 }: Props) => {
   const { ids, scrollRootRef } = useContext(ElementSelectionContext);
+  const { panelLayout } = useDndEditOptions();
 
   const ref = useRef<HTMLDivElement>(null);
 
@@ -90,7 +94,7 @@ const ElementFields = ({
             <span className={styles.bindingProperty}>({binding.property})</span>
           </>
         }
-        description={readDescription(binding)}
+        description={panelLayout?.describe?.(binding)}
       >
         <Field binding={binding} onNodeChange={onNodeChange} />
       </LabeledField>
@@ -136,7 +140,7 @@ const ElementFields = ({
       {header}
       {bindings.length > 0 && (
         <div className={styles.bindings}>
-          {segmentByGroup(bindings).map(segment => {
+          {segmentByGroup(bindings, panelLayout?.groupOf).map(segment => {
             const fields = segment.bindings.map(renderBinding);
 
             return segment.group === undefined ? (

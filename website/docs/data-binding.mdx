@@ -585,9 +585,9 @@ field moves out of `meta`. It's also the one name `renderField`, custom
 panels and nested fields all check for the control. Use `meta` for the other
 information about a field, such as a group or help text.
 
-The built-in panel shows a number input for this field and ignores
-`widget`. It does read `group`, and boxes this field with the element's other
-`motion` fields: see [Common `meta` keys](#common-meta-keys).
+The built-in panel shows a number input for this field and ignores both. With
+[`metaPanelLayout`](#common-meta-keys), it boxes this field with the element's
+other `motion` fields.
 
 ### `widget`: a hint for your own controls
 
@@ -650,11 +650,21 @@ step is rejected, whatever control produced it.
 
 The library defines no presentation fields beyond `widget`, so help text,
 grouping and visibility all go in `meta`. Nothing stops each app from
-inventing its own names for them, so these docs suggest a shared set. Parsing,
-validation and `update()` read none of them. The built-in panel reads three,
-and a custom panel can read any of them:
+inventing its own names for them, so these docs suggest a shared set. The
+library reads none of them: their meaning is yours. To have the built-in panel
+use three of them, pass `metaPanelLayout` as `Live.Dnd`'s `panelLayout`:
 
-| Key | Value | Meaning | Built-in panel |
+```tsx
+import { metaPanelLayout } from '@jbpark/live-editor/dnd';
+
+<Live.Dnd value={value} onChange={setValue} panelLayout={metaPanelLayout} />;
+```
+
+Without it, the built-in panel ignores every `meta` key. To use other names
+or rules, write a `panelLayout` of your own: see
+[Arranging the built-in panel](./custom-palette-panel.mdx#arranging-the-built-in-panel-panellayout).
+
+| Key | Value | Meaning | With `metaPanelLayout` |
 | --- | --- | --- | --- |
 | `description` | `string` | Guidance the user always needs. Show it next to the field. | Shows it under the label, as the control's description for screen readers. |
 | `hint` | `string` | Extra detail the user can choose to open, such as a tooltip or an info icon. | Ignores it. |
@@ -715,12 +725,13 @@ type VisibleRule = {
 - A rule that isn't `false` and doesn't have this shape (a string, no
   `property`, an `in` that isn't an array) leaves the field visible, so a typo
   never hides a field for good.
-- The built-in panel applies rules to the top-level fields of a section. A
-  `visible` on a key of an object or an array item's property isn't applied.
+- With `metaPanelLayout`, the built-in panel applies rules to the top-level
+  fields of a section. A `visible` on a key of an object or an array item's
+  property isn't applied.
 
 A hidden field is still in `bindings`, with its value and `onChange`, so a
 custom panel can decide whether to leave it out or show it disabled.
-`isBindingVisible` is the check the built-in panel uses:
+`isBindingVisible` is the check `metaPanelLayout` uses:
 
 ```tsx
 import { isBindingVisible, useDndPanel } from '@jbpark/live-editor/dnd';

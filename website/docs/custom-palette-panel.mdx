@@ -570,12 +570,36 @@ isStructuralFieldKind(getFieldKind(nested)) ? (
 
 The Custom Palette & Panel demo's "Headless" mode is built this way.
 
-### Help text, groups and visibility from `meta`
+### Arranging the built-in panel: `panelLayout`
 
-The built-in panel reads three `meta` keys: `description` under a field's
-label, `group` to box fields together, and `visible` to leave fields out. See
-[Common `meta` keys](./data-binding.mdx#common-meta-keys). A custom panel gets
-the same keys in `binding.meta`, and the visibility check as
+The built-in panel reads no `meta` key. `Live.Dnd`'s `panelLayout` says which
+fields show, which share a box, and what describes each, with three functions
+that all receive a `PanelBinding`:
+
+| Function | Returns | Without it |
+| --- | --- | --- |
+| `isVisible(binding, bindings)` | `false` to leave the field out. An element left with no fields gets no card. Applied to a section's top-level fields. | Every field shows. |
+| `groupOf(binding)` | A name. An element's fields with the same name share a box headed by it, where the first of them was. `undefined` leaves a field unboxed. | No boxes. |
+| `describe(binding)` | A node shown under the field's label, which the control names as its description for screen readers. `undefined` shows none. | No descriptions. |
+
+`metaPanelLayout` implements the [common `meta` keys](./data-binding.mdx#common-meta-keys)
+`visible`, `group` and `description`. Pass it as is, spread it to replace one
+function, or write your own:
+
+```tsx
+import { metaPanelLayout } from '@jbpark/live-editor/dnd';
+
+<Live.Dnd panelLayout={metaPanelLayout} />;
+
+<Live.Dnd
+  panelLayout={{
+    ...metaPanelLayout,
+    groupOf: binding => binding.meta?.section as string | undefined,
+  }}
+/>;
+```
+
+A custom panel reads `binding.meta` itself, and can use the same visibility check,
 `isBindingVisible(binding, bindings)`:
 
 ```tsx
