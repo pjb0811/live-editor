@@ -86,6 +86,7 @@
         "Panel",
         "default",
         "getFieldKind",
+        "isBindingVisible",
         "isStructuralFieldKind",
         "resolvePanelBindings",
         "useDndChildren",
@@ -131,7 +132,8 @@
         "PanelBindingSource",
         "PanelNodeChange",
         "PanelNodesChange",
-        "Props"
+        "Props",
+        "VisibleRule"
       ]
     },
     "./editor": {

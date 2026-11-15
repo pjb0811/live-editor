@@ -59,6 +59,14 @@
     color: var(--live-editor-color-danger);
   }
 
+  /* `meta.description` under a field's label (#753). `margin: 0` for the
+     same reason as `.error`: a host's `<p>` margin would push the field. */
+  .description {
+    margin: 0;
+    font-size: var(--live-editor-font-size-xs);
+    color: var(--live-editor-color-text-muted);
+  }
+
   .label {
     display: block;
     font-size: var(--live-editor-font-size-xs);

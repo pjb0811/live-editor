@@ -120,6 +120,10 @@ export type {
 // How `Field` picks its built-in control, for a custom panel that sends
 // some bindings (often `items` and `children`) to `Field` or a hook.
 export { getFieldKind, isStructuralFieldKind } from './panel/fields/field-kind';
+// The `meta.visible` rule the built-in panel applies, for a custom panel that
+// shows the same fields (#753).
+export { isBindingVisible } from './panel/binding-meta';
+export type { VisibleRule } from './panel/binding-meta';
 export type { FieldKind, FieldKindBinding } from './panel/fields/field-kind';
 
 export type {

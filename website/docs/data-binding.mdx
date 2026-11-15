@@ -585,7 +585,9 @@ field moves out of `meta`. It's also the one name `renderField`, custom
 panels and nested fields all check for the control. Use `meta` for the other
 information about a field, such as a group or help text.
 
-The built-in panel shows a number input for this field and ignores both.
+The built-in panel shows a number input for this field and ignores
+`widget`. It does read `group`, and boxes this field with the element's other
+`motion` fields: see [Common `meta` keys](#common-meta-keys).
 
 ### `widget`: a hint for your own controls
 
@@ -648,17 +650,17 @@ step is rejected, whatever control produced it.
 
 The library defines no presentation fields beyond `widget`, so help text,
 grouping and visibility all go in `meta`. Nothing stops each app from
-inventing its own names for them, so these docs suggest a shared set. The
-library reads none of them, and the built-in panel ignores them all. They
-only mean something once your panel reads them.
+inventing its own names for them, so these docs suggest a shared set. Parsing,
+validation and `update()` read none of them. The built-in panel reads three,
+and a custom panel can read any of them:
 
-| Key           | Value               | Meaning                                                                         |
-| ------------- | ------------------- | ------------------------------------------------------------------------------- |
-| `description` | `string`            | Guidance the user always needs. Show it next to the field.                      |
-| `hint`        | `string`            | Extra detail the user can choose to open, such as a tooltip or an info icon.    |
-| `group`       | `string`            | Fields with the same name belong in one box.                                    |
-| `tab`         | `string`            | Fields with the same name go on one tab.                                        |
-| `visible`     | `boolean` or a rule | Whether to show the field. Leaving it out means visible. See [below](#visible). |
+| Key | Value | Meaning | Built-in panel |
+| --- | --- | --- | --- |
+| `description` | `string` | Guidance the user always needs. Show it next to the field. | Shows it under the label, as the control's description for screen readers. |
+| `hint` | `string` | Extra detail the user can choose to open, such as a tooltip or an info icon. | Ignores it. |
+| `group` | `string` | Fields with the same name belong in one box. | Puts an element's fields with the same name in one box headed by the name, where the first of them was. Fields without a group keep their place. |
+| `tab` | `string` | Fields with the same name go on one tab. | Ignores it. |
+| `visible` | `boolean` or a rule | Whether to show the field. Leaving it out means visible. See [below](#visible). | Leaves a hidden field out, and an element whose fields are all hidden. |
 
 Keep `description` and `hint` apart. Text the user has to read is a
 `description`. Putting it in a `hint` hides it behind a hover.
@@ -710,37 +712,24 @@ type VisibleRule = {
 - Only bindings reach the panel, so the property a rule reads must have a
   binding of its own.
 
-A hidden field is still in `bindings`, with its value and `onChange`, so your
-panel can decide whether to leave it out or show it disabled. A panel might
-check the rule like this:
+- A rule that isn't `false` and doesn't have this shape (a string, no
+  `property`, an `in` that isn't an array) leaves the field visible, so a typo
+  never hides a field for good.
+- The built-in panel applies rules to the top-level fields of a section. A
+  `visible` on a key of an object or an array item's property isn't applied.
+
+A hidden field is still in `bindings`, with its value and `onChange`, so a
+custom panel can decide whether to leave it out or show it disabled.
+`isBindingVisible` is the check the built-in panel uses:
 
 ```tsx
-import type { PanelBinding } from '@jbpark/live-editor/dnd';
+import { isBindingVisible, useDndPanel } from '@jbpark/live-editor/dnd';
 
-const isVisible = (binding: PanelBinding, bindings: PanelBinding[]) => {
-  const rule = binding.meta?.visible as boolean | VisibleRule | undefined;
-
-  if (rule === undefined || typeof rule === 'boolean') {
-    return rule ?? true;
-  }
-
-  const source = bindings.find(
-    item =>
-      item.id === (rule.id ?? binding.id) && item.property === rule.property,
-  );
-  const value =
-    source && source.present !== false ? source.value : rule.default;
-
-  return Array.isArray(value)
-    ? value.some(entry => rule.in.includes(entry))
-    : rule.in.includes(value);
-};
-
-bindings.filter(binding => isVisible(binding, bindings));
+const { bindings } = useDndPanel();
+const shown = bindings.filter(binding => isBindingVisible(binding, bindings));
 ```
 
-`meta` values arrive as `unknown`, so check a rule's shape before relying on
-it in production code.
+`VisibleRule` is exported as a type too.
 
 #### A panel that reads them
 

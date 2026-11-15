@@ -88,6 +88,27 @@
     gap: 0.5rem;
   }
 
+  /* Fields that share a `meta.group` (#753). `margin` and `min-width` are
+     set because a `<fieldset>`'s defaults would indent it and keep it from
+     shrinking. */
+  .fieldGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0.5rem;
+    border: 1px solid var(--live-editor-color-border);
+    border-radius: var(--live-editor-radius);
+  }
+
+  .fieldGroupLegend {
+    padding: 0 0.25rem;
+    font-size: var(--live-editor-font-size-xs);
+    font-weight: 600;
+    color: var(--live-editor-color-text-muted);
+  }
+
   .binding {
     display: flex;
     flex-direction: column;

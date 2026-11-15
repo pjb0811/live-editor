@@ -570,6 +570,25 @@ isStructuralFieldKind(getFieldKind(nested)) ? (
 
 The Custom Palette & Panel demo's "Headless" mode is built this way.
 
+### Help text, groups and visibility from `meta`
+
+The built-in panel reads three `meta` keys: `description` under a field's
+label, `group` to box fields together, and `visible` to leave fields out. See
+[Common `meta` keys](./data-binding.mdx#common-meta-keys). A custom panel gets
+the same keys in `binding.meta`, and the visibility check as
+`isBindingVisible(binding, bindings)`:
+
+```tsx
+import { isBindingVisible, useDndPanel } from '@jbpark/live-editor/dnd';
+
+const MyPanel = () => {
+  const { bindings } = useDndPanel();
+  const shown = bindings.filter(binding => isBindingVisible(binding, bindings));
+
+  return /* render `shown` */;
+};
+```
+
 ### Replacing one control everywhere: `renderField`
 
 To keep the built-in panel and change only how some fields are drawn, pass

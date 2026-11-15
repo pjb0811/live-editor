@@ -8,6 +8,7 @@ import { cn } from '~/utils/cn';
 import styles from '../structure.module.css';
 
 import type { PanelNodeChange } from '../../panel-binding';
+import { readDescription } from '../binding-meta';
 import ElementFields from '../element-fields';
 import Field from '../field';
 import LabeledField from '../fields/labeled-field';
@@ -165,6 +166,7 @@ const Items = ({
                 binding={binding}
                 labelClassName={styles.propertyLabel}
                 label={binding.label}
+                description={readDescription(binding)}
               >
                 <Field binding={binding} onNodeChange={onChildChange} />
               </LabeledField>

@@ -34,8 +34,9 @@ export const PALETTE_SECTIONS: Section[] = [
                   widget: { type: 'slider', step: 4, unit: 'px' },
                 },
               },
-              // Not a library field, so it arrives as meta.group.
-              group: 'layout',
+              // Not a library field, so it arrives as meta.group. The built-in
+              // panel boxes fields of one group under this name (#753).
+              group: 'Layout',
             },
           ]}
           style={{ backgroundColor: '#6366f1', gap: 16 }}

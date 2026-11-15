@@ -10,6 +10,7 @@ import styles from './panel.module.css';
 
 import { DndInspectorContext } from '../inspector';
 import type { PanelBinding, PanelNodeChange } from '../panel-binding';
+import { isBindingVisible } from './binding-meta';
 import ElementFields from './element-fields';
 import {
   type ElementSelection,
@@ -84,7 +85,11 @@ const Panel = ({
   readOnly = false,
 }: PanelProps) => {
   const messages = useLiveMessages();
-  const groups = groupBindingsById(bindings);
+  // A field whose `meta.visible` is false, or whose rule doesn't match,
+  // is left out; an element left with no fields gets no card (#753).
+  const groups = groupBindingsById(
+    bindings.filter(binding => isBindingVisible(binding, bindings)),
+  );
   const rootRef = useRef<HTMLDivElement>(null);
   // Read without the throwing hook: this panel also renders outside
   // `Live.Dnd`, read-only, where there's no picker.
@@ -173,7 +178,7 @@ const Panel = ({
           {messages.panel.readOnly}
         </span>
       )}
-      {!groups.length && (
+      {!bindings.length && (
         <span className={styles.note}>{messages.panel.noEditableElements}</span>
       )}
       <ElementSelectionContext.Provider value={selection}>

@@ -3,6 +3,7 @@ import { useContext, useEffect, useRef } from 'react';
 import styles from './panel.module.css';
 
 import type { PanelBinding, PanelNodeChange } from '../panel-binding';
+import { readDescription, readGroup } from './binding-meta';
 import { ElementSelectionContext } from './element-selection';
 import Field from './field';
 import LabeledField from './fields/labeled-field';
@@ -15,6 +16,39 @@ interface Props extends Omit<React.ComponentPropsWithoutRef<'div'>, 'id'> {
   bindings: PanelBinding[];
   onNodeChange?: PanelNodeChange;
 }
+
+// The card's fields in order, with the fields of each `meta.group` gathered
+// where the group's first field was (#753). `group` is `undefined` for a
+// field outside any group.
+const segmentByGroup = (bindings: PanelBinding[]) => {
+  const segments: { group?: string; bindings: PanelBinding[] }[] = [];
+  const byName = new Map<string, PanelBinding[]>();
+
+  for (const binding of bindings) {
+    const group = readGroup(binding);
+
+    if (group === undefined) {
+      segments.push({ bindings: [binding] });
+
+      continue;
+    }
+
+    const members = byName.get(group);
+
+    if (members) {
+      members.push(binding);
+
+      continue;
+    }
+
+    const created = [binding];
+
+    byName.set(group, created);
+    segments.push({ group, bindings: created });
+  }
+
+  return segments;
+};
 
 // How long a newly marked card keeps itself in view. Fields above it can
 // still grow for a moment after it renders (a rich-text editor mounting,
@@ -39,6 +73,29 @@ const ElementFields = ({
   const ref = useRef<HTMLDivElement>(null);
 
   const isPicked = id !== undefined && ids.has(id);
+
+  // Keyed by `property` and `label`, since two bindings can share a label
+  // (#318).
+  const renderBinding = (binding: PanelBinding) => (
+    <div
+      key={`${binding.property}-${binding.label}`}
+      className={styles.binding}
+    >
+      <LabeledField
+        binding={binding}
+        labelClassName={styles.bindingLabel}
+        label={
+          <>
+            {binding.label}
+            <span className={styles.bindingProperty}>({binding.property})</span>
+          </>
+        }
+        description={readDescription(binding)}
+      >
+        <Field binding={binding} onNodeChange={onNodeChange} />
+      </LabeledField>
+    </div>
+  );
 
   useEffect(() => {
     const card = ref.current;
@@ -79,29 +136,23 @@ const ElementFields = ({
       {header}
       {bindings.length > 0 && (
         <div className={styles.bindings}>
-          {/* Keyed by `property` and `label`, since two bindings can share
-              a label (#318). */}
-          {bindings.map(binding => (
-            <div
-              key={`${binding.property}-${binding.label}`}
-              className={styles.binding}
-            >
-              <LabeledField
-                binding={binding}
-                labelClassName={styles.bindingLabel}
-                label={
-                  <>
-                    {binding.label}
-                    <span className={styles.bindingProperty}>
-                      ({binding.property})
-                    </span>
-                  </>
-                }
+          {segmentByGroup(bindings).map(segment => {
+            const fields = segment.bindings.map(renderBinding);
+
+            return segment.group === undefined ? (
+              fields
+            ) : (
+              <fieldset
+                key={`group-${segment.group}`}
+                className={styles.fieldGroup}
               >
-                <Field binding={binding} onNodeChange={onNodeChange} />
-              </LabeledField>
-            </div>
-          ))}
+                <legend className={styles.fieldGroupLegend}>
+                  {segment.group}
+                </legend>
+                {fields}
+              </fieldset>
+            );
+          })}
         </div>
       )}
       {children}
