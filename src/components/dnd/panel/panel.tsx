@@ -8,9 +8,9 @@ import type { Section } from '~/types';
 
 import styles from './panel.module.css';
 
+import { useDndEditOptions } from '../edit-options';
 import { DndInspectorContext } from '../inspector';
 import type { PanelBinding, PanelNodeChange } from '../panel-binding';
-import { isBindingVisible } from './binding-meta';
 import ElementFields from './element-fields';
 import {
   type ElementSelection,
@@ -85,10 +85,14 @@ const Panel = ({
   readOnly = false,
 }: PanelProps) => {
   const messages = useLiveMessages();
-  // A field whose `meta.visible` is false, or whose rule doesn't match,
-  // is left out; an element left with no fields gets no card (#753).
+  const { panelLayout } = useDndEditOptions();
+  // Fields the host's `panelLayout.isVisible` hides are left out, and an
+  // element left with no fields gets no card (#763).
+  const isVisible = panelLayout?.isVisible;
   const groups = groupBindingsById(
-    bindings.filter(binding => isBindingVisible(binding, bindings)),
+    isVisible
+      ? bindings.filter(binding => isVisible(binding, bindings))
+      : bindings,
   );
   const rootRef = useRef<HTMLDivElement>(null);
   // Read without the throwing hook: this panel also renders outside

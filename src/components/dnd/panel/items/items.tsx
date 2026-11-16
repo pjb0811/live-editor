@@ -7,8 +7,8 @@ import { cn } from '~/utils/cn';
 
 import styles from '../structure.module.css';
 
+import { useDndEditOptions } from '../../edit-options';
 import type { PanelNodeChange } from '../../panel-binding';
-import { readDescription } from '../binding-meta';
 import ElementFields from '../element-fields';
 import Field from '../field';
 import LabeledField from '../fields/labeled-field';
@@ -82,6 +82,7 @@ const Items = ({
   onChildChange,
 }: Props) => {
   const messages = useLiveMessages();
+  const { panelLayout } = useDndEditOptions();
   const {
     kind,
     items,
@@ -166,7 +167,7 @@ const Items = ({
                 binding={binding}
                 labelClassName={styles.propertyLabel}
                 label={binding.label}
-                description={readDescription(binding)}
+                description={panelLayout?.describe?.(binding)}
               >
                 <Field binding={binding} onNodeChange={onChildChange} />
               </LabeledField>

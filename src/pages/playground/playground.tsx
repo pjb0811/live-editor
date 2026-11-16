@@ -4,6 +4,7 @@ import { Button, Space, Toast } from '@jbpark/ui-kit';
 import { useLocalStorage } from '@jbpark/use-hooks';
 import { Redo2, Save, Undo2 } from 'lucide-react';
 
+import { metaPanelLayout } from '~/components/dnd';
 import {
   createUiKitDocument,
   uiKitFields,
@@ -77,6 +78,7 @@ const Playground = () => {
               modules={uiKitModules}
               frame={IFRAME_FRAME}
               renderField={uiKitFields}
+              panelLayout={metaPanelLayout}
               items={PALETTE}
               value={value}
               onChange={onChange}

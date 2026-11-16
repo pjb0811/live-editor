@@ -121,6 +121,7 @@ const Dnd = ({
   onSelectionChange,
   canvasWidth: _canvasWidth,
   onUpload,
+  panelLayout,
   children,
   ...restProps
 }: Props) => {
@@ -437,7 +438,13 @@ const Dnd = ({
           {/* Not memoized: `palette`, `panel` and `canvas` are new every
               render anyway. */}
           <DndEditOptionsContext.Provider
-            value={{ renderField, reportError, bindingOptions, onUpload }}
+            value={{
+              renderField,
+              reportError,
+              bindingOptions,
+              onUpload,
+              panelLayout,
+            }}
           >
             <DndRegionContext.Provider
               value={{

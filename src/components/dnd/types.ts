@@ -8,7 +8,12 @@ import type {
 import type { LiveChange } from '../context/use-live-history';
 import type { FrameProps } from '../frame';
 import type { DndRenderSectionFallback } from './canvas/section-fallback-context';
-import type { DndEditError, DndRenderField, DndUpload } from './edit-options';
+import type {
+  DndEditError,
+  DndPanelLayout,
+  DndRenderField,
+  DndUpload,
+} from './edit-options';
 import type { DndNodePick } from './inspector';
 import type {
   PanelBinding,
@@ -179,6 +184,11 @@ export interface Props extends Omit<
   // through `onEditError` as an `upload` error and keeps the value. Without
   // it, image fields take a URL only (#752).
   onUpload?: DndUpload;
+  // How the built-in panel arranges fields: which show, which share a box,
+  // and what describes each. Without it, every field shows, unboxed and
+  // undescribed. Pass `metaPanelLayout` to read the `meta` keys the docs
+  // suggest (#763).
+  panelLayout?: DndPanelLayout;
   // The single customization slot. Omit it for the built-in editor. Supply
   // it and you own the arrangement: compose `Live.Dnd.Palette` /
   // `Live.Dnd.Canvas` / `Live.Dnd.Panel` (each the built-in region, in the

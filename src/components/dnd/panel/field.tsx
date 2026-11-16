@@ -12,8 +12,11 @@ import { cn } from '~/utils/cn';
 import styles from './fields/fields.module.css';
 
 import { useDndEditOptions } from '../edit-options';
-import { resolveRenderEntry, toBindingFields } from '../panel-binding';
-import { readDescription } from './binding-meta';
+import {
+  type PanelBinding,
+  resolveRenderEntry,
+  toBindingFields,
+} from '../panel-binding';
 import Children from './children/children';
 import ColorField from './fields/color-field';
 import FieldError from './fields/field-error';
@@ -30,6 +33,7 @@ import type { FieldProps } from './types';
 // offers ui-kit controls in their place through `renderField`.
 const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   const messages = useLiveMessages();
+  const { panelLayout } = useDndEditOptions();
   const { id, value, rawValue, onChange } = binding;
   const fieldState = useFieldState(binding);
   const {
@@ -137,29 +141,26 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
       <div className={styles.object}>
         {Object.entries(objectValue).map(([key, val]) => {
           const nested = resolveRenderEntry(binding.render, key);
+          const nestedBinding: PanelBinding = {
+            ...toBindingFields(nested),
+            id,
+            value: val,
+            rawValue:
+              typeof val === 'object' && val !== null
+                ? (getEditableSource(rawValue, [key]) ?? JSON.stringify(val))
+                : String(val),
+            onChange: next => commitKey(key, next),
+          };
 
           return (
             <div key={key} className={styles.stack}>
               <LabeledField
-                binding={{ ...nested, value: val }}
+                binding={nestedBinding}
                 labelClassName={styles.label}
                 label={nested.label}
-                description={readDescription(nested)}
+                description={panelLayout?.describe?.(nestedBinding)}
               >
-                <Field
-                  binding={{
-                    ...toBindingFields(nested),
-                    id,
-                    value: val,
-                    rawValue:
-                      typeof val === 'object' && val !== null
-                        ? (getEditableSource(rawValue, [key]) ??
-                          JSON.stringify(val))
-                        : String(val),
-                    onChange: next => commitKey(key, next),
-                  }}
-                  onNodeChange={onNodeChange}
-                />
+                <Field binding={nestedBinding} onNodeChange={onNodeChange} />
               </LabeledField>
             </div>
           );

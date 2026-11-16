@@ -8,9 +8,10 @@ import {
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { DndEditOptionsContext } from '../edit-options';
+import { DndEditOptionsContext, type DndPanelLayout } from '../edit-options';
 import { type DndInspector, DndInspectorContext } from '../inspector';
 import type { PanelBinding } from '../panel-binding';
+import { metaPanelLayout } from './binding-meta';
 import Panel from './panel';
 
 const binding = (
@@ -107,7 +108,7 @@ describe('Panel element groups', () => {
   });
 });
 
-// The `meta` keys the built-in panel reads (#753).
+// The `meta` keys, read through `panelLayout` (#753, #763).
 describe('Panel meta keys', () => {
   const field = (override: Partial<PanelBinding>): PanelBinding => ({
     id: 'a',
@@ -120,16 +121,66 @@ describe('Panel meta keys', () => {
     ...override,
   });
 
-  it('shows a description under the label and describes the control with it', () => {
-    renderPanel([
+  // `metaPanelLayout` reads them; the panel alone doesn't (#763).
+  const withLayout = (
+    bindings: PanelBinding[],
+    panelLayout: DndPanelLayout = metaPanelLayout,
+  ) => (
+    <DndEditOptionsContext.Provider
+      value={{ reportError: vi.fn(), panelLayout }}
+    >
+      <Panel item={item} bindings={bindings} />
+    </DndEditOptionsContext.Provider>
+  );
+
+  it('reads no meta key without panelLayout', () => {
+    const { container } = renderPanel([
       field({
-        label: 'URL',
-        property: 'href',
-        type: 'url',
-        protocols: ['https:'],
-        meta: { description: 'Opens in the same tab.' },
+        label: 'A',
+        property: 'a',
+        meta: { description: 'Help', group: 'Link', visible: false },
       }),
     ]);
+
+    expect(screen.queryByText('Help')).toBeNull();
+    expect(container.querySelector('fieldset')).toBeNull();
+    expect(screen.getByRole('textbox')).not.toBeNull();
+  });
+
+  it('uses a custom panelLayout as given', () => {
+    const { container } = render(
+      withLayout(
+        [
+          field({ label: 'A', property: 'a', meta: { section: 'Box' } }),
+          field({ label: 'B', property: 'b', meta: { section: 'Box' } }),
+          field({ label: 'C', property: 'c' }),
+        ],
+        {
+          groupOf: binding => binding.meta?.section as string | undefined,
+          describe: binding => <em>{`About ${binding.label}`}</em>,
+          isVisible: binding => binding.property !== 'c',
+        },
+      ),
+    );
+
+    expect(container.querySelector('legend')!.textContent).toBe('Box');
+    expect(container.querySelectorAll('fieldset label')).toHaveLength(2);
+    expect(screen.getByText('About A').tagName).toBe('EM');
+    expect(screen.queryByText('About C')).toBeNull();
+  });
+
+  it('shows a description under the label and describes the control with it', () => {
+    render(
+      withLayout([
+        field({
+          label: 'URL',
+          property: 'href',
+          type: 'url',
+          protocols: ['https:'],
+          meta: { description: 'Opens in the same tab.' },
+        }),
+      ]),
+    );
 
     const description = screen.getByText('Opens in the same tab.');
     const input = screen.getByRole('textbox');
@@ -175,23 +226,25 @@ describe('Panel meta keys', () => {
     );
 
   it('shows a field only while its visible rule matches', () => {
-    const { rerender } = renderPanel(linkFields('none'));
+    const { rerender } = render(withLayout(linkFields('none')));
 
     expect(labels()).toEqual(['Link']);
 
-    rerender(<Panel item={item} bindings={linkFields('url')} />);
+    rerender(withLayout(linkFields('url')));
     expect(labels()).toEqual(['Link', 'URL']);
 
     // `default` while the attribute is absent.
-    rerender(<Panel item={item} bindings={linkFields('url', false)} />);
+    rerender(withLayout(linkFields('url', false)));
     expect(labels()).toEqual(['Link']);
   });
 
   it('gives an element whose fields are all hidden no card', () => {
-    renderPanel([
-      binding('t1', 'h2', 'One'),
-      { ...binding('t2', 'h2', 'Two'), meta: { visible: false } },
-    ]);
+    render(
+      withLayout([
+        binding('t1', 'h2', 'One'),
+        { ...binding('t2', 'h2', 'Two'), meta: { visible: false } },
+      ]),
+    );
 
     expect(screen.getAllByRole('group')).toHaveLength(1);
     // A single card left, so no element headers.
@@ -204,7 +257,11 @@ describe('Panel meta keys', () => {
     ));
     const { container } = render(
       <DndEditOptionsContext.Provider
-        value={{ reportError: vi.fn(), renderField }}
+        value={{
+          reportError: vi.fn(),
+          renderField,
+          panelLayout: metaPanelLayout,
+        }}
       >
         <Panel
           item={item}
@@ -225,13 +282,15 @@ describe('Panel meta keys', () => {
   });
 
   it('boxes the fields of a group where its first field was', () => {
-    const { container } = renderPanel([
-      field({ label: 'A', property: 'a' }),
-      field({ label: 'B', property: 'b', meta: { group: 'Link' } }),
-      field({ label: 'C', property: 'c' }),
-      field({ label: 'D', property: 'd', meta: { group: 'Link' } }),
-      field({ id: 'b', label: 'E', property: 'e', meta: { group: 'Link' } }),
-    ]);
+    const { container } = render(
+      withLayout([
+        field({ label: 'A', property: 'a' }),
+        field({ label: 'B', property: 'b', meta: { group: 'Link' } }),
+        field({ label: 'C', property: 'c' }),
+        field({ label: 'D', property: 'd', meta: { group: 'Link' } }),
+        field({ id: 'b', label: 'E', property: 'e', meta: { group: 'Link' } }),
+      ]),
+    );
 
     const fieldsets = [...container.querySelectorAll('fieldset')];
 

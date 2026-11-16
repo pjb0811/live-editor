@@ -3,7 +3,12 @@ import type {
   DndSectionFallbackArgs,
 } from './canvas/section-fallback-context';
 import DndImpl from './dnd';
-import type { DndEditError, DndRenderField, DndUpload } from './edit-options';
+import type {
+  DndEditError,
+  DndPanelLayout,
+  DndRenderField,
+  DndUpload,
+} from './edit-options';
 import {
   type DndInspector,
   type DndNodePick,
@@ -120,9 +125,9 @@ export type {
 // How `Field` picks its built-in control, for a custom panel that sends
 // some bindings (often `items` and `children`) to `Field` or a hook.
 export { getFieldKind, isStructuralFieldKind } from './panel/fields/field-kind';
-// The `meta.visible` rule the built-in panel applies, for a custom panel that
-// shows the same fields (#753).
-export { isBindingVisible } from './panel/binding-meta';
+// The built-in panel arranged by the `meta` keys the docs suggest, to pass as
+// `panelLayout`, and its `meta.visible` check for a custom panel (#753, #763).
+export { isBindingVisible, metaPanelLayout } from './panel/binding-meta';
 export type { VisibleRule } from './panel/binding-meta';
 export type { FieldKind, FieldKindBinding } from './panel/fields/field-kind';
 
@@ -143,6 +148,7 @@ export type {
   DndEditError,
   DndRenderField,
   DndUpload,
+  DndPanelLayout,
   DndRenderSectionFallback,
   DndSectionFallbackArgs,
   DndItems,
