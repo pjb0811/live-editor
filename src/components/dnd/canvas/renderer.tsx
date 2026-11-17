@@ -10,6 +10,7 @@ import { useCompiledModule } from '~/components/preview/use-compiled-module';
 import { useDynamicTailwind } from '~/components/preview/use-dynamic-tailwind';
 
 import SectionFallback from './section-fallback';
+import { useSectionHandlers } from './section-handlers';
 
 interface Props {
   preview: string;
@@ -44,6 +45,9 @@ const Renderer = ({
   provider,
 }: Props) => {
   const isClient = useIsClient();
+  // The picker's state, or `null` in the drag overlay, which is never used.
+  const handlers = useSectionHandlers();
+  const isInert = !(handlers?.inspecting ?? false);
 
   // A forced section compiles empty code, so none of its code runs. So does
   // every section on the server, where its frame renders nothing (#716).
@@ -107,6 +111,11 @@ const Renderer = ({
           // Inside the frame, which may not have the editor's stylesheet.
           style={{ width: '100%', overflowX: 'hidden' }}
           data-editor-mode
+          // Inert inside the frame's own document too: `Sortable`'s `inert`
+          // doesn't reach into an iframe, where an `autoFocus` or a
+          // section's own `focus()` would still take focus (#774). Off
+          // while the element picker is on, as there.
+          inert={isInert}
         >
           {/*
             Keeps a render error in this section, so it can't unmount the
