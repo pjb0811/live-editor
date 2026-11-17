@@ -40,7 +40,7 @@ export type FieldKind =
 
 export type FieldKindBinding = Pick<
   PanelBinding,
-  'property' | 'type' | 'value' | 'options' | 'canEditValue'
+  'property' | 'type' | 'value' | 'options' | 'optionsOnly' | 'canEditValue'
 >;
 
 const isColorProperty = (property: string): boolean =>
@@ -53,6 +53,11 @@ export const getFieldKind = (binding: FieldKindBinding): FieldKind => {
 
   if (binding.canEditValue === false) {
     return 'readonly';
+  }
+
+  // A closed list is always a select, whatever the current value (#769).
+  if (binding.optionsOnly && Array.isArray(binding.options)) {
+    return 'select';
   }
 
   // A select only while the value is one of the options, or empty: an

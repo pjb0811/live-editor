@@ -176,6 +176,7 @@ describe('parseBinding', () => {
     ['minDate', "minDate: '2026-01-01 10:00'"],
     ['maxDate', 'maxDate: 20261231'],
     ['protocols', "protocols: 'https:'"],
+    ['optionsOnly', "optionsOnly: 'yes'"],
   ])(
     'degrades a malformed %s to absent rather than dropping the item',
     (key, source) => {
@@ -377,6 +378,16 @@ describe('parseBinding', () => {
     expect(result[0]).not.toHaveProperty('max');
     expect(result[0]).not.toHaveProperty('pattern');
     expect(result[0]).not.toHaveProperty('required');
+  });
+
+  // A closed list of options is a field, not `meta` (#769).
+  it('keeps optionsOnly as a field', () => {
+    const result = parseBinding(
+      `[{label: 'X', property: 'y', options: [{label: 'A', value: 'a'}], optionsOnly: true}]`,
+    );
+
+    expect(result[0]).toHaveProperty('optionsOnly', true);
+    expect(result[0]?.meta).toBeUndefined();
   });
 
   it('drops individually malformed options while keeping the valid ones', () => {

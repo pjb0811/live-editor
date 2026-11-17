@@ -53,6 +53,15 @@ describe('getFieldKind from the dnd entry', () => {
     [
       'select',
       {
+        type: 'function' as const,
+        value: '() => x()',
+        options: [{ label: 'Open', value: 'actions.open' }],
+        optionsOnly: true,
+      },
+    ],
+    [
+      'select',
+      {
         type: 'image' as const,
         value: '/a.png',
         options: [{ label: 'A', value: '/a.png' }],

@@ -82,6 +82,10 @@ export interface BindingFieldSpec {
   // How to draw it, always in object form. See `BindingWidget`.
   widget?: BindingWidget;
   options?: BindingOption[];
+  // `options` is the only choice: a value that isn't one of them, other
+  // than empty, fails validation, and the built-in panel always draws a
+  // select (#769). It limits the panel, not the code editor.
+  optionsOnly?: boolean;
   render?: BindingRenderMap;
   min?: number;
   max?: number;

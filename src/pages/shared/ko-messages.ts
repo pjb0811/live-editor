@@ -48,6 +48,7 @@ export const KO_MESSAGES: LiveMessages = {
     imagePlaceholder: 'https://example.com/image.png',
     chooseImage: '이미지 선택',
     uploadingImage: '업로드 중…',
+    currentValue: value => `현재 값: ${value}`,
   },
   items: {
     heading: count => `항목 (${count})`,
@@ -170,5 +171,6 @@ export const KO_MESSAGES: LiveMessages = {
     minDate: minDate => `${minDate} 이후 날짜여야 합니다.`,
     maxDate: maxDate => `${maxDate} 이전 날짜여야 합니다.`,
     protocol: protocols => `${protocols.join(', ')} 주소만 사용할 수 있습니다.`,
+    notAnOption: '목록에 있는 값 중에서 고르세요.',
   },
 };

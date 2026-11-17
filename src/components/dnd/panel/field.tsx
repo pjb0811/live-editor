@@ -86,7 +86,18 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
     );
   }
 
-  if (kind === 'html' || kind === 'jsx' || kind === 'function') {
+  if (kind === 'function') {
+    // Checked like any text value, so `pattern`, `minLength`, `maxLength`
+    // and `required` apply (#769).
+    return (
+      <div>
+        <JSXEditorField value={rawValue} raw onSave={validateAndCommit} />
+        <FieldError id={errorId} message={validationError} />
+      </div>
+    );
+  }
+
+  if (kind === 'html' || kind === 'jsx') {
     return (
       <JSXEditorField
         value={rawValue}
@@ -184,23 +195,38 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   }
 
   if (kind === 'select') {
+    const options = binding.options ?? [];
+    // An `optionsOnly` select can hold a value written elsewhere, such as in
+    // the code editor. It's shown, but can't be chosen again (#769).
+    const isUnlisted =
+      rawValue !== '' && !options.some(option => option.value === rawValue);
+
     return (
-      <select
-        {...controlProps}
-        value={rawValue}
-        className={styles.control}
-        onChange={e => commitIfChanged(e.target.value)}
-      >
-        {/* No handler set: choosing this removes the attribute (#741). */}
-        {binding.type === 'function' && rawValue === '' && (
-          <option value="">{messages.panel.noFunction}</option>
-        )}
-        {(binding.options ?? []).map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <div>
+        <select
+          {...controlProps}
+          value={rawValue}
+          className={styles.control}
+          onChange={e => validateAndCommit(e.target.value)}
+        >
+          {/* No handler set: choosing this removes the attribute (#741). */}
+          {binding.type === 'function' &&
+            (rawValue === '' || binding.optionsOnly) && (
+              <option value="">{messages.panel.noFunction}</option>
+            )}
+          {isUnlisted && (
+            <option value={rawValue} disabled>
+              {messages.panel.currentValue(rawValue)}
+            </option>
+          )}
+          {options.map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <FieldError id={errorId} message={validationError} />
+      </div>
     );
   }
 
