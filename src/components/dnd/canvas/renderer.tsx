@@ -10,7 +10,6 @@ import { useCompiledModule } from '~/components/preview/use-compiled-module';
 import { useDynamicTailwind } from '~/components/preview/use-dynamic-tailwind';
 
 import SectionFallback from './section-fallback';
-import { useSectionHandlers } from './section-handlers';
 
 interface Props {
   preview: string;
@@ -21,6 +20,10 @@ interface Props {
   sectionCode?: string;
   // Skip compiling and render the fallback (`shouldForceSectionFallback`).
   forceFallback?: boolean;
+  // Keeps focus out of the preview, inside its frame too (#774). `false`
+  // only while the element picker is on. A boolean, so the memo below still
+  // compares it.
+  inert?: boolean;
   modules?: Record<string, unknown>;
   // `Live.Dnd`'s `props`, for the section's component.
   componentProps?: Record<string, unknown>;
@@ -38,6 +41,7 @@ const Renderer = ({
   sectionName = '',
   sectionCode = preview,
   forceFallback = false,
+  inert = true,
   componentProps,
   modules,
   frame,
@@ -45,9 +49,6 @@ const Renderer = ({
   provider,
 }: Props) => {
   const isClient = useIsClient();
-  // The picker's state, or `null` in the drag overlay, which is never used.
-  const handlers = useSectionHandlers();
-  const isInert = !(handlers?.inspecting ?? false);
 
   // A forced section compiles empty code, so none of its code runs. So does
   // every section on the server, where its frame renders nothing (#716).
@@ -115,7 +116,7 @@ const Renderer = ({
           // doesn't reach into an iframe, where an `autoFocus` or a
           // section's own `focus()` would still take focus (#774). Off
           // while the element picker is on, as there.
-          inert={isInert}
+          inert={inert}
         >
           {/*
             Keeps a render error in this section, so it can't unmount the
