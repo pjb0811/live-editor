@@ -193,6 +193,46 @@ only the function you pass changes.
 
 Adding a section stays on `useDndPalette().onAdd`.
 
+### Saving a section as a template
+
+`useDndSections()` gives each section's `code`, and palette items are
+sections, so a "save as template" button needs no other API. Empty the
+`data-id`s before saving, as palette sections are written: each copy dropped
+from the palette then gets ids of its own, filled from its section's id. A
+saved section with its ids still in place would give every copy the same
+ones.
+
+```tsx
+const SaveTemplate = ({ onSave }: { onSave: (item: Section) => void }) => {
+  const { sections, selectedId } = useDndSections();
+  const section = sections.find(item => item.id === selectedId);
+
+  return (
+    <button
+      disabled={!section}
+      onClick={() =>
+        onSave({
+          id: `template-${Date.now()}`,
+          name: section!.name,
+          code: section!.code.replace(/data-id="[^"]*"/g, 'data-id=""'),
+        })
+      }
+    >
+      Save as template
+    </button>
+  );
+};
+
+// Your app keeps the templates and passes them after its own items.
+// `items` replaces the default palette, so list everything you offer.
+const [templates, setTemplates] = useState<Section[]>([]);
+
+<Live.Dnd value={value} onChange={setValue} items={[...myItems, ...templates]}>
+  <SaveTemplate onSave={item => setTemplates(list => [...list, item])} />
+  <Live.Dnd.Layout />
+</Live.Dnd>;
+```
+
 ## Custom palette
 
 `useDndPalette()` returns what drives the palette:

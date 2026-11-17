@@ -438,6 +438,50 @@ handler. The value is source text, read and written without being run:
   `config={{ onClick: () => {} }}`, is preserved, and the whole object is
   edited in the code editor.
 
+#### Handlers from your app
+
+Keep what a handler does in your app, and let the panel choose which one an
+element runs. Pass the handlers in `modules`, import them in the document, and
+list them in `options`:
+
+```tsx
+// Your app, defined once outside render
+const actions = {
+  openModal: () => modal.open(),
+  navigate: (to: string) => router.push(to),
+};
+const modules = { actions };
+
+<Live.Dnd value={value} onChange={setValue} modules={modules} />;
+```
+
+```tsx
+// The document
+import actions from 'actions';
+
+<button
+  data-id=""
+  data-binding={[{
+    label: 'On click',
+    property: 'onClick',
+    type: 'function',
+    options: [
+      { label: 'Open modal', value: 'actions.openModal' },
+      { label: 'Go to pricing', value: "() => actions.navigate('/pricing')" },
+    ],
+  }]}
+  onClick={actions.openModal}
+>
+  Start
+</button>
+```
+
+- Put the `import` in the document you start from, so sections dropped from
+  the palette find it too.
+- An option's value can be an arrow function, so a handler that takes
+  arguments still comes from the list.
+- Handlers don't run on the canvas; click through in `Live.Preview`.
+
 ## Constraints
 
 The constraints in the table above are checked before an edit is committed.

@@ -212,6 +212,88 @@ document is compiled again whenever one of them changes, which resets its
 top-level variables; see
 [Keeping edits fast](./drag-and-drop.mdx#keeping-edits-fast).
 
+### Fetching data in a section
+
+To show data from an API or a CMS, pass a hook in `modules` and call it in the
+section's component. The canvas renders each section on its own, so cache
+requests in your module, not in the hook, or a request goes out once per
+section:
+
+```tsx
+// Your app
+const cache = new Map<string, Promise<Product[]>>();
+
+const fetchProducts = (collection: string) => {
+  if (!cache.has(collection)) {
+    cache.set(collection, api.products(collection));
+  }
+
+  return cache.get(collection)!;
+};
+
+const useProducts = (collection: string) => {
+  const [items, setItems] = useState<Product[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchProducts(collection).then(next => active && setItems(next));
+
+    return () => {
+      active = false;
+    };
+  }, [collection]);
+
+  return items;
+};
+
+const modules = { data: { useProducts } };
+```
+
+```tsx
+// The document
+import { useProducts } from 'data';
+
+const Products = ({ collection }) => {
+  const items = useProducts(collection);
+
+  return <ul>{items.map(item => <li key={item.id}>{item.name}</li>)}</ul>;
+};
+
+// In a section, with the collection editable from the panel
+<Products
+  data-id=""
+  data-binding={[{ label: 'Collection', property: 'collection' }]}
+  collection="featured"
+/>;
+```
+
+### Side effects while editing
+
+On the canvas, an effect in the document runs once per section, since each
+section runs the whole document. Effects that should run once per page, such
+as analytics or a timer that changes the page, can skip the canvas.
+`Live.Dnd`'s `props` reach the document's default export, and `Live.Preview`
+doesn't pass them, so a flag tells the two apart:
+
+```tsx
+<Live.Dnd value={value} onChange={setValue} props={{ editing: true }} />;
+```
+
+```tsx
+// The document
+const App = ({ editing }) => {
+  useEffect(() => {
+    if (editing) {
+      return;
+    }
+
+    return analytics.start();
+  }, [editing]);
+  // ...
+};
+```
+
 ## One word, several meanings
 
 "Item" appears in several unrelated places in the API:
