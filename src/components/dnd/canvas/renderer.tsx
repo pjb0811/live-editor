@@ -20,6 +20,10 @@ interface Props {
   sectionCode?: string;
   // Skip compiling and render the fallback (`shouldForceSectionFallback`).
   forceFallback?: boolean;
+  // Keeps focus out of the preview, inside its frame too (#774). `false`
+  // only while the element picker is on. A boolean, so the memo below still
+  // compares it.
+  inert?: boolean;
   modules?: Record<string, unknown>;
   // `Live.Dnd`'s `props`, for the section's component.
   componentProps?: Record<string, unknown>;
@@ -37,6 +41,7 @@ const Renderer = ({
   sectionName = '',
   sectionCode = preview,
   forceFallback = false,
+  inert = true,
   componentProps,
   modules,
   frame,
@@ -107,6 +112,11 @@ const Renderer = ({
           // Inside the frame, which may not have the editor's stylesheet.
           style={{ width: '100%', overflowX: 'hidden' }}
           data-editor-mode
+          // Inert inside the frame's own document too: `Sortable`'s `inert`
+          // doesn't reach into an iframe, where an `autoFocus` or a
+          // section's own `focus()` would still take focus (#774). Off
+          // while the element picker is on, as there.
+          inert={inert}
         >
           {/*
             Keeps a render error in this section, so it can't unmount the

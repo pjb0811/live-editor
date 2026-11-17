@@ -60,3 +60,32 @@ for (const mode of ['in place', 'iframe', 'shadow'] as const) {
     });
   });
 }
+
+// Content that takes focus by itself, without the keyboard: an `autoFocus`
+// input and an input focused by the section's own effect (#774).
+for (const mode of ['in place', 'iframe', 'shadow'] as const) {
+  test(`${mode}: section content can't take focus by itself`, async ({
+    page,
+  }) => {
+    const query = mode === 'in place' ? '' : `&mode=${mode}`;
+
+    await page.goto(`/e2e/fixture.html?scenario=focus${query}`);
+
+    const input = (index: number, testId: string) =>
+      mode === 'iframe'
+        ? page.locator('iframe').nth(index).contentFrame().getByTestId(testId)
+        : page.getByTestId(testId);
+
+    await expect(input(0, 'auto')).toBeVisible();
+    await expect(input(1, 'focused')).toBeVisible();
+    await page.waitForTimeout(500);
+
+    await expect(input(0, 'auto')).not.toBeFocused();
+    await expect(input(1, 'focused')).not.toBeFocused();
+
+    await page.keyboard.type('xyz');
+
+    await expect(input(0, 'auto')).toHaveValue('');
+    await expect(input(1, 'focused')).toHaveValue('');
+  });
+}

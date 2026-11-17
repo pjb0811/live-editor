@@ -15,6 +15,10 @@ interface Props {
   center: React.ReactNode;
   end: React.ReactNode;
   labels: Record<Side, string>;
+  // `false` leaves out the side panes and their handles, and the center pane
+  // fills the width. The center pane keeps its place in the tree either
+  // way, so switching doesn't remount what it holds (#773).
+  sidePanes?: boolean;
 }
 
 // Clamps a dragged size to the pane's range. Dragged below half the minimum,
@@ -31,7 +35,13 @@ const clampSize = (size: number) => {
 // center one. A handle resizes its side pane by dragging, by the arrow keys
 // or Home and End, and Enter collapses or restores it. The center pane takes
 // what is left.
-const SplitPanes = ({ start, center, end, labels }: Props) => {
+const SplitPanes = ({
+  start,
+  center,
+  end,
+  labels,
+  sidePanes = true,
+}: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [sizes, setSizes] = useState<Record<Side, number>>({
@@ -118,6 +128,11 @@ const SplitPanes = ({ start, center, end, labels }: Props) => {
     }
   };
 
+  // Collapses the pane, or restores the size it had.
+  const onDoubleClick = (side: Side) => () => {
+    resize(side, sizes[side] > 0 ? 0 : restoreRef.current[side]);
+  };
+
   const handle = (side: Side) => (
     <div
       role="separator"
@@ -130,31 +145,35 @@ const SplitPanes = ({ start, center, end, labels }: Props) => {
       className={styles.handle}
       onPointerDown={onPointerDown(side)}
       onKeyDown={onKeyDown(side)}
-      onDoubleClick={() =>
-        resize(side, sizes[side] > 0 ? 0 : restoreRef.current[side])
-      }
+      onDoubleClick={onDoubleClick(side)}
     />
   );
 
   return (
     <div ref={containerRef} className={styles.container}>
-      <div
-        className={styles.pane}
-        style={{ flexBasis: `${sizes.start}%` }}
-        hidden={sizes.start === 0}
-      >
-        {start}
-      </div>
-      {handle('start')}
+      {/* Each side slot stays in the list when it's left out, so the center
+          pane is always the third child. */}
+      {sidePanes && (
+        <div
+          className={styles.pane}
+          style={{ flexBasis: `${sizes.start}%` }}
+          hidden={sizes.start === 0}
+        >
+          {start}
+        </div>
+      )}
+      {sidePanes && handle('start')}
       <div className={styles.center}>{center}</div>
-      {handle('end')}
-      <div
-        className={styles.pane}
-        style={{ flexBasis: `${sizes.end}%` }}
-        hidden={sizes.end === 0}
-      >
-        {end}
-      </div>
+      {sidePanes && handle('end')}
+      {sidePanes && (
+        <div
+          className={styles.pane}
+          style={{ flexBasis: `${sizes.end}%` }}
+          hidden={sizes.end === 0}
+        >
+          {end}
+        </div>
+      )}
     </div>
   );
 };
