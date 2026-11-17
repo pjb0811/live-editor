@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { useState } from 'react';
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -67,5 +69,48 @@ describe('SplitPanes', () => {
 
     expect(sizeOf('Resize panel')).toBe('22');
     expect(screen.getByText('panel').parentElement!.hidden).toBe(false);
+  });
+});
+
+// The layout's mobile and desktop arrangements share one tree, so the
+// center pane isn't remounted when the side panes come and go (#773).
+describe('SplitPanes without side panes', () => {
+  const Counter = () => {
+    const [count, setCount] = useState(0);
+
+    return <button onClick={() => setCount(count + 1)}>count {count}</button>;
+  };
+
+  const panes = (sidePanes: boolean) => (
+    <SplitPanes
+      sidePanes={sidePanes}
+      start={<div>palette</div>}
+      center={<Counter />}
+      end={<div>panel</div>}
+      labels={{ start: 'Resize palette', end: 'Resize panel' }}
+    />
+  );
+
+  it('renders only the center pane', () => {
+    render(panes(false));
+
+    expect(screen.queryByText('palette')).toBeNull();
+    expect(screen.queryByText('panel')).toBeNull();
+    expect(screen.queryAllByRole('separator')).toHaveLength(0);
+  });
+
+  it('keeps the center pane mounted while the side panes come and go', () => {
+    const { rerender } = render(panes(false));
+    const counter = screen.getByRole('button');
+
+    fireEvent.click(counter);
+    rerender(panes(true));
+
+    expect(screen.getByRole('button')).toBe(counter);
+    expect(counter.textContent).toBe('count 1');
+    expect(screen.getByText('palette')).not.toBeNull();
+
+    rerender(panes(false));
+    expect(screen.getByRole('button')).toBe(counter);
   });
 });
