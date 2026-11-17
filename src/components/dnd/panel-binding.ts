@@ -55,6 +55,8 @@ export interface PanelBinding {
   widget?: BindingWidget;
   // A fixed set of choices, for a select.
   options?: BindingOption[];
+  // `options` is the only choice; see `BindingFieldSpec` (#769).
+  optionsOnly?: boolean;
   // For `object` and `array` bindings: the types of the nested keys or
   // items, which the built-in panel uses for their fields.
   render?: BindingRenderMap;
@@ -209,6 +211,7 @@ export const toBindingFields = (
   type: binding.type,
   widget: binding.widget,
   options: binding.options,
+  optionsOnly: binding.optionsOnly,
   render: binding.render,
   min: binding.min,
   max: binding.max,
