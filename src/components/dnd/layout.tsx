@@ -156,19 +156,20 @@ export const Layout = ({ palette, panel }: DndLayoutProps) => {
 
   return (
     <>
-      {isMobile ? (
-        <Canvas />
-      ) : (
-        <SplitPanes
-          start={palette ?? <Palette />}
-          center={<Canvas />}
-          end={panel ?? <Panel />}
-          labels={{
-            start: messages.canvas.resizePalette,
-            end: messages.canvas.resizePanel,
-          }}
-        />
-      )}
+      {/* One tree for both breakpoints, so the canvas isn't remounted when
+          the layout switches, including on the first render, which is
+          mobile until the screen is measured (#773). On mobile the side
+          panes are left out; the Drawers below hold the palette and panel. */}
+      <SplitPanes
+        sidePanes={!isMobile}
+        start={palette ?? <Palette />}
+        center={<Canvas />}
+        end={panel ?? <Panel />}
+        labels={{
+          start: messages.canvas.resizePalette,
+          end: messages.canvas.resizePanel,
+        }}
+      />
       <Button
         variant="solid"
         tone="primary"
