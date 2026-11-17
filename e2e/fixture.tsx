@@ -828,6 +828,48 @@ const MountsFixture = () => {
   );
 };
 
+// A section whose content tries to take focus: an `autoFocus` input and an
+// input its own effect focuses (#774). `?mode=` picks the frame.
+const focusCode = `import { useEffect, useRef } from 'react';
+
+const Focuser = () => {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    ref.current.focus();
+  }, []);
+
+  return <input data-testid="focused" ref={ref} />;
+};
+
+const App = () => (
+  <main id="app-container">
+    <section data-id="f1" data-name="One">
+      <input data-testid="auto" autoFocus />
+    </section>
+    <section data-id="f2" data-name="Two">
+      <Focuser />
+    </section>
+  </main>
+);
+
+export default App;`;
+
+const FocusFixture = () => {
+  const mode = new URLSearchParams(window.location.search).get('mode');
+
+  return (
+    <Live>
+      <div style={{ height: 600 }}>
+        <Live.Dnd
+          value={focusCode}
+          frame={mode === 'iframe' || mode === 'shadow' ? { mode } : undefined}
+        />
+      </div>
+    </Live>
+  );
+};
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
@@ -845,6 +887,7 @@ const fixtures = {
   'image-field': <ImageFieldFixture />,
   'cross-section': <CrossSectionFixture />,
   mounts: <MountsFixture />,
+  focus: <FocusFixture />,
   'canvas-width': <CanvasWidthFixture />,
   'live-history': <LiveHistoryFixture />,
 } as const;
