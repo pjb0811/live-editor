@@ -197,6 +197,36 @@ describe('uiKitFields', () => {
     ).toEqual(['None', 'Open']);
   });
 
+  // As the built-in select does (#769).
+  it('shows an unlisted value of a closed list, disabled', () => {
+    render(
+      withUiKit(
+        <Field
+          binding={binding({
+            label: 'Click',
+            property: 'onClick',
+            type: 'function',
+            value: '() => x()',
+            rawValue: '() => x()',
+            options: [{ label: 'Open', value: 'actions.open' }],
+            optionsOnly: true,
+          })}
+        />,
+      ),
+    );
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Click' }));
+
+    const choices = screen.getAllByRole('option');
+
+    expect(choices.map(option => option.textContent)).toEqual([
+      'None',
+      'Current: () => x()',
+      'Open',
+    ]);
+    expect(choices[1]!.getAttribute('aria-disabled')).toBe('true');
+  });
+
   it('names the color picker by the field label', () => {
     render(
       withUiKit(

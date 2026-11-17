@@ -782,6 +782,94 @@ const CanvasWidthFixture = () => {
   );
 };
 
+// How often each canvas section mounts, per frame mode (#773). `?mode=`
+// picks the frame; in place otherwise.
+const mountLog: string[] = [];
+
+(window as unknown as { mountLog: string[] }).mountLog = mountLog;
+
+const mountsCode = `import { useEffect } from 'react';
+import log from 'mount-log';
+
+const Mark = ({ id }) => {
+  useEffect(() => {
+    log.push('mount ' + id);
+
+    return () => log.push('unmount ' + id);
+  }, []);
+
+  return <p>{id}</p>;
+};
+
+const App = () => (
+  <main id="app-container">
+    <section data-id="m1" data-name="One"><Mark id="one" /></section>
+    <section data-id="m2" data-name="Two"><Mark id="two" /></section>
+  </main>
+);
+
+export default App;`;
+
+const MOUNTS_MODULES = { 'mount-log': mountLog };
+
+const MountsFixture = () => {
+  const mode = new URLSearchParams(window.location.search).get('mode');
+
+  return (
+    <Live>
+      <div style={{ height: 600 }}>
+        <Live.Dnd
+          value={mountsCode}
+          modules={MOUNTS_MODULES}
+          frame={mode === 'iframe' || mode === 'shadow' ? { mode } : undefined}
+        />
+      </div>
+    </Live>
+  );
+};
+
+// A section whose content tries to take focus: an `autoFocus` input and an
+// input its own effect focuses (#774). `?mode=` picks the frame.
+const focusCode = `import { useEffect, useRef } from 'react';
+
+const Focuser = () => {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    ref.current.focus();
+  }, []);
+
+  return <input data-testid="focused" ref={ref} />;
+};
+
+const App = () => (
+  <main id="app-container">
+    <section data-id="f1" data-name="One">
+      <input data-testid="auto" autoFocus />
+    </section>
+    <section data-id="f2" data-name="Two">
+      <Focuser />
+    </section>
+  </main>
+);
+
+export default App;`;
+
+const FocusFixture = () => {
+  const mode = new URLSearchParams(window.location.search).get('mode');
+
+  return (
+    <Live>
+      <div style={{ height: 600 }}>
+        <Live.Dnd
+          value={focusCode}
+          frame={mode === 'iframe' || mode === 'shadow' ? { mode } : undefined}
+        />
+      </div>
+    </Live>
+  );
+};
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
@@ -798,6 +886,8 @@ const fixtures = {
   'function-field': <SourceFieldFixture initial={functionFieldCode} />,
   'image-field': <ImageFieldFixture />,
   'cross-section': <CrossSectionFixture />,
+  mounts: <MountsFixture />,
+  focus: <FocusFixture />,
   'canvas-width': <CanvasWidthFixture />,
   'live-history': <LiveHistoryFixture />,
 } as const;

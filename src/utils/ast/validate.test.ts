@@ -428,6 +428,46 @@ describe('validateBindingValue for an image', () => {
   });
 });
 
+// A closed list of options (#769).
+describe('validateBindingValue with optionsOnly', () => {
+  const closed = (overrides: Partial<BindingItem> = {}) =>
+    makeBinding({
+      options: [
+        { label: 'Open', value: 'actions.open' },
+        { label: 'Two', value: '2' },
+      ],
+      optionsOnly: true,
+      ...overrides,
+    });
+
+  it('accepts a listed value and an empty one', () => {
+    expect(validateBindingValue(closed(), 'actions.open').valid).toBe(true);
+    expect(validateBindingValue(closed(), '').valid).toBe(true);
+    // Compared as text, as a select writes it.
+    expect(validateBindingValue(closed(), 2).valid).toBe(true);
+  });
+
+  it('refuses anything else', () => {
+    expect(validateBindingValue(closed(), '() => x()')).toEqual({
+      valid: false,
+      message: 'Choose one of the listed values.',
+    });
+  });
+
+  it('still requires a value when required', () => {
+    expect(validateBindingValue(closed({ required: true }), '').valid).toBe(
+      false,
+    );
+  });
+
+  it('checks nothing without optionsOnly', () => {
+    expect(
+      validateBindingValue(closed({ optionsOnly: undefined }), '() => x()')
+        .valid,
+    ).toBe(true);
+  });
+});
+
 // Translated messages for a host's own language (#524).
 describe('validateBindingValue messages', () => {
   const binding = makeBinding({ required: true, max: 40 });

@@ -57,6 +57,7 @@ to replace individual controls while keeping the built-in panel, or in a
 | `property`                | `string`                                    | The prop to edit. See [Properties](#properties). Can be omitted only for `type: 'richtext'`, which then edits `innerHTML`.                                                       |
 | `type`                    | `BindingType`                               | The data kind. Picks the default control and how the value is validated and written back. See [Types](#types).                                                                   |
 | `options`                 | `{ label: string; value: string }[]`        | A fixed set of values. The built-in panel shows a select.                                                                                                                        |
+| `optionsOnly` | `boolean` | With `options`, the only values allowed: anything else but empty is rejected, and the built-in panel always shows the select. It limits the panel, not the code editor. |
 | `min` / `max`             | `number`                                    | Range for a number value.                                                                                                                                                        |
 | `pattern`                 | `string`                                    | A regular expression (as a string) a text value must contain a match for. It isn't anchored: write `^…$` to match the whole value.                                               |
 | `patternMessage`          | `string`                                    | The message for a failed `pattern`, instead of the generic one.                                                                                                                  |
@@ -424,6 +425,14 @@ handler. The value is source text, read and written without being run:
 - With `options`, the select shows while the value is one of them or empty.
   A handler written in the code editor that isn't one of them gets the code
   editor instead, so it isn't replaced by the first option.
+- With `optionsOnly: true` as well, the select always shows, so users of the
+  panel can only pick one of your handlers or none. A handler written
+  elsewhere shows as a disabled "Current" entry until another is picked.
+  This limits the panel, not the code: whoever edits the source can still
+  write anything, so it isn't a sandbox.
+- `pattern`, `minLength`, `maxLength` and `required` apply to the source text,
+  as on any text field. `pattern: '^actions\\.'` keeps hand-written handlers
+  to references into `actions`, for example.
 - Without a `type`, an attribute that holds an arrow function or a `function`
   expression is treated the same way. A bare reference such as
   `onClick={handleClick}` needs `type: 'function'`, since nothing says what it

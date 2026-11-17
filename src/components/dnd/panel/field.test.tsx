@@ -830,3 +830,122 @@ describe('Field image', () => {
     expect(reportError).not.toHaveBeenCalled();
   });
 });
+
+// Constraints on function bindings, and a closed list of options (#769).
+describe('Field function constraints and optionsOnly', () => {
+  const options = [
+    { label: 'Open', value: 'actions.open' },
+    { label: 'Track', value: 'actions.track' },
+  ];
+
+  const typeSource = (text: string) => {
+    act(() => {
+      coreEditorMock.props!.onUpdate?.({
+        docChanged: true,
+        state: { selection: {}, doc: { toString: () => text } },
+      } as unknown as ViewUpdate);
+    });
+  };
+
+  const save = async (text: string) => {
+    screen.getByTestId('core-editor').focus();
+    typeSource(text);
+    screen.getByRole('button', { name: 'Outside' }).focus();
+    await act(() => new Promise(resolve => setTimeout(resolve, 0)));
+  };
+
+  it('checks pattern on the function code editor', async () => {
+    const onChange = vi.fn();
+
+    render(
+      <>
+        <Field
+          binding={binding({
+            type: 'function',
+            pattern: '^actions\\.',
+            value: 'actions.open',
+            rawValue: 'actions.open',
+            onChange,
+          })}
+        />
+        <button type="button">Outside</button>
+      </>,
+    );
+
+    await save('() => x()');
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Value does not match the required format.',
+    );
+
+    await save('actions.track');
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('actions.track');
+  });
+
+  it('keeps a closed list a select, with an unlisted value shown but disabled', () => {
+    const onChange = vi.fn();
+
+    render(
+      <Field
+        binding={binding({
+          type: 'function',
+          options,
+          optionsOnly: true,
+          value: '() => x()',
+          rawValue: '() => x()',
+          onChange,
+        })}
+      />,
+    );
+
+    const select = screen.getByRole('combobox') as HTMLSelectElement;
+    const choices = screen.getAllByRole('option') as HTMLOptionElement[];
+
+    expect(screen.queryByTestId('core-editor')).toBeNull();
+    expect(select.value).toBe('() => x()');
+    expect(
+      choices.map(option => [option.textContent, option.disabled]),
+    ).toEqual([
+      ['None', false],
+      ['Current: () => x()', true],
+      ['Open', false],
+      ['Track', false],
+    ]);
+
+    fireEvent.change(select, { target: { value: 'actions.open' } });
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('actions.open');
+  });
+
+  it('refuses an unlisted value on a closed list', () => {
+    const onChange = vi.fn();
+
+    render(
+      <Field
+        binding={binding({
+          options: [{ label: 'A', value: 'a' }],
+          optionsOnly: true,
+          value: 'a',
+          rawValue: 'a',
+          onChange,
+        })}
+      />,
+    );
+
+    const select = screen.getByRole('combobox');
+
+    // A value no option offers, as a script or an extension could set.
+    const extra = document.createElement('option');
+
+    extra.value = 'z';
+    select.append(extra);
+    fireEvent.change(select, { target: { value: 'z' } });
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Choose one of the listed values.',
+    );
+  });
+});

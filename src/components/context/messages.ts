@@ -58,6 +58,9 @@ export interface LiveMessages {
     imagePlaceholder: string;
     chooseImage: string;
     uploadingImage: string;
+    // A select's current value that isn't one of its `optionsOnly` options:
+    // shown, but can't be chosen again (#769).
+    currentValue: (value: string) => string;
   };
   // The built-in editor for an array value.
   items: {
@@ -216,6 +219,7 @@ export const defaultMessages: LiveMessages = {
     imagePlaceholder: 'https://example.com/image.png',
     chooseImage: 'Choose image',
     uploadingImage: 'Uploading…',
+    currentValue: value => `Current: ${value}`,
   },
   items: {
     heading: count => `Items (${count})`,

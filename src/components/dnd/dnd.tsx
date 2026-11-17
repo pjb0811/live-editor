@@ -403,6 +403,7 @@ const Dnd = ({
                   sectionName={section.name}
                   sectionCode={section.code}
                   forceFallback={isForced(section)}
+                  inert={!inspecting}
                   modules={modules}
                   frame={frame}
                   dynamicTailwind={dynamicTailwind}

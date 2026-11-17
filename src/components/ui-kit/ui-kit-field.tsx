@@ -67,21 +67,39 @@ const UiKitField = ({ binding }: FieldProps) => {
 
   if (kind === 'select') {
     const options = binding.options ?? [];
+    // As in the built-in select: an empty choice for a function select with
+    // no handler, or with a closed list (#741), and an unlisted current
+    // value of a closed list shown but disabled (#769).
+    const isUnlisted =
+      rawValue !== '' && !options.some(option => option.value === rawValue);
+    const choices = [
+      ...(binding.type === 'function' &&
+      (rawValue === '' || binding.optionsOnly)
+        ? [{ label: messages.panel.noFunction, value: '' }]
+        : []),
+      ...(isUnlisted
+        ? [
+            {
+              label: messages.panel.currentValue(rawValue),
+              value: rawValue,
+              disabled: true,
+            },
+          ]
+        : []),
+      ...options,
+    ];
 
-    // Takes no `id`, so it points at the label instead. A function select
-    // with no handler set starts with an empty choice, as the built-in one
-    // does (#741).
+    // Takes no `id`, so it points at the label instead.
     return (
-      <Select
-        {...labelledByProps}
-        value={rawValue}
-        options={
-          binding.type === 'function' && rawValue === ''
-            ? [{ label: messages.panel.noFunction, value: '' }, ...options]
-            : options
-        }
-        onChange={commitIfChanged}
-      />
+      <div>
+        <Select
+          {...labelledByProps}
+          value={rawValue}
+          options={choices}
+          onChange={validateAndCommit}
+        />
+        <FieldError id={errorId} message={validationError} />
+      </div>
     );
   }
 

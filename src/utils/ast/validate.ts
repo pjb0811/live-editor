@@ -27,6 +27,8 @@ export interface ValidationMessages {
   maxDate: (maxDate: string) => string;
   // The allowed schemes, normalized to end with `:`.
   protocol: (protocols: string[]) => string;
+  // A value outside `options` on an `optionsOnly` binding (#769).
+  notAnOption: string;
 }
 
 export const defaultValidationMessages: ValidationMessages = {
@@ -51,6 +53,7 @@ export const defaultValidationMessages: ValidationMessages = {
   minDate: minDate => `Must be on or after ${minDate}.`,
   maxDate: maxDate => `Must be on or before ${maxDate}.`,
   protocol: protocols => `Must use ${protocols.join(', ')}.`,
+  notAnOption: 'Choose one of the listed values.',
 };
 
 export interface ValidationOptions {
@@ -143,6 +146,16 @@ export const validateBindingValue = (
       return { valid: false, message: messages.required };
     }
     return VALID;
+  }
+
+  // A closed list: anything but a listed value fails (#769). Values are
+  // compared as text, as a select writes them.
+  if (
+    binding.optionsOnly &&
+    binding.options &&
+    !binding.options.some(option => option.value === String(value))
+  ) {
+    return invalid(messages.notAnOption);
   }
 
   // `min` and `max` apply to numbers only; a `type: 'number'` field passes
