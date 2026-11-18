@@ -430,3 +430,28 @@ values outside the component.
 A `provider` that holds its own state gets one copy of it per section, since
 it's called once per section. See
 [State across sections](./how-it-works.mdx#state-across-sections).
+
+### Passing a set of props together
+
+`Live.Dnd`'s props are flat, one per option. To set several in one place,
+such as the ones that shape the panel, build one object and spread it:
+
+```tsx
+import { metaPanelLayout } from '@jbpark/live-editor/dnd';
+import { uiKitFields } from '@jbpark/live-editor/ui-kit';
+
+// Outside the component, so `bindings` and `bindingKeys` keep their identity.
+const PANEL_OPTIONS = {
+  renderField: uiKitFields,
+  panelLayout: metaPanelLayout,
+  bindings,
+  bindingKeys,
+  onUpload: uploadImage,
+};
+
+<Live.Dnd value={value} onChange={setValue} {...PANEL_OPTIONS} />;
+```
+
+The object needs no stable identity itself; each prop is compared as above.
+Keep it outside the component anyway when it holds `bindings` or
+`bindingKeys`, which re-read every section when they change.
