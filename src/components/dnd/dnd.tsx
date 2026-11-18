@@ -111,6 +111,7 @@ const Dnd = ({
   renderField,
   onEditError,
   renderSectionFallback,
+  renderPaletteOverlay,
   shouldForceSectionFallback,
   onBeforeDelete,
   sectionNameFallback,
@@ -474,6 +475,7 @@ const Dnd = ({
         <DragOverlay>
           <Overlay
             sections={sections}
+            renderPaletteOverlay={renderPaletteOverlay}
             isForced={isForced}
             renderProps={{
               fullCode: value,
