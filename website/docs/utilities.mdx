@@ -65,6 +65,61 @@ if (!check.ok && check.reason === 'container-not-found') {
 }
 ```
 
+## Serving a saved document
+
+`Live.Preview` compiles a document in the browser, which puts Babel on the
+page: `compile` from `@jbpark/live-editor/utils` adds about 2.3 MB (560 KB
+gzip) to a bundle. A page that only shows saved documents can skip it by
+transpiling once, when the document is saved, and running the result:
+
+| Step | Function | Needs Babel |
+| --- | --- | --- |
+| Turn the source into plain JavaScript | `transpile(code)` from `@jbpark/live-editor/utils` | Yes |
+| Run that JavaScript and get the component | `runModule(js, modules)` from `@jbpark/live-editor/runtime` | No (0.3 KB gzip) |
+
+`compile(code, modules)` is the two in one. For the default palette document
+(9 sections, 31.6 KB), transpiling takes about 50 ms in Chromium and running
+the result well under 1 ms.
+
+```ts
+// On save, on your server or in a build step
+import { transpile } from '@jbpark/live-editor/utils';
+
+const { code: js, error } = transpile(document);
+
+if (error) {
+  throw new Error(error); // Babel's message, with the line and column
+}
+
+await db.pages.save({ source: document, js });
+```
+
+```tsx
+// The page that shows it
+import { runModule } from '@jbpark/live-editor/runtime';
+
+// The same `modules` the editor gave the document, defined once.
+const MODULES = { ...uiKitModules, actions };
+
+const SavedPage = ({ js }: { js: string }) => {
+  const { exports, error } = useMemo(() => runModule(js, MODULES), [js]);
+  const Page = exports.default;
+
+  return error || !Page ? <p>This page couldn't be shown.</p> : <Page />;
+};
+```
+
+- Store the source too: the editor edits the source, and you transpile again
+  after each save.
+- `runModule` works on the server as well, so the page can be rendered with
+  `renderToString` and hydrated with the same `js`.
+- The transpiled code runs with the page's privileges, as anything
+  `compile()` runs does. Serve documents only from authors you trust; see the
+  README's [Security Notes](https://github.com/pjb0811/live-editor#security-notes).
+- Styles aren't part of the module. If the document uses Tailwind classes,
+  build their CSS on save as well, or serve the page with your own Tailwind
+  build.
+
 ## Caches
 
 The editor caches compiled modules, fetched scripts and parsed documents for

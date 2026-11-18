@@ -70,6 +70,10 @@
       "types": "./dist/utils/index.d.ts",
       "import": "./dist/utils/index.js"
     },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.js"
+    },
     "./utils/ast": {
       "types": "./dist/utils/ast/index.d.ts",
       "import": "./dist/utils/ast/index.js"

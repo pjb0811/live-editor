@@ -47,7 +47,8 @@ live-editor/
 │  │  └─ shared/            # 페이지 공용 예제 섹션, 프레임 설정
 │  ├─ utils/
 │  │  ├─ index.ts           # 공개 `./utils` 배럴 (재수출만, 라이브러리 내부는 아래 모듈에서 import)
-│  │  ├─ compile.ts         # compile(), clearCompilationCache() — Babel 트랜스파일 + 모듈 실행 + LRU 캐시
+│  │  ├─ compile.ts         # compile(), transpile(), clearCompilationCache() — Babel 트랜스파일 + LRU 캐시
+│  │  ├─ run-module.ts      # runModule() — 트랜스파일된 코드 실행 (Babel 없음, `./runtime` 진입점)
 │  │  ├─ cn.ts              # cn() (clsx + tailwind-merge)
 │  │  ├─ scripts.ts         # 외부 스크립트 blob 캐시와 preloadScripts()
 │  │  ├─ sections.ts        # 섹션 문서 헬퍼 (extractSections, replaceSections, createDocument, checkDocument)
@@ -237,7 +238,7 @@ pnpm --dir website build # 라이브러리·데모 선행 빌드 후 문서 빌�
 
 ---
 
-라이브러리는 tsdown으로 ESM과 타입 선언을 빌드합니다. `package.json`의 `/provider`, `/editor`, `/dnd`, `/preview`, `/error`, `/utils`, `/ui-kit` 및 AST/Tailwind 하위 진입점으로 기능별 import를 제공합니다. `Live.Dnd`는 `Palette`, `Canvas`, `Panel`, `Layout`과 커스텀 패널용 훅을 공개합니다.
+라이브러리는 tsdown으로 ESM과 타입 선언을 빌드합니다. `package.json`의 `/provider`, `/editor`, `/dnd`, `/preview`, `/error`, `/utils`, `/runtime`, `/ui-kit` 및 AST/Tailwind 하위 진입점으로 기능별 import를 제공합니다. `Live.Dnd`는 `Palette`, `Canvas`, `Panel`, `Layout`과 커스텀 패널용 훅을 공개합니다.
 
 ## 공유 스킬
 

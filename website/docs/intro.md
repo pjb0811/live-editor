@@ -71,6 +71,10 @@ exception: its property panel reuses the editor's own CodeMirror `Core` and
 CodeMirror/prettier come along with `./dnd` too — that's a real dependency of
 the feature, not something this subpath split was able to remove.
 
+A page that only shows saved documents can leave the compiler out too:
+`./runtime` runs a document transpiled ahead of time. See
+[Serving a saved document](./utilities.mdx#serving-a-saved-document).
+
 ### Next.js and server rendering
 
 The components are client components. In the Next.js App Router, render them

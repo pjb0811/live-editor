@@ -6,6 +6,7 @@
     "./error",
     "./preview",
     "./provider",
+    "./runtime",
     "./style.css",
     "./ui-kit",
     "./ui-kit/style.css",
@@ -161,7 +162,9 @@
         "createDocument",
         "extractSections",
         "preloadScripts",
-        "replaceSections"
+        "replaceSections",
+        "runModule",
+        "transpile"
       ],
       "types": [
         "DocumentCheck",
@@ -169,6 +172,10 @@
         "DocumentProblem",
         "SectionOptions"
       ]
+    },
+    "./runtime": {
+      "values": ["runModule"],
+      "types": []
     },
     "./utils/ast": {
       "values": [

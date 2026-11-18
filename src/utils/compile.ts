@@ -1,5 +1,3 @@
-import React from 'react';
-
 import * as Babel from '@babel/standalone';
 
 import type { Module } from '~/types';
@@ -7,6 +5,7 @@ import type { Module } from '~/types';
 import { CONFIG } from '../constants';
 import { createBoundedCache } from './cache';
 import { registerEditorCache } from './editor-caches';
+import { runModule } from './run-module';
 
 interface CompilationKey {
   code: string;
@@ -101,69 +100,33 @@ const describeTransformError = (e: unknown): string =>
     '',
   );
 
+// Transpiles a document to the module `runModule()` runs: JSX and TypeScript
+// removed, `import`s turned into `require` calls. The result is plain
+// JavaScript to store next to the source, so a page that only shows saved
+// documents can skip Babel (#771). `error` is Babel's message when the code
+// doesn't transpile.
+export const transpile = (
+  code: string,
+):
+  { code: string; error?: undefined } | { code?: undefined; error: string } => {
+  try {
+    return { code: transformCode(code) };
+  } catch (e) {
+    // Babel's error names the problem; `new Function` on the source
+    // wouldn't say what's wrong (#720).
+    return { error: describeTransformError(e) };
+  }
+};
+
 const compileModule = (
   code: string,
   modules: Record<string, unknown>,
 ): Module => {
-  type RenderFunction = (
-    exports: Module['exports'],
-    require: (name: string) => unknown,
-    module: Module,
-    React: typeof import('react'),
-  ) => void;
+  const transpiled = transpile(code);
 
-  let transformed: string;
-
-  // A failed transform reports Babel's error. Handing the source to
-  // `new Function` instead reported that one, which doesn't say what's
-  // wrong (#720).
-  try {
-    transformed = transformCode(code);
-  } catch (e) {
-    return { exports: {}, error: describeTransformError(e) };
-  }
-
-  let render: RenderFunction;
-
-  // Runs in this window's own JS realm, not inside the preview iframe — the iframe only
-  // renders the resulting React elements via portal. See README "Security Notes".
-  try {
-    render = new Function(
-      'exports',
-      'require',
-      'module',
-      'React',
-      transformed,
-    ) as RenderFunction;
-  } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : 'Syntax error';
-    return { exports: {}, error: errorMessage };
-  }
-
-  const module: Module = { exports: {} };
-
-  const customRequire = (name: string) => {
-    if (name === 'react') {
-      return React;
-    }
-
-    // Check presence, not truthiness: a module can be a falsy value (`0`, `''`,
-    // `false`, `null`).
-    if (name in modules) {
-      return modules[name];
-    }
-
-    throw new Error(`Module not found: ${name}`);
-  };
-
-  try {
-    render(module.exports, customRequire, module, React);
-  } catch (e) {
-    const errorMessage = e instanceof Error ? e.message : 'Runtime error';
-    return { exports: {}, error: errorMessage };
-  }
-
-  return module;
+  return transpiled.error === undefined
+    ? runModule(transpiled.code, modules)
+    : { exports: {}, error: transpiled.error };
 };
 
 registerEditorCache(clearCompilationCache);

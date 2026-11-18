@@ -19,6 +19,8 @@ const entries = {
   error: { standalone: false, ast: false },
   preview: { standalone: true, ast: false },
   'utils/tailwind': { standalone: false, ast: false },
+  // Runs code transpiled ahead of time, so it never needs a compiler (#771).
+  runtime: { standalone: false, ast: false },
 };
 
 const STATIC_IMPORT =
