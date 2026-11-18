@@ -443,9 +443,19 @@ handler. The value is source text, read and written without being run:
   since removing a key would change the item's shape. An item that is itself
   a function expression, as in `actions={[() => open()]}`, is edited the same
   way.
-- A function inside an object-valued prop, such as
-  `config={{ onClick: () => {} }}`, is preserved, and the whole object is
-  edited in the code editor.
+- A key of an object-valued prop works the same way: declare it in `render`
+  (`render: { onClick: { type: 'function' } }`), or leave it untyped when it
+  holds a function expression. The object editor then edits each key on its
+  own, so `config={{ label: 'Go', onClick: () => go() }}` gets a text field
+  for `label` and a code editor for `onClick`. Clearing a function key is
+  refused, as for array items. A key holding another expression, such as a
+  call or an untyped reference, is shown read-only by itself, and the other
+  keys stay editable.
+- An object with a spread, a computed key or a method (`onClick() {}`) is
+  edited in the code editor, since its keys can't be addressed one by one.
+  Function and expression keys aren't in the binding's `value`; a custom
+  panel finds them in `rawValue`, or renders the object with
+  `Live.Dnd.Field`.
 
 #### Handlers from your app
 

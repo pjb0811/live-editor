@@ -550,6 +550,25 @@ const functionFieldCode = `const App = () => (
 
 export default App;`;
 
+// A function inside an object-valued prop, edited key by key (#768).
+const objectFunctionCode = `const Cta = ({ config }) => (
+  <button onClick={config.onClick}>{config.label}</button>
+);
+
+const App = () => (
+  <main id="app-container">
+    <section data-id="s1" data-name="One">
+      <Cta
+        data-id="cta"
+        data-binding={[{ label: 'Config', property: 'config', type: 'object' }]}
+        config={{ label: 'Go', onClick: () => console.log('old') }}
+      />
+    </section>
+  </main>
+);
+
+export default App;`;
+
 export const SourceFieldFixture = ({ initial = sourceFieldCode }) => {
   const [code, setCode] = useState(initial);
 
@@ -884,6 +903,7 @@ const fixtures = {
   'field-error': <FieldErrorFixture />,
   'source-field': <SourceFieldFixture />,
   'function-field': <SourceFieldFixture initial={functionFieldCode} />,
+  'object-function': <SourceFieldFixture initial={objectFunctionCode} />,
   'image-field': <ImageFieldFixture />,
   'cross-section': <CrossSectionFixture />,
   mounts: <MountsFixture />,

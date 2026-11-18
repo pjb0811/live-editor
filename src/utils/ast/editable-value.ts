@@ -285,3 +285,97 @@ export const setEditableSource = (
     ? `${value.slice(0, node.start!)}${source}${value.slice(node.end!)}`
     : null;
 };
+
+// An object literal's own key, when it's written as a plain name, string or
+// number, which is how `findEditableLeaf` addresses it.
+const propertyKey = (
+  property: t.ObjectExpression['properties'][number],
+): string | null => {
+  if (!t.isObjectProperty(property) || property.computed) {
+    return null;
+  }
+
+  if (t.isIdentifier(property.key)) {
+    return property.key.name;
+  }
+
+  if (t.isStringLiteral(property.key) || t.isNumericLiteral(property.key)) {
+    return String(property.key.value);
+  }
+
+  return null;
+};
+
+// The top-level entries of an object literal, each with its value's source
+// as written, for an editor that works on it key by key, whatever each value
+// is (#768). `null` when `value` isn't an object literal, or when a key can't
+// be addressed with certainty: a spread, a computed key, a method or
+// accessor, or a key written twice.
+export const objectEntrySources = (
+  value: string,
+): { key: string; source: string }[] | null => {
+  let node: t.Node;
+
+  try {
+    node = unwrapExpression(
+      parseExpression(value, { plugins: ['jsx', 'typescript'] }),
+    );
+  } catch {
+    return null;
+  }
+
+  if (!t.isObjectExpression(node)) {
+    return null;
+  }
+
+  const entries: { key: string; source: string }[] = [];
+
+  for (const property of node.properties) {
+    const key = propertyKey(property);
+
+    if (
+      key === null ||
+      entries.some(entry => entry.key === key) ||
+      !t.isObjectProperty(property) ||
+      property.value.start == null ||
+      property.value.end == null
+    ) {
+      return null;
+    }
+
+    entries.push({
+      key,
+      source: value.slice(property.value.start, property.value.end),
+    });
+  }
+
+  return entries;
+};
+
+// Replaces the value at `path`, whatever it is, with `source` and keeps the
+// rest of `value` as written: how a function key of an object is edited
+// (#768). `null` when the path doesn't lead to a value.
+export const setEditableExpression = (
+  value: string,
+  path: EditablePathSegment[],
+  source: string,
+): string | null => {
+  if (!path.length) {
+    return null;
+  }
+
+  let node: t.Node | null;
+
+  try {
+    node = findEditableLeaf(
+      parseExpression(value, { plugins: ['jsx', 'typescript'] }),
+      path,
+    );
+  } catch {
+    return null;
+  }
+
+  return node && node.start != null && node.end != null
+    ? `${value.slice(0, node.start)}${source}${value.slice(node.end)}`
+    : null;
+};
