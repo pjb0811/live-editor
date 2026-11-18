@@ -128,6 +128,11 @@ export interface Props extends Omit<
   // rendering, or was skipped by `shouldForceSectionFallback`. Return
   // `undefined` for the built-in error box. See `DndSectionFallbackArgs`.
   renderSectionFallback?: DndRenderSectionFallback;
+  // Renders the card that follows the pointer while a palette item is
+  // dragged, so a custom palette's preview can match its items. Return
+  // `undefined` for the built-in card. Only how it looks: the drag itself
+  // is already under way (#780).
+  renderPaletteOverlay?: (item: Section) => React.ReactNode | undefined;
   // Checked for every section before it is compiled. Return `true` to skip
   // compiling it (so none of its top-level code runs) and render the
   // fallback with reason `forced`.

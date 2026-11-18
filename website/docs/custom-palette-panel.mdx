@@ -284,6 +284,29 @@ const MyPalette = () => {
 </Live.Dnd>;
 ```
 
+### The card that follows the pointer: `renderPaletteOverlay`
+
+While an item is dragged, a card follows the pointer. By default it's the
+built-in palette card, whatever your items look like. Pass
+`renderPaletteOverlay` to draw your own; it gets the item being dragged:
+
+```tsx
+const renderPaletteCard = (item: Section) => (
+  <div className="my-card my-card--dragging">{item.name}</div>
+);
+
+<Live.Dnd value={value} onChange={setValue} renderPaletteOverlay={renderPaletteCard}>
+  <Live.Dnd.Layout palette={<MyPalette />} />
+</Live.Dnd>;
+```
+
+- Return `undefined` to keep the built-in card, for some items or all.
+- It only draws the card: the drag is already under way, so it needs no
+  `ref` or `dragProps`. Rendering your item's component in it, even one that
+  uses `Live.Dnd.DraggableItem`, is fine; nothing inside the overlay starts a
+  drag.
+- A canvas section dragged to a new position keeps its own preview.
+
 ## Custom panel
 
 `useDndPanel()` returns what drives the property panel:

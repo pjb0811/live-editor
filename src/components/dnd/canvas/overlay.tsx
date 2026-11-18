@@ -11,6 +11,8 @@ import Sortable from './sortable';
 
 interface Props {
   sections: Section[];
+  // `Live.Dnd`'s `renderPaletteOverlay` (#780).
+  renderPaletteOverlay?: (item: Section) => React.ReactNode | undefined;
   isForced?: (section: Section) => boolean;
   renderProps: {
     fullCode: string;
@@ -22,7 +24,12 @@ interface Props {
   };
 }
 
-const Overlay = ({ sections, isForced, renderProps }: Props) => {
+const Overlay = ({
+  sections,
+  renderPaletteOverlay,
+  isForced,
+  renderProps,
+}: Props) => {
   const { active } = useDndContext();
 
   if (!active) {
@@ -32,7 +39,16 @@ const Overlay = ({ sections, isForced, renderProps }: Props) => {
   const paletteSection = paletteSectionOf(active.data);
 
   if (paletteSection) {
-    return <DefaultDraggableItem item={paletteSection} />;
+    // The host's card first. Rendering a `DraggableItem` in it is fine:
+    // dnd-kit's `DragOverlay` gives its children an empty drag context, as
+    // the built-in card below relies on.
+    const custom = renderPaletteOverlay?.(paletteSection);
+
+    return custom === undefined ? (
+      <DefaultDraggableItem item={paletteSection} />
+    ) : (
+      <>{custom}</>
+    );
   }
 
   const section = sections.find(s => s.id === active.id);

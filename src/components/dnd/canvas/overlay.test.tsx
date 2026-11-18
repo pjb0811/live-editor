@@ -44,11 +44,13 @@ const sections: Section[] = [
 const renderOverlay = (
   isForced?: (section: Section) => boolean,
   componentProps?: Record<string, unknown>,
+  renderPaletteOverlay?: (item: Section) => React.ReactNode | undefined,
 ) =>
   render(
     <DndContext>
       <Overlay
         sections={sections}
+        renderPaletteOverlay={renderPaletteOverlay}
         isForced={isForced}
         renderProps={{
           fullCode: replaceSections(
@@ -90,6 +92,65 @@ describe('Overlay', () => {
 
     expect(screen.getByText('Pricing')).toBeTruthy();
     expect(screen.queryByTestId('renderer')).toBeNull();
+  });
+
+  // A custom palette's own preview (#780).
+  describe('renderPaletteOverlay', () => {
+    const dragPalette = () => {
+      drag.active = {
+        id: 'new',
+        data: {
+          current: {
+            type: 'palette-section',
+            section: { id: 'p', name: 'Pricing', code: '' },
+          },
+        },
+      };
+    };
+
+    it('renders the host card for a palette item', () => {
+      const renderPaletteOverlay = vi.fn((item: Section) => (
+        <div data-testid="custom">{item.name} card</div>
+      ));
+
+      dragPalette();
+      renderOverlay(undefined, undefined, renderPaletteOverlay);
+
+      expect(screen.getByTestId('custom').textContent).toBe('Pricing card');
+      expect(renderPaletteOverlay).toHaveBeenCalledWith({
+        id: 'p',
+        name: 'Pricing',
+        code: '',
+      });
+      // The built-in card is replaced, not shown next to it.
+      expect(screen.queryByRole('button')).toBeNull();
+    });
+
+    it('keeps the built-in card when it returns undefined', () => {
+      dragPalette();
+      renderOverlay(undefined, undefined, () => undefined);
+
+      expect(screen.getByRole('button').textContent).toBe('Pricing');
+    });
+
+    it('renders nothing when it returns null', () => {
+      dragPalette();
+
+      renderOverlay(undefined, undefined, () => null);
+
+      expect(screen.queryByText('Pricing')).toBeNull();
+      expect(screen.queryByRole('button')).toBeNull();
+    });
+
+    it('is not used for a canvas section', () => {
+      const renderPaletteOverlay = vi.fn();
+
+      drag.active = { id: 's1', data: { current: {} } };
+      renderOverlay(undefined, undefined, renderPaletteOverlay);
+
+      expect(screen.getByTestId('renderer')).not.toBeNull();
+      expect(renderPaletteOverlay).not.toHaveBeenCalled();
+    });
   });
 
   it("previews a canvas section in its document's container", () => {

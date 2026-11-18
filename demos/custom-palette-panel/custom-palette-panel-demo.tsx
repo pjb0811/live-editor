@@ -24,6 +24,7 @@ import {
   uiKitFields,
   uiKitModules,
 } from '~/components/ui-kit';
+import type { Section } from '~/types';
 import { cn } from '~/utils';
 import {
   type DataAttrNode,
@@ -544,6 +545,21 @@ type LayoutMode = 'built-in' | 'stacked';
 // keeps the dnd-kit wiring, so this only decides what an item looks like.
 // `isMobile` comes from `useDndLayout()` — the same signal the built-in
 // palette uses to decide that a tap should add rather than start a drag.
+// A palette item's look, shared with the card that follows the pointer.
+const paletteCardClass = cn(
+  'cursor-grab rounded-lg',
+  'border border-dashed border-blue-300',
+  'bg-blue-50 px-3 py-2',
+  'text-sm font-medium text-blue-700',
+);
+
+// `Live.Dnd`'s `renderPaletteOverlay`: the dragged item looks like the
+// palette's own, not the built-in card. Defined outside render, as the other
+// callbacks are (#780).
+const renderPaletteCard = (item: Section) => (
+  <div className={cn(paletteCardClass, 'shadow-md')}>{item.name}</div>
+);
+
 const MyPalette = () => {
   const { items, onAdd } = useDndPalette();
   const { isMobile } = useDndLayout();
@@ -558,13 +574,7 @@ const MyPalette = () => {
               {...dragProps}
               onClick={isMobile ? () => onAdd(item) : undefined}
               onDoubleClick={() => onAdd(item)}
-              className={cn(
-                'cursor-grab rounded-lg',
-                'border border-dashed border-blue-300',
-                'bg-blue-50 px-3 py-2',
-                'text-sm font-medium text-blue-700',
-                isDragging && 'opacity-50',
-              )}
+              className={cn(paletteCardClass, isDragging && 'opacity-50')}
             >
               {item.name}
             </div>
@@ -880,6 +890,7 @@ const CustomPalettePanelDemo = ({
           value={value}
           onChange={setValue}
           renderField={uiKitFields}
+          renderPaletteOverlay={renderPaletteCard}
           frame={{ mode: 'shadow', syncStyle: true }}
           dynamicTailwind
           className="min-h-0 flex-1 overflow-y-auto"
