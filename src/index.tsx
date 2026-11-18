@@ -6,6 +6,7 @@ import Context, {
   type LiveMessagesInput,
 } from './components/context';
 import LiveDnd, {
+  type DndDocument,
   type DndEditError,
   type DndInspector,
   type DndItems,
@@ -80,6 +81,7 @@ export type {
   DndPalette,
   DndPanel,
   DndSections,
+  DndDocument,
   DndLayout,
   DndInspector,
   DndNodePick,

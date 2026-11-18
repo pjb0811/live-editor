@@ -24,6 +24,7 @@ import {
 } from './layout';
 import {
   type DndLayout,
+  useDndDocument,
   useDndLayout,
   useDndPalette,
   useDndPanel,
@@ -55,7 +56,13 @@ import {
   useDndItems,
 } from './panel/items/use-dnd-items';
 import type { FieldProps } from './panel/types';
-import type { DndPalette, DndPanel, DndSections, Props } from './types';
+import type {
+  DndDocument,
+  DndPalette,
+  DndPanel,
+  DndSections,
+  Props,
+} from './types';
 
 type DndComponent = typeof DndImpl & {
   // Makes a palette item draggable and hands back `ref`, `dragProps` and
@@ -101,6 +108,9 @@ export { useDndPalette, useDndPanel, useDndLayout };
 // not: select, move, duplicate and delete, for an outline, a layers list or
 // a menu of your own (#750).
 export { useDndSections };
+// The fields `documentBindings` declares for the document's settings, for a
+// custom panel (#770).
+export { useDndDocument };
 // The element picker: turn it on, and clicking an element in the canvas
 // preview selects its section and reports the element's `data-id` (#432).
 export { useDndInspector };
@@ -136,6 +146,7 @@ export type {
   DndPalette,
   DndPanel,
   DndSections,
+  DndDocument,
   DndLayout,
   DndInspector,
   DndNodePick,

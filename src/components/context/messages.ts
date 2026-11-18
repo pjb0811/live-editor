@@ -61,6 +61,9 @@ export interface LiveMessages {
     // A select's current value that isn't one of its `optionsOnly` options:
     // shown, but can't be chosen again (#769).
     currentValue: (value: string) => string;
+    // The heading over the document's settings from `documentBindings`,
+    // shown while no section is selected (#770).
+    documentSettings: string;
   };
   // The built-in editor for an array value.
   items: {
@@ -135,6 +138,10 @@ export interface LiveMessages {
     itemUpdateFailedDetail: string;
     // `onUpload` rejected (#752).
     uploadFailed: (label: string) => string;
+    // A document setting from `documentBindings` couldn't be written (#770).
+    documentNotFound: (name: string) => string;
+    documentNotObject: (name: string) => string;
+    documentMissingKey: (name: string, property: string) => string;
   };
   // What a screen reader hears during a drag.
   announcements: {
@@ -220,6 +227,7 @@ export const defaultMessages: LiveMessages = {
     chooseImage: 'Choose image',
     uploadingImage: 'Uploading…',
     currentValue: value => `Current: ${value}`,
+    documentSettings: 'Document',
   },
   items: {
     heading: count => `Items (${count})`,
@@ -298,6 +306,12 @@ export const defaultMessages: LiveMessages = {
     itemUpdateFailedDetail:
       'The source was preserved. Structural edits require a dense array without spreads; use the code editor for unsupported syntax.',
     uploadFailed: label => `Failed to upload an image for "${label}"`,
+    documentNotFound: name =>
+      `The document has no top-level "const ${name} = { ... }".`,
+    documentNotObject: name =>
+      `"${name}" isn't an object literal the panel can edit key by key. Change it in the code editor.`,
+    documentMissingKey: (name, property) =>
+      `"${name}" has no "${property}" key. Add it in the code editor first.`,
   },
   announcements: {
     instructions:

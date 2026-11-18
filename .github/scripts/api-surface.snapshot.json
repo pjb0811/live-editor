@@ -32,6 +32,7 @@
         "BindingOptions",
         "BindingRegistry",
         "BindingSchema",
+        "DndDocument",
         "DndEditError",
         "DndInspector",
         "DndItems",
@@ -92,6 +93,7 @@
         "metaPanelLayout",
         "resolvePanelBindings",
         "useDndChildren",
+        "useDndDocument",
         "useDndInspector",
         "useDndItems",
         "useDndLayout",
@@ -103,6 +105,7 @@
       "types": [
         "DndChildren",
         "DndChildrenOptions",
+        "DndDocument",
         "DndEditError",
         "DndInspector",
         "DndItems",

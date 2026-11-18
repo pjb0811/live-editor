@@ -62,6 +62,17 @@ export interface DndSections {
   readOnly: boolean;
 }
 
+// What `useDndDocument()` returns: the fields `documentBindings` declares
+// for the document's settings, with an `onChange` that commits each (#770).
+export interface DndDocument {
+  // One per declared field, in the order of `documentBindings`. A field's
+  // `id` is its settings object's name.
+  bindings: PanelBinding[];
+  // True while the document doesn't parse: the fields are from the last
+  // version that did, and every edit is refused.
+  readOnly: boolean;
+}
+
 // What `useDndPanel()` returns: everything the built-in panel uses, so a
 // custom panel works from the same data.
 export interface DndPanel {
@@ -168,6 +179,13 @@ export interface Props extends Omit<
   // before `bindings`. Plain data, so it can come from JSON; define it once
   // outside render, like `bindings` (#513).
   bindingKeys?: BindingKeyMap;
+  // Fields for the document's own settings, outside any section: each key
+  // names a top-level `const` holding an object literal, such as
+  // `const settings = { theme: 'dark' }`, and its bindings' `property` names
+  // that object's keys. The built-in panel shows them while no section is
+  // selected; a custom panel reads `useDndDocument()`. Same shape as
+  // `bindingKeys`; define it once outside render (#770).
+  documentBindings?: BindingKeyMap;
   // Called when an element is picked in the canvas preview with the element
   // picker (`useDndInspector()`, or the canvas's picker button). Receives the
   // element's `data-id`, the key its fields carry in `useDndPanel()`, and its

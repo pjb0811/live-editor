@@ -889,6 +889,42 @@ const FocusFixture = () => {
   );
 };
 
+// Document settings edited from the panel reach every section (#770).
+// `?mode=iframe` puts the sections in iframes; in place otherwise.
+const settingsCode = `const settings = { greeting: 'Hello' };
+
+const App = () => (
+  <main id="app-container">
+    <section data-id="g1" data-name="One"><p data-testid="greeting">{settings.greeting} one</p></section>
+    <section data-id="g2" data-name="Two"><p data-testid="greeting">{settings.greeting} two</p></section>
+  </main>
+);
+
+export default App;`;
+
+const SETTINGS_BINDINGS = {
+  settings: [{ label: 'Greeting', property: 'greeting' }],
+};
+
+const SettingsFixture = () => {
+  const [code, setCode] = useState(settingsCode);
+  const mode = new URLSearchParams(window.location.search).get('mode');
+
+  return (
+    <Live>
+      <div style={{ height: 600 }}>
+        <Live.Dnd
+          value={code}
+          onChange={setCode}
+          documentBindings={SETTINGS_BINDINGS}
+          frame={mode === 'iframe' ? { mode: 'iframe' } : undefined}
+        />
+      </div>
+      <output data-testid="source">{code}</output>
+    </Live>
+  );
+};
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
@@ -906,6 +942,7 @@ const fixtures = {
   'object-function': <SourceFieldFixture initial={objectFunctionCode} />,
   'image-field': <ImageFieldFixture />,
   'cross-section': <CrossSectionFixture />,
+  settings: <SettingsFixture />,
   mounts: <MountsFixture />,
   focus: <FocusFixture />,
   'canvas-width': <CanvasWidthFixture />,
