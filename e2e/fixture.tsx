@@ -550,6 +550,25 @@ const functionFieldCode = `const App = () => (
 
 export default App;`;
 
+// A function inside an object-valued prop, edited key by key (#768).
+const objectFunctionCode = `const Cta = ({ config }) => (
+  <button onClick={config.onClick}>{config.label}</button>
+);
+
+const App = () => (
+  <main id="app-container">
+    <section data-id="s1" data-name="One">
+      <Cta
+        data-id="cta"
+        data-binding={[{ label: 'Config', property: 'config', type: 'object' }]}
+        config={{ label: 'Go', onClick: () => console.log('old') }}
+      />
+    </section>
+  </main>
+);
+
+export default App;`;
+
 export const SourceFieldFixture = ({ initial = sourceFieldCode }) => {
   const [code, setCode] = useState(initial);
 
@@ -870,6 +889,42 @@ const FocusFixture = () => {
   );
 };
 
+// Document settings edited from the panel reach every section (#770).
+// `?mode=iframe` puts the sections in iframes; in place otherwise.
+const settingsCode = `const settings = { greeting: 'Hello' };
+
+const App = () => (
+  <main id="app-container">
+    <section data-id="g1" data-name="One"><p data-testid="greeting">{settings.greeting} one</p></section>
+    <section data-id="g2" data-name="Two"><p data-testid="greeting">{settings.greeting} two</p></section>
+  </main>
+);
+
+export default App;`;
+
+const SETTINGS_BINDINGS = {
+  settings: [{ label: 'Greeting', property: 'greeting' }],
+};
+
+const SettingsFixture = () => {
+  const [code, setCode] = useState(settingsCode);
+  const mode = new URLSearchParams(window.location.search).get('mode');
+
+  return (
+    <Live>
+      <div style={{ height: 600 }}>
+        <Live.Dnd
+          value={code}
+          onChange={setCode}
+          documentBindings={SETTINGS_BINDINGS}
+          frame={mode === 'iframe' ? { mode: 'iframe' } : undefined}
+        />
+      </div>
+      <output data-testid="source">{code}</output>
+    </Live>
+  );
+};
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
@@ -884,8 +939,10 @@ const fixtures = {
   'field-error': <FieldErrorFixture />,
   'source-field': <SourceFieldFixture />,
   'function-field': <SourceFieldFixture initial={functionFieldCode} />,
+  'object-function': <SourceFieldFixture initial={objectFunctionCode} />,
   'image-field': <ImageFieldFixture />,
   'cross-section': <CrossSectionFixture />,
+  settings: <SettingsFixture />,
   mounts: <MountsFixture />,
   focus: <FocusFixture />,
   'canvas-width': <CanvasWidthFixture />,

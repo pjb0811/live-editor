@@ -2,9 +2,15 @@ import { useLiveMessages } from '~/components/context/messages';
 import {
   getEditableSource,
   isEditablePrimitive,
+  objectEntrySources,
+  setEditableExpression,
   setEditableSource,
   setEditableValue,
 } from '~/utils/ast/editable-value';
+import {
+  isFunctionBindingSource,
+  isFunctionSource,
+} from '~/utils/ast/function-source';
 import { type DataAttrNode } from '~/utils/ast/types';
 import { parseValue } from '~/utils/ast/value';
 import { cn } from '~/utils/cn';
@@ -33,7 +39,7 @@ import type { FieldProps } from './types';
 // offers ui-kit controls in their place through `renderField`.
 const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
   const messages = useLiveMessages();
-  const { panelLayout } = useDndEditOptions();
+  const { panelLayout, reportError } = useDndEditOptions();
   const { id, value, rawValue, onChange } = binding;
   const fieldState = useFieldState(binding);
   const {
@@ -119,12 +125,35 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
 
   if (kind === 'object') {
     const objectValue = value as Record<string, unknown>;
+    // Every key as written, functions and references included, which
+    // `value` leaves out. `null` when the source can't be read key by key;
+    // then only `value`'s keys are shown (#768).
+    const entries = objectEntrySources(rawValue);
+    const keys = entries
+      ? entries.map(entry => entry.key)
+      : Object.keys(objectValue);
+    // A key `value` can't hold. While there is one, the object can't be
+    // reprinted from `value` without losing it.
+    const hasExpressionKey =
+      entries?.some(entry => !Object.hasOwn(objectValue, entry.key)) ?? false;
+
+    const refuse = (key: string, label: string) =>
+      reportError({
+        type: 'update',
+        id,
+        label,
+        property: key,
+        failure: { reason: 'invalid-function', dataId: id, property: key },
+        title: messages.editErrors.cannotEdit(label),
+        description: messages.editErrors.invalidFunction(key),
+      });
 
     // Commits an edit to one key as the object's source with only that key's
     // value replaced, so the rest stays as written (#722). A nested object or
     // array editor commits its own source, which goes in that key's place.
     // When the source can't be edited in place, the whole object is
-    // committed as a value, and reprinted.
+    // committed as a value and reprinted, unless that would drop a key
+    // `value` doesn't hold.
     const commitKey = (key: string, next: unknown) => {
       const current = objectValue[key];
 
@@ -141,27 +170,76 @@ const BuiltinField = ({ binding, onNodeChange }: FieldProps) => {
             ? setEditableSource(rawValue, [key], next)
             : null;
 
-      onChange(
-        edited !== null && edited !== rawValue
-          ? edited
-          : { ...objectValue, [key]: next },
-      );
+      if (edited !== null && edited !== rawValue) {
+        onChange(edited);
+
+        return;
+      }
+
+      if (!hasExpressionKey) {
+        onChange({ ...objectValue, [key]: next });
+      }
+    };
+
+    // A function key takes new source as given, as a function attribute
+    // does, and refuses anything else (#741, #768).
+    const commitFunctionKey = (key: string, label: string, next: unknown) => {
+      const source = typeof next === 'string' ? next.trim() : '';
+      const edited = isFunctionSource(source)
+        ? setEditableExpression(rawValue, [key], source)
+        : null;
+
+      if (edited === null) {
+        refuse(key, label);
+
+        return;
+      }
+
+      if (edited !== rawValue) {
+        onChange(edited);
+      }
     };
 
     return (
       <div className={styles.object}>
-        {Object.entries(objectValue).map(([key, val]) => {
+        {keys.map(key => {
           const nested = resolveRenderEntry(binding.render, key);
-          const nestedBinding: PanelBinding = {
-            ...toBindingFields(nested),
-            id,
-            value: val,
-            rawValue:
-              typeof val === 'object' && val !== null
-                ? (getEditableSource(rawValue, [key]) ?? JSON.stringify(val))
-                : String(val),
-            onChange: next => commitKey(key, next),
-          };
+          const source = entries?.find(entry => entry.key === key)?.source;
+          const val = objectValue[key];
+          const isFunction =
+            source !== undefined &&
+            isFunctionBindingSource(nested.type, source);
+          const nestedBinding: PanelBinding = isFunction
+            ? {
+                ...toBindingFields(nested),
+                type: 'function',
+                id,
+                value: source,
+                rawValue: source,
+                onChange: next => commitFunctionKey(key, nested.label, next),
+              }
+            : Object.hasOwn(objectValue, key)
+              ? {
+                  ...toBindingFields(nested),
+                  id,
+                  value: val,
+                  rawValue:
+                    typeof val === 'object' && val !== null
+                      ? (getEditableSource(rawValue, [key]) ??
+                        JSON.stringify(val))
+                      : String(val),
+                  onChange: next => commitKey(key, next),
+                }
+              : // An expression that isn't a function, such as a call or an
+                // untyped reference: shown as written, on its own.
+                {
+                  ...toBindingFields(nested),
+                  id,
+                  value: source,
+                  rawValue: source ?? '',
+                  canEditValue: false,
+                  onChange: () => {},
+                };
 
           return (
             <div key={key} className={styles.stack}>

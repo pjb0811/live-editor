@@ -37,6 +37,9 @@ interface PanelProps {
   // The document doesn't parse, so these fields are from the last version
   // that did and edits are refused (#433).
   readOnly?: boolean;
+  // The document's settings fields from `documentBindings`, shown while no
+  // section is selected (#770).
+  documentBindings?: PanelBinding[];
 }
 
 // Groups the flat `bindings` by element `id`, keeping their order, for one
@@ -83,6 +86,7 @@ const Panel = ({
   bindings,
   onNodeChange,
   readOnly = false,
+  documentBindings = [],
 }: PanelProps) => {
   const messages = useLiveMessages();
   const { panelLayout } = useDndEditOptions();
@@ -132,7 +136,45 @@ const Panel = ({
   );
 
   if (!item) {
-    return <p className={styles.empty}>{messages.panel.selectSection}</p>;
+    const documentGroups = groupBindingsById(
+      isVisible
+        ? documentBindings.filter(binding =>
+            isVisible(binding, documentBindings),
+          )
+        : documentBindings,
+    );
+
+    return (
+      <div className={styles.panel}>
+        <p className={styles.empty}>{messages.panel.selectSection}</p>
+        {documentGroups.length > 0 && (
+          <>
+            <h2 className={styles.title}>{messages.panel.documentSettings}</h2>
+            {readOnly && (
+              <span role="status" className={styles.readOnly}>
+                {messages.panel.readOnly}
+              </span>
+            )}
+            {documentGroups.map(group => (
+              // A settings object, by its name. No `id`: there's no element
+              // on the canvas to outline or pick.
+              <ElementFields
+                key={group[0]!.id}
+                role="group"
+                aria-label={group[0]!.id}
+                className={styles.element}
+                header={
+                  <div className={styles.elementHeader}>
+                    <code className={styles.elementTag}>{group[0]!.id}</code>
+                  </div>
+                }
+                bindings={group}
+              />
+            ))}
+          </>
+        )}
+      </div>
+    );
   }
 
   return (

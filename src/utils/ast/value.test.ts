@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   flattenEditableValue,
   getEditableSource,
+  objectEntrySources,
+  setEditableExpression,
   setEditableSource,
   setEditableValue,
 } from './editable-value';
@@ -480,5 +482,63 @@ describe('valueToExpression', () => {
   it('omits object properties whose value has no literal form', () => {
     expect(gen({ a: 1, b: undefined })).toBe('{\n  "a": 1\n}');
     expect(valueToExpression(undefined)).toBeNull();
+  });
+});
+
+// An object read and edited key by key, whatever each value is (#768).
+describe('objectEntrySources and setEditableExpression', () => {
+  const CONFIG = `{
+  label: 'Go',
+  // keep this comment
+  onClick: () => {
+    go(1);
+  },
+  'aria-label': handlers.b,
+  7: make(),
+}`;
+
+  it('lists every key with its source as written', () => {
+    expect(objectEntrySources(CONFIG)).toEqual([
+      { key: 'label', source: "'Go'" },
+      { key: 'onClick', source: '() => {\n    go(1);\n  }' },
+      { key: 'aria-label', source: 'handlers.b' },
+      { key: '7', source: 'make()' },
+    ]);
+  });
+
+  it.each([
+    ['a spread', '{ ...base, a: 1 }'],
+    ['a computed key', '{ [name]: 1 }'],
+    ['a method', '{ onClick() { go(); } }'],
+    ['a getter', '{ get a() { return 1; } }'],
+    ['a key written twice', '{ a: 1, a: 2 }'],
+    ['an array', '[1, 2]'],
+    ['source that does not parse', '{ a: '],
+  ])('returns null for %s', (_, value) => {
+    expect(objectEntrySources(value)).toBeNull();
+  });
+
+  it('replaces one value and keeps the rest byte-identical', () => {
+    const next = '() => {\n    // new\n    go(2);\n  }';
+
+    expect(setEditableExpression(CONFIG, ['onClick'], next)).toBe(
+      CONFIG.replace('() => {\n    go(1);\n  }', next),
+    );
+    expect(setEditableExpression(CONFIG, ['aria-label'], 'handlers.c')).toBe(
+      CONFIG.replace('handlers.b', 'handlers.c'),
+    );
+  });
+
+  it('reaches a nested key', () => {
+    const value = '{ inner: { onClick: () => a(), n: 1 } }';
+
+    expect(setEditableExpression(value, ['inner', 'onClick'], 'b')).toBe(
+      '{ inner: { onClick: b, n: 1 } }',
+    );
+  });
+
+  it('returns null for a missing key or an empty path', () => {
+    expect(setEditableExpression(CONFIG, ['missing'], 'x')).toBeNull();
+    expect(setEditableExpression(CONFIG, [], 'x')).toBeNull();
   });
 });

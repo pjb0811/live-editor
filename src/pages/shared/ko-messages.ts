@@ -49,6 +49,7 @@ export const KO_MESSAGES: LiveMessages = {
     chooseImage: '이미지 선택',
     uploadingImage: '업로드 중…',
     currentValue: value => `현재 값: ${value}`,
+    documentSettings: '문서',
   },
   items: {
     heading: count => `항목 (${count})`,
@@ -126,6 +127,12 @@ export const KO_MESSAGES: LiveMessages = {
     itemUpdateFailedDetail:
       '원본은 그대로 두었습니다. 구조 편집은 spread가 없는 배열에서만 됩니다. 지원하지 않는 문법은 코드 편집기를 쓰세요.',
     uploadFailed: label => `"${label}" 이미지를 업로드하지 못했습니다`,
+    documentNotFound: name =>
+      `문서에 최상위 "const ${name} = { ... }"가 없습니다.`,
+    documentNotObject: name =>
+      `"${name}"은(는) 키 단위로 편집할 수 있는 객체가 아닙니다. 코드 편집기에서 바꾸세요.`,
+    documentMissingKey: (name, property) =>
+      `"${name}"에 "${property}" 키가 없습니다. 먼저 코드 편집기에서 추가하세요.`,
   },
   announcements: {
     instructions:

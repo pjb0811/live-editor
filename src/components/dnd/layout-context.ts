@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-import type { DndPalette, DndPanel, DndSections } from './types';
+import type { DndDocument, DndPalette, DndPanel, DndSections } from './types';
 
 // The state a custom layout needs: where things go, not what they contain.
 export interface DndLayout {
@@ -33,6 +33,7 @@ interface DndRegions extends DndLayout {
   palette: DndPalette;
   panel: DndPanel;
   sections: DndSections;
+  document: DndDocument;
   canvas: React.ReactNode;
 }
 
@@ -62,6 +63,10 @@ export const useDndPanel = (): DndPanel => useDndRegions('useDndPanel()').panel;
 // The document's sections and the actions on any of them (#750).
 export const useDndSections = (): DndSections =>
   useDndRegions('useDndSections()').sections;
+
+// The fields `documentBindings` declares for the document's settings (#770).
+export const useDndDocument = (): DndDocument =>
+  useDndRegions('useDndDocument()').document;
 
 // The layout state.
 export const useDndLayout = (): DndLayout => useDndRegions('useDndLayout()');

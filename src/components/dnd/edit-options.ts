@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 
 import { showErrorToast } from '~/components/chrome/toast';
+import type { DocumentValueFailure } from '~/utils/ast/document-value';
 import type { BindingOptions } from '~/utils/ast/types';
 import type { UpdateFailure } from '~/utils/ast/update';
 
@@ -56,6 +57,17 @@ export type DndEditError =
       // An array edit could not be applied without losing source (a spread,
       // a hole, unsupported syntax). The source was left unchanged.
       type: 'items';
+      title: string;
+      description?: string;
+    }
+  | {
+      // A document setting from `documentBindings` couldn't be written: its
+      // `const` or key is missing, or the key holds an expression (#770).
+      type: 'document';
+      name: string;
+      label: string;
+      property: string;
+      failure: DocumentValueFailure;
       title: string;
       description?: string;
     }

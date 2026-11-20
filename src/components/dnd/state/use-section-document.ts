@@ -40,6 +40,13 @@ interface SectionDocument {
   reorder: (activeId: string, overId: string) => void;
   // Moves `id` to `index` in `sections`, clamped to the list (#750).
   moveTo: (id: string, index: number) => void;
+  // Commits an edit outside the sections, such as a document setting
+  // (#770). `edit` gets the latest document and returns the new one, or
+  // `null` to commit nothing. Refused while the document is stale.
+  editDocument: (edit: (document: string) => string | null) => void;
+  // The document the canvas shows: `value`, or while it doesn't parse, the
+  // last version that did.
+  document: string;
   patch: (next: Partial<Section> & { id: string }) => void;
   // The section as the latest commit left it, or `undefined` when nothing
   // has been committed since this render (or that commit removed it). Lets
@@ -351,6 +358,25 @@ export const useSectionDocument = (
     [commit, mutate],
   );
 
+  const editDocument = useCallback(
+    (edit: (document: string) => string | null) => {
+      if (refuse()) {
+        return;
+      }
+
+      const nextCode = edit(latestDocument());
+
+      if (nextCode === null) {
+        return;
+      }
+
+      pending.write(nextCode);
+      onChange?.(nextCode, DND_CHANGE);
+      setCode(nextCode);
+    },
+    [latestDocument, onChange, pending, refuse, setCode],
+  );
+
   const patch = useCallback(
     (next: Partial<Section> & { id: string }) =>
       mutate(current => {
@@ -374,6 +400,8 @@ export const useSectionDocument = (
     move,
     reorder,
     moveTo,
+    editDocument,
+    document: view.document,
     patch,
     getCommittedSection,
     problem,

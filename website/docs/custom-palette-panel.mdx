@@ -133,6 +133,32 @@ That keeps the desktop panes, the mobile FAB, and both Drawers — your
 Drawer on mobile. A slot goes in raw, so it owns its own container (the
 built-in regions bring theirs); `palette` works the same way.
 
+## Document settings: `useDndDocument`
+
+`useDndDocument()` returns the fields `Live.Dnd`'s
+[`documentBindings`](./data-binding.mdx#document-settings) declares, for a
+custom panel that shows the document's settings somewhere of its own:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `bindings` | `PanelBinding[]` | One per declared field, in order. A field's `id` is its settings object's name, such as `settings`. `onChange` writes the key in place. |
+| `readOnly` | `boolean` | `true` while the document doesn't parse; every edit is refused. |
+
+```tsx
+import { Field, useDndDocument } from '@jbpark/live-editor/dnd';
+
+const DocumentSettings = () => {
+  const { bindings } = useDndDocument();
+
+  return bindings.map(binding => (
+    <label key={`${binding.id}-${binding.property}`}>
+      {binding.label}
+      <Field binding={binding} />
+    </label>
+  ));
+};
+```
+
 ## Sections outline: `useDndSections`
 
 `useDndPanel()` reaches the selected section only. `useDndSections()` lists

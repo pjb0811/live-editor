@@ -949,3 +949,148 @@ describe('Field function constraints and optionsOnly', () => {
     );
   });
 });
+
+// An object that holds a function or another expression, edited key by key
+// (#768).
+describe('Field object with function keys', () => {
+  const CONFIG = `{
+  label: 'Go',
+  onClick: () => {
+    // keep this comment
+    go(1);
+  },
+}`;
+
+  const config = (
+    rawValue: string,
+    override: Partial<PanelBinding> = {},
+  ): PanelBinding =>
+    binding({
+      label: 'Config',
+      property: 'config',
+      type: 'object',
+      value: evaluateLiteral(parseExpression(rawValue)),
+      rawValue,
+      ...override,
+    });
+
+  const renderConfig = (field: PanelBinding) => {
+    const reportError = vi.fn();
+    const view = render(
+      <DndEditOptionsContext.Provider value={{ reportError }}>
+        <Field binding={field} />
+        <button type="button">Outside</button>
+      </DndEditOptionsContext.Provider>,
+    );
+
+    return { ...view, reportError };
+  };
+
+  const typeSource = (text: string) => {
+    act(() => {
+      coreEditorMock.props!.onUpdate?.({
+        docChanged: true,
+        state: { selection: {}, doc: { toString: () => text } },
+      } as unknown as ViewUpdate);
+    });
+  };
+
+  const saveSource = async (text: string) => {
+    screen.getByTestId('core-editor').focus();
+    typeSource(text);
+    screen.getByRole('button', { name: 'Outside' }).focus();
+    await act(() => new Promise(resolve => setTimeout(resolve, 0)));
+  };
+
+  it('edits a literal key next to a function key, in place', () => {
+    const onChange = vi.fn();
+    const { container } = renderConfig(config(CONFIG, { onChange }));
+    const input = [
+      ...container.querySelectorAll<HTMLTextAreaElement>('textarea'),
+    ].find(control => control.value === 'Go')!;
+
+    fireEvent.change(input, { target: { value: 'Stop' } });
+    fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      CONFIG.replace("'Go'", "'Stop'"),
+    );
+  });
+
+  it('edits the function key as source, keeping the rest as written', async () => {
+    const onChange = vi.fn();
+
+    renderConfig(config(CONFIG, { onChange }));
+
+    expect(coreEditorMock.props).toMatchObject({ raw: true });
+
+    const next = '() => {\n    // still here\n    go(2);\n  }';
+
+    await saveSource(next);
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      CONFIG.replace(
+        '() => {\n    // keep this comment\n    go(1);\n  }',
+        next,
+      ),
+    );
+  });
+
+  it.each([["alert('x')"], ['() => {'], ['']])(
+    'refuses %o for a function key',
+    async value => {
+      const onChange = vi.fn();
+      const { reportError } = renderConfig(config(CONFIG, { onChange }));
+
+      await saveSource(value);
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(reportError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'update',
+          property: 'onClick',
+          description:
+            '"onClick" must be a function or a reference to one, such as () => {} or handlers.open.',
+        }),
+      );
+    },
+  );
+
+  it('uses a declared function key with options as a select', () => {
+    renderConfig(
+      config("{ label: 'Go', onClick: actions.open }", {
+        render: {
+          onClick: {
+            type: 'function',
+            options: [
+              { label: 'Open', value: 'actions.open' },
+              { label: 'Close', value: 'actions.close' },
+            ],
+          },
+        },
+      }),
+    );
+
+    expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe(
+      'actions.open',
+    );
+  });
+
+  it('shows an untyped reference and a call read-only, each on its own', () => {
+    // `value` as the panel reads it: the literal keys only.
+    const { container } = renderConfig(
+      config("{ label: 'Go', onClick: handlers.b, size: make() }", {
+        value: { label: 'Go' },
+      }),
+    );
+    const preserved = [...container.querySelectorAll('code')].map(
+      code => code.textContent,
+    );
+
+    expect(preserved).toEqual(['handlers.b', 'make()']);
+    // The literal key stays editable.
+    expect(
+      [...container.querySelectorAll('textarea')].map(input => input.value),
+    ).toEqual(['Go']);
+  });
+});

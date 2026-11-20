@@ -21,6 +21,7 @@ import {
 import { PALETTE_SECTIONS } from '~/constants';
 import type { Section } from '~/types';
 import type { DocumentProblem } from '~/utils/ast/document';
+import { updateDocumentValue } from '~/utils/ast/document-value';
 import { type BindingOptions } from '~/utils/ast/types';
 
 import canvasStyles from './canvas/canvas.module.css';
@@ -41,6 +42,10 @@ import {
   SectionHandlersContext,
 } from './canvas/section-handlers';
 import Sortable from './canvas/sortable';
+import {
+  describeDocumentFailure,
+  resolveDocumentBindings,
+} from './document-bindings';
 import { DndEditOptionsContext } from './edit-options';
 import { DndInspectorContext } from './inspector';
 import Layout from './layout';
@@ -52,7 +57,13 @@ import { useDndKeyboard } from './state/use-dnd-keyboard';
 import { useInspectorState } from './state/use-inspector-state';
 import { useSectionDocument } from './state/use-section-document';
 import { useSectionEditing } from './state/use-section-editing';
-import type { DndPalette, DndPanel, DndSections, Props } from './types';
+import type {
+  DndDocument,
+  DndPalette,
+  DndPanel,
+  DndSections,
+  Props,
+} from './types';
 
 const conditionalModifiers: Modifier = args => {
   const { active } = args;
@@ -118,6 +129,7 @@ const Dnd = ({
   containerId,
   bindings: bindingRegistry,
   bindingKeys,
+  documentBindings,
   onNodePick,
   onSelectionChange,
   canvasWidth: _canvasWidth,
@@ -179,6 +191,8 @@ const Dnd = ({
     move: moveSection,
     reorder,
     moveTo,
+    editDocument,
+    document: shownDocument,
     patch,
     getCommittedSection,
     problem,
@@ -350,6 +364,48 @@ const Dnd = ({
     readOnly: stale,
   };
 
+  // The document's settings fields (#770). Read from the document the canvas
+  // shows, so they stay while the source doesn't parse, read-only.
+  const documentFields = useMemo(
+    () => resolveDocumentBindings(shownDocument, documentBindings),
+    [shownDocument, documentBindings],
+  );
+
+  const documentApi: DndDocument = {
+    bindings: documentFields.map(binding => ({
+      ...binding,
+      onChange: (next: unknown) =>
+        editDocument(current => {
+          const result = updateDocumentValue(
+            current,
+            binding.id,
+            binding,
+            next,
+          );
+
+          if (result.success) {
+            return result.code;
+          }
+
+          reportError({
+            type: 'document',
+            name: binding.id,
+            label: binding.label,
+            property: binding.property,
+            failure: result.failure,
+            ...describeDocumentFailure(
+              result.failure,
+              binding.label,
+              messages.editErrors,
+            ),
+          });
+
+          return null;
+        }),
+    })),
+    readOnly: stale,
+  };
+
   const sectionHandlers: SectionHandlers = {
     inspecting,
     onInspectMove,
@@ -453,6 +509,7 @@ const Dnd = ({
                 palette,
                 panel,
                 sections: sectionsApi,
+                document: documentApi,
                 canvas,
                 isMobile,
                 selectedId,
