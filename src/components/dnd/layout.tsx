@@ -56,6 +56,7 @@ const PanelFields = ({ subject }: { subject: string }) => {
       onNodeChange,
       readOnly,
     },
+    document,
   } = useDndRegions(subject);
 
   return (
@@ -69,6 +70,7 @@ const PanelFields = ({ subject }: { subject: string }) => {
       bindings={bindings}
       onNodeChange={onNodeChange}
       readOnly={readOnly}
+      documentBindings={document.bindings}
     />
   );
 };

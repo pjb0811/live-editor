@@ -620,6 +620,74 @@ JSX-valued keys inside an item (`children`, or a key holding an element) are
 not typed through `render`. The panel shows the bindings declared on those
 elements instead, or a code editor when they declare none.
 
+## Document settings
+
+Settings that belong to the whole document rather than one element, such as a
+theme or an analytics id, go in a top-level object, and the code reads them
+from there:
+
+```tsx
+import { useAnalytics, useAutoplay } from 'behaviors'; // from `modules`
+
+const settings = {
+  theme: 'dark',
+  autoplay: true,
+  autoplayDelay: 5000,
+  analyticsId: 'G-XXXX',
+};
+
+const App = () => {
+  const [theme, setTheme] = useState(settings.theme);
+
+  useAutoplay({ enabled: settings.autoplay, delay: settings.autoplayDelay });
+  useAnalytics(settings.analyticsId);
+  // ...
+};
+```
+
+`Live.Dnd`'s `documentBindings` makes them editable from the panel. Each key
+names a top-level `const` holding an object literal, and its bindings take the
+same shape as [`bindingKeys`](#binding-by-key), with `property` naming a key of
+that object:
+
+```tsx
+// Outside the component, like `bindingKeys`.
+const DOCUMENT_BINDINGS = {
+  settings: [
+    {
+      label: 'Theme',
+      property: 'theme',
+      options: [
+        { label: 'Dark', value: 'dark' },
+        { label: 'Light', value: 'light' },
+      ],
+    },
+    { label: 'Autoplay', property: 'autoplay', type: 'boolean' },
+    { label: 'Delay (ms)', property: 'autoplayDelay', type: 'number', min: 1000 },
+    { label: 'Analytics ID', property: 'analyticsId', pattern: '^G-' },
+  ],
+};
+
+<Live.Dnd value={value} onChange={setValue} documentBindings={DOCUMENT_BINDINGS} />;
+```
+
+- The built-in panel shows them under "Document" while no section is
+  selected. A custom panel reads them with
+  [`useDndDocument()`](./custom-palette-panel.mdx#document-settings-usednddocument).
+- An edit replaces only that key's value, so comments and the other keys
+  stay as written, and it's one `onChange` with `{ source: 'dnd' }`, one step
+  in `useLiveHistory`. The binding's constraints apply as on any field.
+- A key holding a function edits as source, as for an object prop. A key
+  holding another expression, such as a call, and a key the object doesn't
+  have, are shown but can't be edited; add the key in the code editor first.
+- The object must be a `const` in module scope (or `export const`), and an
+  object literal without spreads, computed keys or methods. Anything else
+  gives no fields, and an edit that can't be written is reported through
+  `onEditError` as a `document` error.
+- On the canvas each section runs the whole document, so effects that read
+  these settings run once per section there. See
+  [Side effects while editing](./how-it-works.mdx#side-effects-while-editing).
+
 ## Presentation and metadata
 
 Two ways to pass information to a custom panel without the library acting on
