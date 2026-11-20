@@ -4,7 +4,10 @@
 // neither (#407). Import from those modules inside the library, not here.
 
 export { cn } from './cn';
-export { clearCompilationCache, compile } from './compile';
+export { clearCompilationCache, compile, transpile } from './compile';
+// Runs `transpile()`'s output without Babel; also `@jbpark/live-editor/runtime`,
+// which imports nothing else (#771).
+export { runModule } from './run-module';
 export { clearEditorCaches } from './editor-caches';
 export { preloadScripts } from './scripts';
 export {

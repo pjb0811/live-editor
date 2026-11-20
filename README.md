@@ -114,6 +114,7 @@ can avoid pulling in the rest (e.g. no CodeMirror in a preview-only build) — s
 | `@jbpark/live-editor/utils`            | Compile/section helpers                                                        |
 | `@jbpark/live-editor/utils/ast`        | AST manipulation & code generation                                             |
 | `@jbpark/live-editor/utils/tailwind`   | Tailwind theme helpers                                                         |
+| `@jbpark/live-editor/runtime`          | `runModule()`: runs a document transpiled ahead of time, without Babel         |
 | `@jbpark/live-editor/ui-kit`           | Opt-in `@jbpark/ui-kit` fields, modules and palette (install `@jbpark/ui-kit`) |
 | `@jbpark/live-editor/ui-kit/style.css` | ui-kit's stylesheet, for the ui-kit entry                                      |
 | `@jbpark/live-editor/style.css`        | Compiled stylesheet (required)                                                 |
@@ -124,7 +125,7 @@ The components are client components: in the Next.js App Router, render them fro
 
 - Pre-rendering is safe. `Live.Editor` and a `Live.Preview` without `frame` render on the server; `Live.Dnd`'s sections and a framed `Live.Preview` appear once the page hydrates.
 - A `Live.Preview` without `frame` compiles and runs the previewed code on the server while pre-rendering, with the server's privileges (see [Security Notes](#security-notes)). Give it a `frame`, or load it with `next/dynamic` and `ssr: false`, to avoid that.
-- `./utils`, `./utils/ast` and `./utils/tailwind` hold no React components and work in Server Components and plain Node.
+- `./utils`, `./utils/ast` and `./utils/tailwind` hold no React components and work in Server Components and plain Node. So does `./runtime`, which imports only React.
 
 ## Security Notes
 
@@ -143,7 +144,7 @@ The components are client components: in the Next.js App Router, render them fro
 ## Requirements
 
 - Peer deps: `react >=19`, `react-dom >=19`
-- Package metadata declares Node.js `^22.18.0 || >=24.11.0`, the range Babel 8 supports. CI checks that the entries meant for Node (`utils`, `utils/ast`, `utils/tailwind`, `provider`, `error`) load on Node 22.18. Repository development, builds and the rest of CI use the version pinned in `.nvmrc` (currently 24.18.0).
+- Package metadata declares Node.js `^22.18.0 || >=24.11.0`, the range Babel 8 supports. CI checks that the entries meant for Node (`utils`, `utils/ast`, `utils/tailwind`, `provider`, `error`, `runtime`) load on Node 22.18. Repository development, builds and the rest of CI use the version pinned in `.nvmrc` (currently 24.18.0).
 - **pnpm** (developing this repo only): the version in `packageManager` (currently 12.8.1), managed via [Corepack](https://nodejs.org/api/corepack.html). Installing the package works with any package manager.
 
 ## Development (this repo)

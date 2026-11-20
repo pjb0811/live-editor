@@ -7,7 +7,14 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const entries = ['utils', 'utils/ast', 'utils/tailwind', 'provider', 'error'];
+const entries = [
+  'utils',
+  'utils/ast',
+  'utils/tailwind',
+  'provider',
+  'error',
+  'runtime',
+];
 const failures = [];
 
 for (const entry of entries) {

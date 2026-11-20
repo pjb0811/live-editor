@@ -39,6 +39,9 @@ export default defineConfig({
     'preview/index': 'src/components/preview/index.ts',
     'error/index': 'src/components/error/index.ts',
     'utils/index': 'src/utils/index.ts',
+    // `runModule` alone, for a page that runs documents transpiled ahead of
+    // time: no Babel, no editor (#771).
+    'runtime/index': 'src/utils/run-module.ts',
     'utils/ast/index': 'src/utils/ast/index.ts',
     'utils/tailwind/index': 'src/utils/tailwind/index.ts',
     'ui-kit/index': 'src/components/ui-kit/index.ts',

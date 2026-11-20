@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_TEMPLATE } from '../constants';
+import { DEFAULT_TEMPLATE, PALETTE_SECTIONS } from '../constants';
 import { clearDocumentParseCache, parseDocument } from './ast/document';
 import { clearExtractCache, extract } from './ast/extract';
 import { registerEditorSession } from './editor-caches';
@@ -11,7 +11,11 @@ import {
   clearCompilationCache,
   clearEditorCaches,
   compile,
+  createDocument,
   preloadScripts,
+  replaceSections,
+  runModule,
+  transpile,
 } from './index';
 import { clearScriptCache, getCachedScriptBlob } from './scripts';
 
@@ -155,6 +159,57 @@ export default App;
     expect(module.error).toBeUndefined();
     expect(module.exports.default).toBeTypeOf('function');
     expect((module.exports.default as unknown as () => number)()).toBe(5);
+  });
+});
+
+// Transpiling ahead of time and running without Babel (#771).
+describe('transpile and runModule', () => {
+  it('runs the default palette document the same as compile does', () => {
+    const doc = replaceSections(
+      createDocument(),
+      PALETTE_SECTIONS.map(section => section.code),
+    );
+    const transpiled = transpile(doc);
+
+    expect(transpiled.error).toBeUndefined();
+
+    const compiled = compile(doc, {});
+    const run = runModule(transpiled.code!, {});
+
+    expect(run.error).toBeUndefined();
+    expect(renderToString(createElement(run.exports.default!))).toBe(
+      renderToString(createElement(compiled.exports.default!)),
+    );
+  });
+
+  it('gives modules to the transpiled code', () => {
+    const transpiled = transpile(
+      `import { label } from 'labels';\nexport default () => <p>{label}</p>;`,
+    );
+    const run = runModule(transpiled.code!, { labels: { label: 'Hi' } });
+
+    expect(renderToString(createElement(run.exports.default!))).toBe(
+      '<p>Hi</p>',
+    );
+  });
+
+  it("reports Babel's message for code that doesn't transpile", () => {
+    const result = transpile('const App = () => <div>;');
+
+    expect(result.code).toBeUndefined();
+    expect(result.error).toMatch(/^Unexpected token|^Unterminated JSX/);
+    expect(result.error).not.toMatch(/preview\.tsx/);
+  });
+
+  it.each([
+    ['a syntax error', 'const = ;', /Unexpected token|Unexpected|Missing/],
+    ['a runtime error', 'throw new Error("boom");', /^boom$/],
+    ['a missing module', 'require("nope");', /^Module not found: nope$/],
+  ])('reports %s from runModule', (_, js, message) => {
+    const run = runModule(js);
+
+    expect(run.exports).toEqual({});
+    expect(run.error).toMatch(message);
   });
 });
 
