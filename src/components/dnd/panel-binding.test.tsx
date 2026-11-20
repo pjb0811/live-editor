@@ -175,10 +175,12 @@ describe('resolvePanelBindings', () => {
   });
 
   // `data` and `items` default to the array editor, which takes any source;
-  // an object goes through the usual lossless check (#746).
+  // an object goes through the usual object check (#746): editable key by
+  // key unless a key can't be addressed, as next to a spread (#768).
   it.each([
     ['an object literal', 'data={{ a: 1 }}', undefined],
-    ['a reference in an object', 'data={{ a: value }}', false],
+    ['a reference in an object', 'data={{ a: value }}', undefined],
+    ['a spread in an object', 'data={{ ...base, a: 1 }}', false],
   ])(
     'checks %s on an object-typed data binding',
     (_, attribute, canEditValue) => {
@@ -192,6 +194,51 @@ describe('resolvePanelBindings', () => {
       expect(binding!.canEditValue).toBe(canEditValue);
     },
   );
+
+  // An object is editable key by key unless a key can't be addressed
+  // (#768). Its function and expression keys aren't in `value`.
+  it.each([
+    [
+      'a typed object with a function',
+      ", type: 'object'",
+      "{ label: 'Go', onClick: () => go(1) }",
+      true,
+    ],
+    [
+      'an untyped object with a function',
+      '',
+      "{ label: 'Go', onClick: () => go(1) }",
+      true,
+    ],
+    [
+      'an object with a reference',
+      ", type: 'object'",
+      "{ label: 'Go', onClick: handlers.b }",
+      true,
+    ],
+    [
+      'an object with a method',
+      ", type: 'object'",
+      "{ label: 'Go', onClick() { go(1); } }",
+      false,
+    ],
+    [
+      'a non-literal object with a key written twice',
+      ", type: 'object'",
+      '{ onClick: a, onClick: b }',
+      false,
+    ],
+  ])('reads %s', (_, type, source, editable) => {
+    const [binding] = resolvePanelBindings(
+      nodeOf(
+        `<Cta data-id="c" data-binding={[{ label: 'Config', property: 'config'${type} }]} config={${source}} />`,
+        'c',
+      ),
+    )!.bindings;
+
+    expect(binding!.canEditValue).toBe(editable ? undefined : false);
+    expect(binding!.rawValue).toBe(source);
+  });
 
   it('reuses bindings already parsed by extract instead of the attribute text', () => {
     const node = nodeOf(element, 't1');

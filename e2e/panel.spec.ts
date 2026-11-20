@@ -192,3 +192,45 @@ test('the function editor writes a handler and refuses a call (#741)', async ({
   await expect(source).toContainText('onClick={() => console.log("new")}>Go');
   await expect(source).not.toContainText('boom');
 });
+
+// A function inside an object-valued prop: its label and its handler are
+// each edited in place (#768).
+test('edits a function key of an object prop as source', async ({ page }) => {
+  await page.goto('/e2e/fixture.html?scenario=object-function');
+
+  const source = page.getByTestId('source');
+  const card = page.locator('[data-node-id="cta"]');
+  const handler = card.locator('.cm-content');
+  const label = card.locator('textarea');
+
+  await page
+    .locator('section[data-id="s1"]')
+    .first()
+    .click({ position: { x: 5, y: 5 } });
+  await expect(handler).toBeVisible();
+
+  await handler.click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.insertText('() => console.log("new")');
+  await label.click();
+
+  await expect(source).toContainText(
+    `config={{ label: 'Go', onClick: () => console.log("new") }}`,
+  );
+
+  await label.fill('Stop');
+  await handler.click();
+
+  await expect(source).toContainText(
+    `config={{ label: 'Stop', onClick: () => console.log("new") }}`,
+  );
+
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.insertText("alert('boom')");
+  await label.click();
+
+  await expect(
+    page.getByText('Cannot edit "onClick" in the panel'),
+  ).toBeVisible();
+  await expect(source).not.toContainText('boom');
+});

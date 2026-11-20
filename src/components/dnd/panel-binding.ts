@@ -4,6 +4,7 @@ import {
   getStructuredValue,
   readNodeBindings,
 } from '~/utils/ast/binding';
+import { objectEntrySources } from '~/utils/ast/editable-value';
 import { isFunctionExpressionSource } from '~/utils/ast/function-source';
 import {
   type BindingItem,
@@ -194,9 +195,19 @@ const canEditBindingValue = (
     return true;
   }
 
-  return (
+  if (
     attribute.isStringLiteral === true ||
-    canLosslesslyEvaluateSource(attribute?.value ?? '')
+    canLosslesslyEvaluateSource(attribute.value ?? '')
+  ) {
+    return true;
+  }
+
+  // An object the object editor can edit key by key: each key that isn't a
+  // literal is edited as a function or shown read-only on its own, so it
+  // doesn't make the whole object read-only (#768).
+  return (
+    (binding.type === 'object' || binding.type === undefined) &&
+    objectEntrySources(attribute.value ?? '') !== null
   );
 };
 
