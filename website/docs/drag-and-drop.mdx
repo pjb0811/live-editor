@@ -293,6 +293,12 @@ So a responsive preview needs `frame={{ mode: 'iframe' }}`. See
 value from `useDndLayout().canvasWidth`, and `Live.Dnd.Canvas` applies it as
 the built-in layout does.
 
+## Trust
+
+Each section on the canvas runs the document's code with your page's
+privileges, as the preview does. Open documents from people you trust, or see
+[Security](./security.mdx) for showing and editing other people's documents.
+
 ## Document structure
 
 `Live.Dnd` edits one component's source. Its sections are the `<section>`

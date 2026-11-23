@@ -16,7 +16,7 @@ options passed.
   **not a security sandbox**: the code still executes in the host page's JS
   realm (the `sandbox` option below controls the iframe's `sandbox`
   attribute, which is DOM/CSS isolation, not a security boundary either).
-  Supports every option in the table below.
+  See [Security](./security.mdx). Supports every option in the table below.
 - **`shadow`** — isolates styles via a shadow DOM host in the same document,
   without an iframe boundary. `scripts`, `styles`, `stylesheets`, and
   `autoHeight` are all silently ignored, since there's no separate document

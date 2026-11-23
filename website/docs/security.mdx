@@ -1,0 +1,102 @@
+---
+sidebar_position: 6.7
+title: Security
+---
+
+# Security
+
+Live Editor runs a document's code with the privileges of the page that shows
+it. That's fine while the people writing documents are people you trust, which
+is the case it's built for. This page says what that means, and what to do
+when documents come from people you don't trust.
+
+## How a document runs
+
+`compile()`, `runModule()`, `Live.Preview` and every section on the `Live.Dnd`
+canvas run the document's code with `new Function` in the page's own
+JavaScript realm. A `frame` doesn't change that:
+
+- In `iframe` mode, only the rendered elements go into the iframe. The code
+  still runs in the page around it, so the iframe's `sandbox` attribute isolates
+  DOM and CSS, not code.
+- In `shadow` mode and without a `frame`, the elements are in the page itself.
+- A `Live.Preview` without `frame` renders on the server while pre-rendering, so
+  there the code runs with the server's privileges. See
+  [Next.js and server rendering](./intro.md#nextjs-and-server-rendering).
+
+So a document can do anything other code on the page can, for example:
+
+- read and change the page's DOM, its `localStorage`, and cookies that aren't
+  `HttpOnly`;
+- call your app's APIs as the signed-in user, since the browser sends the
+  page's cookies with same-origin requests;
+- call anything you pass in `modules`, such as the `actions` your handlers use;
+- navigate away, or read what the user types into the page.
+
+The same holds for the code in a function binding, which is source text that
+runs once the document renders.
+
+## Where code comes from
+
+Every path that puts text into the document can put code in it:
+
+- the code editor (`Live.Editor`), and any document you load or save;
+- a function field's code editor in the panel;
+- a document setting or attribute whose value is an expression.
+
+`optionsOnly`, `panelLayout` and read-only fields limit what the **panel**
+offers. They don't make a document safe: whoever edits the source, or hands you
+a saved document, can still write anything.
+
+There's no Content Security Policy that keeps document code out while the
+editor works: `new Function` needs `script-src 'unsafe-eval'`.
+
+## When you trust the authors
+
+Nothing more is needed. This covers an editor used by your own team, or a
+tool where each user only ever opens their own documents in their own session.
+
+## Showing documents to visitors
+
+If one person's document is shown to others, treat it as untrusted on the
+visitors' side: it runs with each visitor's privileges on that page. Serve
+published documents **from a separate site**, not from the site your app and
+its sign-in live on:
+
+1. When a document is saved, transpile it on your server with `transpile()`
+   and store the result next to the source. See
+   [Serving a saved document](./utilities.mdx#serving-a-saved-document).
+2. Render published pages on a domain of their own, such as
+   `example-pages.com` for an app on `example.com`. The page runs the stored
+   code with `runModule()` from `@jbpark/live-editor/runtime`, which doesn't
+   need Babel.
+3. Keep that site free of anything worth taking: no sign-in, no session
+   cookies, no API that acts for a user.
+4. Give `runModule()` only `modules` that are safe for any document to call
+   there.
+
+Use a separate **site** (a different registrable domain), not a subdomain of
+yours: cookies set with a `Domain` attribute, such as
+`Domain=example.com`, reach every subdomain, and requests between subdomains
+count as same-site. Code-hosting services use the same split
+(`github.com` and `githubusercontent.com`, for example).
+
+If the published page has to talk to your app, have it ask with `postMessage`
+from an iframe, or call an API that is meant to be public, and check every
+request on your side as if it came from anyone.
+
+## Editing documents from people you don't trust
+
+The editor itself has no isolation today: a document runs with the privileges
+of whoever opens it in `Live.Dnd` or `Live.Editor`, including an admin
+reviewing someone else's page. Until it does (#791), choose one of these:
+
+- Run the editor for those documents on a separate site too, with its own
+  sign-in, so a document can only reach that site.
+- Have a person read a document's source before anyone opens it in the editor
+  or publishes it.
+- Don't open other people's documents in the editor at all; let each author
+  edit only their own.
+
+Isolating document code inside the editor is tracked in
+[#791](https://github.com/pjb0811/live-editor/issues/791).

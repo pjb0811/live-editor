@@ -146,7 +146,9 @@ with Babel and run it in your page's JavaScript context. The result renders
 into an iframe, a shadow root, or in place ([Preview Modes](./preview-modes.mdx)).
 
 The iframe isolates DOM and CSS, not JavaScript: the code can reach your page
-like any other script. Only run code you trust.
+like any other script. Only run code you trust. [Security](./security.mdx)
+says what a document can do, and how to show documents to visitors from a
+separate site.
 
 Compiled code can import `react` and whatever you pass in `modules`.
 `uiKitModules` from `@jbpark/live-editor/ui-kit` adds `ui-kit` and
