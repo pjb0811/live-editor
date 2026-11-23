@@ -114,8 +114,8 @@ const SavedPage = ({ js }: { js: string }) => {
 - `runModule` works on the server as well, so the page can be rendered with
   `renderToString` and hydrated with the same `js`.
 - The transpiled code runs with the page's privileges, as anything
-  `compile()` runs does. Serve documents only from authors you trust; see the
-  README's [Security Notes](https://github.com/pjb0811/live-editor#security-notes).
+  `compile()` runs does. Serve one author's documents to other people from a
+  separate site; see [Showing documents to visitors](./security.mdx#showing-documents-to-visitors).
 - Styles aren't part of the module. If the document uses Tailwind classes,
   build their CSS on save as well, or serve the page with your own Tailwind
   build.

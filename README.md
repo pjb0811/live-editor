@@ -129,9 +129,10 @@ The components are client components: in the Next.js App Router, render them fro
 
 ## Security Notes
 
-- The `sandbox` prop on the preview `<iframe>` (`src/components/frame/iframe/iframe.tsx`) is **not a security boundary**. Compiled preview code is executed via `new Function(...)` in the host page's own JS realm (`compileModule` in `src/utils/compile.ts`); only the resulting React elements are portaled into the iframe's `contentDocument` for DOM/CSS rendering. The iframe itself never evaluates user code.
+- The `sandbox` prop on the preview `<iframe>` (`src/components/frame/iframe/iframe.tsx`) is **not a security boundary**. Compiled preview code is executed via `new Function(...)` in the host page's own JS realm (`runModule` in `src/utils/run-module.ts`, which `compile()` calls); only the resulting React elements are portaled into the iframe's `contentDocument` for DOM/CSS rendering. The iframe itself never evaluates user code.
 - Practical implication: previewed code runs with the same JS-level access as the host application (cookies, DOM, in-memory state) — the iframe boundary does not contain it.
-- Only open/edit projects you trust. Don't use this editor to preview arbitrary third-party project files without adding real isolation yourself (e.g. running compilation inside the iframe's own `contentWindow` realm and communicating results back via `postMessage`) — that isolation is not implemented here today.
+- Only open/edit projects you trust. Don't use this editor to preview arbitrary third-party project files without adding real isolation yourself (e.g. running compilation inside the iframe's own `contentWindow` realm and communicating results back via `postMessage`) — that isolation is not implemented here today (#791).
+- To show one author's documents to other people, serve them from a separate site with `transpile()` and `runModule()`. The [Security](https://live-editor-lab.vercel.app/docs/security) page explains the trust model and this setup.
 
 ## Tech Stack
 
