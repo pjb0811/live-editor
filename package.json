@@ -147,7 +147,7 @@
     "@changesets/cli": "^3.0.0",
     "@codemirror/merge": "^6.12.2",
     "@eslint/js": "^10.0.0",
-    "@jbpark/ui-kit": "^10.5.0",
+    "@jbpark/ui-kit": "^10.7.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/dom": "^10.4.1",

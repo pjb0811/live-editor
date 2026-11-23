@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { Button, Layout, Radio } from '@jbpark/ui-kit';
+import { Button, Config, Layout, Radio, enUS, koKR } from '@jbpark/ui-kit';
 import { useHash, useLocalStorage } from '@jbpark/use-hooks';
 import { Moon, Sun } from 'lucide-react';
 
@@ -41,6 +41,9 @@ type Language = 'en' | 'ko';
 // Every page's `<Live>` inherits these, so one switch translates them all
 // (#524).
 const MESSAGES = { en: mergeMessages(), ko: KO_MESSAGES };
+// ui-kit's own text (the controls `/ui-kit` puts in the panel, Modal and
+// Drawer labels) follows ui-kit's Config, so the same switch sets it too.
+const UI_KIT_LOCALES = { en: enUS, ko: koKR };
 
 // The page lives in the URL hash, so a reload or a shared link opens the same
 // page without a router. An unknown hash opens the first page.
@@ -62,63 +65,67 @@ const App = () => {
   }, [theme]);
 
   return (
-    // A viewport-sized shell: `h-dvh` caps the height ui-kit's Layout would
-    // otherwise only floor (its root is `min-h-screen`), and
-    // `overflow-hidden` keeps a page from scrolling the document. Each page
-    // scrolls inside its own panes.
-    <Layout className="h-dvh overflow-hidden">
-      <Layout.Header
-        position="static"
-        className="h-12 justify-between gap-2 p-2"
-      >
-        <div className="min-w-0 overflow-x-auto">
-          <Radio.Group
-            size="small"
-            value={current}
-            options={PAGES.map(({ key, label }) => ({ label, value: key }))}
-            optionType="button"
-            buttonStyle="solid"
-            onChange={value => {
-              setHash(String(value));
-            }}
-          />
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Radio.Group
-            size="small"
-            value={language}
-            options={[
-              { label: 'EN', value: 'en' },
-              { label: '한국어', value: 'ko' },
-            ]}
-            optionType="button"
-            buttonStyle="solid"
-            onChange={value => setLanguage(value as Language)}
-          />
-          <Button
-            aria-label={
-              theme === 'dark'
-                ? 'Switch to light theme'
-                : 'Switch to dark theme'
-            }
-            icon={theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          />
-        </div>
-      </Layout.Header>
+    <Config locale={UI_KIT_LOCALES[language]}>
       {/*
+        A viewport-sized shell: `h-dvh` caps the height ui-kit's Layout would
+        otherwise only floor (its root is `min-h-screen`), and
+        `overflow-hidden` keeps a page from scrolling the document. Each page
+        scrolls inside its own panes.
+      */}
+      <Layout className="h-dvh overflow-hidden">
+        <Layout.Header
+          position="static"
+          className="h-12 justify-between gap-2 p-2"
+        >
+          <div className="min-w-0 overflow-x-auto">
+            <Radio.Group
+              size="small"
+              value={current}
+              options={PAGES.map(({ key, label }) => ({ label, value: key }))}
+              optionType="button"
+              buttonStyle="solid"
+              onChange={value => {
+                setHash(String(value));
+              }}
+            />
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Radio.Group
+              size="small"
+              value={language}
+              options={[
+                { label: 'EN', value: 'en' },
+                { label: '한국어', value: 'ko' },
+              ]}
+              optionType="button"
+              buttonStyle="solid"
+              onChange={value => setLanguage(value as Language)}
+            />
+            <Button
+              aria-label={
+                theme === 'dark'
+                  ? 'Switch to light theme'
+                  : 'Switch to dark theme'
+              }
+              icon={theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            />
+          </div>
+        </Layout.Header>
+        {/*
         `min-h-0` lets this flex child shrink below its content's intrinsic
         height, so the space left after the header is a definite height each
         page can fill with `h-full`.
       */}
-      <Layout.Content className="min-h-0">
-        <ThemeContext value={theme}>
-          <MessagesContext value={MESSAGES[language]}>
-            <Page key={current} />
-          </MessagesContext>
-        </ThemeContext>
-      </Layout.Content>
-    </Layout>
+        <Layout.Content className="min-h-0">
+          <ThemeContext value={theme}>
+            <MessagesContext value={MESSAGES[language]}>
+              <Page key={current} />
+            </MessagesContext>
+          </ThemeContext>
+        </Layout.Content>
+      </Layout>
+    </Config>
   );
 };
 
