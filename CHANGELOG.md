@@ -1,5 +1,20 @@
 # Changelog
 
+## 6.5.0
+
+### Minor Changes
+
+- 0a1f2b7: Add `Live.Dnd`'s `documentBindings`, which makes a document's top-level settings object editable from the panel: each key names a `const` holding an object literal, such as `const settings = { theme: 'dark' }`, and its bindings name that object's keys. The built-in panel shows them while no section is selected, a custom panel reads them with the new `useDndDocument()`, and an edit replaces only that key's value. A refused edit is reported through `onEditError` as a new `document` error. `LiveMessages` gains `panel.documentSettings` and three `editErrors` keys.
+- ee58dd2: A function binding's code editor now checks `pattern`, `minLength`, `maxLength` and `required` before saving, as every text field does; it used to save without them. A new binding field, `optionsOnly`, makes `options` the only choice: `validateBindingValue` rejects any other non-empty value with the new `validation.notAnOption` message, and the built-in panel and `uiKitFields` always draw the select, showing a value written elsewhere as a disabled "Current" entry (`panel.currentValue`). A select whose value isn't one of its options now shows that entry too, instead of the first option. `PanelBinding` and `BindingFieldSpec` gain `optionsOnly`, and `LiveMessages` gains the two message keys.
+- 53d0b53: The object editor edits an object-valued prop key by key when some keys aren't literals. A key declared `type: 'function'` in `render`, or an untyped one holding a function expression, gets the code editor (or a select with `options`) and is written as source, so `config={{ label: 'Go', onClick: () => go() }}` is no longer read-only as a whole. Keys holding other expressions are shown read-only on their own while the rest stay editable. An object with a spread, a computed key or a method stays code-editor-only.
+- 9298cd4: Add `Live.Dnd`'s `renderPaletteOverlay`, which draws the card that follows the pointer while a palette item is dragged. A custom palette's items no longer turn into the built-in card once picked up. Returning `undefined` keeps the built-in card.
+- 73399ba: Split compiling into two steps, so a page that only shows saved documents doesn't need Babel. `transpile(code)` from `@jbpark/live-editor/utils` returns the document as plain JavaScript (or Babel's error), to store when the document is saved, and `runModule(js, modules)` from the new `@jbpark/live-editor/runtime` entry runs it without a compiler (0.3 KB gzip, against about 560 KB for `compile`). `compile()` is the two in one, with its cache unchanged.
+
+### Patch Changes
+
+- d2899c9: Canvas sections no longer mount twice when `Live.Dnd` first renders. The built-in layout started from the mobile arrangement until the screen was measured, then switched to the desktop one under another parent, which mounted every section again: in the in-place frame mode a section's effects ran twice as often and its state was created twice. Both arrangements now keep the canvas in the same place, so switching between them, on the first render or when the window crosses the breakpoint, doesn't remount the sections.
+- 5536469: In the `iframe` frame mode, a canvas section's content can no longer take focus by itself. An `autoFocus` input, or one focused by the section's own code, used to take focus when the canvas loaded, so keys went to it instead of the editor. The content is now `inert` inside the frame's document too, as it already was in the other modes, except while the element picker is on.
+
 ## 6.4.0
 
 ### Minor Changes
