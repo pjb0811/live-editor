@@ -35,6 +35,24 @@ const messages = {
   one's messages, with its own on top. One `Live` around a page can set the
   language for every editor in it.
 
+## ui-kit controls
+
+The controls from `@jbpark/live-editor/ui-kit` (rich text, select, date, time
+and color fields) and the ui-kit components in your sections take their own
+text, such as DatePicker's time footer, Select's placeholder or a Drawer's close
+button, from ui-kit's `Config`, not from `messages`. From `@jbpark/ui-kit`
+10.7.0 that text is English by default, and ui-kit ships a Korean set:
+
+```tsx
+import { Config, koKR } from '@jbpark/ui-kit';
+
+<Config locale={koKR}>
+  <Live messages={koMessages}>
+    <Live.Dnd value={code} onChange={setCode} />
+  </Live>
+</Config>;
+```
+
 ## Groups
 
 | Group           | Where it shows                                                                                                  |
