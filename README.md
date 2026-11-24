@@ -54,7 +54,9 @@ pnpm add @jbpark/live-editor react react-dom
 
 `react` and `react-dom` (>= 19) are peer dependencies. `prettier` (>= 3) is an
 optional peer — install it too if you want the editor's format-on-save; without
-it the editor still works and simply skips formatting.
+it the editor still works and simply skips formatting. `@jbpark/ui-kit`
+(>= 10.5) is an optional peer as well, needed only for the
+`@jbpark/live-editor/ui-kit` entry.
 
 ## Usage
 

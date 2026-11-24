@@ -53,7 +53,8 @@ pnpm add @jbpark/live-editor react react-dom
 
 `react`와 `react-dom`(>= 19)은 peer dependency입니다. `prettier`(>= 3)는 선택적
 peer로, 에디터의 저장 시 포맷(format-on-save)을 쓰려면 함께 설치하세요. 없어도
-에디터는 정상 동작하며 포맷만 건너뜁니다.
+에디터는 정상 동작하며 포맷만 건너뜁니다. `@jbpark/ui-kit`(>= 10.5)도 선택적
+peer로, `@jbpark/live-editor/ui-kit` 진입점을 쓸 때만 필요합니다.
 
 ## 사용법
 
@@ -142,7 +143,7 @@ export default function Example() {
 ## 요구 사항
 
 - Peer dependencies: `react >=19`, `react-dom >=19`
-- 패키지 메타데이터는 Babel 8이 지원하는 범위인 Node.js `^22.18.0 || >=24.11.0`을 선언합니다. CI는 Node용 진입점(`utils`, `utils/ast`, `utils/tailwind`, `provider`, `error`)이 Node 22.18에서 로드되는지 확인합니다. 저장소 개발·빌드와 나머지 CI는 `.nvmrc`에 고정된 버전(현재 24.18.0)을 사용합니다.
+- 패키지 메타데이터는 Babel 8이 지원하는 범위인 Node.js `^22.18.0 || >=24.11.0`을 선언합니다. CI는 Node용 진입점(`utils`, `utils/ast`, `utils/tailwind`, `provider`, `error`, `runtime`)이 Node 22.18에서 로드되는지 확인합니다. 저장소 개발·빌드와 나머지 CI는 `.nvmrc`에 고정된 버전(현재 24.18.0)을 사용합니다.
 - **pnpm**: 10.x 이상 ([Corepack](https://nodejs.org/api/corepack.html)으로 관리)
 
 ## 개발 (이 저장소)
