@@ -190,6 +190,7 @@ extractSections              → Section[] { id, name, code }
 - **stale이면 거절합니다.** 문서가 파싱되지 않으면 모든 작업이 commit 대신 `onBlockedEdit`를 부릅니다. 쓰려는 섹션 구간이 현재 소스가 아니라 마지막으로 파싱된 버전의 것이기 때문입니다.
 - **같은 tick의 commit.** 한 이벤트 안의 두 commit은 같은 렌더의 문서에서 시작합니다. `pendingRef`가 마지막 commit의 결과를 기억해서, 두 번째가 첫 번째를 덮어쓰지 않고 그 위에 쌓습니다(#450). `getCommittedSection`이 이것을 ② 단계에 알려 줍니다.
 - **id는 commit할 때만 씁니다.** 문서를 열기만 해서는 작성자의 코드가 바뀌지 않습니다. 채운 id는 첫 실제 편집과 함께 소스에 들어갑니다.
+- **이동은 섹션 하나만 옮깁니다.** `replaceDocumentSections`는 섹션을 `data-id`로 짝짓고, 순서가 그대로인 가장 긴 줄은 제자리에 둡니다. 그래서 섹션을 둘러싼 래퍼·주석·다른 요소는 위치와 내용을 그대로 유지합니다. `move`, `reorder`, `moveTo`는 움직인 섹션의 id를 넘기고, 이웃한 두 섹션을 맞바꿀 때는 이 id로 어느 쪽이 움직였는지 정합니다(#794).
 
 ### ② 섹션 단계 — `commitChanges`
 

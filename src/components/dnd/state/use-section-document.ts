@@ -8,13 +8,13 @@ import {
   type DocumentProblem,
   type SectionOptions,
 } from '~/utils/ast/document';
-import { fillSectionIds, inspectDocument } from '~/utils/ast/document';
-import { replaceIds } from '~/utils/ast/tree';
 import {
-  createSectionPreviewCache,
-  extractSections,
-  replaceSections,
-} from '~/utils/sections';
+  fillSectionIds,
+  inspectDocument,
+  replaceDocumentSections,
+} from '~/utils/ast/document';
+import { replaceIds } from '~/utils/ast/tree';
+import { createSectionPreviewCache, extractSections } from '~/utils/sections';
 
 import { usePreview } from '../../context/states';
 import type { LiveChange } from '../../context/use-live-history';
@@ -178,14 +178,15 @@ export const useSectionDocument = (
   // host's `onChange` and the provider. Ids and names are read again from the
   // result, so only `code` is taken. `fillSectionIds` gives an id to a
   // section added without one, such as a palette template. Returns the new
-  // sections so a caller can select one by its real id.
+  // sections so a caller can select one by its real id. A move passes the
+  // moved section's id, so a swap of two neighbors moves that one (#794).
   const commit = useCallback(
-    (nextSections: { code: string }[]): Section[] => {
+    (nextSections: { code: string }[], movedId?: string): Section[] => {
       const nextCode = fillSectionIds(
-        replaceSections(
+        replaceDocumentSections(
           latestDocument(),
           nextSections.map(s => s.code),
-          { containerId },
+          { containerId, movedId },
         ),
         undefined,
         { containerId },
@@ -316,7 +317,7 @@ export const useSectionDocument = (
         }
 
         // The selection follows the section, since its id moves with it.
-        commit(arrayMove(current, index, targetIndex));
+        commit(arrayMove(current, index, targetIndex), id ?? undefined);
       }),
     [commit, mutate],
   );
@@ -331,7 +332,7 @@ export const useSectionDocument = (
           return;
         }
 
-        commit(arrayMove(current, prevIndex, nextIndex));
+        commit(arrayMove(current, prevIndex, nextIndex), activeId);
       }),
     [commit, mutate],
   );
@@ -353,7 +354,7 @@ export const useSectionDocument = (
           return;
         }
 
-        commit(arrayMove(current, prevIndex, nextIndex));
+        commit(arrayMove(current, prevIndex, nextIndex), id);
       }),
     [commit, mutate],
   );

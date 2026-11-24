@@ -240,6 +240,11 @@ is a different list passed to the same `commit`.
   exposes this to level ②.
 - **Ids are written only on commit.** Opening a document never rewrites the
   author's code; filled ids land in the source with the first real edit.
+- **A move moves one section.** `replaceDocumentSections` matches sections by
+  `data-id` and keeps the longest run still in order where it is, so the
+  wrappers, comments and other elements around the sections keep their place
+  and their contents. `move`, `reorder` and `moveTo` pass the moved id, which
+  decides a swap of two neighbors (#794).
 
 ### ② Section level — `commitChanges`
 
