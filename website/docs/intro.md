@@ -12,9 +12,9 @@ isolation.
 
 ## Install
 
-`@jbpark/ui-kit` is a regular dependency and is installed with the package.
 `react` and `react-dom` (>=19) are required peer dependencies; include them in your app.
 `prettier` (^3) is an optional peer dependency. Install it for format-on-save; without it, the editor skips formatting.
+`@jbpark/ui-kit` (^10.5.0) is an optional peer dependency too, needed only for the `@jbpark/live-editor/ui-kit` entry (see below).
 
 ```bash
 npm install @jbpark/live-editor react react-dom
