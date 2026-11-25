@@ -443,8 +443,9 @@ describe('replaceDocumentSections diffing (#102)', () => {
   });
 });
 
-// A reorder trades the sections' texts and leaves everything between them:
-// comments, other elements and wrappers (#598).
+// A reorder keeps everything between sections where it is: comments, other
+// elements and wrappers (#598). Sections with a `data-id` are matched by it,
+// and only the ones whose order changed move (#794).
 describe('replaceDocumentSections reorder (#598)', () => {
   const sec = (id: string) =>
     `<section data-id="${id}" data-name="${id}">${id}</section>`;
@@ -458,24 +459,30 @@ describe('replaceDocumentSections reorder (#598)', () => {
     ['an element', '<hr className="divider" />'],
     ['a conditional expression', '{showBanner && <Banner />}'],
     ['text', 'Some intro text'],
-  ])('keeps %s between two swapped sections', (_name, between) => {
+  ])('keeps %s in place when the sections around it swap', (_name, between) => {
     const code = page(`    ${sec('a')}\n    ${between}\n    ${sec('b')}`);
     const [a, b] = codesOf(code);
 
+    // A tie: the later section moves.
     expect(replaceDocumentSections(code, [b!, a!])).toBe(
-      page(`    ${sec('b')}\n    ${between}\n    ${sec('a')}`),
+      page(`    ${sec('b')}\n    ${sec('a')}\n    ${between}`),
+    );
+    expect(replaceDocumentSections(code, [b!, a!], { movedId: 'a' })).toBe(
+      page(`    ${between}\n    ${sec('b')}\n    ${sec('a')}`),
     );
   });
 
-  it('keeps the wrappers of sections in different wrappers', () => {
-    const wrapped = (first: string, second: string) =>
-      page(
-        `    <div className="left">\n      ${sec(first)}\n    </div>\n    <div className="right">\n      ${sec(second)}\n    </div>`,
-      );
-    const code = wrapped('a', 'b');
+  it('moves a section into the wrapper of the section it lands next to', () => {
+    const code = page(
+      `    <div className="left">\n      ${sec('a')}\n    </div>\n    <div className="right">\n      ${sec('b')}\n    </div>`,
+    );
     const [a, b] = codesOf(code);
 
-    expect(replaceDocumentSections(code, [b!, a!])).toBe(wrapped('b', 'a'));
+    expect(replaceDocumentSections(code, [b!, a!])).toBe(
+      page(
+        `    <div className="left">\n      ${sec('b')}\n      ${sec('a')}\n    </div>\n    <div className="right">\n    </div>`,
+      ),
+    );
   });
 
   it('keeps every gap when a section moves several positions', () => {
@@ -486,28 +493,28 @@ describe('replaceDocumentSections reorder (#598)', () => {
 
     expect(replaceDocumentSections(code, [b!, c!, a!])).toBe(
       page(
-        `    ${sec('b')}\n    {/* one */}\n    ${sec('c')}\n    {/* two */}\n    ${sec('a')}`,
+        `    {/* one */}\n    ${sec('b')}\n    {/* two */}\n    ${sec('c')}\n    ${sec('a')}`,
       ),
     );
     expect(replaceDocumentSections(code, [c!, b!, a!])).toBe(
       page(
-        `    ${sec('c')}\n    {/* one */}\n    ${sec('b')}\n    {/* two */}\n    ${sec('a')}`,
+        `    ${sec('c')}\n    ${sec('b')}\n    ${sec('a')}\n    {/* one */}\n    {/* two */}`,
       ),
     );
   });
 
-  it('adds the extra sections after the last one when a reorder also adds', () => {
+  it('adds the new sections after the section before them when a reorder also adds', () => {
     const code = page(`    ${sec('a')}\n    {/* gap */}\n    ${sec('b')}`);
     const [a, b] = codesOf(code);
 
     expect(replaceDocumentSections(code, [b!, a!, sec('n')])).toBe(
       page(
-        `    ${sec('b')}\n    {/* gap */}\n    ${sec('a')}\n    ${sec('n')}`,
+        `    ${sec('b')}\n    ${sec('a')}\n    ${sec('n')}\n    {/* gap */}`,
       ),
     );
   });
 
-  it('removes the sections left over when a reorder also removes', () => {
+  it('removes the sections left over, with their lines, when a reorder also removes', () => {
     const code = page(
       `    ${sec('a')}\n    {/* one */}\n    ${sec('b')}\n    {/* two */}\n    ${sec('c')}`,
     );
@@ -515,7 +522,7 @@ describe('replaceDocumentSections reorder (#598)', () => {
 
     expect(replaceDocumentSections(code, [c!, a!])).toBe(
       page(
-        `    ${sec('c')}\n    {/* one */}\n    ${sec('a')}\n    {/* two */}\n    `,
+        `    ${sec('c')}\n    ${sec('a')}\n    {/* one */}\n    {/* two */}`,
       ),
     );
   });
@@ -524,6 +531,141 @@ describe('replaceDocumentSections reorder (#598)', () => {
     const code = page(`    ${sec('a')}\n    {/* gap */}\n    ${sec('b')}`);
 
     expect(replaceDocumentSections(code, codesOf(code))).toBe(code);
+  });
+});
+
+// Moving a section past a wrapper leaves the wrapper holding the sections it
+// held, except the moved one (#794).
+describe('replaceDocumentSections moves past a wrapper (#794)', () => {
+  const sec = (id: string) =>
+    `<section data-id="${id}" data-name="${id}">${id}</section>`;
+  const promo = (...ids: string[]) =>
+    [
+      '    <div className="promo">',
+      ...ids.map(id => `      ${sec(id)}`),
+      '    </div>',
+    ].join('\n');
+  const page = (...lines: string[]) =>
+    `const App = () => (\n  <main id="app-container">\n${lines.join('\n')}\n  </main>\n);`;
+  const out = (id: string) => `    ${sec(id)}`;
+
+  const code = page(out('a'), promo('b', 'c'), out('d'), out('e'));
+  const codes = getSections(parseDocument(code)!).map(s => s.code);
+  const [a, b, c, d, e] = codes as [string, string, string, string, string];
+
+  it('moves a section from before the wrapper to the end', () => {
+    expect(
+      replaceDocumentSections(code, [b, c, d, e, a], { movedId: 'a' }),
+    ).toBe(page(promo('b', 'c'), out('d'), out('e'), out('a')));
+  });
+
+  it('moves a section from the end to the start', () => {
+    expect(
+      replaceDocumentSections(code, [e, a, b, c, d], { movedId: 'e' }),
+    ).toBe(page(out('e'), out('a'), promo('b', 'c'), out('d')));
+  });
+
+  it('moves the same way without a moved id when only one section can have moved', () => {
+    expect(replaceDocumentSections(code, [b, c, d, e, a])).toBe(
+      page(promo('b', 'c'), out('d'), out('e'), out('a')),
+    );
+  });
+
+  // `d` up one and `c` down one give the same list; the moved id tells them
+  // apart.
+  it('moves the section named by movedId in a swap at the wrapper edge', () => {
+    const swapped = [a, b, d, c, e];
+
+    expect(replaceDocumentSections(code, swapped, { movedId: 'd' })).toBe(
+      page(out('a'), promo('b', 'd', 'c'), out('e')),
+    );
+    expect(replaceDocumentSections(code, swapped, { movedId: 'c' })).toBe(
+      page(out('a'), promo('b'), out('d'), out('c'), out('e')),
+    );
+  });
+
+  it('moves the later section of a tie without a moved id', () => {
+    expect(replaceDocumentSections(code, [a, b, d, c, e])).toBe(
+      page(out('a'), promo('b', 'd', 'c'), out('e')),
+    );
+  });
+
+  it('ignores a moved id that is not in the list', () => {
+    expect(
+      replaceDocumentSections(code, [a, b, d, c, e], { movedId: 'zzz' }),
+    ).toBe(page(out('a'), promo('b', 'd', 'c'), out('e')));
+  });
+
+  it('removes the moved line without a blank line in a CRLF document', () => {
+    const crlf = code.replace(/\n/g, '\r\n');
+    const crlfCodes = getSections(parseDocument(crlf)!).map(s => s.code);
+    const [ca, cb, cc, cd, ce] = crlfCodes as [
+      string,
+      string,
+      string,
+      string,
+      string,
+    ];
+
+    expect(
+      replaceDocumentSections(crlf, [cb, cc, cd, ce, ca], { movedId: 'a' }),
+    ).toBe(
+      page(promo('b', 'c'), out('d'), out('e'), out('a')).replace(
+        /\n/g,
+        '\r\n',
+      ),
+    );
+  });
+
+  it('pairs sections by position when they have no data-id', () => {
+    const plain = (id: string) => `<section data-name="${id}">${id}</section>`;
+    const noIds = code.replace(
+      /<section data-id="(\w)"[^>]*>\w<\/section>/g,
+      (_, id: string) => plain(id),
+    );
+    const [pa, pb, pc, pd, pe] = getSections(parseDocument(noIds)!).map(
+      s => s.code,
+    ) as [string, string, string, string, string];
+
+    expect(replaceDocumentSections(noIds, [pb, pc, pd, pe, pa])).toBe(
+      [
+        'const App = () => (',
+        '  <main id="app-container">',
+        `    ${plain('b')}`,
+        '    <div className="promo">',
+        `      ${plain('c')}`,
+        `      ${plain('d')}`,
+        '    </div>',
+        `    ${plain('e')}`,
+        `    ${plain('a')}`,
+        '  </main>',
+        ');',
+      ].join('\n'),
+    );
+  });
+
+  it('pairs sections by position when an id is used twice', () => {
+    const twice = code.replace('data-id="c"', 'data-id="b"');
+    const [ta, tb, tc, td, te] = getSections(parseDocument(twice)!).map(
+      s => s.code,
+    ) as [string, string, string, string, string];
+    const result = replaceDocumentSections(twice, [tb, tc, td, te, ta]);
+
+    // Positional: `d` takes the slot inside the wrapper.
+    expect(result).toBe(
+      page(out('b'), promo('c', 'd'), out('e'), out('a')).replace(
+        'data-id="c"',
+        'data-id="b"',
+      ),
+    );
+  });
+
+  it('edits a section in place, with its id unchanged', () => {
+    const edited = c.replace('>c<', '>c2<');
+
+    expect(replaceDocumentSections(code, [a, b, edited, d, e])).toBe(
+      code.replace(c, edited),
+    );
   });
 });
 

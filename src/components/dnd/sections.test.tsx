@@ -166,6 +166,30 @@ describe('useDndSections', () => {
     expect(latest.api.selectedId).toBe('a');
   });
 
+  // `d` up one and `c` down one give the same order; each moves only the
+  // section it names across the wrapper's edge (#794).
+  it.each([
+    ['d', 'up', ['b', 'd', 'c']],
+    ['c', 'down', ['b']],
+  ] as const)('moves %s %s past a wrapper edge', (id, direction, inPromo) => {
+    const onCode = vi.fn<(code: string) => void>();
+    const wrapped = documentOf(
+      `${sectionsOf('a')}<div className="promo">${sectionsOf('b', 'c')}</div>${sectionsOf('d', 'e')}`,
+    );
+
+    render(<Editor initial={wrapped} onCode={onCode} />);
+    act(() => latest.api.move(id, direction));
+
+    const promo = /className="promo">([\s\S]*?)<\/div>/.exec(
+      onCode.mock.lastCall![0],
+    )![1]!;
+
+    expect(ids()).toEqual(['a', 'b', 'd', 'c', 'e']);
+    expect([...promo.matchAll(/data-id="(\w)"/g)].map(m => m[1])).toEqual(
+      inPromo,
+    );
+  });
+
   it('duplicates a section below itself and selects the copy', () => {
     render(<Editor initial={ABC} />);
 

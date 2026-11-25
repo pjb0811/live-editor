@@ -1,4 +1,4 @@
-import { parse } from '@babel/parser';
+import { parse, parseExpression } from '@babel/parser';
 import _traverse from '@babel/traverse';
 import type { TraverseOptions, Visitor } from '@babel/traverse';
 import * as t from '@babel/types';
@@ -368,20 +368,236 @@ const sectionsNextTo = (
     : lines.map(line => `${eol}${indent}${line}`).join('');
 };
 
+// A section's `data-id` as a non-empty string literal, as `fillSectionIds`
+// counts one, or `undefined`.
+const sectionIdOfNode = (node: t.JSXElement): string | undefined =>
+  getAttrValue(node, DATA_ATTR.ID) || undefined;
+
+// The same for a section's code. `undefined` when it doesn't parse either.
+const sectionIdOf = (code: string): string | undefined => {
+  try {
+    const node = parseExpression(code, { plugins: ['jsx', 'typescript'] });
+
+    return t.isJSXElement(node) ? sectionIdOfNode(node) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// The positions of the longest strictly increasing run in `values`, leaving
+// out the position `skip`. Of several equally long runs it picks the one with
+// the smallest values.
+const longestIncreasingRun = (values: number[], skip = -1): number[] => {
+  // `lengthFrom[k]`: the length of the longest run that starts at `k`.
+  const lengthFrom = values.map(() => 0);
+
+  for (let k = values.length - 1; k >= 0; k--) {
+    if (k === skip) {
+      continue;
+    }
+
+    let longest = 0;
+
+    for (let m = k + 1; m < values.length; m++) {
+      if (values[m]! > values[k]! && lengthFrom[m]! > longest) {
+        longest = lengthFrom[m]!;
+      }
+    }
+
+    lengthFrom[k] = longest + 1;
+  }
+
+  const run: number[] = [];
+  let remaining = Math.max(0, ...lengthFrom);
+  let last = -1;
+
+  while (remaining > 0) {
+    let pick = -1;
+
+    for (let k = last + 1; k < values.length; k++) {
+      if (
+        lengthFrom[k] === remaining &&
+        (last < 0 || values[k]! > values[last]!) &&
+        (pick < 0 || values[k]! < values[pick]!)
+      ) {
+        pick = k;
+      }
+    }
+
+    run.push(pick);
+    last = pick;
+    remaining--;
+  }
+
+  return run;
+};
+
+// The edit that removes `node`: its whole line when nothing else is on it, so
+// no blank line is left behind, or else only its span.
+const removalOf = (code: string, node: t.JSXElement): SourceEdit => {
+  const lineStart = code.lastIndexOf('\n', node.start! - 1) + 1;
+  const lineEnd = code.indexOf('\n', node.end!);
+
+  if (
+    lineEnd >= 0 &&
+    /^[ \t]*$/.test(code.slice(lineStart, node.start!)) &&
+    /^[ \t]*\r?$/.test(code.slice(node.end!, lineEnd))
+  ) {
+    return { start: lineStart, end: lineEnd + 1, content: '' };
+  }
+
+  return { start: node.start!, end: node.end!, content: '' };
+};
+
+// The edits for the changed window when its sections can be matched by
+// `data-id`, or `null` when they can't: an old section without an id, an id
+// used twice, or no new section matching an old one.
+//
+// The longest run of matched sections still in their old order stays in
+// place; the others are removed and written again next to the section before
+// them in the new list, so a move takes only the moved section across the
+// markup around it, such as a wrapper (#794). A tie, as in a swap of two
+// neighbors, moves `movedId` when it's one of them, and the later section
+// otherwise.
+const reorderEdits = (
+  fullCode: string,
+  sections: t.JSXElement[],
+  windowStart: number,
+  windowEnd: number,
+  newCodes: string[],
+  movedId: string | undefined,
+): SourceEdit[] | null => {
+  const oldIndexById = new Map<string, number>();
+  const idByCode = new Map<string, string>();
+
+  for (let i = windowStart; i < windowEnd; i++) {
+    const node = sections[i]!;
+    const id = sectionIdOfNode(node);
+
+    if (id === undefined || oldIndexById.has(id)) {
+      return null;
+    }
+
+    oldIndexById.set(id, i);
+    idByCode.set(fullCode.slice(node.start!, node.end!), id);
+  }
+
+  const newIds = newCodes.map(code => idByCode.get(code) ?? sectionIdOf(code));
+  const definedIds = newIds.filter(id => id !== undefined);
+
+  if (new Set(definedIds).size !== definedIds.length) {
+    return null;
+  }
+
+  // The new positions of the sections that are in both lists, in new order.
+  const matched = newIds.flatMap((id, newIndex) => {
+    const oldIndex = id === undefined ? undefined : oldIndexById.get(id);
+
+    return oldIndex === undefined ? [] : [{ newIndex, oldIndex }];
+  });
+
+  if (matched.length === 0) {
+    return null;
+  }
+
+  const oldOrder = matched.map(m => m.oldIndex);
+  let run = longestIncreasingRun(oldOrder);
+  const movedAt = movedId === undefined ? -1 : newIds.indexOf(movedId);
+  const skip = matched.findIndex(m => m.newIndex === movedAt);
+
+  if (skip >= 0) {
+    const withoutMoved = longestIncreasingRun(oldOrder, skip);
+
+    if (withoutMoved.length === run.length) {
+      run = withoutMoved;
+    }
+  }
+
+  // New index → the old section that keeps its place for it.
+  const kept = new Map(
+    run.map(k => [matched[k]!.newIndex, matched[k]!.oldIndex]),
+  );
+  const keptOld = new Set(kept.values());
+  const edits: SourceEdit[] = [];
+
+  for (let i = windowStart; i < windowEnd; i++) {
+    if (!keptOld.has(i)) {
+      edits.push(removalOf(fullCode, sections[i]!));
+    }
+  }
+
+  let anchor = windowStart > 0 ? sections[windowStart - 1] : undefined;
+  let pending: string[] = [];
+
+  const flushBefore = (next: t.JSXElement | undefined) => {
+    if (pending.length === 0) {
+      return;
+    }
+
+    if (anchor) {
+      edits.push({
+        start: anchor.end!,
+        end: anchor.end!,
+        content: sectionsNextTo(fullCode, anchor, pending, 'after'),
+      });
+    } else if (next) {
+      edits.push({
+        start: next.start!,
+        end: next.start!,
+        content: sectionsNextTo(fullCode, next, pending, 'before'),
+      });
+    }
+
+    pending = [];
+  };
+
+  newCodes.forEach((code, newIndex) => {
+    const oldIndex = kept.get(newIndex);
+
+    if (oldIndex === undefined) {
+      pending.push(code);
+
+      return;
+    }
+
+    const node = sections[oldIndex]!;
+
+    flushBefore(node);
+
+    if (fullCode.slice(node.start!, node.end!) !== code) {
+      edits.push({ start: node.start!, end: node.end!, content: code });
+    }
+
+    anchor = node;
+  });
+
+  flushBefore(sections[windowEnd]);
+
+  return edits;
+};
+
+interface ReplaceSectionsOptions extends DocumentOptions {
+  // The id of the section a move started from, for a reorder where more than
+  // one section could have moved.
+  movedId?: string;
+}
+
 // Replaces the container's sections with `sectionCodes`. The old and new
 // lists are compared by their common prefix and suffix, and only the sections
 // between them change, so unchanged sections and the markup around them (such
-// as wrapper elements) stay as they are (#102). Within that window each old
-// section is replaced in place by the new code at the same position, so a
-// reorder trades the sections' texts and leaves everything between them: the
-// comments, the other elements and the wrappers.
+// as wrapper elements) stay as they are (#102). The comments, other elements
+// and wrappers between sections stay where they are too (#598).
+//
+// Within that window, sections with a `data-id` are matched by it, and only
+// the ones whose order changed move (`reorderEdits`). Without ids, each old
+// section takes the new code at its position.
 //
 // `sectionCodes` are inserted as text without checks: an invalid section
 // shows up as a compile error instead of disappearing (#96).
 export const replaceDocumentSections = (
   fullCode: string,
   sectionCodes: string[],
-  options?: DocumentOptions,
+  { movedId, ...options }: ReplaceSectionsOptions = {},
 ): string => {
   const doc = parseDocument(fullCode, options);
 
@@ -443,6 +659,19 @@ export const replaceDocumentSections = (
       last.end!,
       sectionsNextTo(fullCode, last, newChanged, 'after'),
     );
+  }
+
+  const byId = reorderEdits(
+    fullCode,
+    sections,
+    oldChangedStart,
+    oldChangedEndExclusive,
+    newChanged,
+    movedId,
+  );
+
+  if (byId) {
+    return applyEdits(fullCode, byId);
   }
 
   // Each old section in the window takes the new code at its position. A

@@ -41,6 +41,12 @@ const next = replaceSections(code, [
 | `replaceSections(code, codes, options?)` | `string`        | The document with its sections replaced by `codes`, in order. Everything outside the container is kept as written.                             |
 | `checkDocument(code, options?)`          | `DocumentCheck` | Whether `Live.Dnd` can edit the document. See below.                                                                                           |
 
+`replaceSections` keeps the markup between sections, such as wrappers and
+comments, where it is. When the sections have `data-id`s, a reorder moves only
+the sections whose order changed, and each one lands next to the section
+before it in the new list. When two neighbors swap, the later one is the one
+that moves.
+
 Every function takes `{ containerId }` when your container isn't the default
 `id="app-container"`. Pass the same id you give `Live.Dnd`.
 
