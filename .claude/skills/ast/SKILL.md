@@ -41,11 +41,11 @@ value → helpers, types
 value-expression → types
 editable-value → value
 binding → types, value
-tree → helpers
+tree → helpers, patch
 document → jsx-name, patch, tree
 array-source → patch, value
 extract → binding, document, helpers, jsx-name, types, value
-children → extract, helpers, patch, types
+children → extract, helpers, patch, tree, types
 items → array-source, helpers, patch, types, value, value-expression
 edit-source → binding, helpers, patch, types, value, value-expression
 update → binding, children, document, edit-source, helpers, jsx-name, patch, types

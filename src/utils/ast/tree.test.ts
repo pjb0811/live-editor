@@ -3,7 +3,14 @@ import * as t from '@babel/types';
 import { describe, expect, it } from 'vitest';
 
 import { DATA_ATTR } from '../../constants';
-import { clone, fillIds, fillIdsFrom, replaceIds } from './tree';
+import {
+  clone,
+  copySectionCode,
+  fillIds,
+  fillIdsFrom,
+  replaceIds,
+  writtenIds,
+} from './tree';
 
 // Deterministic id generator so assertions don't depend on nanoid randomness.
 const sequentialIds = () => {
@@ -29,6 +36,81 @@ describe('replaceIds', () => {
   it('leaves code without data-id untouched', () => {
     const code = `<div className="x" />`;
     expect(replaceIds(code, sequentialIds())).toBe(code);
+  });
+});
+
+// The section copy renews only real ids and keeps the rest as written (#796).
+describe('copySectionCode', () => {
+  const section = [
+    '<section data-id="s1" data-name="s1">',
+    '  <p data-id="title">Title</p>',
+    "  <p data-id='note'>Note</p>",
+    '  <img data-id={`img-${index}`} />',
+    `  <p title='data-id="keep"'>{'data-id="keep"'}</p>`,
+    '  {/* data-id="comment" */}',
+    '  <span>no id</span>',
+    '</section>',
+  ].join('\n');
+
+  it('renews string ids in either quote style and keeps everything else', () => {
+    expect(copySectionCode(section, new Set(), sequentialIds())).toBe(
+      [
+        '<section data-id="id0" data-name="s1">',
+        '  <p data-id="id1">Title</p>',
+        "  <p data-id='id2'>Note</p>",
+        '  <img data-id={`img-${index}`} />',
+        `  <p title='data-id="keep"'>{'data-id="keep"'}</p>`,
+        '  {/* data-id="comment" */}',
+        '  <span>no id</span>',
+        '</section>',
+      ].join('\n'),
+    );
+  });
+
+  it('skips ids in taken and ids it already gave', () => {
+    const ids = ['a', 'b', 'a', 'c', 'd'];
+
+    expect(
+      copySectionCode(
+        '<section data-id="x"><p data-id="y" /><p data-id="z" /></section>',
+        new Set(['b']),
+        () => ids.shift()!,
+      ),
+    ).toBe('<section data-id="a"><p data-id="c" /><p data-id="d" /></section>');
+  });
+
+  it('renews the id after a spread and keeps the spread', () => {
+    expect(
+      copySectionCode(
+        '<section data-id="s"><p data-id="p" {...props} /></section>',
+        new Set(),
+        sequentialIds(),
+      ),
+    ).toBe('<section data-id="id0"><p data-id="id1" {...props} /></section>');
+  });
+
+  it('keeps the whitespace around a palette section', () => {
+    expect(
+      copySectionCode(
+        '\n  <section data-id="s" />\n',
+        new Set(),
+        sequentialIds(),
+      ),
+    ).toBe('\n  <section data-id="id0" />\n');
+  });
+
+  it('falls back to replaceIds when the code does not parse', () => {
+    expect(
+      copySectionCode('<section data-id="s"><p>', new Set(), sequentialIds()),
+    ).toBe('<section data-id="id0"><p>');
+  });
+});
+
+describe('writtenIds', () => {
+  it('collects the values written in either quote style, text included', () => {
+    expect(
+      writtenIds(`<a data-id="x" /><b data-id='y' />{'data-id="z"'}`),
+    ).toEqual(new Set(['x', 'y', 'z']));
   });
 });
 
