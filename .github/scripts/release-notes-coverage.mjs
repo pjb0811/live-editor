@@ -23,3 +23,72 @@ export const findMissingEntries = (raw, polished) => {
     Array(Math.max(0, count - countOf(polished, hash))).fill(hash),
   );
 };
+
+// The contents of the inline code spans in `text`, as CommonMark reads them:
+// a run of backticks opens a span that only a run of the same length closes,
+// so ``a`b`` is one span holding a`b. One space on each side is dropped when
+// both are there, as in `` `x` ``.
+export const codeSpans = text => {
+  const spans = [];
+  let index = 0;
+
+  while (index < text.length) {
+    const open = text.indexOf('`', index);
+
+    if (open < 0) {
+      break;
+    }
+
+    let length = 1;
+
+    while (text[open + length] === '`') {
+      length++;
+    }
+
+    const delimiter = '`'.repeat(length);
+    let close = text.indexOf(delimiter, open + length);
+
+    // A closing run must be exactly as long as the opening one.
+    while (close >= 0 && text[close + length] === '`') {
+      let end = close;
+
+      while (text[end] === '`') {
+        end++;
+      }
+
+      close = text.indexOf(delimiter, end);
+    }
+
+    if (close < 0) {
+      index = open + length;
+      continue;
+    }
+
+    const content = text.slice(open + length, close);
+
+    spans.push(/^ .*[^ ].* $/s.test(content) ? content.slice(1, -1) : content);
+    index = close + length;
+  }
+
+  return spans;
+};
+
+// Code that `polished` changed from `raw`. A rewrite may leave code out, or
+// set a name from the text as code, but must not:
+// - write code whose text isn't in `raw` (a reworded or invented name, or a
+//   character swapped for a look-alike), or
+// - cut a span that holds backticks short, as single backticks around
+//   ``data-id={`a-${i}`}`` do: its text is there, but no longer one span.
+export const findChangedCodeSpans = (raw, polished) => {
+  const hashes = new Set(entryHashes(raw));
+  const spans = codeSpans(polished);
+  const unknown = spans.filter(
+    span => !hashes.has(span) && !raw.includes(span),
+  );
+  const broken = codeSpans(raw).filter(
+    span =>
+      span.includes('`') && polished.includes(span) && !spans.includes(span),
+  );
+
+  return [...new Set([...unknown, ...broken])];
+};

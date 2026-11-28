@@ -8,7 +8,10 @@
 // Uses NVIDIA's OpenAI-compatible API Catalog endpoint. Model selection and
 // fallback logic live in nvidia-chat.mjs.
 import { nvidiaChat, requireEnv } from './nvidia-chat.mjs';
-import { findMissingEntries } from './release-notes-coverage.mjs';
+import {
+  findChangedCodeSpans,
+  findMissingEntries,
+} from './release-notes-coverage.mjs';
 
 // Over this, fail instead of sending a cut-down section: the caller then
 // publishes the raw changelog, which is complete. Truncating here is what
@@ -50,6 +53,10 @@ async function main() {
     'covers in parentheses, e.g. (8d6c841) or (d6aa94f, a30b708).',
     'Several entries can share a hash; cite it once for each of them,',
     'e.g. (abe85ff, abe85ff) for a bullet covering two such entries.',
+    'Copy every inline code span exactly as the input writes it, backtick',
+    'delimiters included: a span that contains a backtick, such as',
+    '``data-id={`a-${i}`}``, keeps its double backticks. Never reword or',
+    'invent code, and keep the input\'s own terms for what changed.',
     'Respond with ONLY the Markdown release notes, no surrounding prose,',
     'no code fences.',
   ].join(' ');
@@ -69,6 +76,15 @@ async function main() {
   if (missing.length > 0) {
     throw new Error(
       `Polished notes dropped ${missing.length} entries: ${missing.join(', ')}`,
+    );
+  }
+
+  // Code it rewrote or broke isn't what the changelog says.
+  const changed = findChangedCodeSpans(raw, content);
+
+  if (changed.length > 0) {
+    throw new Error(
+      `Polished notes changed ${changed.length} code spans: ${changed.map(span => JSON.stringify(span)).join(', ')}`,
     );
   }
 
