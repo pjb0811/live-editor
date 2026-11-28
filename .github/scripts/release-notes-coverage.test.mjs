@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { entryHashes, findMissingEntries } from './release-notes-coverage.mjs';
+import {
+  codeSpans,
+  entryHashes,
+  findChangedCodeSpans,
+  findMissingEntries,
+} from './release-notes-coverage.mjs';
 
 const raw = `### Major Changes
 
@@ -95,5 +100,79 @@ describe('findMissingEntries', () => {
         findMissingEntries(sharedHash, '- Sections re-render less (18ab6cc)'),
       ).toEqual(['abe85ff', 'abe85ff']);
     });
+  });
+});
+
+// 6.5.2 as released and as first polished: the rewrite wrapped a span that
+// holds backticks in single backticks, which cut it into two spans.
+const released652 = readFileSync(
+  fileURLToPath(new URL('../../CHANGELOG.md', import.meta.url)),
+  'utf8',
+).match(/^## 6\.5\.2\n[\s\S]*?(?=^## )/m)[0];
+
+describe('codeSpans', () => {
+  it('reads spans of any backtick length, and trims one space on each side', () => {
+    expect(codeSpans('`a` and ``b`c`` and `` `d` `` and ```e``f```')).toEqual([
+      'a',
+      'b`c',
+      '`d`',
+      'e``f',
+    ]);
+  });
+
+  it('closes a span only with a run of the same length', () => {
+    expect(codeSpans('`a ``b`` c`')).toEqual(['a ``b`` c']);
+  });
+
+  it('skips a backtick run that nothing closes', () => {
+    expect(codeSpans('a `` b `c`')).toEqual(['c']);
+  });
+});
+
+describe('findChangedCodeSpans', () => {
+  it('reports a span cut short by its own backticks', () => {
+    const polished =
+      '- an expression id like `data-id={`img-${index}`}` stays as written (57c1871)';
+
+    expect(findChangedCodeSpans(released652, polished)).toEqual([
+      'data-id={`img-${index}`}',
+    ]);
+  });
+
+  it('passes notes that copy the spans, or leave some out', () => {
+    const polished =
+      '- An expression id such as ``data-id={`img-${index}`}`` stays as written in `Live.Dnd` (57c1871)';
+
+    expect(findChangedCodeSpans(released652, polished)).toEqual([]);
+  });
+
+  it('reports code the rewrite invented or reworded', () => {
+    expect(
+      findChangedCodeSpans(released652, '- `Live.DnD` copies (57c1871)'),
+    ).toEqual(['Live.DnD']);
+  });
+
+  it('passes a name from the text set as code', () => {
+    expect(
+      findChangedCodeSpans(
+        released652,
+        '- `Copying` a section renews ids (57c1871)',
+      ),
+    ).toEqual([]);
+  });
+
+  it('reports a character swapped for a look-alike', () => {
+    expect(
+      findChangedCodeSpans(
+        released652,
+        '- `data\u2011id` is renewed (57c1871)',
+      ),
+    ).toEqual(['data\u2011id']);
+  });
+
+  it('accepts an entry hash written as code', () => {
+    expect(
+      findChangedCodeSpans(released652, '- Copies renew ids (`57c1871`)'),
+    ).toEqual([]);
   });
 });
