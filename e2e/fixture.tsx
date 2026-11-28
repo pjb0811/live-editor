@@ -6,7 +6,7 @@ import { EditorView } from '@uiw/react-codemirror';
 // The overlay scenario's ui-kit Modal needs ui-kit's styles.
 import '../src/components/ui-kit/style.css';
 
-import Live, { useLiveHistory } from '../src';
+import Live, { type DndSectionToolbarArgs, useLiveHistory } from '../src';
 import { useDndPanel } from '../src/components/dnd';
 import ElementFields from '../src/components/dnd/panel/element-fields';
 import Items from '../src/components/dnd/panel/items/items';
@@ -925,6 +925,65 @@ const SettingsFixture = () => {
   );
 };
 
+// `renderSectionToolbar` with the host's own controls (#788). `Count` keeps
+// its count with a hook, the range and the text field are controls a press
+// or a key inside must not turn into a drag, a selection or a delete.
+const toolbarCode = `const App = () => (
+  <main id="app-container">
+    <section data-id="t1" data-name="First"><p>First</p></section>
+    <section data-id="t2" data-name="Second"><p>Second</p></section>
+  </main>
+);
+
+export default App;`;
+
+const HostToolbar = ({
+  moveDown,
+  canMoveDown,
+  remove,
+}: DndSectionToolbarArgs) => {
+  const [count, setCount] = useState(0);
+
+  return (
+    <>
+      <button type="button" onClick={() => setCount(n => n + 1)}>
+        Count {count}
+      </button>
+      <button type="button" disabled={!canMoveDown} onClick={moveDown}>
+        Lower
+      </button>
+      <input
+        aria-label="Amount"
+        type="range"
+        min={0}
+        max={100}
+        defaultValue={0}
+      />
+      <input aria-label="Note" defaultValue="" />
+      <button type="button" onClick={remove}>
+        Drop
+      </button>
+    </>
+  );
+};
+
+const ToolbarFixture = () => {
+  const [code, setCode] = useState(toolbarCode);
+
+  return (
+    <Live>
+      <div style={{ height: 600 }}>
+        <Live.Dnd
+          value={code}
+          onChange={setCode}
+          renderSectionToolbar={args => <HostToolbar {...args} />}
+        />
+      </div>
+      <output data-testid="source">{code}</output>
+    </Live>
+  );
+};
+
 const scenario = new URLSearchParams(window.location.search).get('scenario');
 
 const fixtures = {
@@ -947,6 +1006,7 @@ const fixtures = {
   focus: <FocusFixture />,
   'canvas-width': <CanvasWidthFixture />,
   'live-history': <LiveHistoryFixture />,
+  toolbar: <ToolbarFixture />,
 } as const;
 
 createRoot(document.getElementById('root')!).render(

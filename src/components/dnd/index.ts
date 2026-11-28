@@ -2,6 +2,10 @@ import type {
   DndRenderSectionFallback,
   DndSectionFallbackArgs,
 } from './canvas/section-fallback-context';
+import type {
+  DndRenderSectionToolbar,
+  DndSectionToolbarArgs,
+} from './canvas/section-toolbar';
 import DndImpl from './dnd';
 import type {
   DndEditError,
@@ -162,6 +166,8 @@ export type {
   DndPanelLayout,
   DndRenderSectionFallback,
   DndSectionFallbackArgs,
+  DndRenderSectionToolbar,
+  DndSectionToolbarArgs,
   DndItems,
   DndItemsActions,
   DndItemsExpansion,

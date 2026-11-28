@@ -9,6 +9,7 @@ import { DEFAULT_TEMPLATE } from '~/constants';
 import type { Section } from '~/types';
 
 import { PreviewContext } from '../context/states';
+import type { DndSectionToolbarArgs } from './canvas/section-toolbar';
 import Dnd from './dnd';
 import { type DndInspector, useDndInspector } from './inspector';
 import { Canvas, Palette, Panel } from './layout';
@@ -1738,6 +1739,206 @@ describe('section toolbar', () => {
 
     expect(removed).not.toContain('data-id="s2"');
     expect(removed.match(/<section /g)).toHaveLength(2);
+  });
+});
+
+describe('renderSectionToolbar', () => {
+  const threeSections = documentWith(`
+    <section data-id="s1" data-name="First"><p>1</p></section>
+    <section data-id="s2" data-name="Second"><p>2</p></section>
+    <section data-id="s3" data-name="Third"><p>3</p></section>`);
+
+  const renderHostToolbar = (
+    render_: (args: DndSectionToolbarArgs) => React.ReactNode,
+    {
+      value = threeSections,
+      onBeforeDelete,
+    }: {
+      value?: string;
+      onBeforeDelete?: (section: Section) => boolean;
+    } = {},
+  ) => {
+    const onChange = vi.fn();
+    const tree = (code: string) => (
+      <PreviewContext.Provider value={{ code: '', setCode: vi.fn() }}>
+        <Dnd
+          value={code}
+          onChange={onChange}
+          onBeforeDelete={onBeforeDelete}
+          renderSectionToolbar={render_}
+        >
+          <Canvas />
+        </Dnd>
+      </PreviewContext.Provider>
+    );
+    const utils = render(tree(value));
+    const sortables = () =>
+      utils.container.querySelectorAll<HTMLElement>(
+        '[aria-roledescription="sortable"]',
+      );
+    const select = (index: number) => act(() => sortables()[index]!.click());
+    const order = (code: string) =>
+      ['s1', 's2', 's3'].sort(
+        (a, b) =>
+          code.indexOf(`data-id="${a}"`) - code.indexOf(`data-id="${b}"`),
+      );
+
+    return {
+      ...utils,
+      onChange,
+      sortables,
+      select,
+      order,
+      rerenderWith: (code: string) => utils.rerender(tree(code)),
+    };
+  };
+
+  it('replaces the built-in buttons on the selected section only, and gets its place', () => {
+    const render_ = vi.fn(() => <button type="button">Host</button>);
+    const { sortables, select } = renderHostToolbar(render_);
+
+    expect(render_).not.toHaveBeenCalled();
+
+    select(0);
+
+    expect(
+      within(sortables()[0]!).getByRole('button', { name: 'Host' }),
+    ).toBeTruthy();
+    expect(
+      within(sortables()[0]!).queryByRole('button', { name: 'Delete section' }),
+    ).toBeNull();
+    expect(within(sortables()[1]!).queryAllByRole('button')).toHaveLength(0);
+    expect(render_).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        section: expect.objectContaining({ id: 's1', name: 'First' }),
+        index: 0,
+        canMoveUp: false,
+        canMoveDown: true,
+        readOnly: false,
+      }),
+    );
+
+    select(2);
+
+    expect(render_).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        index: 2,
+        canMoveUp: true,
+        canMoveDown: false,
+      }),
+    );
+  });
+
+  it('renders an empty toolbar for null', () => {
+    const { sortables, select } = renderHostToolbar(() => null);
+
+    select(1);
+
+    expect(within(sortables()[1]!).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('moves, duplicates and removes as the built-in buttons do', () => {
+    let args!: DndSectionToolbarArgs;
+    const { onChange, sortables, select, order, rerenderWith } =
+      renderHostToolbar(next => {
+        args = next;
+
+        return null;
+      });
+
+    select(1);
+    act(() => args.moveUp());
+
+    const moved = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(order(moved)).toEqual(['s2', 's1', 's3']);
+    // At the first place, focus goes to the section, as for the button.
+    expect(document.activeElement).toBe(sortables()[1]);
+
+    act(() => rerenderWith(moved));
+    expect(args.section.id).toBe('s2');
+    act(() => args.moveDown());
+    expect(order(onChange.mock.calls.at(-1)![0] as string)).toEqual([
+      's1',
+      's2',
+      's3',
+    ]);
+
+    act(() => rerenderWith(threeSections));
+    select(1);
+    act(() => args.duplicate());
+
+    const copied = onChange.mock.calls.at(-1)![0] as string;
+
+    expect(copied.match(/<section /g)).toHaveLength(4);
+    act(() => rerenderWith(copied));
+    // The copy is selected.
+    expect(args.index).toBe(2);
+
+    act(() => rerenderWith(threeSections));
+    select(1);
+    act(() => args.remove());
+
+    expect(onChange.mock.calls.at(-1)![0]).not.toContain('data-id="s2"');
+  });
+
+  it('removes through onBeforeDelete', () => {
+    let args!: DndSectionToolbarArgs;
+    const onBeforeDelete = vi.fn(() => false);
+    const { onChange, select } = renderHostToolbar(
+      next => {
+        args = next;
+
+        return null;
+      },
+      { onBeforeDelete },
+    );
+
+    select(1);
+    act(() => args.remove());
+
+    expect(onBeforeDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 's2' }),
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('is read-only while the document does not parse', () => {
+    let args!: DndSectionToolbarArgs;
+    const { onChange, select, rerenderWith } = renderHostToolbar(next => {
+      args = next;
+
+      return null;
+    });
+
+    select(1);
+    act(() => rerenderWith(threeSections.replace('</main>', '<div </main>')));
+
+    expect(args.readOnly).toBe(true);
+
+    act(() => args.moveUp());
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  // Hooks called in the render prop itself belong to the toolbar, not to the
+  // section, so the selection can move freely (#788).
+  it('lets the render prop call hooks as the selection moves', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const HookToolbar = (args: DndSectionToolbarArgs) => {
+      const [count] = useState(args.index);
+
+      return <span>{count}</span>;
+    };
+    const { select } = renderHostToolbar(args => HookToolbar(args));
+
+    select(0);
+    select(1);
+    select(1);
+    select(2);
+
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
   });
 });
 

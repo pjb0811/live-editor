@@ -8,6 +8,7 @@ import type {
 import type { LiveChange } from '../context/use-live-history';
 import type { FrameProps } from '../frame';
 import type { DndRenderSectionFallback } from './canvas/section-fallback-context';
+import type { DndRenderSectionToolbar } from './canvas/section-toolbar';
 import type {
   DndEditError,
   DndPanelLayout,
@@ -144,6 +145,11 @@ export interface Props extends Omit<
   // `undefined` for the built-in card. Only how it looks: the drag itself
   // is already under way (#780).
   renderPaletteOverlay?: (item: Section) => React.ReactNode | undefined;
+  // Renders the buttons in the selected canvas section's toolbar, in place
+  // of the built-in move, duplicate and delete buttons, from the actions in
+  // `DndSectionToolbarArgs`. Return `null` for an empty toolbar. Hooks may
+  // be called in it (#788).
+  renderSectionToolbar?: DndRenderSectionToolbar;
   // Checked for every section before it is compiled. Return `true` to skip
   // compiling it (so none of its top-level code runs) and render the
   // fallback with reason `forced`.

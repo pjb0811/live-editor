@@ -10,6 +10,7 @@ import styles from './canvas.module.css';
 
 import { paletteSectionOf } from '../palette/palette-drag';
 import { type SectionNavigation, useSectionHandlers } from './section-handlers';
+import { SectionToolbarSlot } from './section-toolbar';
 
 interface Props {
   id: string;
@@ -27,6 +28,9 @@ interface Props {
   onMoveDown?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  // The host's toolbar buttons, from `renderSectionToolbar`. When given,
+  // they replace the built-in ones (#788).
+  toolbar?: () => React.ReactNode;
 }
 
 const NAVIGATION_KEYS: Record<string, SectionNavigation> = {
@@ -48,6 +52,7 @@ const Sortable = ({
   onMoveDown,
   canMoveUp = false,
   canMoveDown = false,
+  toolbar,
 }: Props) => {
   // The picker and keyboard handlers, or `null` in the drag overlay.
   const handlers = useSectionHandlers();
@@ -197,7 +202,20 @@ const Sortable = ({
           (#747). Off while the element picker is on, whose hit test can't
           see inert elements. */}
       <div inert={!inspecting}>{children}</div>
-      {selected && (
+      {selected && toolbar && (
+        // Neither a press nor a click inside reaches the section, so a host's
+        // control never starts a drag or selects the section again, even
+        // from a menu it portals elsewhere. Keys need no stop: the section
+        // and the drag sensor only act on keys pressed on the section itself.
+        <div
+          className={styles.sectionToolbar}
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
+        >
+          <SectionToolbarSlot render={toolbar} />
+        </div>
+      )}
+      {selected && !toolbar && (
         <div className={styles.sectionToolbar}>
           {onMoveUp && (
             <Button

@@ -123,6 +123,7 @@ const Dnd = ({
   onEditError,
   renderSectionFallback,
   renderPaletteOverlay,
+  renderSectionToolbar,
   shouldForceSectionFallback,
   onBeforeDelete,
   sectionNameFallback,
@@ -453,6 +454,21 @@ const Dnd = ({
                 onMoveDown={() => onMoveButton(section.id, 'down')}
                 canMoveUp={index > 0}
                 canMoveDown={index < sections.length - 1}
+                toolbar={
+                  renderSectionToolbar &&
+                  (() =>
+                    renderSectionToolbar({
+                      section,
+                      index,
+                      canMoveUp: index > 0,
+                      canMoveDown: index < sections.length - 1,
+                      readOnly: stale,
+                      moveUp: () => onMoveButton(section.id, 'up'),
+                      moveDown: () => onMoveButton(section.id, 'down'),
+                      duplicate: () => onCopy(section.id),
+                      remove: () => onDelete(section.id),
+                    }))
+                }
               >
                 <Renderer
                   preview={previews[index]!}
