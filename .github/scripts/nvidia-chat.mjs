@@ -16,9 +16,12 @@ export const API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 export const MODEL_CANDIDATES = process.env.NVIDIA_MODEL
   ? [process.env.NVIDIA_MODEL]
   : [
-      'openai/gpt-oss-20b',               // verified working 2026-09-03
-      'nvidia/nemotron-nano-3-30b-a3b',   // NVIDIA-own, likely longest-lived
-      'mistralai/mistral-7b-instruct-v0.3', // small, historically long-lived
+      // Checked 2026-11-28 without a key: each is listed by GET /v1/models
+      // and answers 401, where a retired model answers 410 and an unknown
+      // one 404. Not yet called with a valid key.
+      'nvidia/nemotron-3.5-lightning-30b-a3b', // NVIDIA-own, likely longest-lived
+      'google/gemma-3-12b-it', // instruction-tuned, plain output
+      'mistralai/mistral-large-4-1t-a52b', // large fallback
     ];
 
 const MAX_ATTEMPTS = 4;
@@ -33,7 +36,7 @@ function sleep(ms) {
 /**
  * Strip a leading <think>…</think> block that some reasoning-tuned models
  * emit into message.content (as opposed to the separate reasoning_content
- * field used by gpt-oss-20b). The block may span multiple lines.
+ * field some models use instead). The block may span multiple lines.
  */
 export function stripThinkBlock(text) {
   return text.replace(/^\s*<think>[\s\S]*?<\/think>\s*/i, '').trim();
