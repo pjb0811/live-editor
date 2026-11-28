@@ -26,7 +26,7 @@ live-editor/
 │  │  │  ├─ layout.tsx      # Palette/Canvas/Panel/Layout 합성 컴포넌트
 │  │  │  ├─ layout-context.ts # 커스텀 레이아웃·팔레트·패널 훅
 │  │  │  ├─ edit-options.ts, panel-binding.ts, inspector.ts # 편집 에러·패널 바인딩·요소 picker (여러 영역 공용)
-│  │  │  ├─ canvas/         # 캔버스: droppable, sortable(+section-handlers 컨텍스트), overlay, renderer(섹션 컴파일·렌더), section-fallback, inspector-highlight, canvas-notice(빈 캔버스 안내)
+│  │  │  ├─ canvas/         # 캔버스: droppable, sortable(+section-handlers 컨텍스트), overlay, renderer(섹션 컴파일·렌더), section-fallback, section-toolbar(`renderSectionToolbar` 타입과 슬롯), inspector-highlight, canvas-notice(빈 캔버스 안내)
 │  │  │  ├─ palette/        # 팔레트: draggable, palette-drag(드래그 데이터)
 │  │  │  ├─ state/          # 상태 훅: use-section-document(섹션 문서), use-dnd-keyboard, use-inspector-state, use-delete-flow, use-section-editing(패널 편집 commit), edit-errors(편집 에러 보고)
 │  │  │  └─ panel/          # 프로퍼티 편집 패널: 루트에 panel·field(값 종류별 분기)·element-fields(요소 카드, element-selection)·binding-meta(선택형 `metaPanelLayout`과 `isBindingVisible`. 내장 패널은 `panelLayout`으로 받을 때만 `meta`를 씀)·row-controls, 기능 하위 폴더 items/(Items 편집기와 use-dnd-items 등), children/(Children 편집기, use-dnd-children), fields/(labeled-field, field-kind, field-ids, use-field-state(값·검증·id 공용 훅), field-error, color-field, control-class, jsx-editor-field), selection/(행 선택 체크박스·전체 선택·bulk bar, use-structural-selection)

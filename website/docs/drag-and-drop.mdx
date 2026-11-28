@@ -86,6 +86,59 @@ controls out.
 In the built-in mobile layout, selecting a section opens the panel in a
 drawer, which has the same buttons.
 
+### Your own buttons: `renderSectionToolbar`
+
+To hide a button, add an action of your own or change how the buttons look,
+pass `renderSectionToolbar`. What it returns replaces the four buttons. The
+toolbar itself stays the library's: its place in the corner, and showing only
+on the selected section. It gets the section and the actions the built-in
+buttons run:
+
+```tsx
+<Live.Dnd
+  value={value}
+  onChange={setValue}
+  renderSectionToolbar={({ section, canMoveUp, canMoveDown, moveUp, moveDown, remove }) => (
+    <>
+      <button type="button" aria-label="Move up" disabled={!canMoveUp} onClick={moveUp}>
+        ↑
+      </button>
+      <button type="button" aria-label="Move down" disabled={!canMoveDown} onClick={moveDown}>
+        ↓
+      </button>
+      <PublishButton sectionId={section.id} />
+      <button type="button" aria-label={`Delete ${section.name}`} onClick={remove}>
+        Delete
+      </button>
+    </>
+  )}
+/>
+```
+
+Here there's no duplicate button, so this toolbar can't copy a section.
+
+| Field | What it is |
+| --- | --- |
+| `section` | The selected section: `{ id, name, code }` |
+| `index` | Its 0-based position on the canvas |
+| `canMoveUp`, `canMoveDown` | `false` on the first and on the last section |
+| `readOnly` | `true` while the document doesn't parse. The actions then refuse and call `onBlockedEdit` |
+| `moveUp()`, `moveDown()` | Move it one place. At either end, focus goes to the section, as for the built-in buttons |
+| `duplicate()` | Copies it below itself and selects the copy |
+| `remove()` | Deletes it, through `onBeforeDelete` |
+
+- Return `null` for an empty toolbar.
+- The function renders as a component of its own, so it may call hooks.
+- A press or a click inside the toolbar doesn't reach the section, so your
+  controls never start a drag or change the selection. That includes a menu
+  you portal elsewhere.
+- Keys pressed on your controls stay yours: Space and Enter press a button,
+  and Delete edits a text field instead of deleting the section.
+- Your buttons need their own accessible names. The built-in ones take theirs
+  from the `section` messages.
+- Only the canvas toolbar changes. The panel's buttons, the keyboard
+  shortcuts and `useDndSections()` work as before.
+
 ## Keyboard
 
 Palette cards and canvas sections can be reached with Tab. A section's
