@@ -13,7 +13,7 @@ import {
   inspectDocument,
   replaceDocumentSections,
 } from '~/utils/ast/document';
-import { replaceIds } from '~/utils/ast/tree';
+import { copySectionCode, writtenIds } from '~/utils/ast/tree';
 import { createSectionPreviewCache, extractSections } from '~/utils/sections';
 
 import { usePreview } from '../../context/states';
@@ -293,17 +293,17 @@ export const useSectionDocument = (
         }
 
         // New `data-id`s for the copy, its own included, so it's a distinct
-        // section.
+        // section, none of them used elsewhere in the document (#796).
         const committed = commit([
           ...current.slice(0, index + 1),
-          { code: replaceIds(source.code) },
+          { code: copySectionCode(source.code, writtenIds(latestDocument())) },
           ...current.slice(index + 1),
         ]);
 
         // Select the copy by the id the committed document gave it (#245).
         setSelectedId(committed[index + 1]?.id ?? null);
       }),
-    [commit, mutate],
+    [commit, latestDocument, mutate],
   );
 
   const move = useCallback(

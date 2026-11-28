@@ -6,6 +6,7 @@ import { moveSelectedIndices } from '../selection';
 import { extract, nodeToJSX } from './extract';
 import { generateCode } from './helpers';
 import { type SourceEdit, applyEdits } from './patch';
+import { dataIdAttributes } from './tree';
 import type { BindingOptions, DataAttrNode } from './types';
 
 export type ChildrenAction =
@@ -73,11 +74,7 @@ const copySource = (source: string, usedIds: Set<string>): string => {
       return;
     }
 
-    const ids = child.attributes.filter(
-      (attr): attr is t.JSXAttribute =>
-        t.isJSXAttribute(attr) &&
-        t.isJSXIdentifier(attr.name, { name: 'data-id' }),
-    );
+    const ids = dataIdAttributes(child);
 
     if (ids.length > 1) {
       throw new Error('Duplicate data-id attributes');

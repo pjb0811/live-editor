@@ -202,6 +202,34 @@ describe('useDndSections', () => {
     expect(latest.api.selectedId).not.toBe('a');
   });
 
+  // Only real ids change in the copy: text that mentions `data-id` and an
+  // expression id stay as written (#796).
+  it('renews the inner ids of a copy and keeps its text', () => {
+    const section = [
+      '<section data-id="s1" data-name="s1">',
+      '<p data-id="title">Title</p>',
+      "<p data-id='note'>Note</p>",
+      '<img data-id={`img-${index}`} />',
+      `<p title='data-id="keep"'>{'data-id="keep"'}</p>`,
+      '</section>',
+    ].join('');
+
+    render(<Editor initial={documentOf(section)} />);
+    act(() => latest.api.duplicate('s1'));
+
+    const [original, copy] = latest.api.sections.map(s => s.code);
+    const idsOf = (code: string) =>
+      [...code.matchAll(/<\w+ data-id=(["'])(.*?)\1/g)].map(m => m[2]);
+    const copyIds = idsOf(copy!);
+
+    expect(original).toBe(section);
+    expect(copyIds).toHaveLength(3);
+    expect(copyIds.filter(id => idsOf(original!).includes(id))).toEqual([]);
+    expect(copy!.replace(/(<\w+ data-id=)(["'])(.*?)\2/g, '$1$2*$2')).toBe(
+      section.replace(/(<\w+ data-id=)(["'])(.*?)\2/g, '$1$2*$2'),
+    );
+  });
+
   it('removes through onBeforeDelete', async () => {
     const onBeforeDelete = vi
       .fn<(section: Section) => boolean | Promise<boolean>>()

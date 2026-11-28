@@ -33,6 +33,12 @@ attribute.
 | Variable, call, spread, hole, or computed property inside a partially modeled object | Raw source only | No; rebuilding could drop syntax | — | — | — | The value control is replaced with code-editor guidance |
 | Dynamic or ambiguous `key` / `data-id` | Yes | Other supported values remain editable | Yes | No | Yes | Make the identity static before copying |
 
+The copy column is about children and array items. Copying a whole section
+works with a dynamic `data-id` inside it: the copy gets new values for the
+string `data-id`s, in either quote style, and keeps an expression such as
+``data-id={`img-${index}`}`` as written. Panel edits only find elements by a
+string `data-id`, so the two sections can share it.
+
 Array value edits and structure edits deliberately have different boundaries.
 For example, changing `label` in
 `[, ...rows, { label: 'A' }]` replaces only `'A'`; the hole and spread remain
